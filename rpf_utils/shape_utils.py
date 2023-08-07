@@ -10,7 +10,7 @@ import pdb
 import os
 
 def create_grid(grid_size, padding, canvas_size):
-    axis_grid = np.linspace(padding, canvas_size - padding, grid_size)
+    axis_grid = np.linspace(padding, canvas_size - padding - 1, grid_size)
     grid_step_size = axis_grid[1] - axis_grid[0]
     pieces_grid = np.zeros((grid_size, grid_size, 2))
     for b in range(len(axis_grid)):
@@ -40,7 +40,7 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
         piece_sdf = scipy.ndimage.rotate(piece_sdf, theta, reshape=False)
         piece['cm'] = get_cm(piece_mask)
 
-    print(y_c0, y_c1+1, x_c0, x_c1+1)
+    #print(y_c0, y_c1+1, x_c0, x_c1+1)
     img_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1, :] = piece_img
     msk_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_mask
     sdf_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_sdf
@@ -148,10 +148,11 @@ def prepare_pieces(cfg, puzzle_name, background=0):
     pieces = []
     data_folder = os.path.join(cfg.data_path, puzzle_name, cfg.imgs_folder)
     pieces_names = os.listdir(data_folder)
-    pieces_full_path = [os.path.join(data_folder, piece_name) for piece_name in pieces_names]
-    for piece_path in pieces_full_path:
+    #pieces_full_path = [os.path.join(data_folder, piece_name) for piece_name in pieces_names]
+    for piece_name in pieces_names:
+        piece_full_path = os.path.join(data_folder, piece_name)
         piece_d = {}
-        img = cv2.imread(piece_path)
+        img = cv2.imread(piece_full_path)
         if background != 0:
             img[img[:,:,0] == background] = 0
         if img.shape[0] != img.shape[1]:
@@ -172,6 +173,7 @@ def prepare_pieces(cfg, puzzle_name, background=0):
             piece_d['img'] = img
         piece_d['sdf'], piece_d['mask'] = get_sd(piece_d['img'])
         piece_d['cm'] = get_cm(piece_d['mask'])
+        piece_d['id'] = piece_name[:9]
         pieces.append(piece_d)
     return pieces
 
@@ -201,6 +203,8 @@ def shape_pairwise_compatibility(piece_i, piece_j, x_j, y_j, theta_j, puzzle_cfg
     
     # if they are far apart, we save calculations and return fixed value
     if np.abs(x_j_pixel - x_c_pixel) > puzzle_cfg.max_dist_between_pieces + 1 or np.abs(y_j_pixel - y_c_pixel) > puzzle_cfg.max_dist_between_pieces + 1:
+        #print(np.abs(x_j_pixel - x_c_pixel), ">", puzzle_cfg.max_dist_between_pieces+1)
+        #print(np.abs(y_j_pixel - y_c_pixel), ">", puzzle_cfg.max_dist_between_pieces+1)
         return puzzle_cfg.FAR_AWAY
 
     # if they are far apart, we save calculations and return fixed value
@@ -211,7 +215,7 @@ def shape_pairwise_compatibility(piece_i, piece_j, x_j, y_j, theta_j, puzzle_cfg
     if np.sum(piece_i_canvas['mask'] + piece_j_canvas['mask'] > 1) > puzzle_cfg.overlap_tolerance * np.sum(mregion_mask):
         return puzzle_cfg.OVERLAP
 
-    pdb.set_trace()
+    #pdb.set_trace()
     comp_shape = compute_shape_score(piece_i_canvas, piece_j_canvas, mregion_mask, sigma=60) #components[1]['sigma'])
 
     return comp_shape
