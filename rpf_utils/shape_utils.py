@@ -18,7 +18,7 @@ def create_grid(grid_size, padding, canvas_size):
             pieces_grid[g, b] = (axis_grid[g], axis_grid[b])
     return pieces_grid, grid_step_size
 
-def place_on_canvas(piece, coords, canvas_size, theta=-1):
+def place_on_canvas(piece, coords, canvas_size, theta=0):
     y, x = coords
     hs = piece['img'].shape[0] // 2
     y_c0 = int(y-hs)
@@ -34,22 +34,25 @@ def place_on_canvas(piece, coords, canvas_size, theta=-1):
     piece_mask = piece['mask']
     piece_sdf = piece['sdf']
 
-    if theta > -1:
-        piece_img = cv2.rotate(piece_img, theta)
-        piece_mask = cv2.rotate(piece_mask, theta)
-        piece_sdf = cv2.rotate(piece_sdf, theta)
+    if theta > 0:
+        piece_img = scipy.ndimage.rotate(piece_img, theta, reshape=False)
+        piece_mask = scipy.ndimage.rotate(piece_mask, theta, reshape=False)
+        piece_sdf = scipy.ndimage.rotate(piece_sdf, theta, reshape=False)
         piece['cm'] = get_cm(piece_mask)
 
-    img_on_canvas[y_c0:y_c1, x_c0:x_c1, :] = piece_img
-    msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
-    sdf_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_sdf
+    print(y_c0, y_c1+1, x_c0, x_c1+1)
+    img_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1, :] = piece_img
+    msk_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_mask
+    sdf_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_sdf
     shift_y = y - piece['cm'][1]
     shift_x = x - piece['cm'][0]
     cm_on_canvas = [piece['cm'][0] + shift_x, piece['cm'][1] + shift_y]
-    piece_on_canvas = {'img': img_on_canvas.astype(int),
-                       'mask': msk_on_canvas,
-                       'sdf': sdf_on_canvas,
-                       'cm': cm_on_canvas }
+    piece_on_canvas = {
+        'img': img_on_canvas.astype(int),
+        'mask': msk_on_canvas,
+        'sdf': sdf_on_canvas,
+        'cm': cm_on_canvas 
+    }
     return piece_on_canvas
 
 def get_sd(img, background=0):
@@ -77,6 +80,7 @@ def shift_img(img, x, y):
     return new_img 
 
 def get_cm(mask):
+
     mass_y, mass_x = np.where(mask >= 0.5)
     cent_x = np.average(mass_x)
     cent_y = np.average(mass_y)
@@ -143,13 +147,13 @@ def get_borders(piece, width=5):
 def prepare_pieces(cfg, puzzle_name, background=0):
     pieces = []
     data_folder = os.path.join(cfg.data_path, puzzle_name, cfg.imgs_folder)
-    pieces_full_path = [os.path.join(data_folder, piece) for piece in pieces]
+    pieces_names = os.listdir(data_folder)
+    pieces_full_path = [os.path.join(data_folder, piece_name) for piece_name in pieces_names]
     for piece_path in pieces_full_path:
         piece_d = {}
         img = cv2.imread(piece_path)
         if background != 0:
             img[img[:,:,0] == background] = 0
-        #pdb.set_trace()
         if img.shape[0] != img.shape[1]:
             squared_img = np.zeros((cfg.piece_size, cfg.piece_size, 3))
             mx = cfg.piece_size - img.shape[0]
@@ -180,10 +184,11 @@ def shape_pairwise_compatibility(piece_i, piece_j, x_j, y_j, theta_j, puzzle_cfg
     center_pos = (len(grid) - 1 ) // 2
     x_c_pixel, y_c_pixel = grid[center_pos, center_pos]
     x_j_pixel, y_j_pixel = grid[x_j, y_j]
+    theta_degrees = theta_j * puzzle_cfg.theta_step
 
     # place the pieces on the canvas (for visualization purpose)
-    piece_i_canvas = place_on_canvas(piece_i, (y_c_pixel, x_c_pixel), puzzle_cfg.canvas_size, )
-    piece_j_canvas = place_on_canvas(piece_j, (y_j_pixel, x_j_pixel), puzzle_cfg.canvas_size, theta_j)
+    piece_i_canvas = place_on_canvas(piece_i, (y_c_pixel, x_c_pixel), puzzle_cfg.canvas_size, 0)
+    piece_j_canvas = place_on_canvas(piece_j, (y_j_pixel, x_j_pixel), puzzle_cfg.canvas_size, theta_degrees)
     
     # Get matching region
     min_axis = puzzle_cfg.min_axis_factor * np.minimum(np.sqrt(np.sum(piece_i['mask'])), np.sqrt(np.sum(piece_j['mask']))) # MAGIC NUMBER :/
@@ -206,6 +211,7 @@ def shape_pairwise_compatibility(piece_i, piece_j, x_j, y_j, theta_j, puzzle_cfg
     if np.sum(piece_i_canvas['mask'] + piece_j_canvas['mask'] > 1) > puzzle_cfg.overlap_tolerance * np.sum(mregion_mask):
         return puzzle_cfg.OVERLAP
 
+    pdb.set_trace()
     comp_shape = compute_shape_score(piece_i_canvas, piece_j_canvas, mregion_mask, sigma=60) #components[1]['sigma'])
 
     return comp_shape
