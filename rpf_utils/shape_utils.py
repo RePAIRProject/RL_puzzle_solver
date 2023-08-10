@@ -65,6 +65,12 @@ def get_sd(img, background=0):
     sd = skfmm.distance(phi, dx = 1)
     return sd, mask 
 
+def get_outside_borders(mask, borders_width=3):
+    kernel_size = borders_width*2+1
+    kernel = np.ones((kernel_size, kernel_size))
+    dilated_mask = cv2.dilate(mask, kernel)
+    return dilated_mask - mask 
+
 def shift_img(img, x, y):
     new_img = np.zeros_like(img)
     if x == 0 and y == 0:

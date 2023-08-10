@@ -15,6 +15,8 @@ theta_step = (360 / comp_matrix_shape[2])
 data_path = 'data'
 output_dir = 'output'
 cm_output_dir = 'cm'
+rm_output_dir = 'rm'
+visualization_folder_name = 'visualization'
 imgs_folder = 'images'
 
 # output
@@ -24,6 +26,8 @@ save_visualization = True
 max_dist_between_pieces = p_hs
 overlap_tolerance = 0.05
 empty_space_tolerance = 0.35
+threshold_overlap = 10
+borders_regions_width = 3
 min_axis_factor = 0.35 # magic number :( for ellipsoid 
 sigma = xy_step / 2 # for the shape based compatibility (sigma of the exponential)
 dist = 'bd'
