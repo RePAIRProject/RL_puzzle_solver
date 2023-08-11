@@ -12,10 +12,11 @@ xy_step = pairwise_comp_range / (comp_matrix_shape[0] - 1)
 theta_step = (360 / comp_matrix_shape[2])
 
 # folders
+import os
 data_path = 'data'
 output_dir = 'output'
-cm_output_dir = 'cm'
-rm_output_dir = 'rm'
+cm_output_dir = os.path.join(output_dir, 'CompatibilityMatrix')
+rm_output_dir = os.path.join(output_dir, 'RegionsMatrix')
 visualization_folder_name = 'visualization'
 imgs_folder = 'images'
 

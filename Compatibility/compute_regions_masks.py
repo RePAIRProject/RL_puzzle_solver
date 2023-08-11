@@ -57,7 +57,7 @@ def main(args):
     print('Done calculating')
     print('#' * 50)
     print('Saving the matrix..')     
-    output_folder = os.path.join(cfg.output_dir, f"{cfg.rm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
+    output_folder = os.path.join(cfg.rm_output_dir, f"{cfg.rm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
     vis_folder = os.path.join(output_folder, cfg.visualization_folder_name)
     os.makedirs(vis_folder, exist_ok=True)
     RM_D = {}
@@ -67,7 +67,6 @@ def main(args):
     if cfg.save_visualization is True:
         print('Creating visualization')
         save_vis(RM, pieces, os.path.join(vis_folder, f'visualization_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {args.puzzle}", all_rotation=True)
-    
 
 if __name__ == '__main__':
 

@@ -56,7 +56,7 @@ def main(args):
     CM_D = {}
     CM_D['R'] = CM
     
-    output_folder = os.path.join(cfg.output_dir, f"{cfg.cm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
+    output_folder = os.path.join(cfg.cm_output_dir, f"{cfg.cm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
     vis_folder = os.path.join(output_folder, cfg.visualization_folder_name)
     os.makedirs(vis_folder, exist_ok=True)
 
