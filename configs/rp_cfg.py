@@ -15,10 +15,13 @@ theta_step = (360 / comp_matrix_shape[2])
 import os
 data_path = 'data'
 output_dir = 'output'
-cm_output_dir = os.path.join(output_dir, 'CompatibilityMatrix')
-rm_output_dir = os.path.join(output_dir, 'RegionsMatrix')
+cm_output_name ='CompatibilityMatrix'
+rm_output_name = 'RegionsMatrix'
+segm_output_name = 'MotifSegmentation'
+lines_output_name = 'LinesDetection'
 visualization_folder_name = 'visualization'
 imgs_folder = 'images'
+masks_folder = 'masks'
 
 # output
 save_visualization = True
