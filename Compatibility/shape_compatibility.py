@@ -43,7 +43,7 @@ def main(args):
                     for y in range(grid_size_xy):
                         for t in range(grid_size_rot):
                                 # HERE WE COMPUTE THE COMPATIBILITIES
-                                shape_comp = shape_pairwise_compatibility(pieces[i], pieces[j], y, x, t-1, cfg, grid, sigma=cfg.sigma)
+                                shape_comp = shape_pairwise_compatibility(pieces[i], pieces[j], y, x, t, cfg, grid, sigma=cfg.sigma)
                                 CM[x, y, t, j, i] = shape_comp
                                 print(f"C({x:>2}, {y:>2}, {t:>2}, {j:>2}, {i:>2}) = {shape_comp:>8.3f}", end='\r')
     
@@ -55,13 +55,18 @@ def main(args):
     ## SAVE AS .mat FILES
     CM_D = {}
     CM_D['R'] = CM
-    output_folder = os.path.join(cfg.output_dir, f"{cfg.cm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
-    os.makedirs(output_folder, exist_ok=True)
-    if cfg.save_visualization is True:
-        print('Creating visualization')
-        save_vis(CM, pieces, os.path.join(output_folder, f'visualization_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}.jpg'), f"comp matrix {args.puzzle}")
+    
+    output_folder = os.path.join(cfg.cm_output_dir, f"{cfg.cm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
+    vis_folder = os.path.join(output_folder, cfg.visualization_folder_name)
+    os.makedirs(vis_folder, exist_ok=True)
+
     filename = f'{output_folder}/CM_shape_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'
     scipy.io.savemat(f'{filename}.mat', CM_D)
+
+    if cfg.save_visualization is True:
+        print('Creating visualization')
+        save_vis(CM, pieces, os.path.join(vis_folder, f'visualization_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"comp matrix {args.puzzle}", all_rotation=True)
+
     print("Finished!")
     print(f"Saved in {output_folder}")
     print('#' * 50)
