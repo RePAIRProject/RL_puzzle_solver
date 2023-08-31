@@ -174,7 +174,7 @@ np.save('R_line51_45_verLAP_fakeNEW.npy', R_line)  # full LAP
 
 #########################################################
 # Visualize Rij matrices
-jj = 3         # selected rotation
+jj = 0         # selected rotation
 
 # Visualize matrices of cost before norm
 plt.figure()
@@ -185,19 +185,19 @@ for f1 in range(n):
         C = Nnorm_cost[:, :, jj, f2, f1]
         axs[f1, f2].imshow(C, cmap='hot', aspect='auto')
         axs[f1, f2].axis('off')
-        # plt.colorbar(axs[0, 0].imshow(Nnorm_cost[:, :, jj, f2, f1], cmap='hot', aspect='auto'))
+        plt.colorbar(axs[0, 0].imshow(Nnorm_cost[:, :, jj, f2, f1], cmap='hot', aspect='auto'))
 plt.show()
 
 # Visualize matrices of normalized cost
 plt.figure()
 fig2, axs = plt.subplots(n, n)
-fig2.subplots_adjust(hspace=0, wspace=0)
-for f1 in range(9):
-    for f2 in range(9):
+fig2.subplots_adjust(hspace=0.1, wspace=0.1)
+for f1 in range(n):
+    for f2 in range(n):
         C = All_cost[:, :, jj, f2, f1]
         axs[f1, f2].imshow(C, cmap='hot', aspect='auto')
         axs[f1, f2].axis('off')
-        # plt.colorbar(axs[0, 0].imshow(All_cost[:, :, jj, f2, f1], cmap='hot', aspect='auto'))
+        plt.colorbar(axs[0, 0].imshow(All_cost[:, :, jj, f2, f1], cmap='hot', aspect='auto'))
 plt.show()
 
 # Visualize Rij matrices
