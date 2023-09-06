@@ -3,5 +3,18 @@
 # the input data (will be shared somewhere else)
 data 
 
-# output (estimation, matrices, detected edges and so on)
-output
+# ignore visualization
+**/visualization
+# no compatibility matirx
+**/CompatibilityMatrix
+# no regions matrix (too large)
+**/RegionsMatrix
+# no cm matrix somewhere else
+*.mat
+
+# ignore images 
+**LinesDetection/*.png
+**/MotifSegmentation/Motif/*.png
+
+# except the lines segmentation maps!
+#!/MotifSegmentation/Lines/*.png

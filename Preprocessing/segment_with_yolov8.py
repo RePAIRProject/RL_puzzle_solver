@@ -10,9 +10,12 @@ def main(args):
 
     model = YOLO(args.model)
     images_folder = os.path.join(cfg.data_path, args.puzzle, cfg.imgs_folder)
-    output_folder = os.path.join(cfg.output_dir, args.puzzle)
+    output_folder = os.path.join(os.getcwd(), cfg.output_dir, args.puzzle)
     segmentation_folder = os.path.join(output_folder, cfg.segm_output_name)
-    os.makedirs(segmentation_folder, exist_ok=True)
+    lines_segmentation_folder = os.path.join(segmentation_folder, cfg.lines_segm_name)
+    motifs_segmentation_folder = os.path.join(segmentation_folder, cfg.motifs_segm_name)
+    os.makedirs(lines_segmentation_folder, exist_ok=True)
+    os.makedirs(motifs_segmentation_folder, exist_ok=True)
 
     for img in os.listdir(images_folder):
     
@@ -42,10 +45,11 @@ def main(args):
         if args.size != 512:
             segmentation_mask = cv2.resize(segmentation_mask, (args.size, args.size))
             lines_mask = cv2.resize(lines_mask, (args.size, args.size))
-        cv2.imwrite(os.path.join(segmentation_folder, img), segmentation_mask)
-        cv2.imwrite(os.path.join(segmentation_folder, f"lines_{img}"), (lines_mask > 0).astype(np.uint8))
+        cv2.imwrite(os.path.join(motifs_segmentation_folder, img), segmentation_mask)
+        cv2.imwrite(os.path.join(lines_segmentation_folder, f"lines_{img}"), (lines_mask > 0).astype(np.uint8))
         print('saved', img)
 
+    print("Finished! Output in", segmentation_folder)
     return 1
 
 
