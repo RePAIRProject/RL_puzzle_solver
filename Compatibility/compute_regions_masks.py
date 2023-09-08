@@ -57,7 +57,9 @@ def main(args):
     print('Done calculating')
     print('#' * 50)
     print('Saving the matrix..')     
-    output_folder = os.path.join(cfg.rm_output_dir, f"{cfg.rm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
+    output_folder = os.path.join(cfg.rm_output_dir)
+    # should we add this to the folder? it will create a subfolder that we may not need
+    # f"{cfg.rm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
     vis_folder = os.path.join(output_folder, cfg.visualization_folder_name)
     os.makedirs(vis_folder, exist_ok=True)
     RM_D = {}

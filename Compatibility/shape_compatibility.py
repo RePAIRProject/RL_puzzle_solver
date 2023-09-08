@@ -3,6 +3,7 @@
 
 
 from rpf_utils.shape_utils import prepare_pieces, create_grid, shape_pairwise_compatibility
+from rpf_utils.regions import read_region_masks
 import numpy as np
 import scipy
 import argparse 
@@ -21,6 +22,12 @@ def main(args):
     grid_size_xy = cfg.comp_matrix_shape[0]
     grid_size_rot = cfg.comp_matrix_shape[2]
     grid, grid_step_size = create_grid(grid_size_xy, cfg.p_hs, cfg.canvas_size)
+    if args.urm is True:
+        ok, RM = read_region_masks(cfg, args.puzzle)
+        if ok < 0:
+            print("Error (read above), stopping here")
+            return 
+
     print('#' * 50)
     print('SETTINGS')
     print(f'CM has shape: [{grid_size_xy}, {grid_size_xy}, {grid_size_rot}, {len(pieces)}, {len(pieces)}]')
@@ -28,8 +35,9 @@ def main(args):
     print(f'Pieces are squared images of {cfg.piece_size}x{cfg.piece_size} pixels (p_hs={cfg.p_hs})')
     print(f'xy_step: {cfg.xy_step}, rot_step: {cfg.theta_step}')
     print(f'Canvas size: {cfg.canvas_size}x{cfg.canvas_size}')
+    print(f'Using regions matrix: {args.urm}')
     print('#' * 50)
-    #pdb.set_trace()
+    
     ## CREATE MATRIX
     CM = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
     ## COMPUTE SCORES
@@ -39,9 +47,17 @@ def main(args):
             if i == j:
                 CM[:,:,:,i,j] = -1
             else:
-                for x in range(grid_size_xy):
-                    for y in range(grid_size_xy):
-                        for t in range(grid_size_rot):
+                if args.urm:
+                    for t in range(grid_size_rot):
+                        idx = np.where(RM[:, :, t, i, j] > 0)
+                        for x, y in zip(idx[0], idx[1]):
+                            shape_comp = shape_pairwise_compatibility(pieces[i], pieces[j], int(y), int(x), t, cfg, grid, sigma=cfg.sigma)
+                            CM[x, y, t, j, i] = shape_comp
+                            print(f"C({x:>2}, {y:>2}, {t:>2}, {j:>2}, {i:>2}) = {shape_comp:>8.3f}", end='\r')
+                else:
+                    for x in range(grid_size_xy):
+                        for y in range(grid_size_xy):
+                            for t in range(grid_size_rot):
                                 # HERE WE COMPUTE THE COMPATIBILITIES
                                 shape_comp = shape_pairwise_compatibility(pieces[i], pieces[j], y, x, t, cfg, grid, sigma=cfg.sigma)
                                 CM[x, y, t, j, i] = shape_comp
@@ -77,5 +93,6 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')
     parser.add_argument('--puzzle', type=str, default='repair_g28', help='puzzle to work on')
+    parser.add_argument('--urm', action='store_true')
     args = parser.parse_args()
     main(args)
