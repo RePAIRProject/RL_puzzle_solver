@@ -7,7 +7,7 @@ p_hs = piece_size // 2
 xy_grid_points = 101
 theta_grid_points = 24
 comp_matrix_shape = [xy_grid_points, xy_grid_points, theta_grid_points]
-pairwise_comp_range = 2 * (p_hs) + 1 
+pairwise_comp_range = 4 * (p_hs) + 1
 canvas_size = pairwise_comp_range + 2 * p_hs + 1 
 xy_step = pairwise_comp_range / (comp_matrix_shape[0] - 1)
 theta_step = (360 / comp_matrix_shape[2])
@@ -24,7 +24,7 @@ do_merge=True
 ### FOLDERS
 import os
 data_path = 'data'
-output_dir = 'output'
+output_dir = 'C:\\Users\\Marina\\PycharmProjects\\RL_puzzle_solver\\output'
 cm_output_name ='CompatibilityMatrix'
 rm_output_name = 'RegionsMatrix'
 segm_output_name = 'MotifSegmentation'
