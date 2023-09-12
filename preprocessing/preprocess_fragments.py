@@ -2,7 +2,7 @@ import os
 import numpy as np 
 import cv2
 import matplotlib.pyplot as plt
-from rpf_utils.shape_utils import get_sd, get_cm, shift_img
+from puzzle_utils.shape_utils import get_sd, get_cm, shift_img
 import pdb
 from configs import repair_cfg as cfg
 from configs import folder_names as fnames

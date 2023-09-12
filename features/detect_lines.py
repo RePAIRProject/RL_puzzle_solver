@@ -2,7 +2,7 @@ import cv2
 import os 
 from configs import wikiart_cfg as cfg
 from configs import folder_names as fnames
-from rpf_utils.lines_ops import polar2cartesian
+from puzzle_utils.lines_ops import polar2cartesian
 import pdb 
 import argparse
 import numpy as np 

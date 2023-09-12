@@ -2,8 +2,8 @@
 
 
 
-from rpf_utils.shape_utils import prepare_pieces, create_grid, shape_pairwise_compatibility
-from rpf_utils.regions import read_region_masks
+from puzzle_utils.shape_utils import prepare_pieces, create_grid, shape_pairwise_compatibility
+from puzzle_utils.regions import read_region_masks
 import numpy as np
 import scipy
 import argparse 

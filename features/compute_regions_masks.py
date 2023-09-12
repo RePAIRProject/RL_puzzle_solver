@@ -1,5 +1,5 @@
 
-from rpf_utils.shape_utils import prepare_pieces, create_grid, shape_pairwise_compatibility, \
+from puzzle_utils.shape_utils import prepare_pieces, create_grid, shape_pairwise_compatibility, \
     get_outside_borders, place_on_canvas
 import numpy as np
 import scipy

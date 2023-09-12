@@ -12,7 +12,7 @@ import json
 from skimage.transform import hough_line
 from matplotlib import cm
 import math 
-from rpf_utils.lines_ops import hough_line, cluster_lines_dbscan, draw_hough_lines, \
+from puzzle_utils.lines_ops import hough_line, cluster_lines_dbscan, draw_hough_lines, \
     draw_prob_hough_line, display_unprocessed_hough_result, line_cart2pol, polar2cartesian
 
 
