@@ -24,7 +24,7 @@ do_merge=True
 ### FOLDERS
 import os
 data_path = 'data'
-output_dir = 'C:\\Users\\Marina\\PycharmProjects\\RL_puzzle_solver\\output'
+output_dir = 'output'
 cm_output_name ='CompatibilityMatrix'
 rm_output_name = 'RegionsMatrix'
 segm_output_name = 'MotifSegmentation'
