@@ -1,10 +1,13 @@
-# RL Puzzle Solver
+# RL Puzzle Solver (WIP)
 Solving puzzle using Relaxation Labeling
+
+| :exclamation:  This repository is under active development! Some things may change!  |
+|-----------------------------------------|
 
 # 1) Description
 The repository contains the code for computing features, the compatibility matrices and the solver.
 
-## Preparing Data (`Preprocessing` folder)
+## Preparing Data (`preprocessing` folder)
 Initially, we assume you have the input data for some puzzle (one image or the fragments).
 The `preprocess.py` script creates the `data` subfolder for a certain puzzle. Once you have that, you can start computing stuff (computed stuff will go into the `output` folder).
 
@@ -35,15 +38,15 @@ The data is structured following this idea (where `data` has the input files and
 │   │   └── masks/
 └── output/         # only partially included
     ├── puzzle_1/
-    │   ├── MotifSegmentation/      # motif segmentation (for repair)
-    │   ├── LinesDetection/         # detected lines
-    │   ├── RegionsMatrix/          # candidate regions for comp speedup
-    │   └── CompatibilityMatrix/    # final compatibility matrix 
+    │   ├── motif_segmentation/      # motif segmentation (for repair)
+    │   ├── lines_detection/         # detected lines
+    │   ├── regions_matrix/          # candidate regions for comp speedup
+    │   └── compatibility_matrix/    # final compatibility matrix 
     └── puzzle_2/
-        ├── MotifSegmentation/
-        ├── LinesDetection/
-        ├── RegionsMatrix/
-        └── CompatibilityMatrix/
+        ├── motif_segmentation/
+        ├── lines_detection/
+        ├── regions_matrix/
+        └── compatibility_matrix/
 ```
 
 # 2) Installation
