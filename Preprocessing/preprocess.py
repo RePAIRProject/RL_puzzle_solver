@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from rpf_utils.shape_utils import get_sd, get_cm, shift_img
 import pdb
 from configs import rp_cfg as cfg
+import argparse 
 
 def center_fragment(image):
     #pdb.set_trace()
@@ -15,10 +16,10 @@ def center_fragment(image):
     centered_image = shift_img(image, -shift[0], -shift[1])    
     return centered_image, mask
 
-def main():
+def main(args):
     target_img_shape = cfg.piece_size 
     groups = [28, 35, 39, 45]
-    db_folder = '/media/lucap/big_data/datasets/repair/puzzle2D'
+    db_folder = args.dataset
     groups_folders = [os.path.join(db_folder, f'group_{group}') for group in groups]
     output_root_folder = 'data'
     output_folders = [os.path.join(output_root_folder, f'repair_g{group}') for group in groups]
@@ -43,4 +44,9 @@ def main():
         #pdb.set_trace()
 
 if __name__ == '__main__':
-    main()
+
+    parser = argparse.ArgumentParser(description='Prepare the data')
+    parser.add_argument('-d', '--dataset', type=str, default='/media/lucap/big_data/datasets/repair/puzzle2D', help='data folder')
+
+    args = parser.parse_args()
+    main(args)

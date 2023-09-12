@@ -21,7 +21,7 @@ def main(args):
     grid, grid_step_size = create_grid(grid_size_xy, cfg.p_hs, cfg.canvas_size)
     print('#' * 50)
     print('SETTINGS')
-    print(f'CM has shape: [{grid_size_xy}, {grid_size_xy}, {grid_size_rot}, {len(pieces)}, {len(pieces)}]')
+    print(f'RM has shape: [{grid_size_xy}, {grid_size_xy}, {grid_size_rot}, {len(pieces)}, {len(pieces)}]')
     print(f'Using a grid  on xy and {grid_size_rot} rotations on {len(pieces)} pieces')
     print(f'Pieces are squared images of {cfg.piece_size}x{cfg.piece_size} pixels (p_hs={cfg.p_hs})')
     print(f'xy_step: {cfg.xy_step}, rot_step: {cfg.theta_step}')
@@ -57,7 +57,7 @@ def main(args):
     print('Done calculating')
     print('#' * 50)
     print('Saving the matrix..')     
-    output_folder = os.path.join(cfg.rm_output_dir)
+    output_folder = os.path.join(cfg.output_dir, args.puzzle, cfg.rm_output_name)
     # should we add this to the folder? it will create a subfolder that we may not need
     # f"{cfg.rm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
     vis_folder = os.path.join(output_folder, cfg.visualization_folder_name)

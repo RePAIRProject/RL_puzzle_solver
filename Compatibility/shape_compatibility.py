@@ -13,12 +13,63 @@ import cv2
 import json, os 
 from configs import rp_cfg as cfg
 from rpf_utils.visualization import save_vis
+from numba import jit
+
+@jit (parallel=True)
+def compute_compatibility_in_parallel(pieces, CM, RM, cfg, grid, urm: bool):
+
+    grid_size_rot = CM.shape[2]
+    for i in range(len(pieces)):
+        for j in range(len(pieces)):
+            if i == j:
+                CM[:,:,:,i,j] = -1
+            else:
+                if urm:
+                    #print(i, j)
+                    for t in range(grid_size_rot):
+                        print(i, j, t)
+                        idx = np.where(RM[:, :, t, i, j] > 0)
+                        for x, y in zip(idx[0], idx[1]):
+                            shape_comp = shape_pairwise_compatibility(pieces[i], pieces[j], int(y), int(x), t, cfg, grid, sigma=cfg.sigma)
+                            CM[x, y, t, j, i] = shape_comp
+                            #print(f"C({x:>2}, {y:>2}, {t:>2}, {j:>2}, {i:>2}) = {shape_comp:>8.3f}", end='\r')
+                else:
+                    for x in range(grid_size_xy):
+                        for y in range(grid_size_xy):
+                            for t in range(grid_size_rot):
+                                # HERE WE COMPUTE THE COMPATIBILITIES
+                                shape_comp = shape_pairwise_compatibility(pieces[i], pieces[j], y, x, t, cfg, grid, sigma=cfg.sigma)
+                                CM[x, y, t, j, i] = shape_comp
+    return CM 
 
 def main(args):
 
     ## PREPARE PIECES AND GRIDS
     #pdb.set_trace()
     pieces = prepare_pieces(cfg, args.puzzle)
+    #pdb.set_trace()
+
+    # test = cv2.filter2D(pieces[6]['sdf'], -1, pieces[4]['sdf'])
+    # test2 = scipy.signal.convolve2d(pieces[6]['sdf'], pieces[4]['sdf'], mode='same')
+    # plt.subplot(231)
+    # plt.imshow(pieces[6]['img'])
+    # plt.subplot(232)
+    # plt.imshow(pieces[4]['img'])
+    # plt.subplot(234)
+    # plt.imshow(pieces[6]['sdf'] // 20)
+    # plt.subplot(235)
+    # plt.imshow(pieces[4]['sdf'] // 20)
+    # plt.subplot(233)
+    # plt.imshow(test // 100000)
+    # plt.colorbar()
+    # plt.subplot(236)
+    # plt.imshow(test2 // 100000)
+    # plt.colorbar()
+    
+    # plt.show()
+    # pdb.set_trace()
+
+
     grid_size_xy = cfg.comp_matrix_shape[0]
     grid_size_rot = cfg.comp_matrix_shape[2]
     grid, grid_step_size = create_grid(grid_size_xy, cfg.p_hs, cfg.canvas_size)
@@ -28,6 +79,12 @@ def main(args):
             print("Error (read above), stopping here")
             return 
 
+    output_folder = os.path.join(cfg.output_dir, args.puzzle, cfg.cm_output_name)
+    os.makedirs(output_folder, exist_ok=True)
+    # f"{cfg.cm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
+    vis_folder = os.path.join(output_folder, cfg.visualization_folder_name)
+    os.makedirs(vis_folder, exist_ok=True)
+
     print('#' * 50)
     print('SETTINGS')
     print(f'CM has shape: [{grid_size_xy}, {grid_size_xy}, {grid_size_rot}, {len(pieces)}, {len(pieces)}]')
@@ -36,32 +93,37 @@ def main(args):
     print(f'xy_step: {cfg.xy_step}, rot_step: {cfg.theta_step}')
     print(f'Canvas size: {cfg.canvas_size}x{cfg.canvas_size}')
     print(f'Using regions matrix: {args.urm}')
+    print(f'Output folder: {output_folder}')
     print('#' * 50)
     
     ## CREATE MATRIX
     CM = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
-    ## COMPUTE SCORES
-    print('Calculations.. (this may take a while)')
-    for i in range(len(pieces)):
-        for j in range(len(pieces)):
-            if i == j:
-                CM[:,:,:,i,j] = -1
-            else:
-                if args.urm:
-                    for t in range(grid_size_rot):
-                        idx = np.where(RM[:, :, t, i, j] > 0)
-                        for x, y in zip(idx[0], idx[1]):
-                            shape_comp = shape_pairwise_compatibility(pieces[i], pieces[j], int(y), int(x), t, cfg, grid, sigma=cfg.sigma)
-                            CM[x, y, t, j, i] = shape_comp
-                            print(f"C({x:>2}, {y:>2}, {t:>2}, {j:>2}, {i:>2}) = {shape_comp:>8.3f}", end='\r')
+    
+    if args.parallel:
+        CM = compute_compatibility_in_parallel(pieces, CM, RM, cfg, grid, args.urm)
+    else:
+        ## COMPUTE SCORES
+        print('Calculations.. (this may take a while)')
+        for i in range(len(pieces)):
+            for j in range(len(pieces)):
+                if i == j:
+                    CM[:,:,:,i,j] = -1
                 else:
-                    for x in range(grid_size_xy):
-                        for y in range(grid_size_xy):
-                            for t in range(grid_size_rot):
-                                # HERE WE COMPUTE THE COMPATIBILITIES
-                                shape_comp = shape_pairwise_compatibility(pieces[i], pieces[j], y, x, t, cfg, grid, sigma=cfg.sigma)
+                    if args.urm:
+                        for t in range(grid_size_rot):
+                            idx = np.where(RM[:, :, t, i, j] > 0)
+                            for x, y in zip(idx[0], idx[1]):
+                                shape_comp = shape_pairwise_compatibility(pieces[i], pieces[j], int(y), int(x), t, cfg, grid, sigma=cfg.sigma)
                                 CM[x, y, t, j, i] = shape_comp
                                 print(f"C({x:>2}, {y:>2}, {t:>2}, {j:>2}, {i:>2}) = {shape_comp:>8.3f}", end='\r')
+                    else:
+                        for x in range(grid_size_xy):
+                            for y in range(grid_size_xy):
+                                for t in range(grid_size_rot):
+                                    # HERE WE COMPUTE THE COMPATIBILITIES
+                                    shape_comp = shape_pairwise_compatibility(pieces[i], pieces[j], y, x, t, cfg, grid, sigma=cfg.sigma)
+                                    CM[x, y, t, j, i] = shape_comp
+                                    print(f"C({x:>2}, {y:>2}, {t:>2}, {j:>2}, {i:>2}) = {shape_comp:>8.3f}", end='\r')
     
     print()
     print('Done calculating')
@@ -72,10 +134,6 @@ def main(args):
     CM_D = {}
     CM_D['R'] = CM
     
-    output_folder = os.path.join(cfg.cm_output_dir, f"{cfg.cm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
-    vis_folder = os.path.join(output_folder, cfg.visualization_folder_name)
-    os.makedirs(vis_folder, exist_ok=True)
-
     filename = f'{output_folder}/CM_shape_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'
     scipy.io.savemat(f'{filename}.mat', CM_D)
 
@@ -93,6 +151,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')
     parser.add_argument('--puzzle', type=str, default='repair_g28', help='puzzle to work on')
-    parser.add_argument('--urm', action='store_true')
+    parser.add_argument('--urm', '-r',  action='store_true')
+    parser.add_argument('--parallel', '-p', action='store_true')
     args = parser.parse_args()
     main(args)
