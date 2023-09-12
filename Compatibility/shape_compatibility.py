@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import cv2
 import json, os 
 from configs import rp_cfg as cfg
+from configs import folder_names as fnames
 from rpf_utils.visualization import save_vis
 from numba import jit
 
@@ -45,31 +46,7 @@ def compute_compatibility_in_parallel(pieces, CM, RM, cfg, grid, urm: bool):
 def main(args):
 
     ## PREPARE PIECES AND GRIDS
-    #pdb.set_trace()
-    pieces = prepare_pieces(cfg, args.puzzle)
-    #pdb.set_trace()
-
-    # test = cv2.filter2D(pieces[6]['sdf'], -1, pieces[4]['sdf'])
-    # test2 = scipy.signal.convolve2d(pieces[6]['sdf'], pieces[4]['sdf'], mode='same')
-    # plt.subplot(231)
-    # plt.imshow(pieces[6]['img'])
-    # plt.subplot(232)
-    # plt.imshow(pieces[4]['img'])
-    # plt.subplot(234)
-    # plt.imshow(pieces[6]['sdf'] // 20)
-    # plt.subplot(235)
-    # plt.imshow(pieces[4]['sdf'] // 20)
-    # plt.subplot(233)
-    # plt.imshow(test // 100000)
-    # plt.colorbar()
-    # plt.subplot(236)
-    # plt.imshow(test2 // 100000)
-    # plt.colorbar()
-    
-    # plt.show()
-    # pdb.set_trace()
-
-
+    pieces = prepare_pieces(cfg, fnames, args.puzzle)
     grid_size_xy = cfg.comp_matrix_shape[0]
     grid_size_rot = cfg.comp_matrix_shape[2]
     grid, grid_step_size = create_grid(grid_size_xy, cfg.p_hs, cfg.canvas_size)
@@ -134,7 +111,7 @@ def main(args):
     CM_D = {}
     CM_D['R'] = CM
     
-    filename = f'{output_folder}/CM_shape_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'
+    filename = f'{output_folder}/CM_shape'
     scipy.io.savemat(f'{filename}.mat', CM_D)
 
     if cfg.save_visualization is True:

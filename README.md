@@ -12,7 +12,9 @@ The `preprocess.py` script creates the `data` subfolder for a certain puzzle. On
 You can use `compute_region_masks.py` to precompute candidate regions where the compatibility will be calculated, or `segment_with_yolov8.py` to create the segmentation masks or `lines_detection.py` to extract lines from the segmentation masks obtained. 
 
 ## File Naming Conventions
-The folder structure is described below and the name are written down in the configuration file in the `configs` folder. Different configs can be used for different puzzle. The idea behind this is that given only a puzzle name, you can access via the config parameters the folders and read/write files using always the same convention.
+The folder structure is described below and the name are written down in the `folder_names.py` file in the `configs` folder. 
+sThe idea behind this is that given only a puzzle name, you can access via the config parameters the folders and read/write files using always the same convention.
+
 ## Folder Structure
 The data is structured following this idea (where `data` has the input files and `output` all the files created by the code):
 ```bash

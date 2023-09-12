@@ -1,0 +1,12 @@
+### FOLDERS
+data_path = 'data'
+output_dir = 'output'
+cm_output_name ='CompatibilityMatrix'
+rm_output_name = 'RegionsMatrix'
+segm_output_name = 'MotifSegmentation'
+lines_segm_name = 'Lines'
+motifs_segm_name = 'Motif'
+lines_output_name = 'LinesDetection'
+visualization_folder_name = 'visualization'
+imgs_folder = 'images'
+masks_folder = 'masks'
