@@ -19,27 +19,32 @@ sThe idea behind this is that given only a puzzle name, you can access via the c
 The data is structured following this idea (where `data` has the input files and `output` all the files created by the code):
 ```bash
 .
-├── data/
+├── configs/        # configuration
+│   ├── folder_names.py     # folders
+│   └── puzzle_cfg.py       # parameters
+├── preprocessing/  # preparing the puzzle
+├── features/       # extracting features for the compatibility
+├── compatibility/  # calculating the comp. matrices
+├── solver/         # rl-based solver
+├── data/           # not included here on Github
 │   ├── puzzle_1/
-│   │   ├── images/
-│   │   └── masks/
+│   │   ├── images/ # color image
+│   │   └── masks/  # binary mask for the shape/contour
 │   ├── puzzle_2/
 │   │   ├── images/
 │   │   └── masks/
-└── output/
+└── output/         # only partially included
     ├── puzzle_1/
-    │   ├── MotifSegmentation/
-    │   ├── LinesDetection/
-    │   ├── RegionsMatrix/
-    │   └── CompatibilityMatrix/
+    │   ├── MotifSegmentation/      # motif segmentation (for repair)
+    │   ├── LinesDetection/         # detected lines
+    │   ├── RegionsMatrix/          # candidate regions for comp speedup
+    │   └── CompatibilityMatrix/    # final compatibility matrix 
     └── puzzle_2/
         ├── MotifSegmentation/
         ├── LinesDetection/
         ├── RegionsMatrix/
         └── CompatibilityMatrix/
 ```
-
-
 
 # 2) Installation
 Depending on the features used, you may need to install different libraries. 
@@ -67,7 +72,7 @@ We use the `argparse` package for the parameters, so usually you pass parameters
 
 For example, to prepare the data:
 ```bash
-python Preprocessing/preprocess.py -d path_to_data
+python preprocessing/preprocess.py -d path_to_data
 ```
 
 To compute the regions pass the puzzle name (the name of the folder, `puzzle_1` or `puzzle_2` in the example folder structure above):
@@ -77,7 +82,7 @@ python features/compute_regions_masks.py --puzzle puzzle_name
 
 Same for the compatibility:
 ```bash
-python Compatibility/shape_compatibility.py --urm --puzzle puzzle_name
+python compatibility/shape_compatibility.py --urm --puzzle puzzle_name
 ```
 Here, you can add `--urm` if you use the regions matrix (computed using the script) to speed up calculations. Otherwise, remove `--urm` to calculate fully the matrix (much slower).
 
