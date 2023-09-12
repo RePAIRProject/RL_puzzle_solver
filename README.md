@@ -80,8 +80,11 @@ python Compatibility/shape_compatibility.py --urm --puzzle puzzle_name
 Here, you can add `--urm` if you use the regions matrix (computed using the script) to speed up calculations. Otherwise, remove `--urm` to calculate fully the matrix (much slower).
 
 # 4) Known Issues
-Bug descriptions.
+
+***Problem with input and output data folders path?***
+
+Input and output (respectively `data_path = 'data'` and `output_dir = 'output'` in the config file) are defined without the full path. If you run the scripts via terminal from the root folder, you should be fine. If you run from subfolders or use special settings, you can set these two accordingly.
 
 # 5) Relevant publications
-Some publications.
+Hopefully soon.
 
