@@ -73,10 +73,12 @@ def main(args):
                     line2draw = line_fld[0]
                     plt.axline((line2draw[0], line2draw[1]), (line2draw[2], line2draw[3]))        
                 plt.savefig(os.path.join(vis_output, img_name))
+                plt.close()
             else:
                 plt.title(f'{img_name} (no lines with FLD)')
                 plt.imshow(cv2.cvtColor(rgb_image, cv2.COLOR_BGR2RGB))    
                 plt.savefig(os.path.join(vis_output, img_name))
+                plt.close()
             #pdb.set_trace()
             detected_lines = {
                 'angles': angles_fld,
