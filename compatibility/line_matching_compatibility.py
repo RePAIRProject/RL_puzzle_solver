@@ -7,7 +7,6 @@ import os
 import argparse
 from configs import folder_names as fnames
 import configs.repair_cfg as cfg
-# from scipy.io import savemat
 
 
 def read_info(folder, image):
@@ -55,7 +54,7 @@ def translation(beta, radius, point):
         else:
             beta_new = (beta + np.pi) % (2 * np.pi)
             R_new = c_new
-    return beta_new, R_new  # , x, y, y_new
+    return beta_new, R_new  # , x, y, y_new  à
 
 
 def dist_point_line(beta, radius, point):
@@ -136,9 +135,8 @@ def visualize_matrices(rot_l, all_cost_matrix):
 
 # # MAIN
 def main(args):
-    # puzzle_name = 'group_28'
-    # data_folder = os.path.join(f'C:\\Users\\Marina\\Toy_Puzzle_Matlab\\{puzzle_name}')
-    data_folder = os.path.join(fnames.output_dir, args.puzzle_name, fnames.lines_output_name)
+    # data load (line json, RM)
+    data_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.lines_output_name)
     hough_output = os.path.join(data_folder, args.method)
     pieces_files = os.listdir(hough_output)
     n = len(pieces_files)
@@ -148,7 +146,7 @@ def main(args):
     R_mask = mat['RM']
 
     # xy_grid_points
-    p = [cfg.p_hs, cfg.p_hs]  # center of piece [125,125] - ref.point for lines
+    p = [cfg.p_hs, cfg.p_hs]     # center of piece [125,125] - ref.point for lines
     m_size = cfg.xy_grid_points  # 101X101 grid
     m = np.zeros((m_size, m_size, 2))
     m2, m1 = np.meshgrid(np.linspace(-1, 1, m_size), np.linspace(-1, 1, m_size))
@@ -192,25 +190,32 @@ def main(args):
     for jj in range(n):
         R_line[:, :, :, jj, jj] = -1
 
-    # # Visualize compatibility matrices
+    # # visualize compatibility matrices
+    # TO DO - add flag for visualization !!!
     for rot_layer in [0, 6]:
         # visualize_matrices(rot_layer, All_cost)
         visualize_matrices(rot_layer, All_norm_cost)
         visualize_matrices(rot_layer, R_line)
 
-    plt.figure()
-    C = All_norm_cost[:, :, 0, 0, 9]
-    plt.imshow(C, aspect='auto')
-    plt.show()
-    #ave
+    # plt.figure()
+    # C = All_norm_cost[:, :, 0, 0, 9]
+    # plt.imshow(C, aspect='auto')
+    # plt.show()
+
+    # save output
+    output_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.cm_output_name)
+    filename = f'{output_folder}\\CM_lines_{args.method}'
+    scipy.io.savemat(f'{filename}.mat', R_line)
+
     return All_cost, All_norm_cost, R_line
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='........ ')
-    parser.add_argument('--puzzle_name', type=str, default='repair_g28', help='puzzle folder')
+    parser = argparse.ArgumentParser(description='........ ')  # add some discription
+    parser.add_argument('--puzzle', type=str, default='repair_g28', help='puzzle folder')
     parser.add_argument('--method', type=str, default='FLD', help='method line detection')  # Hough, FLD
 
     args = parser.parse_args()
+
     # main(args)
     All_cost, All_norm_cost, R_line = main(args)
