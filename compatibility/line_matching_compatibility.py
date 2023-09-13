@@ -3,9 +3,10 @@ import numpy as np
 import json
 from scipy.optimize import linear_sum_assignment
 import scipy.io
-import configs.rp_cfg as cfg
 import os
 import argparse
+from configs import folder_names as fnames
+import configs.repair_cfg as cfg
 # from scipy.io import savemat
 
 
@@ -69,7 +70,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2):
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
     for t in range(len(rot)):
-        teta = -rot[t] * np.pi / 180  # rotation of F2
+        theta = -rot[t] * np.pi / 180  # rotation of F2
         for ix in range(m.shape[1]):  # (z_id.shape[0]):
             for iy in range(m.shape[1]):  # (z_id.shape[0]):
 
@@ -77,6 +78,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2):
                 n_lines_f1 = alfa1.shape[0]
                 n_lines_f2 = alfa2.shape[0]
                 cost_matrix = np.zeros((n_lines_f1, n_lines_f2))
+                thr_matrix = np.zeros((n_lines_f1, n_lines_f2))
 
                 for i in range(n_lines_f1):
                     for j in range(n_lines_f2):
@@ -85,7 +87,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2):
                         beta1, R_new1 = translation(alfa1[i], r1[i], p)
                         beta2, R_new2 = translation(alfa2[j], r2[j], p)
                         ## shift and rot line 2
-                        beta3, R_new3 = translation(beta2 + teta, R_new2, -z)
+                        beta3, R_new3 = translation(beta2 + theta, R_new2, -z)
 
                         ## dist from new point to line 1
                         R_new4 = dist_point_line(beta1, R_new1, z)
@@ -100,16 +102,21 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2):
                             (R_new2 ** 2 + R_new4 ** 2 - 2 * np.abs(R_new2 * R_new4) * np.cos(gamma)))
 
                         ## thresholding
-                        if coef < cfg.tr_coef:
+                        if coef < cfg.thr_coef:
                             cost = (dist1 + dist2)
                         else:
                             cost = cfg.max_dist
                         cost_matrix[i, j] = cost
+                        thr_matrix[i, j] = coef < cfg.thr_coef
 
                 ## LAP
-                row_ind, col_ind = linear_sum_assignment(
-                    cost_matrix)
-                tot_cost = cost_matrix[row_ind, col_ind].sum()
+                if thr_matrix.sum() > 0:
+                    row_ind, col_ind = linear_sum_assignment(
+                        cost_matrix)
+                    # tot_cost = cost_matrix[row_ind, col_ind].sum()  # original !
+                    tot_cost = (cost_matrix[row_ind, col_ind] * thr_matrix[row_ind, col_ind]).sum() # threshold
+                else:
+                    tot_cost = cfg.max_dist
                 R_cost[iy, ix, t] = tot_cost
     return R_cost
 
@@ -129,25 +136,16 @@ def visualize_matrices(rot_l, all_cost_matrix):
 
 # # MAIN
 def main(args):
-    #puzzle_name = 'group_28'  # repair_g{group}
-    data_folder = os.path.join(f'C:\\Users\\Marina\\Toy_Puzzle_Matlab\\{args.puzzle_name}')
+    # puzzle_name = 'group_28'
+    # data_folder = os.path.join(f'C:\\Users\\Marina\\Toy_Puzzle_Matlab\\{puzzle_name}')
+    data_folder = os.path.join(fnames.output_dir, args.puzzle_name, fnames.lines_output_name)
     hough_output = os.path.join(data_folder, args.method)
-    pieces_files = os.listdir(hough_output)  # pieces = np.arange(194, 204)
+    pieces_files = os.listdir(hough_output)
     n = len(pieces_files)
 
     rm_name = 'RM_shape_repair_g28_101x101x24x10x10.mat'
     mat = scipy.io.loadmat(os.path.join(data_folder, rm_name))
     R_mask = mat['RM']
-
-    # regions_folder = os.path.join(cfg.output_dir, "repair_g35", cfg.rm_output_name)
-    # files = os.listdir(regions_folder)
-    # rm_name = files[0]
-    # mat = scipy.io.loadmat(os.path.join(regions_folder, rm_name))
-    # R_mask = mat['RM']
-
-    # rmax = cfg.rmax
-    # tr_coef = cfg.tr_coef
-    # max_dist = cfg.max_dist
 
     # xy_grid_points
     p = [cfg.p_hs, cfg.p_hs]  # center of piece [125,125] - ref.point for lines
@@ -196,26 +194,23 @@ def main(args):
 
     # # Visualize compatibility matrices
     for rot_layer in [0, 6]:
-        #rot_layer = 6  # selected rotation layer to visualize
         # visualize_matrices(rot_layer, All_cost)
         visualize_matrices(rot_layer, All_norm_cost)
         visualize_matrices(rot_layer, R_line)
 
-
     plt.figure()
-    C = All_norm_cost[:, :, 0, 0, 8]
+    C = All_norm_cost[:, :, 0, 0, 9]
     plt.imshow(C, aspect='auto')
     plt.show()
-
-    # save
+    #ave
     return All_cost, All_norm_cost, R_line
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='........ ')
-    parser.add_argument('--puzzle_name', type=str, default='group_28', help='puzzle folder')
-    parser.add_argument('--method', type=str, default='Hough', help='method line detection')  # Hough, FLD
+    parser.add_argument('--puzzle_name', type=str, default='repair_g28', help='puzzle folder')
+    parser.add_argument('--method', type=str, default='FLD', help='method line detection')  # Hough, FLD
 
     args = parser.parse_args()
     # main(args)
-    All_cost, All_norm_cost, CM_lines = main(args)
+    All_cost, All_norm_cost, R_line = main(args)
