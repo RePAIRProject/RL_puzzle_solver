@@ -8,6 +8,7 @@ from scipy.ndimage import rotate, shift
 from PIL import Image
 
 
+
 def initialization(R, anc, anc_rot):
     # Initialize reconstruction plan
     nh = 1.8
