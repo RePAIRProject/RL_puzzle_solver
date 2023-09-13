@@ -1,7 +1,3 @@
-
-
-
-
 from puzzle_utils.shape_utils import prepare_pieces, create_grid, shape_pairwise_compatibility
 from puzzle_utils.regions import read_region_masks
 import numpy as np
@@ -111,8 +107,8 @@ def main(args):
     CM_D = {}
     CM_D['R'] = CM
     
-    filename = f'{output_folder}/CM_shape'
-    scipy.io.savemat(f'{filename}.mat', CM_D)
+    filename = os.path.join(output_folder, 'CM_shape.mat')
+    scipy.io.savemat(filename, CM_D)
 
     if cfg.save_visualization is True:
         print('Creating visualization')
