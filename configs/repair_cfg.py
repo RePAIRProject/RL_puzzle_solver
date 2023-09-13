@@ -39,3 +39,10 @@ CENTER = -2
 OVERLAP = -1
 FAR_AWAY = 0
 NOT_MATCHING = 0.001
+
+### LINE MATCHING
+rmax = 50
+tr_coef = 0.15
+max_dist = 1000
+
+
