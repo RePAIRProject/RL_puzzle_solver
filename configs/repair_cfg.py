@@ -21,20 +21,6 @@ length_threshold=25
 distance_threshold=1.4
 do_merge=True
 
-### FOLDERS
-import os
-data_path = 'data'
-output_dir = 'C:\\Users\\Marina\\PycharmProjects\\RL_puzzle_solver\\output'
-cm_output_name ='CompatibilityMatrix'
-rm_output_name = 'RegionsMatrix'
-segm_output_name = 'MotifSegmentation'
-lines_segm_name = 'Lines'
-motifs_segm_name = 'Motif'
-lines_output_name = 'LinesDetection'
-visualization_folder_name = 'visualization'
-imgs_folder = 'images'
-masks_folder = 'masks'
-
 ### VISUALIZATION
 save_visualization = True
 

@@ -4,16 +4,17 @@ import os
 import cv2 
 import numpy as np
 import pdb 
-import configs.rp_cfg as cfg
+from configs import rp_cfg as cfg
+from configs import folder_names as fnames
 
 def main(args):
 
     model = YOLO(args.model)
-    images_folder = os.path.join(cfg.data_path, args.puzzle, cfg.imgs_folder)
-    output_folder = os.path.join(os.getcwd(), cfg.output_dir, args.puzzle)
-    segmentation_folder = os.path.join(output_folder, cfg.segm_output_name)
-    lines_segmentation_folder = os.path.join(segmentation_folder, cfg.lines_segm_name)
-    motifs_segmentation_folder = os.path.join(segmentation_folder, cfg.motifs_segm_name)
+    images_folder = os.path.join(fnames.data_path, args.puzzle, fnames.imgs_folder)
+    output_folder = os.path.join(os.getcwd(), fnames.output_dir, args.puzzle)
+    segmentation_folder = os.path.join(output_folder, fnames.segm_output_name)
+    lines_segmentation_folder = os.path.join(segmentation_folder, fnames.lines_segm_name)
+    motifs_segmentation_folder = os.path.join(segmentation_folder, fnames.motifs_segm_name)
     os.makedirs(lines_segmentation_folder, exist_ok=True)
     os.makedirs(motifs_segmentation_folder, exist_ok=True)
 

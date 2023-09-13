@@ -5,27 +5,28 @@ import cv2
 import numpy as np
 import pdb 
 import matplotlib.pyplot as plt
-import configs.rp_cfg as cfg
+from configs import rp_cfg as cfg
+from configs import folder_names as fnames
 import imutils
 import json 
 from skimage.transform import hough_line
 from matplotlib import cm
 import math 
-from rpf_utils.lines_ops import hough_line, cluster_lines_dbscan, draw_hough_lines, \
+from puzzle_utils.lines_ops import hough_line, cluster_lines_dbscan, draw_hough_lines, \
     draw_prob_hough_line, display_unprocessed_hough_result, line_cart2pol, polar2cartesian
 
 
 def main(args):
 
     # input
-    images_folder = os.path.join(cfg.data_path, args.puzzle, cfg.imgs_folder)
+    images_folder = os.path.join(fnames.data_path, args.puzzle, fnames.imgs_folder)
     ###
     # there was an idea to use the mask (see below) but not used at the moment
-    # masks_folder = os.path.join(cfg.data_path, args.puzzle, cfg.masks_folder)
+    # masks_folder = os.path.join(fnames.data_path, args.puzzle, fnames.masks_folder)
 
     # stripe 
-    segmentation_folder = os.path.join(cfg.output_dir, args.puzzle, cfg.segm_output_name, cfg.lines_segm_name)
-    output_folder = os.path.join(cfg.output_dir, args.puzzle, cfg.lines_output_name)
+    segmentation_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.segm_output_name, fnames.lines_segm_name)
+    output_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.lines_output_name)
     hough_output = os.path.join(output_folder, 'Hough')
     fld_output = os.path.join(output_folder, 'FLD')
     vis_output = os.path.join(output_folder, 'visualization')

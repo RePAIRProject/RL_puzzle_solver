@@ -52,7 +52,8 @@ def polar2cartesian(image, angles, dists, show_image=False):
         x2, y2 = x[-1], y[-1]
 
         lines.append((x1, y1, x2, y2))
-        #plt.axline((x1, y1), (x2,y2))
+        if show_image:
+            plt.axline((x1, y1), (x2,y2))
     if show_image:
         plt.tight_layout()
         plt.show()

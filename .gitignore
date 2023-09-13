@@ -15,6 +15,7 @@ data
 # ignore images 
 **LinesDetection/*.png
 **/MotifSegmentation/Motif/*.png
+**/MotifSegmentation/Lines/*.png
 
 # except the lines segmentation maps!
 #!/MotifSegmentation/Lines/*.png

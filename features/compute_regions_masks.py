@@ -1,5 +1,5 @@
 
-from rpf_utils.shape_utils import prepare_pieces, create_grid, shape_pairwise_compatibility, \
+from puzzle_utils.shape_utils import prepare_pieces, create_grid, shape_pairwise_compatibility, \
     get_outside_borders, place_on_canvas
 import numpy as np
 import scipy
@@ -9,19 +9,21 @@ import matplotlib.pyplot as plt
 import cv2
 import json, os 
 from configs import rp_cfg as cfg
+from configs import folder_names as fnames
+
 from rpf_utils.visualization import save_vis
 
 def main(args):
 
     ## PREPARE PIECES AND GRIDS
     #pdb.set_trace()
-    pieces = prepare_pieces(cfg, args.puzzle)
+    pieces = prepare_pieces(cfg, fnames, args.puzzle)
     grid_size_xy = cfg.comp_matrix_shape[0]
     grid_size_rot = cfg.comp_matrix_shape[2]
     grid, grid_step_size = create_grid(grid_size_xy, cfg.p_hs, cfg.canvas_size)
     print('#' * 50)
     print('SETTINGS')
-    print(f'CM has shape: [{grid_size_xy}, {grid_size_xy}, {grid_size_rot}, {len(pieces)}, {len(pieces)}]')
+    print(f'RM has shape: [{grid_size_xy}, {grid_size_xy}, {grid_size_rot}, {len(pieces)}, {len(pieces)}]')
     print(f'Using a grid  on xy and {grid_size_rot} rotations on {len(pieces)} pieces')
     print(f'Pieces are squared images of {cfg.piece_size}x{cfg.piece_size} pixels (p_hs={cfg.p_hs})')
     print(f'xy_step: {cfg.xy_step}, rot_step: {cfg.theta_step}')
@@ -57,14 +59,14 @@ def main(args):
     print('Done calculating')
     print('#' * 50)
     print('Saving the matrix..')     
-    output_folder = os.path.join(cfg.rm_output_dir)
+    output_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.rm_output_name)
     # should we add this to the folder? it will create a subfolder that we may not need
     # f"{cfg.rm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
-    vis_folder = os.path.join(output_folder, cfg.visualization_folder_name)
+    vis_folder = os.path.join(output_folder, fnames.visualization_folder_name)
     os.makedirs(vis_folder, exist_ok=True)
     RM_D = {}
     RM_D['RM'] = RM
-    filename = f'{output_folder}/RM_shape_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'
+    filename = f'{output_folder}/RM'
     scipy.io.savemat(f'{filename}.mat', RM_D)
     if cfg.save_visualization is True:
         print('Creating visualization')
