@@ -212,7 +212,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('--puzzle', type=str, default='repair_g28', help='puzzle folder')
+    parser.add_argument('--puzzle', type=str, default='wikiart_kuroda_4x4', help='puzzle folder') # repair_g28, wikiart_kuroda_4x4
     parser.add_argument('--method', type=str, default='FLD', help='method line detection')  # Hough, FLD
 
     args = parser.parse_args()
