@@ -136,12 +136,15 @@ def visualize_matrices(rot_l, all_cost_matrix):
 # # MAIN
 def main(args):
     # data load (line json, RM)
-    data_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.lines_output_name)
-    hough_output = os.path.join(data_folder, args.method)
+    #data_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.lines_output_name)
+    #hough_output = os.path.join(data_folder, args.method)
+    data_folder = os.path.join(fnames.output_dir, args.puzzle)
+    hough_output = os.path.join(data_folder, fnames.lines_output_name, args.method)
     pieces_files = os.listdir(hough_output)
     n = len(pieces_files)
 
-    rm_name = 'RM_shape_repair_g28_101x101x24x10x10.mat'
+    # rm_name = 'RM_shape_repair_g28_101x101x24x10x10.mat'
+    rm_name = f'RM_{args.puzzle}.mat'
     mat = scipy.io.loadmat(os.path.join(data_folder, rm_name))
     R_mask = mat['RM']
 
@@ -203,19 +206,25 @@ def main(args):
     # plt.show()
 
     # save output
-    output_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.cm_output_name)
-    filename = f'{output_folder}\\CM_lines_{args.method}'
-    scipy.io.savemat(f'{filename}.mat', R_line)
+    # output_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.cm_output_name)
+    # filename = f'{output_folder}\\CM_lines_{args.method}'
+    # # scipy.io.savemat(f'{filename}.mat', R_line)
+    # np.save(filename, R_line)
 
     return All_cost, All_norm_cost, R_line
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('--puzzle', type=str, default='wikiart_kuroda_4x4', help='puzzle folder') # repair_g28, wikiart_kuroda_4x4
+    parser.add_argument('--puzzle', type=str, default='repair_g28', help='puzzle folder') # repair_g28, wikiart_kuroda_4x4
     parser.add_argument('--method', type=str, default='FLD', help='method line detection')  # Hough, FLD
 
     args = parser.parse_args()
 
     # main(args)
     All_cost, All_norm_cost, R_line = main(args)
+
+    output_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.cm_output_name)
+    filename = f'{output_folder}\\CM_lines_{args.method}'
+    # scipy.io.savemat(f'{filename}.mat', R_line)
+    np.save(filename, R_line)
