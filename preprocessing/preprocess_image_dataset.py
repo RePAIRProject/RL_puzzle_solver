@@ -1,7 +1,6 @@
 import cv2 
 import pdb 
 from configs import folder_names as fnames 
-
 import os
 import argparse 
 import numpy as np 
@@ -56,7 +55,7 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Create patches from image')
-    parser.add_argument('-d', '--dataset', type=str, default='architecture', help='image to work on', choices=['architecture', 'wikiart', 'shapes'])
+    parser.add_argument('-d', '--dataset', type=str, default='architecture', help='dataset to work on', choices=['architecture', 'wikiart', 'shapes'])
     parser.add_argument('--e', '--edgemaps', action='store_true', default=False, help='use if edge maps are available')
     args = parser.parse_args()
     main(args)

@@ -1,19 +1,10 @@
 
 scaling_method = 'crop+resize'
 
-## lines
-line_detection_method = 'fld'
-# hough
-k = 0.8
-hough_angular_range = 180
-## fld
-length_threshold = 50
-border_tolerance = 50
-
 
 ### PREPARATION
 # pieces and grid
-piece_size = 101
+piece_size = 301
 p_hs = piece_size // 2
 xy_grid_points = 3
 theta_grid_points = 4
@@ -26,3 +17,15 @@ theta_step = (360 / comp_matrix_shape[2])
 # preprocess
 num_patches_side = 4
 img_size = num_patches_side*piece_size
+
+## lines
+line_detection_method = 'fld'
+# hough
+k = 0.8
+hough_angular_range = 180
+## fld
+blur_kernel_size = 7
+length_threshold = piece_size // 3
+distance_threshold = 2
+# segments
+border_tolerance = piece_size // 10
