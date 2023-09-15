@@ -1,6 +1,7 @@
 
 scaling_method = 'crop+resize'
 
+
 ### PREPARATION
 # pieces and grid
 piece_size = 301
@@ -12,11 +13,6 @@ pairwise_comp_range = 4 * (p_hs) + 1
 canvas_size = pairwise_comp_range + 2 * p_hs + 1
 xy_step = pairwise_comp_range / (comp_matrix_shape[0] - 1)
 theta_step = (360 / comp_matrix_shape[2])
-
-### LINE MATCHING
-rmax = 40
-thr_coef = 0.1
-max_dist = 1000
 
 # preprocess
 num_patches_side = 4
