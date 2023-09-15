@@ -8,5 +8,9 @@ lines_segm_name = 'lines'
 motifs_segm_name = 'motif'
 lines_output_name = 'lines_detection'
 visualization_folder_name = 'visualization'
-imgs_folder = 'images'
+images_folder = 'images'
+imgs_folder = 'images' # we should remove this!
+pieces_folder = 'pieces'
+edge_maps_folder = 'edge_maps'
 masks_folder = 'masks'
+
