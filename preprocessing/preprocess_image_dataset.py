@@ -1,23 +1,12 @@
 import cv2 
 import pdb 
 from configs import folder_names as fnames 
+from configs import puzzle_from_image_cfg as cfg
 import os
 import argparse 
 import numpy as np 
 
 def main(args):
-
-    if args.dataset == 'wikiart':
-        from configs import wikiart_cfg as cfg
-    elif args.dataset == 'architecture':
-        from configs import architecture_cfg as cfg
-    elif args.dataset == 'shapes':
-        from configs import shapes_cfg as cfg
-    elif args.dataset == 'manual_lines':
-        from configs import manual_cfg as cfg
-    else:
-        print("Error: you must choose an available dataset!")
-        return 0
 
     images = os.path.join(fnames.data_path, args.dataset, fnames.images_folder)
     pieces_folder = os.path.join(fnames.data_path, args.dataset, fnames.pieces_folder)

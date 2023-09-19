@@ -1,6 +1,5 @@
 import cv2 
 import os 
-from configs import wikiart_cfg as cfg
 from configs import folder_names as fnames
 from puzzle_utils.lines_ops import polar2cartesian, line_cart2pol
 import pdb 
@@ -12,14 +11,13 @@ import json
 
 def main(args):
 
-    if args.dataset == 'wikiart':
-        from configs import wikiart_cfg as cfg
-    elif args.dataset == 'architecture':
-        from configs import architecture_cfg as cfg
-    elif args.dataset == 'shapes':
-        from configs import shapes_cfg as cfg
-    elif args.dataset == 'manual_lines':
-        from configs import manual_cfg as cfg
+    if args.dataset == 'wikiart' \
+            or args.dataset == 'architecture' \
+            or args.dataset == 'shapes' \
+            or args.dataset == 'manual_lines':
+        from configs import puzzle_from_image_cfg as cfg
+    elif args.dataset == 'repair':
+        from configs import puzzle_from_fragments_cfg as cfg
     else:
         print("Error: you must choose an available dataset!")
         return 0
@@ -40,7 +38,7 @@ def main(args):
     conf = {
         'detect_lines': True,  # Whether to detect lines or only DF/AF
         'line_detection_params': {
-            'merge': False,  # Whether to merge close-by lines
+            'merge': True,  # Whether to merge close-by lines
             'filtering': True,  # Whether to filter out lines based on the DF/AF. Use 'strict' to get an even stricter filtering
             'grad_thresh': 3,
             'grad_nfa': True,  # If True, use the image gradient and the NFA score of LSD to further threshold lines. We recommand using it for easy images, but to turn it off for challenging images (e.g. night, foggy, blurry images)
@@ -48,7 +46,7 @@ def main(args):
     }
 
     # Load the model
-    ckpt = '../weights/deeplsd_md.tar'
+    ckpt = '../pretrained/deeplsd_md.tar'
     ckpt = torch.load(str(ckpt), map_location='cpu')
     net = DeepLSD(conf)
     net.load_state_dict(ckpt['model'])
@@ -231,6 +229,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Extract lines from segmented motifs')
     parser.add_argument('-d', '--dataset', type=str, default='architecture', help='dataset to work on', choices=['architecture', 'wikiart', 'shapes', 'manual_lines'])
     parser.add_argument('-m', '--method', type=str, default='', choices=['', 'fld', 'hough', 'deeplsd'], help='The method used to detect the lines. Leave empty and it will be loaded from cfg file.')
+    args = parser.parse_args()
     main(args)
 
         

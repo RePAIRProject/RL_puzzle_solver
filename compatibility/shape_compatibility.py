@@ -7,7 +7,7 @@ import pdb
 import matplotlib.pyplot as plt 
 import cv2
 import json, os 
-from configs import rp_cfg as cfg
+from configs import repair_cfg as cfg
 from configs import folder_names as fnames
 from rpf_utils.visualization import save_vis
 from numba import jit
