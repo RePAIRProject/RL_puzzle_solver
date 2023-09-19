@@ -32,6 +32,27 @@ def main(args):
     else:
         method = cfg.line_detection_method
 
+    # if we use deeplsd, instantiate and prepare the model
+    # Model config
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    conf = {
+        'detect_lines': True,  # Whether to detect lines or only DF/AF
+        'line_detection_params': {
+            'merge': False,  # Whether to merge close-by lines
+            'filtering': True,  # Whether to filter out lines based on the DF/AF. Use 'strict' to get an even stricter filtering
+            'grad_thresh': 3,
+            'grad_nfa': True,  # If True, use the image gradient and the NFA score of LSD to further threshold lines. We recommand using it for easy images, but to turn it off for challenging images (e.g. night, foggy, blurry images)
+        }
+    }
+
+    # Load the model
+    ckpt = '../weights/deeplsd_md.tar'
+    ckpt = torch.load(str(ckpt), map_location='cpu')
+    net = DeepLSD(conf)
+    net.load_state_dict(ckpt['model'])
+    net = net.to(device).eval()
+
+
     for img_puzzle_name in os.listdir(img_puzzle_folder):
         output_folder_puzzle = os.path.join(fnames.output_dir, args.dataset, img_puzzle_name)
         #os.makedirs(output_folder_puzzle)
@@ -140,12 +161,74 @@ def main(args):
                     json.dump(detected_lines, lj, indent=3)
                 
                 print(f'saved {img_puzzle_name}/{piece_name} (with {len_lines} lines with FLD))')
+            
+            if method == 'deeplsd':
+                
+                angles_lsd = []
+                dists_lsd = []
+                p1s_lsd = []
+                p2s_lsd = []
+                b1s_lsd = []
+                b2s_lsd = []
+
+                inputs = {'image': torch.tensor(gray_image, dtype=torch.float, device=device)[None, None] / 255.}
+                with torch.no_grad():
+                    out = net(inputs)
+                    pred_lines = out['lines'][0]
+
+                if pred_lines is not None:
+                    # convert to polar
+                    for lsd_line in pred_lines:
+                        p1 = lsd_line[0:2]
+                        p2 = lsd_line[2:4]
+                        if np.any(lsd_line < cfg.border_tolerance) or np.any(lsd_line > img.shape[1] - cfg.border_tolerance):
+                            rhofld, thetafld = line_cart2pol(p1, p2)
+                            angles_lsd.append(thetafld)
+                            dists_lsd.append(rhofld)
+                            p1s_lsd.append(p1.tolist())
+                            p2s_lsd.append(p2.tolist())
+                            if np.any(p1 < cfg.border_tolerance) or np.any(p1 > (img.shape[1] - cfg.border_tolerance)):
+                                b1s_lsd.append(0)
+                            else:
+                                b1s_lsd.append(1)
+                            if np.any(p2 < cfg.border_tolerance) or np.any(p2 > (img.shape[1] - cfg.border_tolerance)):
+                                b2s_lsd.append(0)
+                            else:
+                                b2s_lsd.append(1)
+                    len_lines = len(lines_lsd)
+                    plt.title(f'{piece_name} (found{len(lines_lsd)} lines with DeepLSD)')
+                    plt.imshow(cv2.cvtColor(rgb_image, cv2.COLOR_BGR2RGB))
+                    for line_lsd in lines_lsd:
+                        line2draw = line_lsd[0]
+                        plt.plot((line2draw[0], line2draw[2]), (line2draw[1], line2draw[3]), color='red', linewidth=3)        
+                    plt.savefig(os.path.join(vis_output, f"{piece_name[:-4]}_em.jpg"))
+                    plt.close()
+                else:
+                    plt.title(f'{piece_name} (no lines with DeepLSD)')
+                    plt.imshow(cv2.cvtColor(rgb_image, cv2.COLOR_BGR2RGB))    
+                    plt.savefig(os.path.join(vis_output, f"{piece_name[:-4]}_em.jpg"))
+                    plt.close()
+                #pdb.set_trace()
+                detected_lines = {
+                    'angles': angles_lsd,
+                    'dists': dists_lsd,
+                    'p1s': p1s_lsd,
+                    'p2s': p2s_lsd,
+                    'b1s': b1s_lsd,
+                    'b2s': b2s_lsd
+                }
+                with open(os.path.join(lines_output_folder, f"{piece_name[:-4]}.json"), 'w') as lj:
+                    json.dump(detected_lines, lj, indent=3)
+                
+                print(f'saved {img_puzzle_name}/{piece_name} (found {len_lines} lines with DeepLSD)')
+
+                
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Extract lines from segmented motifs')
     parser.add_argument('-d', '--dataset', type=str, default='architecture', help='dataset to work on', choices=['architecture', 'wikiart', 'shapes'])
-    parser.add_argument('-m', '--method', type=str, default='', choices=['', 'fld', 'hough'], help='The method used to detect the lines. Leave empty and it will be loaded from cfg file.')
+    parser.add_argument('-m', '--method', type=str, default='', choices=['', 'fld', 'hough', 'deeplsd'], help='The method used to detect the lines. Leave empty and it will be loaded from cfg file.')
     args = parser.parse_args()
     main(args)
 
