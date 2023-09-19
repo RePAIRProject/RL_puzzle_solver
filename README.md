@@ -18,6 +18,10 @@ You can use `compute_region_masks.py` to precompute candidate regions where the 
 The folder structure is described below and the name are written down in the `folder_names.py` file in the `configs` folder. 
 sThe idea behind this is that given only a puzzle name, you can access via the config parameters the folders and read/write files using always the same convention.
 
+## Parameters in the config files
+Parameters are usually located in the `configs` folder. 
+There are two main config files: `puzzle_from_fragments_cfg` and `puzzle_from_image_cfg` whose names should be self-explanatory. Inside the config we have the parameters for the size of the images and for the method to extract features.
+
 ## Folder Structure
 The data is structured following this idea (where `data` has the input files and `output` all the files created by the code):
 ```bash
@@ -25,28 +29,32 @@ The data is structured following this idea (where `data` has the input files and
 ├── configs/        # configuration
 │   ├── folder_names.py     # folders
 │   └── puzzle_cfg.py       # parameters
-├── preprocessing/  # preparing the puzzle
-├── features/       # extracting features for the compatibility
-├── compatibility/  # calculating the comp. matrices
-├── solver/         # rl-based solver
-├── data/           # not included here on Github
-│   ├── puzzle_1/
-│   │   ├── images/ # color image
-│   │   └── masks/  # binary mask for the shape/contour
-│   ├── puzzle_2/
-│   │   ├── images/
-│   │   └── masks/
-└── output/         # only partially included
-    ├── puzzle_1/
-    │   ├── motif_segmentation/      # motif segmentation (for repair)
-    │   ├── lines_detection/         # detected lines
-    │   ├── regions_matrix/          # candidate regions for comp speedup
-    │   └── compatibility_matrix/    # final compatibility matrix 
-    └── puzzle_2/
-        ├── motif_segmentation/
-        ├── lines_detection/
-        ├── regions_matrix/
-        └── compatibility_matrix/
+├── preprocessing/      # preparing the puzzle
+├── features/           # extracting features for the compatibility
+├── compatibility/      # calculating the comp. matrices
+├── solver/             # rl-based solver
+├── data/               # not included here on Github
+│   ├── wikiart/        # DATASET (collection of images)
+│   │   ├── puzzle_1/   # PUZZLE (single image)
+│   │   │   ├── images/ # color images
+│   │   │   ├── pieces/ # fragments (created with the script)
+│   │   │   └── masks/  # binary mask for the shape/contour (optional)
+│   │   ├── puzzle_2/
+│   │   │   ├── images/ # color images
+│   │   │   ├── pieces/ # fragments (created with the script)
+│   │   │   └── masks/  # binary mask for the shape/contour (optional)
+└── output/             # only partially included
+    ├── wikiart/        # DATASET name
+        ├── puzzle_1/
+        │   ├── motif_segmentation/      # motif segmentation (for repair)
+        │   ├── lines_detection/         # detected lines
+        │   ├── regions_matrix/          # candidate regions for comp speedup
+        │   └── compatibility_matrix/    # final compatibility matrix 
+        └── puzzle_2/
+            ├── motif_segmentation/
+            ├── lines_detection/
+            ├── regions_matrix/
+            └── compatibility_matrix/
 ```
 
 # 2) Installation
@@ -63,19 +71,26 @@ We use slightly less but still most likely to be needed:
 scipy
 scikit-learn
 scikit-image
+opencv-python-contrib
 ```
 Plus, if you need particular stuff:
 ```
 YOLO-based segmentation: ultralytics
 SDF-based compatibility: scikit-fmm
+DeepLSD for line detection: [DeepLSD](https://github.com/cvg/DeepLSD)
 ```
 
 # 3) Usage
 We use the `argparse` package for the parameters, so usually you pass parameters via command line and by using `-h` you can get some help on the parameters.
 
-For example, to prepare the data:
+For example, to prepare the data from images:
 ```bash
-python preprocessing/preprocess.py -d path_to_data
+python preprocessing/preprocess_image_dataset.py -d dataset_name
+```
+
+Or to prepare the data from fragments
+```bash
+python preprocessing/preprocess_fragments.py -d dataset_name
 ```
 
 To compute the regions pass the puzzle name (the name of the folder, `puzzle_1` or `puzzle_2` in the example folder structure above):
