@@ -18,6 +18,8 @@ def main(args):
         from configs import architecture_cfg as cfg
     elif args.dataset == 'shapes':
         from configs import shapes_cfg as cfg
+    elif args.dataset == 'manual_lines':
+        from configs import manual_cfg as cfg
     else:
         print("Error: you must choose an available dataset!")
         return 0
@@ -227,9 +229,8 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Extract lines from segmented motifs')
-    parser.add_argument('-d', '--dataset', type=str, default='architecture', help='dataset to work on', choices=['architecture', 'wikiart', 'shapes'])
+    parser.add_argument('-d', '--dataset', type=str, default='architecture', help='dataset to work on', choices=['architecture', 'wikiart', 'shapes', 'manual_lines'])
     parser.add_argument('-m', '--method', type=str, default='', choices=['', 'fld', 'hough', 'deeplsd'], help='The method used to detect the lines. Leave empty and it will be loaded from cfg file.')
-    args = parser.parse_args()
     main(args)
 
         

@@ -13,6 +13,8 @@ def main(args):
         from configs import architecture_cfg as cfg
     elif args.dataset == 'shapes':
         from configs import shapes_cfg as cfg
+    elif args.dataset == 'manual_lines':
+        from configs import manual_cfg as cfg
     else:
         print("Error: you must choose an available dataset!")
         return 0
@@ -55,7 +57,7 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Create patches from image')
-    parser.add_argument('-d', '--dataset', type=str, default='architecture', help='dataset to work on', choices=['architecture', 'wikiart', 'shapes'])
+    parser.add_argument('-d', '--dataset', type=str, default='architecture', help='dataset to work on', choices=['architecture', 'wikiart', 'shapes', 'manual_lines'])
     parser.add_argument('--e', '--edgemaps', action='store_true', default=False, help='use if edge maps are available')
     args = parser.parse_args()
     main(args)

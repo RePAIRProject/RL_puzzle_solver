@@ -135,9 +135,13 @@ def visualize_matrices(rot_l, all_cost_matrix):
 
 # # MAIN
 def main(args):
+    if args.method == 'repair':
+        import configs.repair_cfg as cfg
+    else:
+        import configs.wikiart_cfg as cfg
+
     # data load (line json, RM)
-    #data_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.lines_output_name)
-    #hough_output = os.path.join(data_folder, args.method)
+
     data_folder = os.path.join(fnames.output_dir, args.puzzle)
     hough_output = os.path.join(data_folder, fnames.lines_output_name, args.method)
     pieces_files = os.listdir(hough_output)
@@ -193,13 +197,6 @@ def main(args):
     for jj in range(n):
         R_line[:, :, :, jj, jj] = -1
 
-    # # visualize compatibility matrices
-    # TO DO - add flag for visualization !!!
-    for rot_layer in [0, 6]:
-        # visualize_matrices(rot_layer, All_cost)
-        visualize_matrices(rot_layer, All_norm_cost)
-        visualize_matrices(rot_layer, R_line)
-
     # plt.figure()
     # C = All_norm_cost[:, :, 0, 0, 9]
     # plt.imshow(C, aspect='auto')
@@ -216,7 +213,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('--puzzle', type=str, default='repair_g28', help='puzzle folder') # repair_g28, wikiart_kuroda_4x4
+    parser.add_argument('--dataset', type=str, default='wikiart', help='puzzle folder')  # repair, wikiart,
+    parser.add_argument('--puzzle', type=str, default='wikiart_kuroda_4x4', help='puzzle folder')   # repair_g28, wikiart_kuroda_4x4
     parser.add_argument('--method', type=str, default='FLD', help='method line detection')  # Hough, FLD
 
     args = parser.parse_args()
@@ -228,3 +226,10 @@ if __name__ == '__main__':
     filename = f'{output_folder}\\CM_lines_{args.method}'
     # scipy.io.savemat(f'{filename}.mat', R_line)
     np.save(filename, R_line)
+
+    # # visualize compatibility matrices
+    # TO DO - add flag for visualization !!!
+    for rot_layer in [0, 2]:
+        # visualize_matrices(rot_layer, All_cost)
+        visualize_matrices(rot_layer, All_norm_cost)
+        visualize_matrices(rot_layer, R_line)
