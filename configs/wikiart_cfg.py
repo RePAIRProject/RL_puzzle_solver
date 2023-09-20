@@ -13,11 +13,6 @@ canvas_size = pairwise_comp_range + 2 * p_hs + 1
 xy_step = pairwise_comp_range / (comp_matrix_shape[0] - 1)
 theta_step = (360 / comp_matrix_shape[2])
 
-### LINE MATCHING
-rmax = 40
-thr_coef = 0.1
-max_dist = 1000
-
 # preprocess
 num_patches_side = 4
 img_size = num_patches_side*piece_size
@@ -33,3 +28,22 @@ length_threshold = piece_size // 3
 distance_threshold = 2
 # segments
 border_tolerance = piece_size // 10
+
+
+### LINE MATCHING
+rmax = 10
+thr_coef = 0.1
+thr_dist = 10
+max_dist = 1000
+
+### initialization P
+init_anc = 5
+init_anc_rot = 0
+nh = 4  # 2 for repair
+nw = 4  # 2  # %% para to decide
+
+### SOLVER
+Tfirst = 1000
+Tnext = 100
+Tmax = 5000
+anc_fix_tresh = 0.51

@@ -6,33 +6,36 @@ import scipy.io
 from scipy import signal
 from scipy.ndimage import rotate, shift
 from PIL import Image
+import os
+import configs.wikiart_cfg as cfg
 
 
-
-def initialization(R, anc, anc_rot):
+def initialization(R):  # (R, anc, anc_rot, nh, nw):
     # Initialize reconstruction plan
-    nh = 1.8
-    nw = 1.8  # %% para to decide
     no_patches = R.shape[3]
     st = R.shape[0]
-    Y = round(nh * (st - 1) + 1)
-    X = round(nw * (st - 1) + 1)
+    Y = round(cfg.nh * (st - 1) + 1)
+    X = round(cfg.nw * (st - 1) + 1)
     Z = R.shape[2]
 
     # initialize assigment matrix
-    y0 = round(Y/2)
-    x0 = round(X/2)  # position for anchored patch (center)
-    z0 = anc_rot  # rotation for anchored patch
+    p = np.ones((Y, X, Z, no_patches)) / (Y * X) # uniform distributed p
     init_pos = np.zeros((no_patches, 3)).astype(int)
-    init_pos[anc, :] = ([y0, x0, z0])
-    p = np.ones((Y, X, Z, no_patches)) / (Y * X)
-    p[:, :, :, anc] = 0
-    p[y0, x0, :, :] = 0
-    p[y0, x0, z0, anc] = 1  # anchor selected patch
+
+    # place initial anchor
+    anc = cfg.init_anc
+    if anc:
+        y0 = round(Y / 2)
+        x0 = round(X / 2)   # position for anchored patch (center)
+        z0 = cfg.init_anc_rot        # rotation for anchored patch
+        p[:, :, :, anc] = 0
+        p[y0, x0, :, :] = 0
+        p[y0, x0, z0, anc] = 1  # anchor selected patch
+        init_pos[anc, :] = ([y0, x0, z0])
 
     return p, init_pos
 
-def RePairPuzz(R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
+def RePairPuzz(R, p):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
     na = 1
     fase = 0
     new_anc = []
@@ -45,7 +48,7 @@ def RePairPuzz(R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
     all_anc = []
     Y, X, Z, noPatches = p.shape
 
-    while eps != 0 and iter < Tmax:
+    while eps != 0 and iter < cfg.Tmax:
         if na_new > na:
             na = na_new
             fase += 1
@@ -59,9 +62,9 @@ def RePairPuzz(R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
                     p[y, x, :, :] = 0
                     p[y, x, z, jj] = 1
         if fase == 0:
-            T = Tfirst
+            T = cfg.Tfirst
         else:
-            T = Tnext
+            T = cfg.Tnext
         p, payoff, eps, iter = solver_rot_puzzle(R, p, T, iter, 0)
 
         I = np.zeros((noPatches, 1))
@@ -77,16 +80,18 @@ def RePairPuzz(R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
         fin_sol = np.concatenate((i1, i2, i3), axis=1)
         print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
 
-        a = (m > anc_fix_tresh).astype(int)
+        a = (m > cfg.anc_fix_tresh).astype(int)
         new_anc = np.array(fin_sol*a)
         na_new = np.sum(a)
         print(new_anc)
 
         f += 1
         all_pay.append(payoff)
-        if na_new > na:
-            all_sol.append(fin_sol)
-            all_anc.append(new_anc)
+        all_sol.append(fin_sol)
+        all_anc.append(new_anc)
+        # if na_new > na:
+        #     all_sol.append(fin_sol)
+        #     all_anc.append(new_anc)
         p_final = p
 
     #all_sol[fase]=fin_sol ##
@@ -122,11 +127,12 @@ def solver_rot_puzzle(R, p, T, iter, visual):
                         c1[:, :, zj, j] = cc;
 
                 q1 = np.sum(c1, axis=(2, 3))
-                q2 = (q1 != 0) * (q1 + no_patches * Z * 0.5) ##new_experiment
-                #q2 = (q1 + no_patches * Z * 0.5)
+                #q2 = (q1 != 0) * (q1 + no_patches * Z * 0.5) ##new_experiment
+                q2 = (q1 + no_patches * Z * 1)  # *0.5
                 q[:, :, zi, i] = q2
         pq = p * q
-        p_new = pq / np.sum(pq, axis=(0, 1, 2))
+        e = 0.00000001
+        p_new = pq / (np.sum(pq, axis=(0, 1, 2))+e)
         pay = np.sum(p_new * q)
         #pay = np.sum(pq)
         payoff[t] = pay
@@ -216,54 +222,76 @@ def reconstruct_group28_9(fin_sol, Y, X, n_rot, pieces):
                                                                                id[1] - 500:id[1] + 500, :]
     return fin_im
 
+def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
+    step = np.ceil(cfg.xy_step)
+    ang = 360 / cfg.theta_grid_points
+    z_rot = np.arange(0, 360, ang)
+
+    pos = fin_sol
+    fin_im = np.zeros(((Y * step + cfg.p_hs).astype(int), (X * step + cfg.p_hs).astype(int), 3))
+
+    for i in range(len(pieces)):
+        image = pieces_files[pieces[i]]  # read image 1
+        im_file = os.path.join(pieces_folder, image)
+
+        Im0 = Image.open(im_file).convert('RGBA')
+        Im = np.array(Im0) / 255.0
+        Im1 = Image.open(im_file).convert('RGBA').split()
+        alfa = np.array(Im1[3]) / 255.0
+        Im = np.multiply(Im, alfa[:, :, np.newaxis])
+        Im = Im[:, :, 0:3]
+
+        cc = cfg.p_hs
+        ids = (pos[i, :2] * step + cc).astype(int)
+        if np.min(pos[i, :2]) > 0:
+            if pos.shape[1] == 3:
+                rot = z_rot[pos[i, 2]]
+                Im = rotate(Im, rot, reshape=False, mode='constant')
+            fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
+                                                                                       ids[0] - cc:ids[0] + cc + 1,
+                                                                                       ids[1] - cc:ids[1] + cc + 1, :]
+
+    return fin_im
+
+
 ## MAIN ##
+#mat = scipy.io.loadmat('C:\\Users\\Marina\\Toy_Puzzle_Matlab\\R_line51_45_verLAP_fake2.mat')
+mat = scipy.io.loadmat('C:\\Users\\Marina\\PycharmProjects\\RL_puzzle_solver\\output\\wikiart\\aki-kuroda_night-2011\\compatibility_matrix\\CM_lines_fld.mat')
+R = mat['R_line']
 
-RP_group = 28
-Group_im_path = f'C:\\Users\\Marina\\PycharmProjects\\WP3-PuzzleSolving\\Compatibility\\data\\repair\\group_{RP_group}\\ready\\'
-Rmat_in_file = 'C:\\Users\\Marina\\Toy_Puzzle_Matlab\\R_line51_45_verLAP_fake2.mat'
+pieces_folder = os.path.join('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\wikiart\\aki-kuroda_night-2011\pieces')
+pieces_files = os.listdir(pieces_folder)
 
-mat = scipy.io.loadmat('C:\\Users\\Marina\\Toy_Puzzle_Matlab\\R_line51_45_verLAP_fake2.mat')
-R = mat['R_line2']
-
-#mat = scipy.io.loadmat('C:\\Users\\Marina\\Toy_Puzzle_Matlab\\RR_rot2.mat')
-#R = mat['R']
-
-## select rotation
-#R = R[:, :, [0, 2, 4, 6], :, :]
-#R = R[:, :, [0, 4], :, :]
-
-#pieces_excl = np.array([]);
-pieces_excl = np.array([1,4]);
-#pieces_excl = np.array([1,2,4,5,6]);
-all_pieces = np.concatenate((np.arange(194, 199), np.arange(200, 204)))
+pieces_excl = [];
+# pieces_excl = np.array([3,4,7,8,11,15]);
+all_pieces = np.arange(len(pieces_files))
 pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
 
 pieces_incl = [p for p in np.arange(0, len(all_pieces)) if p not in pieces_excl]
 R = R[:, :, :, pieces_incl, :] ## re-arange Rmatrix
 R = R[:, :, :, :, pieces_incl]
 
-# PARA
-anc = 5
-anc_rot = 0
-anc_fix_tresh = 0.5
-Tfirst = 500
-Tnext = 100
-Tmax = 5000
+R = R[:, :, [0,1], :, :]  # select rotation
 
-p_initial, init_pos = initialization(R, anc, anc_rot)
-all_pay, all_sol, all_anc, p_final, eps, iter = RePairPuzz(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
+p_initial, init_pos = initialization(R)  #(R, anc, anc_rot, nh, nw)
+all_pay, all_sol, all_anc, p_final, eps, iter = RePairPuzz(R, p_initial) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
-## visualize results (copied from function)
+## visualize results
 f = len(all_sol)
 Y, X, Z, _ = p_final.shape
 fin_sol = all_sol[f-1]
-fase_im = reconstruct_group28_9(fin_sol, Y, X, Z, pieces)
+fin_im = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
+
+f = len(all_anc)
+fin_sol = all_anc[f-1]
+fin_im = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
 import matplotlib.pyplot as plt
 plt.figure(figsize=(6, 6))
-plt.imshow((fase_im * 255).astype(np.uint8))
+plt.imshow((fin_im * 255).astype(np.uint8))
 plt.show()
 
+f = len(all_pay)
 f_pay = []
 for ff in range(f):
     a = all_pay[ff]
@@ -272,7 +300,3 @@ f_pay = np.array(f_pay)
 plt.figure(figsize=(6, 6))
 plt.plot(f_pay, 'r', linewidth=1)
 plt.show()
-
-####  TO DO  ####
-#fin_sol, fase_im = visualize_result(all_pay, all_sol, all_anc, init_pos, p_final, pieces)
-#plot_Lines_fin_sol(new_anc, Y, X, pieces, pieces_excl, Z, fase_im)
