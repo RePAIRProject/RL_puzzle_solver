@@ -1,21 +1,12 @@
 import cv2 
 import pdb 
 from configs import folder_names as fnames 
+from configs import puzzle_from_image_cfg as cfg
 import os
 import argparse 
 import numpy as np 
 
 def main(args):
-
-    if args.dataset == 'wikiart':
-        from configs import wikiart_cfg as cfg
-    elif args.dataset == 'architecture':
-        from configs import architecture_cfg as cfg
-    elif args.dataset == 'shapes':
-        from configs import shapes_cfg as cfg
-    else:
-        print("Error: you must choose an available dataset!")
-        return 0
 
     images = os.path.join(fnames.data_path, args.dataset, fnames.images_folder)
     pieces_folder = os.path.join(fnames.data_path, args.dataset, fnames.pieces_folder)
@@ -55,7 +46,7 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Create patches from image')
-    parser.add_argument('-d', '--dataset', type=str, default='architecture', help='dataset to work on', choices=['architecture', 'wikiart', 'shapes'])
+    parser.add_argument('-d', '--dataset', type=str, default='architecture', help='dataset to work on', choices=['architecture', 'wikiart', 'shapes', 'manual_lines'])
     parser.add_argument('--e', '--edgemaps', action='store_true', default=False, help='use if edge maps are available')
     args = parser.parse_args()
     main(args)
