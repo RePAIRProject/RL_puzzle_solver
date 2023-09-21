@@ -4,9 +4,8 @@ import json
 from scipy.optimize import linear_sum_assignment
 import scipy.io
 import os
-import argparse
 from configs import folder_names as fnames
-import configs.repair_cfg as cfg
+#import configs.repair_cfg as cfg
 
 
 def read_info(folder, image):
@@ -82,16 +81,16 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2):
                 for i in range(n_lines_f1):
                     for j in range(n_lines_f2):
 
-                        ## translate reference point to the center
+                        # translate reference point to the center
                         beta1, R_new1 = translation(alfa1[i], r1[i], p)
                         beta2, R_new2 = translation(alfa2[j], r2[j], p)
-                        ## shift and rot line 2
+                        # shift and rot line 2
                         beta3, R_new3 = translation(beta2 + theta, R_new2, -z)
 
-                        ## dist from new point to line 1
+                        # dist from new point to line 1
                         R_new4 = dist_point_line(beta1, R_new1, z)
 
-                        ## distance between 2 lines
+                        # distance between 2 lines
                         gamma = beta1 - beta3
                         coef = np.abs(np.sin(gamma))
 
@@ -100,15 +99,17 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2):
                         dist2 = np.sqrt(
                             (R_new2 ** 2 + R_new4 ** 2 - 2 * np.abs(R_new2 * R_new4) * np.cos(gamma)))
 
-                        ## thresholding
-                        if coef < cfg.thr_coef:
-                            cost = (dist1 + dist2)
+                        # thresholding
+                        cost0 = (dist1 + dist2)
+                        if coef < cfg.thr_coef and cost0 <= cfg.rmax:
+                            cost = cost0
                         else:
                             cost = cfg.max_dist
                         cost_matrix[i, j] = cost
-                        thr_matrix[i, j] = coef < cfg.thr_coef
+                        # thr_matrix[i, j] = coef < cfg.thr_coef
+                        thr_matrix[i, j] = cost < cfg.max_dist
 
-                ## LAP
+                # LAP
                 if thr_matrix.sum() > 0:
                     row_ind, col_ind = linear_sum_assignment(
                         cost_matrix)
@@ -122,27 +123,30 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2):
 
 def visualize_matrices(rot_l, all_cost_matrix):
     n_fr = all_cost_matrix.shape[4]
+    #_min, _max = np.amin(n_fr), np.amax(n_fr)
     plt.figure()
     fig, axs = plt.subplots(n_fr, n_fr)
     fig.subplots_adjust(hspace=0.1, wspace=0.1)
     for fr1 in range(n_fr):
         for fr2 in range(n_fr):
             cost_f1f2 = all_cost_matrix[:, :, rot_l, fr2, fr1]
-            axs[fr1, fr2].matshow(cost_f1f2, aspect='auto')
+            # axs[fr1, fr2].matshow(cost_f1f2, aspect='auto')
+            axs[fr1, fr2].matshow(cost_f1f2, aspect='auto', vmin=-0.5, vmax=2)
             axs[fr1, fr2].axis('off')
+            axs[fr1, fr2].autoscale(False)
     plt.show()
 
 
-# # MAIN
+# MAIN
 def main(args):
-    if args.method == 'repair':
+    if args.dataset == 'repair':
         import configs.repair_cfg as cfg
     else:
         import configs.wikiart_cfg as cfg
 
     # data load (line json, RM)
 
-    data_folder = os.path.join(fnames.output_dir, args.puzzle)
+    data_folder = os.path.join(fnames.output_dir, args.dataset, args.puzzle)
     hough_output = os.path.join(data_folder, fnames.lines_output_name, args.method)
     pieces_files = os.listdir(hough_output)
     n = len(pieces_files)
@@ -189,11 +193,11 @@ def main(args):
                         R_norm = np.maximum(1 - R_cost / cfg.rmax, 0)
                 All_norm_cost[:, :, :, f2, f1] = R_norm
 
-    # # apply region masks
+    # apply region masks
     neg_reg = np.array(np.where(R_mask < 0, -1, 0))
     R_line = (All_norm_cost * R_mask + neg_reg)
     R_line = R_line * 2
-    R_line[R_line < 0] = -0.5
+    R_line[R_line < 0] = -1  # -0.5
     for jj in range(n):
         R_line[:, :, :, jj, jj] = -1
 
@@ -203,33 +207,34 @@ def main(args):
     # plt.show()
 
     # save output
-    # output_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.cm_output_name)
-    # filename = f'{output_folder}\\CM_lines_{args.method}'
-    # # scipy.io.savemat(f'{filename}.mat', R_line)
-    # np.save(filename, R_line)
+    output_folder = os.path.join(fnames.output_dir, args.dataset, args.puzzle, fnames.cm_output_name)
+    os.makedirs(output_folder, exist_ok=True)
+    filename = f'{output_folder}\\CM_lines_{args.method}'
+    mdic = {"R_line": R_line, "label": "label"}
+    scipy.io.savemat(f'{filename}.mat', mdic)
+    np.save(filename, R_line)
+
+    # visualize compatibility matrices
+    for rot_layer in [0]:
+        visualize_matrices(rot_layer, All_cost)
+        visualize_matrices(rot_layer, All_norm_cost)
+        visualize_matrices(rot_layer, R_line)
 
     return All_cost, All_norm_cost, R_line
 
 
 if __name__ == '__main__':
+    import argparse
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('--dataset', type=str, default='wikiart', help='puzzle folder')  # repair, wikiart,
-    parser.add_argument('--puzzle', type=str, default='wikiart_kuroda_4x4', help='puzzle folder')   # repair_g28, wikiart_kuroda_4x4
-    parser.add_argument('--method', type=str, default='FLD', help='method line detection')  # Hough, FLD
+    parser.add_argument('--dataset', type=str, default='wikiart', help='dataset folder')  # repair, wikiart,
+    parser.add_argument('--puzzle', type=str, default='aki-kuroda_night-2011', help='puzzle folder')   # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--method', type=str, default='fld', help='method line detection')  # Hough, FLD
 
     args = parser.parse_args()
+    if args.dataset == 'repair':
+        import configs.repair_cfg as cfg
+    else:
+        import configs.wikiart_cfg as cfg
 
     # main(args)
     All_cost, All_norm_cost, R_line = main(args)
-
-    output_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.cm_output_name)
-    filename = f'{output_folder}\\CM_lines_{args.method}'
-    # scipy.io.savemat(f'{filename}.mat', R_line)
-    np.save(filename, R_line)
-
-    # # visualize compatibility matrices
-    # TO DO - add flag for visualization !!!
-    for rot_layer in [0, 2]:
-        # visualize_matrices(rot_layer, All_cost)
-        visualize_matrices(rot_layer, All_norm_cost)
-        visualize_matrices(rot_layer, R_line)
