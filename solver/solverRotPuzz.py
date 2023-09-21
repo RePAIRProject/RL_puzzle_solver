@@ -255,22 +255,17 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
 
 
 ## MAIN ##
-#mat = scipy.io.loadmat('C:\\Users\\Marina\\Toy_Puzzle_Matlab\\R_line51_45_verLAP_fake2.mat')
-#mat = scipy.io.loadmat('C:\\Users\\Marina\\PycharmProjects\\RL_puzzle_solver\\output\\wikiart\\aki-kuroda_night-2011\\compatibility_matrix\\CM_lines_fld.mat')
-mat = scipy.io.loadmat('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\manual_lines\lines1\compatibility_matrix\\CM_lines_deeplsd.mat')
-mat = scipy.io.loadmat('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\manual_lines\lines2\compatibility_matrix\\CM_lines_deeplsd.mat')
-mat = scipy.io.loadmat('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\manual_lines\lines3\compatibility_matrix\\CM_lines_deeplsd.mat')
-mat = scipy.io.loadmat('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\manual_lines\colors\compatibility_matrix\\CM_lines_deeplsd.mat')
-mat = scipy.io.loadmat('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\architecture\\0\\compatibility_matrix\\CM_lines_deeplsd.mat')
 
+dataset_name = "architecture"
+puzzle_name = '0'
+
+mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p0.mat')
+pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\pieces')
 
 R = mat['R_line']
 
-#pieces_folder = os.path.join('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\wikiart\\aki-kuroda_night-2011\pieces')
-pieces_folder = os.path.join('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\manual_lines\lines2\pieces')
 
 pieces_files = os.listdir(pieces_folder)
-
 pieces_excl = [];
 # pieces_excl = np.array([3,4,7,8,11,15]);
 all_pieces = np.arange(len(pieces_files))
@@ -289,21 +284,33 @@ all_pay, all_sol, all_anc, p_final, eps, iter = RePairPuzz(R, p_initial) #(R, p_
 f = len(all_sol)
 Y, X, Z, _ = p_final.shape
 fin_sol = all_sol[f-1]
-fin_im = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
+fin_im1 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
 import matplotlib.pyplot as plt
-plt.figure(figsize=(6, 6))
-plt.imshow((fin_im * 255).astype(np.uint8))
-plt.show()
+solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\{dataset_name}\{puzzle_name}\solution')
+os.makedirs(solution_folder, exist_ok=True)
+
+final_solution = os.path.join(solution_folder, 'final.png')
+plt.figure(figsize=(16,16))
+plt.title("Final solution including all piece")
+plt.imshow((fin_im1 * 255).astype(np.uint8))
+plt.tight_layout()
+plt.savefig(final_solution)
+plt.close()
 
 f = len(all_anc)
 fin_sol = all_anc[f-1]
-fin_im = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
+fin_im2 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
-plt.figure(figsize=(6, 6))
-plt.imshow((fin_im * 255).astype(np.uint8))
-plt.show()
+final_solution_anchor = os.path.join(solution_folder, 'final_only_anchor.png')
+plt.figure(figsize=(16,16))
+plt.title("Final solution including ONLY solved pieces")
+plt.imshow((fin_im2 * 255).astype(np.uint8))
+plt.tight_layout()
+plt.savefig(final_solution_anchor)
+plt.close()
 
+alc_path = os.path.join(solution_folder, 'alc_plot.png')
 f = len(all_pay)
 f_pay = []
 for ff in range(f):
@@ -312,4 +319,27 @@ for ff in range(f):
 f_pay = np.array(f_pay)
 plt.figure(figsize=(6, 6))
 plt.plot(f_pay, 'r', linewidth=1)
-plt.show()
+plt.tight_layout()
+plt.savefig(alc_path)
+
+# intermediate steps
+frames_folders = os.path.join(solution_folder, 'frames_all')
+os.makedirs(frames_folders, exist_ok=True)
+
+for ff in range(f):
+    frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
+    cur_sol = all_sol[ff]
+    im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
+    im_rec = np.clip(im_rec,0,1)
+    plt.imsave(frame_path, im_rec)
+
+
+frames_folders = os.path.join(solution_folder, 'frames_anc')
+os.makedirs(frames_folders, exist_ok=True)
+
+for ff in range(f):
+    frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
+    cur_sol = all_anc[ff]
+    im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
+    im_rec = np.clip(im_rec,0,1)
+    plt.imsave(frame_path, im_rec)

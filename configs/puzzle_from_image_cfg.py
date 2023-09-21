@@ -44,7 +44,7 @@ nh = 4  # 2 for repair
 nw = 4  # 2  # %% para to decide
 
 ### SOLVER
-Tfirst = 500
-Tnext = 500
-Tmax = 10000
+Tfirst = 200
+Tnext = 200
+Tmax = 7000
 anc_fix_tresh = 0.51
