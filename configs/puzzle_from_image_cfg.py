@@ -27,23 +27,24 @@ blur_kernel_size = 7
 length_threshold = piece_size // 3
 distance_threshold = 2
 # segments
-border_tolerance = piece_size // 10
+border_tolerance = piece_size // 60
 
 
 ### LINE MATCHING
 rmax = 10
-thr_coef = 0.1
-thr_dist = 10
-max_dist = 1000
+thr_coef = 0.08
+thr_dist = 20
+max_dist = 10
+mismatch_penalty = 1
 
 ### initialization P
-init_anc = 5
+init_anc = 6
 init_anc_rot = 0
 nh = 4  # 2 for repair
 nw = 4  # 2  # %% para to decide
 
 ### SOLVER
-Tfirst = 1000
+Tfirst = 5000
 Tnext = 100
-Tmax = 5000
+Tmax = 10000
 anc_fix_tresh = 0.51
