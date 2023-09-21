@@ -35,7 +35,7 @@ rmax = 10
 thr_coef = 0.08
 thr_dist = 20
 max_dist = 10
-mismatch_penalty = 1
+mismatch_penalty = 0
 
 ### initialization P
 init_anc = 6
@@ -44,7 +44,7 @@ nh = 4  # 2 for repair
 nw = 4  # 2  # %% para to decide
 
 ### SOLVER
-Tfirst = 5000
-Tnext = 100
+Tfirst = 500
+Tnext = 500
 Tmax = 10000
 anc_fix_tresh = 0.51

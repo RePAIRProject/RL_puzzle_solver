@@ -7,7 +7,7 @@ from scipy import signal
 from scipy.ndimage import rotate, shift
 from PIL import Image
 import os
-import configs.wikiart_cfg as cfg
+import configs.puzzle_from_image_cfg as cfg
 
 
 def initialization(R):  # (R, anc, anc_rot, nh, nw):
@@ -114,7 +114,7 @@ def solver_rot_puzzle(R, p, T, iter, visual):
         for i in range(no_patches):
             ri = R[:, :, :, :, i]
             #ri = R[:, :, :, i, :] #FOR ORACLE SQUARE ONLY !!!!!
-            for zi in range(Z):
+            for zi in [0]: #range([Z]):
                 rr = rotate(ri, z_rot[zi], reshape=False, mode='constant') #CHECK ??? method?? senso antiorario!!!
                 rr = np.roll(rr, zi, axis=2) # matlab: rr = circshift(rr,zi-1,3); z1=0!!!
                 c1 = np.zeros(p.shape)
@@ -256,10 +256,19 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
 
 ## MAIN ##
 #mat = scipy.io.loadmat('C:\\Users\\Marina\\Toy_Puzzle_Matlab\\R_line51_45_verLAP_fake2.mat')
-mat = scipy.io.loadmat('C:\\Users\\Marina\\PycharmProjects\\RL_puzzle_solver\\output\\wikiart\\aki-kuroda_night-2011\\compatibility_matrix\\CM_lines_fld.mat')
+#mat = scipy.io.loadmat('C:\\Users\\Marina\\PycharmProjects\\RL_puzzle_solver\\output\\wikiart\\aki-kuroda_night-2011\\compatibility_matrix\\CM_lines_fld.mat')
+mat = scipy.io.loadmat('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\manual_lines\lines1\compatibility_matrix\\CM_lines_deeplsd.mat')
+mat = scipy.io.loadmat('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\manual_lines\lines2\compatibility_matrix\\CM_lines_deeplsd.mat')
+mat = scipy.io.loadmat('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\manual_lines\lines3\compatibility_matrix\\CM_lines_deeplsd.mat')
+mat = scipy.io.loadmat('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\manual_lines\colors\compatibility_matrix\\CM_lines_deeplsd.mat')
+mat = scipy.io.loadmat('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\architecture\\0\\compatibility_matrix\\CM_lines_deeplsd.mat')
+
+
 R = mat['R_line']
 
-pieces_folder = os.path.join('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\wikiart\\aki-kuroda_night-2011\pieces')
+#pieces_folder = os.path.join('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\wikiart\\aki-kuroda_night-2011\pieces')
+pieces_folder = os.path.join('C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\manual_lines\lines2\pieces')
+
 pieces_files = os.listdir(pieces_folder)
 
 pieces_excl = [];
@@ -282,11 +291,15 @@ Y, X, Z, _ = p_final.shape
 fin_sol = all_sol[f-1]
 fin_im = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
+import matplotlib.pyplot as plt
+plt.figure(figsize=(6, 6))
+plt.imshow((fin_im * 255).astype(np.uint8))
+plt.show()
+
 f = len(all_anc)
 fin_sol = all_anc[f-1]
 fin_im = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
-import matplotlib.pyplot as plt
 plt.figure(figsize=(6, 6))
 plt.imshow((fin_im * 255).astype(np.uint8))
 plt.show()
