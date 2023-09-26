@@ -22,7 +22,7 @@ def main(args):
             center = image.shape
             xc = center[1]//2 
             yc = center[0]//2 
-            image = image[yc-ihs:yc+ihss, xc-ihs:xc+ihs, :]
+            image = image[yc-ihs:yc+ihs, xc-ihs:xc+ihs, :]
         elif cfg.scaling_method == 'crop+resize':
             min_dim = np.minimum(image.shape[0], image.shape[1])
             mdhs = min_dim // 2 
