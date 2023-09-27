@@ -9,7 +9,7 @@ import numpy as np
 def main(args):
 
     images = os.path.join(fnames.data_path, args.dataset, fnames.images_folder)
-    pieces_folder = os.path.join(fnames.data_path, args.dataset, fnames.pieces_folder)
+    puzzle_image_folder = os.path.join(fnames.output_dir, args.dataset) #, fnames.pieces_folder)
     for image_name in os.listdir(images):
         image = cv2.imread(os.path.join(fnames.data_path, args.dataset, fnames.images_folder, image_name))
         if cfg.scaling_method == 'resize':
@@ -22,7 +22,7 @@ def main(args):
             center = image.shape
             xc = center[1]//2 
             yc = center[0]//2 
-            image = image[yc-ihs:yc+ihss, xc-ihs:xc+ihs, :]
+            image = image[yc-ihs:yc+ihs, xc-ihs:xc+ihs, :]
         elif cfg.scaling_method == 'crop+resize':
             min_dim = np.minimum(image.shape[0], image.shape[1])
             mdhs = min_dim // 2 
@@ -34,13 +34,13 @@ def main(args):
 
         num_patches_side = cfg.num_patches_side
         patch_size = image.shape[0] // num_patches_side
-        pieces_single_folder = os.path.join(pieces_folder, image_name[:-4])
+        pieces_single_folder = os.path.join(puzzle_image_folder, image_name[:-4], fnames.pieces_folder)
         os.makedirs(pieces_single_folder, exist_ok=True)
         k = 0
         for i in range(num_patches_side):
             for j in range(num_patches_side):
                 patch = image[i*patch_size:(i+1)*patch_size, j*patch_size:(j+1)*patch_size,:]
-                cv2.imwrite(os.path.join(pieces_single_folder, f"piece_{k}.png"), patch)
+                cv2.imwrite(os.path.join(pieces_single_folder, f"piece_{k:05d}.png"), patch)
                 k += 1
 
 if __name__ == '__main__':
