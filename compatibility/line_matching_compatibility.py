@@ -142,7 +142,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
                 useful_lines_rho1 = r1[intersections]
                 ############################
 
-                # check if lines inersec poligon F2
+                # check if line crosses the polygon
                 intersections = []
                 ## buffer
                 piece_i_shape = shapely.box(0 - cfg.p_hs, 0 - cfg.p_hs, 0 + cfg.p_hs, 0 + cfg.p_hs)
@@ -164,54 +164,65 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
 
                 n_lines_f1 = useful_lines_alfa1.shape[0]
                 n_lines_f2 = useful_lines_alfa2.shape[0]
-                cost_matrix = np.zeros((n_lines_f1, n_lines_f2))
-                thr_matrix = np.zeros((n_lines_f1, n_lines_f2))
 
-                for i in range(n_lines_f1):
-                    for j in range(n_lines_f2):
-
-                        # translate reference point to the center
-                        beta1, R_new1 = translation(useful_lines_alfa1[i], useful_lines_rho1[i], p)
-                        beta2, R_new2 = translation(useful_lines_alfa2[j], useful_lines_rho2[j], p)
-                        # shift and rot line 2
-                        beta3, R_new3 = translation(beta2 + theta, R_new2, -z)
-
-                        # dist from new point to line 1
-                        R_new4 = dist_point_line(beta1, R_new1, z)
-
-                        # distance between 2 lines
-                        gamma = beta1 - beta3
-                        coef = np.abs(np.sin(gamma))
-
-                        dist1 = np.sqrt(
-                            (R_new1 ** 2 + R_new3 ** 2 - 2 * np.abs(R_new1 * R_new3) * np.cos(gamma)))
-                        dist2 = np.sqrt(
-                            (R_new2 ** 2 + R_new4 ** 2 - 2 * np.abs(R_new2 * R_new4) * np.cos(gamma)))
-                        cost0 = (dist1 + dist2)
-
-                        # thresholding
-                        if coef < cfg.thr_coef:
-                            cost = cost0
-                        else:
-                            cost = cfg.max_dist
-                        cost_matrix[i, j] = cost
-                        thr_matrix[i, j] = coef < cfg.thr_coef
-
-                # # LAP original (all useful lines)
-                # row_ind, col_ind = linear_sum_assignment(cost_matrix)
-                # tot_cost = cost_matrix[row_ind, col_ind].sum()  # original
-                # tot_cost += np.exp(np.abs(n_lines_f1-n_lines_f2))*cfg.mismatch_penalty
-
-                # # LAP with thresh (only matching lines) ???????
-                if thr_matrix.sum() > 0:
-                    row_ind, col_ind = linear_sum_assignment(
-                        cost_matrix)
-                    tot_cost = cost_matrix[row_ind, col_ind].mean()  # original !
-                    #tot_cost = (cost_matrix[row_ind, col_ind] * thr_matrix[row_ind, col_ind]).sum()  # threshold
+                if n_lines_f1 == 0 and n_lines_f1 == 0:
+                    tot_cost = 0
                 else:
-                    tot_cost = cfg.max_dist
-                # # penalty
-                tot_cost += np.abs(n_lines_f1-n_lines_f2)*cfg.mismatch_penalty
+
+                    cost_matrix = np.zeros((n_lines_f1, n_lines_f2))
+                    thr_matrix = np.zeros((n_lines_f1, n_lines_f2))
+
+                    for i in range(n_lines_f1):
+                        for j in range(n_lines_f2):
+
+                            # translate reference point to the center
+                            beta1, R_new1 = translation(useful_lines_alfa1[i], useful_lines_rho1[i], p)
+                            beta2, R_new2 = translation(useful_lines_alfa2[j], useful_lines_rho2[j], p)
+                            # shift and rot line 2
+                            beta3, R_new3 = translation(beta2 + theta, R_new2, -z)
+
+                            # dist from new point to line 1
+                            R_new4 = dist_point_line(beta1, R_new1, z)
+
+                            # distance between 2 lines
+                            gamma = beta1 - beta3
+                            coef = np.abs(np.sin(gamma))
+
+                            dist1 = np.sqrt(
+                                (R_new1 ** 2 + R_new3 ** 2 - 2 * np.abs(R_new1 * R_new3) * np.cos(gamma)))
+                            dist2 = np.sqrt(
+                                (R_new2 ** 2 + R_new4 ** 2 - 2 * np.abs(R_new2 * R_new4) * np.cos(gamma)))
+                            cost0 = (dist1 + dist2)
+
+                            # thresholding
+                            if coef < cfg.thr_coef:
+                                cost = cost0
+                            else:
+                                cost = cfg.max_dist
+                            cost_matrix[i, j] = cost
+                            thr_matrix[i, j] = coef < cfg.thr_coef
+
+                    # # LAP with thresh
+                    n_lines = (np.max([n_lines_f1, n_lines_f2]))
+                    print("ciaoQ")
+                    if n_lines==0:
+                        tot_cost = 0
+                    else:
+                        if thr_matrix.sum() > 0:
+                            row_ind, col_ind = linear_sum_assignment(cost_matrix)
+                            tot_cost = cost_matrix[row_ind, col_ind].mean()
+                            # tot_cost = cost_matrix[row_ind, col_ind].sum() #2209
+                            # tot_cost = (cost_matrix[row_ind, col_ind] * thr_matrix[row_ind, col_ind]).sum()  # threshold
+                        else:
+                            tot_cost = cfg.max_dist
+                            # tot_cost = cfg.max_dist * n_lines  #2209
+
+                    # # penalty
+                    tot_cost += np.abs(n_lines_f1-n_lines_f2)*cfg.mismatch_penalty
+
+                    # # penalty #2209 (after presentation)
+                    # penalty = np.abs(n_lines_f1 - n_lines_f2) * cfg.mismatch_penalty
+                    # tot_cost = (tot_cost + penalty) / n_lines
 
                 R_cost[iy, ix, t] = tot_cost
 
@@ -280,7 +291,7 @@ def main(args):
                     R_norm = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
                 else:
                     im2 = pieces_files[f2]  # read image 2
-                    alfa2, r2, s21, s22, b21, b22  = read_info(hough_output, im2)
+                    alfa2, r2, s21, s22, b21, b22 = read_info(hough_output, im2)
                     if len(alfa2) == 0:
                         R_norm = np.zeros((m.shape[1], m.shape[1], len(rot)))
                     else:
@@ -320,8 +331,8 @@ def main(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('--dataset', type=str, default='architecture', help='dataset folder')  # repair, wikiart, manual_lines, architecture
-    parser.add_argument('--puzzle', type=str, default='0', help='puzzle folder')   # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--dataset', type=str, default='wikiart', help='dataset folder')  # repair, wikiart, manual_lines, architecture
+    parser.add_argument('--puzzle', type=str, default='pablo-picasso_still-life-with-guitar-1942', help='puzzle folder')   # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # Hough, FLD
 
     args = parser.parse_args()

@@ -30,12 +30,12 @@ distance_threshold = 2
 border_tolerance = piece_size // 60
 
 
-### LINE MATCHING
-rmax = 10
-thr_coef = 0.08
-thr_dist = 20
-max_dist = 10
-mismatch_penalty = 0
+### LINE MATCHING                  ## OLD VALUES
+thr_coef = 0.03                    ##   0.5
+max_dist = 30    # piece_size/1     ##   10
+mismatch_penalty = 10               ##   0
+mismatch_penalty_exp = 1
+rmax = 20   # piece_size/30  # Norm       ##  20 best
 
 ### initialization P
 init_anc = 6
@@ -47,4 +47,7 @@ nw = 4  # 2  # %% para to decide
 Tfirst = 200
 Tnext = 200
 Tmax = 7000
-anc_fix_tresh = 0.51
+anc_fix_tresh = 0.55
+
+
+
