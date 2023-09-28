@@ -9,9 +9,7 @@ import os
 from configs import folder_names as fnames
 import shapely
 import configs.puzzle_from_image_cfg_exp as cfg
-
-import skgeom as sg
-from skgeom.draw import draw
+import pdb 
 
 def read_info(folder, image):
     # read json file
@@ -154,7 +152,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
 
                 #n_lines = (np.min([n_lines_f1, n_lines_f2]))
                 if n_lines_f1 == 0 and n_lines_f2 == 0:
-                    # tot_cost = 0
+                    #tot_cost = 0
                     tot_cost = cfg.mismatch_penalty
 
                 ## INCLUDE THIS PART
@@ -240,8 +238,10 @@ def main(args):
     data_folder = os.path.join(fnames.output_dir, args.dataset)
     hough_output = os.path.join(data_folder, args.puzzle, fnames.lines_output_name, args.method)
     pieces_files = os.listdir(hough_output)
-    n = len(pieces_files)
-
+    json_files = [piece_file for piece_file in pieces_files if piece_file[-4:] == 'json']
+    n = len(json_files)
+    if args.penalty > 0:
+        cfg.mismatch_penalty = args.penalty
     # rm_name = 'RM_shape_repair_g28_101x101x24x10x10.mat'
     rm_name = f'RM_{args.dataset}.mat'
     mat = scipy.io.loadmat(os.path.join(data_folder, rm_name))
@@ -269,10 +269,10 @@ def main(args):
             if f1 == f2:
                 R_norm = np.zeros((m.shape[1], m.shape[1], len(rot)))-1
             else:
-                im1 = pieces_files[f1]  # read image 1
+                im1 = json_files[f1]  # read image 1
                 alfa1, r1, s11, s12, b11, b12 = read_info(hough_output, im1)
 
-                im2 = pieces_files[f2]  # read image 2
+                im2 = json_files[f2]  # read image 2
                 alfa2, r2, s21, s22, b21, b22 = read_info(hough_output, im2)
 
                 if len(alfa1) == 0 and len(alfa2) == 0:
@@ -304,14 +304,14 @@ def main(args):
     # save output
     output_folder = os.path.join(fnames.output_dir, args.dataset, args.puzzle, fnames.cm_output_name)
     os.makedirs(output_folder, exist_ok=True)
-    filename = f'{output_folder}\\CM_lines_{args.method}_p0'
+    filename = os.path.join(output_folder, f'CM_lines_{args.method}_p{cfg.mismatch_penalty}')
     mdic = {"R_line": R_line, "label": "label"}
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, R_line)
 
     # visualize compatibility matrices
     for rot_layer in [0]:
-        file_vis_name = f'{output_folder}\\CM_image_rot{rot_layer}_p0'
+        file_vis_name = os.path.join(output_folder, f'CM_image_rot{rot_layer}_p{cfg.mismatch_penalty}')
         #visualize_matrices(rot_layer, All_cost)
         #visualize_matrices(rot_layer, All_norm_cost)
         visualize_matrices(rot_layer, R_line, file_vis_name)
@@ -326,7 +326,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='manual_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture
     parser.add_argument('--puzzle', type=str, default='lines1', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # Hough, FLD
-
+    parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
     args = parser.parse_args()
     # if args.dataset == 'repair':
     #     import configs.puzzle_from_fragments_cfg as cfg

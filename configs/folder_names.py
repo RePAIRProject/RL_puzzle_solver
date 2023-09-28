@@ -7,6 +7,7 @@ segm_output_name = 'motif_segmentation'
 lines_segm_name = 'lines'
 motifs_segm_name = 'motif'
 lines_output_name = 'lines_detection'
+solution_folder_name = 'solution'
 visualization_folder_name = 'visualization'
 images_folder = 'images'
 imgs_folder = 'images' # we should remove this!
