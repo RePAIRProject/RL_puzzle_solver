@@ -31,11 +31,12 @@ border_tolerance = piece_size // 60
 
 
 ### LINE MATCHING                  ## OLD VALUES
-thr_coef = 0.03                    ##   0.5
-max_dist = 30    # piece_size/1     ##   10
-mismatch_penalty = 10               ##   0
-mismatch_penalty_exp = 1
-rmax = 20   # piece_size/30  # Norm       ##  20 best
+thr_coef = 0.05
+max_dist = 11
+badmatch_penalty = 30    # piece_size/1
+mismatch_penalty = 20
+#mismatch_penalty_exp = 1
+rmax = 20   # piece_size/30  # Norm
 
 ### initialization P
 init_anc = 6
@@ -47,7 +48,27 @@ nw = 4  # 2  # %% para to decide
 Tfirst = 200
 Tnext = 200
 Tmax = 7000
-anc_fix_tresh = 0.55
+anc_fix_tresh = 0.75
+
+
+# ### LINE MATCHING                  ## OLD VALUES
+# thr_coef = 0.03                    ##   0.5
+# max_dist = 30    # piece_size/1     ##   10
+# mismatch_penalty = 10               ##   0
+# mismatch_penalty_exp = 1
+# rmax = 20   # piece_size/30  # Norm       ##  20 best
+#
+# ### initialization P
+# init_anc = 6
+# init_anc_rot = 0
+# nh = 4  # 2 for repair
+# nw = 4  # 2  # %% para to decide
+#
+# ### SOLVER
+# Tfirst = 200
+# Tnext = 200
+# Tmax = 7000
+# anc_fix_tresh = 0.55
 
 
 
