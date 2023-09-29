@@ -100,6 +100,7 @@ def line_poligon_intersec(z_p, z_l, s1, s2, cfg):
 
 def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s22, b11, b12, b21, b22, cfg):
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+    a_dist0 = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
     a_dist = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
     a_gamma = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
 
@@ -171,7 +172,8 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
 
                 else:
                     ## Compute cost_matrix, LAP, penalty, normalize
-                    cost_matrix = np.zeros((n_lines_f1, n_lines_f2))
+                    #cost_matrix = np.zeros((n_lines_f1, n_lines_f2))
+                    dist_matrix0 = np.zeros((n_lines_f1, n_lines_f2))
                     dist_matrix = np.zeros((n_lines_f1, n_lines_f2))
                     gamma_matrix = np.zeros((n_lines_f1, n_lines_f2))
 
@@ -189,8 +191,9 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
                             d3 = distance.euclidean(useful_lines_s12[i], useful_lines_s21[j])
                             d4 = distance.euclidean(useful_lines_s12[i], useful_lines_s22[j])
 
-                            dist_matrix[i, j] = np.min([d1, d2, d3, d4])
+                            dist_matrix0[i, j] = np.min([d1, d2, d3, d4])
 
+                    dist_matrix[dist_matrix0 > cfg.badmatch_penalty] = cfg.badmatch_penalty
                     dist_matrix[gamma_matrix > cfg.thr_coef] = cfg.badmatch_penalty
 
                     # # LAP
@@ -203,13 +206,14 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
                     tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])    # normalize to all lines in the game
 
                     # save all_dist and gammas coef
+                    a_dist0[:n_lines_f1, :n_lines_f2, iy, ix, t] = dist_matrix0
                     a_dist[:n_lines_f1, :n_lines_f2, iy, ix, t] = dist_matrix
                     a_gamma[:n_lines_f1, :n_lines_f2, iy, ix, t] = gamma_matrix
 
                 R_cost[iy, ix, t] = tot_cost
 
 
-    return R_cost, a_dist, a_gamma
+    return R_cost, a_dist, a_gamma, a_dist0
 
 
 def visualize_matrices(rot_l, all_cost_matrix, file_name):
@@ -262,6 +266,7 @@ def main(args):
 
     All_cost = np.zeros((m.shape[1], m.shape[1], len(rot), n, n))
     All_norm_cost = np.zeros((m.shape[1], m.shape[1], len(rot), n, n))
+    All_dist0 = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot), n, n))
     All_dist = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot), n, n))
     All_gamma = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot), n, n))
 
@@ -277,13 +282,14 @@ def main(args):
                 alfa2, r2, s21, s22, b21, b22 = read_info(hough_output, im2)
 
                 if len(alfa1) == 0 and len(alfa2) == 0:
-                    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + cfg.max_dist  # new mod
+                    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + cfg.max_dist/2  # new mod
                 else:
-                    R_cost, a_dist, a_gamma = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, b11, b12,
+                    R_cost, a_dist, a_gamma, a_dist0 = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, b11, b12,
                                                  b21, b22, cfg)
                 All_cost[:, :, :, f2, f1] = R_cost
                 R_norm = np.maximum(1 - R_cost / cfg.rmax, 0)
 
+                All_dist0[:, :, :, :, :, f2, f1] = a_dist0
                 All_dist [:, :, :, :, :, f2, f1] = a_dist
                 All_gamma[:, :, :, :, :, f2, f1] = a_gamma
 
@@ -331,24 +337,25 @@ def main(args):
         visualize_matrices(rot_layer, R_line, file_vis_name)
 
 
-    return All_cost, All_norm_cost, R_line, All_dist, All_gamma
+    return All_cost, All_norm_cost, R_line, All_dist, All_gamma, All_dist0
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
     parser.add_argument('--dataset', type=str, default='manual_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture
-    parser.add_argument('--puzzle', type=str, default='lines2', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--puzzle', type=str, default='lines5', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # Hough, FLD
 
     args = parser.parse_args()
+
     # if args.dataset == 'repair':
     #     import configs.puzzle_from_fragments_cfg as cfg
     # else:
-    #     import configs.puzzle_from_image_cfg as cfg
+    #     import configs.puzzle_from_image_cfg as cfg ###
 
     # main(args)
-    All_cost, All_norm_cost, R_line, All_dist, All_gamma = main(args)
+    All_cost, All_norm_cost, R_line, All_dist, All_gamma, All_dist0 = main(args)
 
 
     # ## poly
