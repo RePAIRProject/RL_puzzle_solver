@@ -29,45 +29,24 @@ distance_threshold = 2
 # segments
 border_tolerance = piece_size // 60
 
-### LINE MATCHING                  ## OLD VALUES
-thr_coef = 0.16
-max_dist = 10
-badmatch_penalty = 30    # piece_size/1
+### LINE MATCHING
+thr_coef = 0.08
+max_dist = 5
+badmatch_penalty = 30
 mismatch_penalty = 20
-#mismatch_penalty_exp = 1
-rmax = 11  # piece_size/30  # Norm
+rmax = 11
 
 ### initialization P
 init_anc = 6
 init_anc_rot = 0
 nh = 4  # 2 for repair
-nw = 4  # 2  # %% para to decide
+nw = 4  # 2 for repair
 
 ### SOLVER
 Tfirst = 200
 Tnext = 200
 Tmax = 7000
 anc_fix_tresh = 0.75
-
-
-# ### LINE MATCHING                  ## OLD VALUES
-# thr_coef = 0.08                    ##   0.5
-# max_dist = 30    # piece_size/1     ##   10
-# mismatch_penalty = 10               ##   0
-# mismatch_penalty_exp = 1
-# rmax = 20   # piece_size/30  # Norm       ##  20 best
-#
-# ### initialization P
-# init_anc = 6
-# init_anc_rot = 0
-# nh = 4  # 2 for repair
-# nw = 4  # 2  # %% para to decide
-#
-# ### SOLVER
-# Tfirst = 200
-# Tnext = 200
-# Tmax = 7000
-# anc_fix_tresh = 0.55
 
 
 

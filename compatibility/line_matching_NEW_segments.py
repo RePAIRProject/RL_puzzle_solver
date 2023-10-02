@@ -14,6 +14,7 @@ import configs.puzzle_from_image_cfg_exp as cfg
 import skgeom as sg
 from skgeom.draw import draw
 
+
 def read_info(folder, image):
     # read json file
     f_name = os.path.join(folder, image)
@@ -94,14 +95,13 @@ def line_poligon_intersec(z_p, z_l, s1, s2, cfg):
             intersections.append(False)
         else:
             intersections.append(True)
-
     return intersections
 
 
 def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s22, b11, b12, b21, b22, cfg):
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
     a_dist0 = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
-    a_dist = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
+    a_dist = np.zeros ((40, 40, m.shape[1], m.shape[1], len(rot)))
     a_gamma = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
 
     for t in range(len(rot)):
@@ -111,23 +111,8 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
                 z = z_id[ix, iy]
 
                 # check if line1 crosses the polygon2
-                intersections1 = line_poligon_intersec(z, [0,0], s11, s12, cfg) # z_p2 = z,   z_l1 = [0,0]
-                ####################
-                # intersections = []
-                # piece_j_shape = shapely.box(z[0]-cfg.p_hs, z[1]-cfg.p_hs, z[0]+cfg.p_hs, z[1]+cfg.p_hs)
-                #
-                # for (candidate_xy_start, candidate_xy_end) in zip(s11, s12):
+                intersections1 = line_poligon_intersec(z, [0, 0], s11, s12, cfg) # z_p2 = z,   z_l1 = [0,0]
 
-                #     candidate_line_shapely0 = shapely.LineString((candidate_xy_start, candidate_xy_end))
-                #     candidate_line_shapely = shapely.transform(candidate_line_shapely0, lambda x: x-cfg.p_hs)
-                #
-                #     # if shapely.is_empty(shapely.intersection(candidate_line_shapely, piece_j_shape)):
-                #     if shapely.is_empty(shapely.intersection(candidate_line_shapely, piece_j_shape.buffer(cfg.border_tolerance))):
-                #     #if shapely.is_empty(shapely.intersection(candidate_line_shapely.buffer(cfg.border_tolerance), piece_j_shape.buffer(cfg.border_tolerance))):
-                #         intersections.append(False)
-                #     else:
-                #         intersections.append(True)
-                #
                 # return intersections
                 useful_lines_alfa1 = alfa1[intersections1]
                 useful_lines_rho1 = r1[intersections1]
@@ -136,22 +121,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
 
                 # check if line2 crosses the polygon1
                 intersections2 = line_poligon_intersec([0, 0], z, s21, s22, cfg)  # z_p1 = [0,0],  z_l2 = z
-                ####################
-                # intersections = []
-                # ## buffer
-                # piece_i_shape = shapely.box(0 - cfg.p_hs, 0 - cfg.p_hs, 0 + cfg.p_hs, 0 + cfg.p_hs)
-                # for (candidate_xy_start, candidate_xy_end) in zip(s21, s22):
-                #     candidate_line_shapely0 = shapely.LineString((candidate_xy_start, candidate_xy_end))
-                #     candidate_line_shapely = shapely.transform(candidate_line_shapely0, lambda x : x-[cfg.p_hs, cfg.p_hs]+z)
 
-                #     # check if line intersect
-                #     #if shapely.is_empty(shapely.intersection(candidate_line_shapely, piece_i_shape)):
-                #     if shapely.is_empty(shapely.intersection(candidate_line_shapely,
-                #                                              piece_i_shape.buffer(cfg.border_tolerance))):
-                #     #if shapely.is_empty(shapely.intersection(candidate_line_shapely.buffer(cfg.border_tolerance), piece_i_shape.buffer(cfg.border_tolerance))):
-                #         intersections.append(False)
-                #     else:
-                #         intersections.append(True)
                 useful_lines_alfa2 = alfa2[intersections2]
                 useful_lines_rho2 = r2[intersections2]
                 useful_lines_s21 = np.clip(s21[intersections2], 0, cfg.piece_size)
@@ -160,19 +130,16 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
                 n_lines_f1 = useful_lines_alfa1.shape[0]
                 n_lines_f2 = useful_lines_alfa2.shape[0]
 
-                #n_lines = (np.min([n_lines_f1, n_lines_f2]))
                 if n_lines_f1 == 0 and n_lines_f2 == 0:
                     # tot_cost = 0
-                    tot_cost = cfg.max_dist/2
+                    tot_cost = cfg.max_dist   # accept with some cost
 
-                ## INCLUDE THIS PART
                 elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                     n_lines = (np.max([n_lines_f1, n_lines_f2]))
                     tot_cost = cfg.mismatch_penalty * n_lines
 
                 else:
-                    ## Compute cost_matrix, LAP, penalty, normalize
-                    #cost_matrix = np.zeros((n_lines_f1, n_lines_f2))
+                    # Compute cost_matrix, LAP, penalty, normalize
                     dist_matrix0 = np.zeros((n_lines_f1, n_lines_f2))
                     dist_matrix = np.zeros((n_lines_f1, n_lines_f2))
                     gamma_matrix = np.zeros((n_lines_f1, n_lines_f2))
@@ -183,8 +150,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
                     for i in range(n_lines_f1):
                         for j in range(n_lines_f2):
                             gamma = useful_lines_alfa1[i] - useful_lines_alfa2[j]
-                            #gamma_matrix[i, j] = gamma
-                            gamma_matrix[i,j] = np.abs(np.sin(gamma))
+                            gamma_matrix[i, j] = np.abs(np.sin(gamma))
 
                             d1 = distance.euclidean(useful_lines_s11[i], useful_lines_s21[j])
                             d2 = distance.euclidean(useful_lines_s11[i], useful_lines_s22[j])
@@ -193,8 +159,9 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
 
                             dist_matrix0[i, j] = np.min([d1, d2, d3, d4])
 
-                    dist_matrix[dist_matrix0 > cfg.badmatch_penalty] = cfg.badmatch_penalty
                     dist_matrix[gamma_matrix > cfg.thr_coef] = cfg.badmatch_penalty
+                    dist_matrix[dist_matrix0 > cfg.max_dist] = cfg.badmatch_penalty  ## new part
+                    # dist_matrix[dist_matrix0 > cfg.badmatch_penalty] = cfg.badmatch_penalty
 
                     # # LAP
                     row_ind, col_ind = linear_sum_assignment(dist_matrix)
@@ -207,11 +174,10 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
 
                     # save all_dist and gammas coef
                     a_dist0[:n_lines_f1, :n_lines_f2, iy, ix, t] = dist_matrix0
-                    a_dist[:n_lines_f1, :n_lines_f2, iy, ix, t] = dist_matrix
+                    a_dist[:n_lines_f1,  :n_lines_f2, iy, ix, t] = dist_matrix
                     a_gamma[:n_lines_f1, :n_lines_f2, iy, ix, t] = gamma_matrix
 
                 R_cost[iy, ix, t] = tot_cost
-
 
     return R_cost, a_dist, a_gamma, a_dist0
 
@@ -240,7 +206,7 @@ def visualize_matrices(rot_l, all_cost_matrix, file_name):
 def main(args):
 
     # data load (line json, RM)
-    data_folder = os.path.join(fnames.output_dir, args.dataset)
+    data_folder = os.path.join(f"{fnames.output_dir}_{args.pieces}x{args.pieces}", args.dataset)
     hough_output = os.path.join(data_folder, args.puzzle, fnames.lines_output_name, args.method)
     pieces_files = os.listdir(hough_output)
     n = len(pieces_files)
@@ -281,8 +247,12 @@ def main(args):
                 im2 = pieces_files[f2]  # read image 2
                 alfa2, r2, s21, s22, b21, b22 = read_info(hough_output, im2)
 
+                a_dist0 = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
+                a_dist =  np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
+                a_gamma = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
+
                 if len(alfa1) == 0 and len(alfa2) == 0:
-                    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + cfg.max_dist/2  # new mod
+                    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + cfg.max_dist  # new mod
                 else:
                     R_cost, a_dist, a_gamma, a_dist0 = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, b11, b12,
                                                  b21, b22, cfg)
@@ -292,14 +262,6 @@ def main(args):
                 All_dist0[:, :, :, :, :, f2, f1] = a_dist0
                 All_dist [:, :, :, :, :, f2, f1] = a_dist
                 All_gamma[:, :, :, :, :, f2, f1] = a_gamma
-
-                # if len(alfa2) == 0:
-                #     R_norm = np.zeros((m.shape[1], m.shape[1], len(rot)))
-                # else:
-                #     # # compute matrix of matching costs
-                #     R_cost = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s22, b11, b12, b21, b22, cfg)
-                #     All_cost[:, :, :, f2, f1] = R_cost
-                #     R_norm = np.maximum(1 - R_cost / cfg.rmax, 0)
 
             All_norm_cost[:, :, :, f2, f1] = R_norm
 
@@ -312,7 +274,7 @@ def main(args):
         R_line[:, :, :, jj, jj] = -1
 
     # save output
-    output_folder = os.path.join(fnames.output_dir, args.dataset, args.puzzle, fnames.cm_output_name)
+    output_folder = os.path.join(f"{fnames.output_dir}_{args.pieces}x{args.pieces}", args.dataset, args.puzzle, fnames.cm_output_name)
     os.makedirs(output_folder, exist_ok=True)
     filename = f'{output_folder}\\CM_lines_{args.method}_p'
     mdic = {"R_line": R_line, "label": "label"}
@@ -336,7 +298,6 @@ def main(args):
         #visualize_matrices(rot_layer, All_norm_cost)
         visualize_matrices(rot_layer, R_line, file_vis_name)
 
-
     return All_cost, All_norm_cost, R_line, All_dist, All_gamma, All_dist0
 
 
@@ -346,13 +307,12 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='manual_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture
     parser.add_argument('--puzzle', type=str, default='lines5', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # Hough, FLD
+    parser.add_argument('--penalty', type=int, default=-1,
+                        help='penalty (leave -1 to use the one from the config file)')
+    parser.add_argument('--pieces', type=int, default=4,
+                        help='number of pieces (per side)')  # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
 
     args = parser.parse_args()
-
-    # if args.dataset == 'repair':
-    #     import configs.puzzle_from_fragments_cfg as cfg
-    # else:
-    #     import configs.puzzle_from_image_cfg as cfg ###
 
     # main(args)
     All_cost, All_norm_cost, R_line, All_dist, All_gamma, All_dist0 = main(args)
