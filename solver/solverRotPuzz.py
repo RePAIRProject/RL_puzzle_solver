@@ -7,7 +7,7 @@ from scipy import signal
 from scipy.ndimage import rotate, shift
 from PIL import Image
 import os
-import configs.puzzle_from_image_cfg as cfg
+import configs.puzzle_from_image_cfg_exp as cfg
 
 
 def initialization(R):  # (R, anc, anc_rot, nh, nw):
@@ -131,8 +131,9 @@ def solver_rot_puzzle(R, p, T, iter, visual):
                 q2 = (q1 + no_patches * Z * 1)  # *0.5
                 q[:, :, zi, i] = q2
         pq = p * q
-        e = 0.00000001
-        p_new = pq / (np.sum(pq, axis=(0, 1, 2))+e)
+        e = 1e-11
+        p_new = pq / (np.sum(pq, axis=(0, 1, 2)))
+        p_new = np.where(np.isnan(p_new), 0, p_new)
         pay = np.sum(p_new * q)
         #pay = np.sum(pq)
         payoff[t] = pay
@@ -256,10 +257,10 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
 
 ## MAIN ##
 
-dataset_name = "architecture"
-puzzle_name = '0'
+dataset_name ='manual_lines'
+puzzle_name = 'lines5'  #'pablo-picasso_still-life-with-guitar-1942'
 
-mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p0.mat')
+mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p.mat')
 pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\pieces')
 
 R = mat['R_line']
@@ -287,7 +288,7 @@ fin_sol = all_sol[f-1]
 fin_im1 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
 import matplotlib.pyplot as plt
-solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\{dataset_name}\{puzzle_name}\solution')
+solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\solution')
 os.makedirs(solution_folder, exist_ok=True)
 
 final_solution = os.path.join(solution_folder, 'final.png')

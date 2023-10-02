@@ -125,6 +125,8 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
                 # return intersections
                 useful_lines_alfa1 = alfa1[intersections1]
                 useful_lines_rho1 = r1[intersections1]
+                useful_lines_s11 = s11[intersections1]
+                useful_lines_s12 = s12[intersections1]
 
                 # check if line2 crosses the polygon1
                 intersections2 = line_poligon_intersec([0, 0], z, s21, s22, cfg)  # z_p1 = [0,0],  z_l2 = z
@@ -146,6 +148,8 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
                 #         intersections.append(True)
                 useful_lines_alfa2 = alfa2[intersections2]
                 useful_lines_rho2 = r2[intersections2]
+                useful_lines_s21 = s21[intersections2]
+                useful_lines_s22 = s22[intersections2]
 
                 n_lines_f1 = useful_lines_alfa1.shape[0]
                 n_lines_f2 = useful_lines_alfa2.shape[0]
@@ -186,7 +190,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
                                 (R_new1 ** 2 + R_new3 ** 2 - 2 * np.abs(R_new1 * R_new3) * np.cos(gamma)))
                             dist2 = np.sqrt(
                                 (R_new2 ** 2 + R_new4 ** 2 - 2 * np.abs(R_new2 * R_new4) * np.cos(gamma)))
-                            cost0 = (dist1 + dist2)
+                            cost0 = (dist1 + dist2)/2
 
                             # thresholding
                             if coef < cfg.thr_coef:
@@ -367,5 +371,3 @@ if __name__ == '__main__':
     #     draw(i)
     #     plt.show()
     #################
-
-
