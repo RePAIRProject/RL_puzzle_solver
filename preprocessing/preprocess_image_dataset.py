@@ -1,7 +1,7 @@
 import cv2 
 import pdb 
 from configs import folder_names as fnames 
-from configs import puzzle_from_image_cfg as cfg
+from configs import puzzle_from_image_cfg_8 as cfg
 import os
 import argparse 
 import numpy as np 
@@ -9,7 +9,7 @@ import numpy as np
 def main(args):
 
     images = os.path.join(fnames.data_path, args.dataset, fnames.images_folder)
-    puzzle_image_folder = os.path.join(fnames.output_dir, args.dataset) #, fnames.pieces_folder)
+    puzzle_image_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", args.dataset) #, fnames.pieces_folder)
     for image_name in os.listdir(images):
         image = cv2.imread(os.path.join(fnames.data_path, args.dataset, fnames.images_folder, image_name))
         if cfg.scaling_method == 'resize':

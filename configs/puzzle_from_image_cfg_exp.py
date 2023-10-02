@@ -29,7 +29,6 @@ distance_threshold = 2
 # segments
 border_tolerance = piece_size // 60
 
-
 ### LINE MATCHING                  ## OLD VALUES
 thr_coef = 0.05
 max_dist = 11

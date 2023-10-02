@@ -8,7 +8,7 @@ import scipy.io
 import os
 from configs import folder_names as fnames
 import shapely
-import configs.puzzle_from_image_cfg_exp as cfg
+import configs.puzzle_from_image_cfg_8 as cfg
 import pdb 
 
 def read_info(folder, image):
@@ -235,7 +235,7 @@ def visualize_matrices(rot_l, all_cost_matrix, file_name):
 def main(args):
 
     # data load (line json, RM)
-    data_folder = os.path.join(fnames.output_dir, args.dataset)
+    data_folder = os.path.join(f"{fnames.output_dir}_{args.pieces}x{args.pieces}", args.dataset)
     hough_output = os.path.join(data_folder, args.puzzle, fnames.lines_output_name, args.method)
     pieces_files = os.listdir(hough_output)
     json_files = [piece_file for piece_file in pieces_files if piece_file[-4:] == 'json']
@@ -302,7 +302,7 @@ def main(args):
         R_line[:, :, :, jj, jj] = -1
 
     # save output
-    output_folder = os.path.join(fnames.output_dir, args.dataset, args.puzzle, fnames.cm_output_name)
+    output_folder = os.path.join(fnames.output_dir, args.dataset, args.puzzle, f"{fnames.cm_output_name}_{cfg.num_patches_side}x{cfg.num_patches_side}")
     os.makedirs(output_folder, exist_ok=True)
     filename = os.path.join(output_folder, f'CM_lines_{args.method}_p{cfg.mismatch_penalty}')
     mdic = {"R_line": R_line, "label": "label"}
@@ -327,6 +327,7 @@ if __name__ == '__main__':
     parser.add_argument('--puzzle', type=str, default='lines1', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # Hough, FLD
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
+    parser.add_argument('--pieces', type=int, default=8, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     args = parser.parse_args()
     # if args.dataset == 'repair':
     #     import configs.puzzle_from_fragments_cfg as cfg
