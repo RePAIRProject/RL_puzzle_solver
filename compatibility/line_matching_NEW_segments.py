@@ -10,7 +10,7 @@ import os
 from configs import folder_names as fnames
 import shapely
 import configs.puzzle_from_image_cfg_exp as cfg
-
+import pdb 
 import skgeom as sg
 from skgeom.draw import draw
 
@@ -210,6 +210,7 @@ def main(args):
     hough_output = os.path.join(data_folder, args.puzzle, fnames.lines_output_name, args.method)
     pieces_files = os.listdir(hough_output)
     json_files = [piece_file for piece_file in pieces_files if piece_file[-4:] == 'json']
+    json_files.sort()
     n = len(json_files)
     if args.penalty > 0:
         cfg.mismatch_penalty = args.penalty
@@ -295,7 +296,7 @@ def main(args):
 
     # visualize compatibility matrices
     for rot_layer in [0]:
-        file_vis_name = f'{output_folder}\\CM_image_rot{rot_layer}_p'
+        file_vis_name = os.path.join(output_folder, f'CM_image_rot{rot_layer}_p{cfg.mismatch_penalty}')
         #visualize_matrices(rot_layer, All_cost)
         #visualize_matrices(rot_layer, All_norm_cost)
         visualize_matrices(rot_layer, R_line, file_vis_name)
