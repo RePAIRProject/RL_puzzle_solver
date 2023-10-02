@@ -104,6 +104,29 @@ python compatibility/shape_compatibility.py --urm --puzzle puzzle_name
 ```
 Here, you can add `--urm` if you use the regions matrix (computed using the script) to speed up calculations. Otherwise, remove `--urm` to calculate fully the matrix (much slower).
 
+## Full pipeline (example)
+
+#### Create pieces
+```bash
+python preprocessing/preprocess_image_dataset.py -d manual_lines
+```
+
+#### Detect lines (using deepLSD)
+```bash
+python detect_lines_compatibility.py -rf /home/lucap/code/RL_puzzle_solver -d manual_lines
+```
+
+#### Compute compatibility
+```bash
+python compatibility/line_matching_segments.py --dataset manual_lines --puzzle lines1
+```
+
+#### Solver
+```bash
+python solver/solverRotPuzzArgs.py --dataset manual_lines --puzzle lines1
+```
+
+
 # 4) Known Issues
 
 ***Problem with input and output data folders path?***

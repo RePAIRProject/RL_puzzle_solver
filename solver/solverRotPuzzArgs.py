@@ -263,15 +263,15 @@ def main(args):
     method = args.method
     num_pieces = args.pieces
 
-    mat = scipy.io.loadmat(os.path.join(fnames.output_dir, dataset_name, puzzle_name, f"{fnames.cm_output_name}_{num_pieces}x{num_pieces}", f'CM_lines_{method}_p{args.penalty}.mat'))
+    mat = scipy.io.loadmat(os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f"{fnames.cm_output_name}_{num_pieces}x{num_pieces}", f'CM_lines_{method}_p{args.penalty}.mat'))
     #mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p0.mat')
-    pieces_folder = os.path.join(fnames.output_dir, dataset_name, puzzle_name, f"{fnames.pieces_folder}_{num_pieces}x{num_pieces}")
-    only_lines_pieces_folder = os.path.join(fnames.output_dir, dataset_name, puzzle_name, f"{fnames.lines_output_name}_{num_pieces}x{num_pieces}", method, 'lines_only')
+    pieces_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f"{fnames.pieces_folder}")
+    only_lines_pieces_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
     #pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\pieces')
 
     R = mat['R_line']
 
-    pdb.set_trace()
+    #pdb.set_trace()
     pieces_files = os.listdir(pieces_folder)
     pieces_excl = []
     # pieces_excl = np.array([3,4,7,8,11,15]);
@@ -293,7 +293,7 @@ def main(args):
     fin_sol = all_sol[f-1]
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
-    solution_folder = os.path.join(fnames.output_dir, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_{num_pieces}x{num_pieces}_pen{args.penalty}')
+    solution_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f'{fnames.solution_folder_name}_{num_pieces}x{num_pieces}_pen{args.penalty}')
     os.makedirs(solution_folder, exist_ok=True)
 
     final_solution = os.path.join(solution_folder, 'final.png')
@@ -356,9 +356,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
     parser.add_argument('--dataset', type=str, default='manual_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture
     parser.add_argument('--puzzle', type=str, default='lines1', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--penalty', type=int, default=0, help='penalty value used')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--penalty', type=int, default=20, help='penalty value used')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method used for compatibility')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--pieces', type=int, default=8, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--pieces', type=int, default=4, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     args = parser.parse_args()
 
     main(args)

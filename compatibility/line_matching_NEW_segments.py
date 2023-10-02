@@ -209,8 +209,10 @@ def main(args):
     data_folder = os.path.join(f"{fnames.output_dir}_{args.pieces}x{args.pieces}", args.dataset)
     hough_output = os.path.join(data_folder, args.puzzle, fnames.lines_output_name, args.method)
     pieces_files = os.listdir(hough_output)
-    n = len(pieces_files)
-
+    json_files = [piece_file for piece_file in pieces_files if piece_file[-4:] == 'json']
+    n = len(json_files)
+    if args.penalty > 0:
+        cfg.mismatch_penalty = args.penalty
     # rm_name = 'RM_shape_repair_g28_101x101x24x10x10.mat'
     rm_name = f'RM_{args.dataset}.mat'
     mat = scipy.io.loadmat(os.path.join(data_folder, rm_name))
@@ -241,10 +243,10 @@ def main(args):
             if f1 == f2:
                 R_norm = np.zeros((m.shape[1], m.shape[1], len(rot)))-1
             else:
-                im1 = pieces_files[f1]  # read image 1
+                im1 = json_files[f1]  # read image 1
                 alfa1, r1, s11, s12, b11, b12 = read_info(hough_output, im1)
 
-                im2 = pieces_files[f2]  # read image 2
+                im2 = json_files[f2]  # read image 2
                 alfa2, r2, s21, s22, b21, b22 = read_info(hough_output, im2)
 
                 a_dist0 = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
@@ -276,17 +278,17 @@ def main(args):
     # save output
     output_folder = os.path.join(f"{fnames.output_dir}_{args.pieces}x{args.pieces}", args.dataset, args.puzzle, fnames.cm_output_name)
     os.makedirs(output_folder, exist_ok=True)
-    filename = f'{output_folder}\\CM_lines_{args.method}_p'
+    filename = os.path.join(output_folder, f'CM_lines_{args.method}_p{cfg.mismatch_penalty}')
     mdic = {"R_line": R_line, "label": "label"}
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, R_line)
 
-    filename = f'{output_folder}\\CM_dist_{args.method}_p'
+    filename = os.path.join(output_folder, f'CM_dist_{args.method}_p{cfg.mismatch_penalty}')
     mdic = {"All_dist": All_dist, "label": "label"}
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, All_dist)
 
-    filename = f'{output_folder}\\CM_gamma_{args.method}_p'
+    filename = os.path.join(output_folder, f'CM_gamma_{args.method}_p{cfg.mismatch_penalty}')
     mdic = {"All_gamma": All_gamma, "label": "label"}
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, All_gamma)

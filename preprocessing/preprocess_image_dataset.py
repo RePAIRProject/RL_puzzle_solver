@@ -1,7 +1,7 @@
 import cv2 
 import pdb 
 from configs import folder_names as fnames 
-from configs import puzzle_from_image_cfg_8 as cfg
+from configs import puzzle_from_image_cfg as cfg
 import os
 import argparse 
 import numpy as np 
