@@ -132,7 +132,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
 
                 if n_lines_f1 == 0 and n_lines_f2 == 0:
                     # tot_cost = 0
-                    tot_cost = cfg.max_dist   # accept with some cost
+                    tot_cost = cfg.max_dist*2   # accept with some cost
 
                 elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                     n_lines = (np.max([n_lines_f1, n_lines_f2]))
@@ -250,12 +250,11 @@ def main(args):
                 im2 = json_files[f2]  # read image 2
                 alfa2, r2, s21, s22, b21, b22 = read_info(hough_output, im2)
 
-                a_dist0 = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
-                a_dist =  np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
-                a_gamma = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
-
                 if len(alfa1) == 0 and len(alfa2) == 0:
-                    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + cfg.max_dist  # new mod
+                    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + cfg.max_dist*2    # new mod
+                    a_dist0 = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))+0.01 #check
+                    a_dist = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
+                    a_gamma = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
                 else:
                     R_cost, a_dist, a_gamma, a_dist0 = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, b11, b12,
                                                  b21, b22, cfg)
@@ -308,11 +307,11 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
     parser.add_argument('--dataset', type=str, default='manual_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture
-    parser.add_argument('--puzzle', type=str, default='lines5', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--puzzle', type=str, default='lines4', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # Hough, FLD
     parser.add_argument('--penalty', type=int, default=-1,
                         help='penalty (leave -1 to use the one from the config file)')
-    parser.add_argument('--pieces', type=int, default=4,
+    parser.add_argument('--pieces', type=int, default=8,
                         help='number of pieces (per side)')  # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
 
     args = parser.parse_args()
