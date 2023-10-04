@@ -13,17 +13,34 @@ import configs.puzzle_from_image_cfg_exp as cfg
 def initialization(R):  # (R, anc, anc_rot, nh, nw):
     # Initialize reconstruction plan
     no_patches = R.shape[3]
-    st = R.shape[0]
-    Y = round(cfg.nh * (st - 1) + 1)
-    X = round(cfg.nw * (st - 1) + 1)
-    Z = R.shape[2]
+
+    # # Re-Pair
+    # st = R.shape[0]
+    # Y = round(cfg.nh * (st - 1) + 1)
+    # X = round(cfg.nw * (st - 1) + 1)
+    # Z = R.shape[2]
+
+    # # Toy Puzzle (with o without initial anchor)
+    anc = cfg.init_anc
+    n_side = cfg.num_patches_side
+    #n_side = np.round(R.shape[4]**(1/2))
+
+    if anc:
+        st = R.shape[0]
+        Y = (n_side-1) * 2 - 1
+        X = (n_side-1) * 2 - 1
+        Z = R.shape[2]
+    else:
+        Y = n_side
+        X = n_side
+        Z = R.shape[2]
 
     # initialize assigment matrix
     p = np.ones((Y, X, Z, no_patches)) / (Y * X) # uniform distributed p
     init_pos = np.zeros((no_patches, 3)).astype(int)
 
     # place initial anchor
-    anc = cfg.init_anc
+
     if anc:
         y0 = round(Y / 2)
         x0 = round(X / 2)   # position for anchored patch (center)
@@ -244,13 +261,19 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
 
         cc = cfg.p_hs
         ids = (pos[i, :2] * step + cc).astype(int)
-        if np.min(pos[i, :2]) > 0:
-            if pos.shape[1] == 3:
-                rot = z_rot[pos[i, 2]]
-                Im = rotate(Im, rot, reshape=False, mode='constant')
-            fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
-                                                                                       ids[0] - cc:ids[0] + cc + 1,
-                                                                                       ids[1] - cc:ids[1] + cc + 1, :]
+        if pos.shape[1] == 3:
+            rot = z_rot[pos[i, 2]]
+            Im = rotate(Im, rot, reshape=False, mode='constant')
+        fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
+                                                                                   ids[0] - cc:ids[0] + cc + 1,
+                                                                                   ids[1] - cc:ids[1] + cc + 1, :]
+        # if np.min(pos[i, :2]) > 0:
+        #     if pos.shape[1] == 3:
+        #         rot = z_rot[pos[i, 2]]
+        #         Im = rotate(Im, rot, reshape=False, mode='constant')
+        #     fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
+        #                                                                                ids[0] - cc:ids[0] + cc + 1,
+        #                                                                                ids[1] - cc:ids[1] + cc + 1, :]
 
     return fin_im
 
@@ -258,10 +281,11 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
 ## MAIN ##
 
 dataset_name ='manual_lines'
-puzzle_name = 'lines5'  #'pablo-picasso_still-life-with-guitar-1942'
+puzzle_name = 'lines4'  #'pablo-picasso_still-life-with-guitar-1942'
+output = 'output_8x8'
 
-mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p.mat')
-pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\pieces')
+mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\\{output}\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p{cfg.mismatch_penalty}.mat')
+pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\\{output}\\{dataset_name}\\{puzzle_name}\pieces')
 
 R = mat['R_line']
 
@@ -288,11 +312,11 @@ fin_sol = all_sol[f-1]
 fin_im1 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
 import matplotlib.pyplot as plt
-solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\solution')
+solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output_8x8\\{dataset_name}\\{puzzle_name}\solution')
 os.makedirs(solution_folder, exist_ok=True)
 
 final_solution = os.path.join(solution_folder, 'final.png')
-plt.figure(figsize=(16,16))
+plt.figure(figsize=(16, 16))
 plt.title("Final solution including all piece")
 plt.imshow((fin_im1 * 255).astype(np.uint8))
 plt.tight_layout()
@@ -323,6 +347,11 @@ plt.plot(f_pay, 'r', linewidth=1)
 plt.tight_layout()
 plt.savefig(alc_path)
 
+filename = os.path.join(solution_folder, f'p_final')
+mdic = {"p_final": p_final, "label": "label"}
+scipy.io.savemat(f'{filename}.mat', mdic)
+np.save(filename, p_final)
+
 # intermediate steps
 frames_folders = os.path.join(solution_folder, 'frames_all')
 os.makedirs(frames_folders, exist_ok=True)
@@ -344,3 +373,4 @@ for ff in range(f):
     im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
     im_rec = np.clip(im_rec,0,1)
     plt.imsave(frame_path, im_rec)
+

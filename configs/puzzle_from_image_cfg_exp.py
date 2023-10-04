@@ -1,9 +1,9 @@
-
+import numpy as np
 scaling_method = 'crop+resize'
 
 ### PREPARATION
 # pieces and grid
-piece_size = 301
+piece_size = 151 # 301
 p_hs = piece_size // 2
 xy_grid_points = 3
 theta_grid_points = 4
@@ -14,7 +14,7 @@ xy_step = pairwise_comp_range / (comp_matrix_shape[0] - 1)
 theta_step = (360 / comp_matrix_shape[2])
 
 # preprocess
-num_patches_side = 4
+num_patches_side = 8 # 4
 img_size = num_patches_side*piece_size
 
 ## lines
@@ -31,22 +31,24 @@ border_tolerance = piece_size // 60
 
 ### LINE MATCHING
 thr_coef = 0.08
-max_dist = 5
+max_dist = 3
 badmatch_penalty = 30
 mismatch_penalty = 20
 rmax = 11
 
 ### initialization P
-init_anc = 6
+
+#init_anc = []
+init_anc = ((np.ceil(num_patches_side/2) - 1)*(num_patches_side+1)).astype(int)  # anchor central patch
 init_anc_rot = 0
-nh = 4  # 2 for repair
-nw = 4  # 2 for repair
+nh = 3  # 2 for repair
+nw = 3  # 2 for repair
 
 ### SOLVER
 Tfirst = 200
-Tnext = 200
-Tmax = 7000
-anc_fix_tresh = 0.75
+Tnext = 100
+Tmax = 10000
+anc_fix_tresh = 0.55
 
 
 
