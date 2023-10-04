@@ -139,12 +139,12 @@ def solver_rot_puzzle(R, p, T, iter, visual):
                     for zj in range(Z):
                         rj_z = rr[:, :, zj, j]
                         pj_z = p[:, :, zj, j]
-                        #cc = cv.filter2D(pj_z,-1, np.rot90(rj_z, 2)) #solves inverse order ??? - wrong!!
+                        # cc = cv.filter2D(pj_z,-1, np.rot90(rj_z, 2)) # solves inverse order ??? - wrong!!
                         cc = cv.filter2D(pj_z, -1, rj_z)
                         c1[:, :, zj, j] = cc;
 
                 q1 = np.sum(c1, axis=(2, 3))
-                #q2 = (q1 != 0) * (q1 + no_patches * Z * 0.5) ##new_experiment
+                # q2 = (q1 != 0) * (q1 + no_patches * Z * 0.5) ## new_experiment
                 q2 = (q1 + no_patches * Z * 1)  # *0.5
                 q[:, :, zi, i] = q2
         pq = p * q
