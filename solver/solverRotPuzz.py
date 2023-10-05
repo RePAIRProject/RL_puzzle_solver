@@ -50,7 +50,7 @@ def initialization(R):  # (R, anc, anc_rot, nh, nw):
         p[y0, x0, z0, anc] = 1  # anchor selected patch
         init_pos[anc, :] = ([y0, x0, z0])
 
-    return p, init_pos
+    return p, init_pos, x0, y0, z0
 
 def RePairPuzz(R, p):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
     na = 1
@@ -302,7 +302,7 @@ R = R[:, :, :, :, pieces_incl]
 
 R = R[:, :, [0,1], :, :]  # select rotation
 
-p_initial, init_pos = initialization(R)  #(R, anc, anc_rot, nh, nw)
+p_initial, init_pos, x0, y0, z0 = initialization(R)  #(R, anc, anc_rot, nh, nw)
 all_pay, all_sol, all_anc, p_final, eps, iter = RePairPuzz(R, p_initial) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
 ## visualize results
@@ -348,9 +348,9 @@ plt.tight_layout()
 plt.savefig(alc_path)
 
 filename = os.path.join(solution_folder, f'p_final')
-mdic = {"p_final": p_final, "label": "label"}
+mdic = {"p_final": p_final, "label": "label", "anchor": cfg.init_anc, "anc_position": [x0, y0, z0]}
 scipy.io.savemat(f'{filename}.mat', mdic)
-np.save(filename, p_final)
+np.save(filename, mdic)
 
 # intermediate steps
 frames_folders = os.path.join(solution_folder, 'frames_all')

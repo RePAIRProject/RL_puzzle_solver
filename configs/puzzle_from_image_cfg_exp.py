@@ -47,7 +47,7 @@ nw = 3  # 2 for repair
 ### SOLVER
 Tfirst = 200
 Tnext = 100
-Tmax = 10000
+Tmax = 7000
 anc_fix_tresh = 0.55
 
 
