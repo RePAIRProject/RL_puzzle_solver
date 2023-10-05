@@ -52,14 +52,15 @@ def initialization(R):  # (R, anc, anc_rot, nh, nw):
 
     return p, init_pos, x0, y0, z0
 
-def RePairPuzz(R, p):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
-    na = 1
+def RePairPuzz(R, p, na):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
+    #na = 1
     fase = 0
     new_anc = []
     na_new = na
     f = 0
     iter = 0
     eps = np.inf
+
     all_pay = []
     all_sol = []
     all_anc = []
@@ -70,6 +71,8 @@ def RePairPuzz(R, p):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
             na = na_new
             fase += 1
             p = np.ones((Y, X, Z, noPatches)) / (Y * X)
+            if iter>3000:
+                p = p+cfg.pert_noise
             for jj in range(noPatches):
                 if new_anc[jj, 0] != 0:
                     y = new_anc[jj, 0]
@@ -113,7 +116,7 @@ def RePairPuzz(R, p):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
 
     #all_sol[fase]=fin_sol ##
     all_sol.append(fin_sol)
-    return all_pay, all_sol, all_anc, p_final, eps, iter
+    return all_pay, all_sol, all_anc, p_final, eps, iter, na_new
 
 def solver_rot_puzzle(R, p, T, iter, visual):
     Z = R.shape[2]
@@ -280,8 +283,8 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
 
 ## MAIN ##
 
-dataset_name ='manual_lines'
-puzzle_name = 'lines4'  #'pablo-picasso_still-life-with-guitar-1942'
+dataset_name ='manual_lines' # exp_50_lines manual_lines
+puzzle_name = 'colors'  #'pablo-picasso_still-life-with-guitar-1942' image_0
 output = 'output_8x8'
 
 mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\\{output}\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p{cfg.mismatch_penalty}.mat')
@@ -303,7 +306,10 @@ R = R[:, :, :, :, pieces_incl]
 R = R[:, :, [0,1], :, :]  # select rotation
 
 p_initial, init_pos, x0, y0, z0 = initialization(R)  #(R, anc, anc_rot, nh, nw)
-all_pay, all_sol, all_anc, p_final, eps, iter = RePairPuzz(R, p_initial) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
+na = 27
+all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
+
+##
 
 ## visualize results
 f = len(all_sol)
@@ -373,4 +379,5 @@ for ff in range(f):
     im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
     im_rec = np.clip(im_rec,0,1)
     plt.imsave(frame_path, im_rec)
+
 

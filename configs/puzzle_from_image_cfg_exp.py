@@ -48,6 +48,7 @@ nw = 3  # 2 for repair
 Tfirst = 200
 Tnext = 100
 Tmax = 7000
+pert_noise = 1e-11
 anc_fix_tresh = 0.55
 
 
