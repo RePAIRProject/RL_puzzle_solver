@@ -12,7 +12,7 @@ def main(args):
     else:
         dataset_path = args.output
 
-    for num_lines in range(args.min_lines, args.max_lines):
+    for num_lines in range(args.min_lines, args.max_lines+1):
         cur_folder = os.path.join(dataset_path, f'images_with_{num_lines}_{args.type}')
         os.makedirs(cur_folder, exist_ok=True)
         print(f'creating images with {num_lines} {args.type}..', end='\r')

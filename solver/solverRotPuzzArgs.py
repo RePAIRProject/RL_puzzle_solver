@@ -7,7 +7,7 @@ from scipy import signal
 from scipy.ndimage import rotate, shift
 from PIL import Image
 import os
-import configs.puzzle_from_image_cfg as cfg
+import configs.unified_cfg as cfg
 import configs.folder_names as fnames
 import argparse
 import matplotlib.pyplot as plt

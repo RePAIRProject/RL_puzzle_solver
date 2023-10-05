@@ -43,6 +43,6 @@ def generate_random_point(ranges, distribution='uniform', on_axis=-1):
         p1x = np.random.uniform(0, ranges[0])
         p1y = ranges[1]
 
-    p1 = np.round(np.array([p1x, p1y])) #.astype(int)
+    p1 = np.round(np.array([p1x, p1y])).astype(int)
 
     return p1
