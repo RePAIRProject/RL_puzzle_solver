@@ -9,7 +9,8 @@ import scipy.io
 import os
 from configs import folder_names as fnames
 import shapely
-import configs.puzzle_from_image_cfg_exp as cfg
+#import configs.puzzle_from_image_cfg_exp as cfg
+import configs.unified_cfg as cfg
 import pdb 
 import skgeom as sg
 from skgeom.draw import draw
@@ -306,8 +307,8 @@ def main(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('--dataset', type=str, default='manual_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture,exp_50_lines
-    parser.add_argument('--puzzle', type=str, default='colors', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--dataset', type=str, default='exp_30_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture,exp_50_lines
+    parser.add_argument('--puzzle', type=str, default='image_0', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # Hough, FLD
     parser.add_argument('--penalty', type=int, default=-1,
                         help='penalty (leave -1 to use the one from the config file)')

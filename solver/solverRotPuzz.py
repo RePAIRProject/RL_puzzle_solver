@@ -7,7 +7,8 @@ from scipy import signal
 from scipy.ndimage import rotate, shift
 from PIL import Image
 import os
-import configs.puzzle_from_image_cfg_exp as cfg
+#import configs.puzzle_from_image_cfg_exp as cfg
+import configs.unified_cfg as cfg
 
 
 def initialization(R):  # (R, anc, anc_rot, nh, nw):

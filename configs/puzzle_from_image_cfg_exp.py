@@ -33,8 +33,8 @@ border_tolerance = piece_size // 60
 thr_coef = 0.08
 max_dist = 3
 badmatch_penalty = 30
-mismatch_penalty = 20
-rmax = 11
+mismatch_penalty = 10 #20
+rmax = 15 #11
 
 ### initialization P
 
