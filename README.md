@@ -126,6 +126,17 @@ python compatibility/line_matching_segments.py --dataset manual_lines --puzzle l
 python solver/solverRotPuzzArgs.py --dataset manual_lines --puzzle lines1
 ```
 
+#### Evaluation
+```bash
+python metrics/evaluate.py
+```
+
+#### Solve a puzzle (given pieces and detected lines)
+```bash
+sh solve_puzzle.sh
+```
+
+
 
 # 4) Known Issues
 
