@@ -27,7 +27,7 @@ def main(args):
 
     # read p matrix
     solution_matrix = scipy.io.loadmat(args.solution)
-    anchor = solution_matrix['anchor']
+    anchor = ((np.ceil(cfg.num_patches_side/2) - 1)*(cfg.num_patches_side+1)).astype(int) #solution_matrix['anchor'] 
     anchor = np.squeeze(anchor).item()
     anchor_pos = solution_matrix['anc_position']
     anchor_pos = np.squeeze(anchor_pos)
@@ -51,31 +51,36 @@ def main(args):
             drawing_correctness[pos_x, pos_y] = (255)
 
     #print(num_correct_pieces)
+    
+    plt.figure(figsize=(32,32))
+    Y, X, Z, _ = p_final.shape
+    pieces_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", args.dataset, args.puzzle, f"{fnames.pieces_folder}")
+    pieces_files = os.listdir(pieces_folder)
+    pieces_files.sort()
+    pieces_excl = []
+    all_pieces = np.arange(len(pieces_files))
+    pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
+    sol = get_sol_from_p(p_final=p_final)
+    plt.subplot(131)
+    plt.title('reference image', fontsize=32)
+    im_ref = plt.imread(os.path.join(fnames.data_path, args.dataset, fnames.images_folder, f"{args.puzzle}.jpg"))
+    plt.imshow(im_ref, cmap='gray')
+    fin_im1 = reconstruct_puzzle(sol, Y, X, pieces, pieces_files, pieces_folder)
+    start_point = offset_start*cfg.piece_size
+    end_point = start_point + num_pieces*cfg.piece_size
+    solution_img = fin_im1[start_point[0]:end_point[0], start_point[1]:end_point[1]]
+    plt.subplot(133)
+    plt.title(f'solution of the puzzle ({num_correct_pieces / (num_pieces**2) * 100:.03f} %)', fontsize=32)
+    plt.imshow(solution_img)
+    plt.subplot(132)
+    plt.title(f'correct pieces (yellow): {num_correct_pieces}', fontsize=32)
+    plt.imshow(drawing_correctness)
     if args.visualize is True:
-        plt.figure(figsize=(32,32))
-        Y, X, Z, _ = p_final.shape
-        pieces_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", args.dataset, args.puzzle, f"{fnames.pieces_folder}")
-        pieces_files = os.listdir(pieces_folder)
-        pieces_files.sort()
-        pieces_excl = []
-        all_pieces = np.arange(len(pieces_files))
-        pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
-        sol = get_sol_from_p(p_final=p_final)
-        plt.subplot(131)
-        plt.title('reference image', fontsize=32)
-        im_ref = plt.imread(os.path.join(fnames.data_path, args.dataset, fnames.images_folder, f"{args.puzzle}.jpg"))
-        plt.imshow(im_ref)
-        fin_im1 = reconstruct_puzzle(sol, Y, X, pieces, pieces_files, pieces_folder)
-        start_point = offset_start*cfg.piece_size
-        end_point = start_point + num_pieces*cfg.piece_size
-        solution_img = fin_im1[start_point[0]:end_point[0], start_point[1]:end_point[1]]
-        plt.subplot(133)
-        plt.title(f'solution of the puzzle ({num_correct_pieces / (num_pieces**2) * 100:.03f} %)', fontsize=32)
-        plt.imshow(solution_img)
-        plt.subplot(132)
-        plt.title(f'correct pieces (yellow): {num_correct_pieces}', fontsize=32)
-        plt.imshow(drawing_correctness)
         plt.show()
+    else:
+        outputpath = os.path.join(args.output, 'visualization_solution.png')
+        plt.tight_layout()
+        plt.savefig(outputpath)
         #pdb.set_trace()
     return 1
 
@@ -84,6 +89,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
     parser.add_argument('--dataset', type=str, default='manual_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture
     parser.add_argument('-pz', '--puzzle', type=str, default='lines1', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('-o', '--output', type=str, default='', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('-s', '--solution', type=str, default='solution.mat', help='path to the final solution matrix')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('-pc', '--pieces', type=int, default=8, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('-v', '--visualize', default=False, action='store_true', help='use to show the solution')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life

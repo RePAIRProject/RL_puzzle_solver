@@ -1,4 +1,4 @@
-import pdb 
+
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
@@ -10,22 +10,38 @@ import os
 import configs.unified_cfg as cfg
 import configs.folder_names as fnames
 import argparse
-import matplotlib.pyplot as plt
 
 def initialization(R):  # (R, anc, anc_rot, nh, nw):
     # Initialize reconstruction plan
     no_patches = R.shape[3]
-    st = R.shape[0]
-    Y = round(cfg.nh * (st - 1) + 1)
-    X = round(cfg.nw * (st - 1) + 1)
-    Z = R.shape[2]
+
+    # # Re-Pair
+    # st = R.shape[0]
+    # Y = round(cfg.nh * (st - 1) + 1)
+    # X = round(cfg.nw * (st - 1) + 1)
+    # Z = R.shape[2]
+
+    # # Toy Puzzle (with o without initial anchor)
+    anc = cfg.init_anc
+    n_side = cfg.num_patches_side
+    #n_side = np.round(R.shape[4]**(1/2))
+
+    if anc:
+        st = R.shape[0]
+        Y = (n_side-1) * 2 - 1
+        X = (n_side-1) * 2 - 1
+        Z = R.shape[2]
+    else:
+        Y = n_side
+        X = n_side
+        Z = R.shape[2]
 
     # initialize assigment matrix
     p = np.ones((Y, X, Z, no_patches)) / (Y * X) # uniform distributed p
     init_pos = np.zeros((no_patches, 3)).astype(int)
 
     # place initial anchor
-    anc = cfg.init_anc
+
     if anc:
         y0 = round(Y / 2)
         x0 = round(X / 2)   # position for anchored patch (center)
@@ -35,16 +51,17 @@ def initialization(R):  # (R, anc, anc_rot, nh, nw):
         p[y0, x0, z0, anc] = 1  # anchor selected patch
         init_pos[anc, :] = ([y0, x0, z0])
 
-    return p, init_pos
+    return p, init_pos, x0, y0, z0
 
-def RePairPuzz(R, p):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
-    na = 1
+def RePairPuzz(R, p, na):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
+    #na = 1
     fase = 0
     new_anc = []
     na_new = na
     f = 0
     iter = 0
     eps = np.inf
+
     all_pay = []
     all_sol = []
     all_anc = []
@@ -55,6 +72,8 @@ def RePairPuzz(R, p):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
             na = na_new
             fase += 1
             p = np.ones((Y, X, Z, noPatches)) / (Y * X)
+            if iter>3000:
+                p = p+cfg.pert_noise
             for jj in range(noPatches):
                 if new_anc[jj, 0] != 0:
                     y = new_anc[jj, 0]
@@ -72,14 +91,17 @@ def RePairPuzz(R, p):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
         I = np.zeros((noPatches, 1))
         m = np.zeros((noPatches, 1))
 
-        print('\n')
-
         for j in range(noPatches):
             pj_final = p[:, :, :, j]
             m[j, 0], I[j, 0] = np.max(pj_final), np.argmax(pj_final)
 
         I = I.astype(int)
         i1, i2, i3 = np.unravel_index(I, pj_final.shape)
+
+        print("#" * 70)
+        print("ITERATION", iter)
+        print("#" * 70)
+        
 
         fin_sol = np.concatenate((i1, i2, i3), axis=1)
         print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
@@ -100,7 +122,7 @@ def RePairPuzz(R, p):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
 
     #all_sol[fase]=fin_sol ##
     all_sol.append(fin_sol)
-    return all_pay, all_sol, all_anc, p_final, eps, iter
+    return all_pay, all_sol, all_anc, p_final, eps, iter, na_new
 
 def solver_rot_puzzle(R, p, T, iter, visual):
     Z = R.shape[2]
@@ -126,17 +148,18 @@ def solver_rot_puzzle(R, p, T, iter, visual):
                     for zj in range(Z):
                         rj_z = rr[:, :, zj, j]
                         pj_z = p[:, :, zj, j]
-                        #cc = cv.filter2D(pj_z,-1, np.rot90(rj_z, 2)) #solves inverse order ??? - wrong!!
+                        # cc = cv.filter2D(pj_z,-1, np.rot90(rj_z, 2)) # solves inverse order ??? - wrong!!
                         cc = cv.filter2D(pj_z, -1, rj_z)
                         c1[:, :, zj, j] = cc;
 
                 q1 = np.sum(c1, axis=(2, 3))
-                #q2 = (q1 != 0) * (q1 + no_patches * Z * 0.5) ##new_experiment
+                # q2 = (q1 != 0) * (q1 + no_patches * Z * 0.5) ## new_experiment
                 q2 = (q1 + no_patches * Z * 1)  # *0.5
                 q[:, :, zi, i] = q2
         pq = p * q
-        e = 0.00000001
-        p_new = pq / (np.sum(pq, axis=(0, 1, 2))+e)
+        e = 1e-11
+        p_new = pq / (np.sum(pq, axis=(0, 1, 2)))
+        p_new = np.where(np.isnan(p_new), 0, p_new)
         pay = np.sum(p_new * q)
         #pay = np.sum(pq)
         payoff[t] = pay
@@ -245,16 +268,24 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
 
         cc = cfg.p_hs
         ids = (pos[i, :2] * step + cc).astype(int)
-        if np.min(pos[i, :2]) > 0:
-            if pos.shape[1] == 3:
-                rot = z_rot[pos[i, 2]]
-                Im = rotate(Im, rot, reshape=False, mode='constant')
-            fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
-                                                                                       ids[0] - cc:ids[0] + cc + 1,
-                                                                                       ids[1] - cc:ids[1] + cc + 1, :]
+        if pos.shape[1] == 3:
+            rot = z_rot[pos[i, 2]]
+            Im = rotate(Im, rot, reshape=False, mode='constant')
+        fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
+                                                                                   ids[0] - cc:ids[0] + cc + 1,
+                                                                                   ids[1] - cc:ids[1] + cc + 1, :]
+        # if np.min(pos[i, :2]) > 0:
+        #     if pos.shape[1] == 3:
+        #         rot = z_rot[pos[i, 2]]
+        #         Im = rotate(Im, rot, reshape=False, mode='constant')
+        #     fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
+        #                                                                                ids[0] - cc:ids[0] + cc + 1,
+        #                                                                                ids[1] - cc:ids[1] + cc + 1, :]
 
     return fin_im
 
+
+## MAIN ##
 def main(args):
     ## MAIN ##
 
@@ -270,7 +301,8 @@ def main(args):
     #pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\pieces')
     R = mat['R_line']
 
-    #pdb.set_trace()
+
+
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
     pieces_excl = []
@@ -284,8 +316,11 @@ def main(args):
 
     R = R[:, :, [0,1], :, :]  # select rotation
 
-    p_initial, init_pos = initialization(R)  #(R, anc, anc_rot, nh, nw)
-    all_pay, all_sol, all_anc, p_final, eps, iter = RePairPuzz(R, p_initial) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
+    p_initial, init_pos, x0, y0, z0 = initialization(R)  #(R, anc, anc_rot, nh, nw)
+    na = 27
+    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
+
+    ##
 
     ## visualize results
     f = len(all_sol)
@@ -293,11 +328,13 @@ def main(args):
     fin_sol = all_sol[f-1]
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
+    import matplotlib.pyplot as plt
+    #solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output_8x8\\{dataset_name}\\{puzzle_name}\solution')
+    #os.makedirs(solution_folder, exist_ok=True)
     solution_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f'{fnames.solution_folder_name}_pen{args.penalty}')
     os.makedirs(solution_folder, exist_ok=True)
-
     final_solution = os.path.join(solution_folder, 'final.png')
-    plt.figure(figsize=(16,16))
+    plt.figure(figsize=(16, 16))
     plt.title("Final solution including all piece")
     plt.imshow((fin_im1 * 255).astype(np.uint8))
     plt.tight_layout()
@@ -328,6 +365,11 @@ def main(args):
     plt.tight_layout()
     plt.savefig(alc_path)
 
+    filename = os.path.join(solution_folder, f'p_final')
+    mdic = {"p_final": p_final, "label": "label", "anchor": cfg.init_anc, "anc_position": [x0, y0, z0]}
+    scipy.io.savemat(f'{filename}.mat', mdic)
+    np.save(filename, mdic)
+
     # intermediate steps
     frames_folders = os.path.join(solution_folder, 'frames_all')
     os.makedirs(frames_folders, exist_ok=True)
@@ -351,6 +393,7 @@ def main(args):
         plt.imsave(frame_path, im_rec)
 
 
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
@@ -362,4 +405,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     main(args)
-

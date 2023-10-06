@@ -19,3 +19,12 @@ data
 
 # except the lines segmentation maps!
 #!/MotifSegmentation/Lines/*.png
+
+# output files!
+output/*
+output_*/
+
+# pycache
+**/__pycache__/**
+
+
