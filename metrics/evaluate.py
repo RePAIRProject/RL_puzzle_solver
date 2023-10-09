@@ -63,6 +63,9 @@ def main(args):
     print(f"Neighbours: {neighbours_val} %")
     print(f"Pixel-wise ({measure}): {MSError}\n")
 
+    solved_img_output_path = os.path.join(output_folder, 'solved.jpg')
+    cv2.imwrite(solved_img_output_path, squared_solution_img*255)
+
     plt.figure(figsize=(32,32))
     plt.suptitle(f"{args.puzzle}\ncorrect pieces = {num_correct_pieces / (num_pieces**2) * 100:.03f}%\nneighbours = {neighbours_val * 100:.03f}%\nMSE = {MSError*100:.03f}", fontsize=52)
     plt.subplot(131)
