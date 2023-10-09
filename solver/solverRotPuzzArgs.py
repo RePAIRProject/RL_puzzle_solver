@@ -274,6 +274,7 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
         fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
                                                                                    ids[0] - cc:ids[0] + cc + 1,
                                                                                    ids[1] - cc:ids[1] + cc + 1, :]
+                                                                           
         # if np.min(pos[i, :2]) > 0:
         #     if pos.shape[1] == 3:
         #         rot = z_rot[pos[i, 2]]
