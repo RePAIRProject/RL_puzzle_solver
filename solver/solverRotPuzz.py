@@ -284,8 +284,8 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
 
 ## MAIN ##
 
-dataset_name ='manual_lines' # exp_50_lines manual_lines
-puzzle_name = 'colors'  #'pablo-picasso_still-life-with-guitar-1942' image_0
+dataset_name ='exp_50_lines' # exp_50_lines manual_lines
+puzzle_name = 'image_0'  #'pablo-picasso_still-life-with-guitar-1942' image_0
 output = 'output_8x8'
 
 mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\\{output}\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p{cfg.mismatch_penalty}.mat')
