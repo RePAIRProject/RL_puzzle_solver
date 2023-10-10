@@ -101,9 +101,11 @@ def line_poligon_intersec(z_p, z_l, s1, s2, cfg):
 
 def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s22, b11, b12, b21, b22, cfg):
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+
     a_dist0 = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
     a_dist = np.zeros ((40, 40, m.shape[1], m.shape[1], len(rot)))
     a_gamma = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
+    a_cost  = np.zeros((40, 40, m.shape[1], m.shape[1], len(rot)))
 
     for t in range(len(rot)):
         theta = -rot[t] * np.pi / 180  # rotation of F2
@@ -175,7 +177,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2,  r1, r2, s11, s12, s21, s
 
                     # save all_dist and gammas coef
                     a_dist0[:n_lines_f1, :n_lines_f2, iy, ix, t] = dist_matrix0
-                    a_dist[:n_lines_f1,  :n_lines_f2, iy, ix, t] = dist_matrix
+                    a_dist [:n_lines_f1, :n_lines_f2, iy, ix, t] = dist_matrix
                     a_gamma[:n_lines_f1, :n_lines_f2, iy, ix, t] = gamma_matrix
 
                 R_cost[iy, ix, t] = tot_cost
@@ -202,6 +204,17 @@ def visualize_matrices(rot_l, all_cost_matrix, file_name):
     plt.close()
     # plt.show()
 
+def save_R4_matrix(All_cost):
+    R = All_cost
+    a = np.zeros((64, 4))
+    R4 = np.zeros((64, 64, 4))
+    for j in range(64):
+
+        R4[j, :, 2] = R[1, 2, 0, :, j]  # right
+        R4[j, :, 3] = R[0, 1, 0, :, j]  # up
+        R4[j, :, 0] = R[1, 0, 0, :, j]  # lift
+        R4[j, :, 1] = R[2, 1, 0, :, j]  # down
+    return R4
 
 # MAIN
 def main(args):
@@ -276,6 +289,8 @@ def main(args):
     for jj in range(n):
         R_line[:, :, :, jj, jj] = -1
 
+    R4 = save_R4_matrix(All_cost)
+
     # save output
     output_folder = os.path.join(f"{fnames.output_dir}_{args.pieces}x{args.pieces}", args.dataset, args.puzzle, fnames.cm_output_name)
     os.makedirs(output_folder, exist_ok=True)
@@ -283,6 +298,11 @@ def main(args):
     mdic = {"R_line": R_line, "label": "label"}
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, R_line)
+
+    filename = os.path.join(output_folder, f'CM_cost_{args.method}_p{cfg.mismatch_penalty}')
+    mdic = {"All_cost": All_cost, "label": "label"}
+    scipy.io.savemat(f'{filename}.mat', mdic)
+    np.save(filename, All_cost)
 
     filename = os.path.join(output_folder, f'CM_dist_{args.method}_p{cfg.mismatch_penalty}')
     mdic = {"All_dist": All_dist, "label": "label"}
@@ -293,6 +313,11 @@ def main(args):
     mdic = {"All_gamma": All_gamma, "label": "label"}
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, All_gamma)
+
+    filename = os.path.join(output_folder, f'R4_mat{args.method}_p{cfg.mismatch_penalty}')
+    mdic = {"R4": R4, "label": "label"}
+    scipy.io.savemat(f'{filename}.mat', mdic)
+    np.save(filename, R4)
 
     # visualize compatibility matrices
     for rot_layer in [0]:
@@ -307,7 +332,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('--dataset', type=str, default='exp_30_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture,exp_50_lines
+    parser.add_argument('--dataset', type=str, default='exp_50_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture,exp_50_lines
     parser.add_argument('--puzzle', type=str, default='image_0', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # Hough, FLD
     parser.add_argument('--penalty', type=int, default=-1,
