@@ -209,15 +209,11 @@ def save_R4_matrix(All_cost):
     a = np.zeros((64, 4))
     R4 = np.zeros((64, 64, 4))
     for j in range(64):
-        a[j, 0] = np.max(R[1, 2, 0, :, j])  # right
-        a[j, 1] = np.max(R[0, 1, 0, :, j])  # up
-        a[j, 2] = np.max(R[1, 0, 0, :, j])  # lift
-        a[j, 3] = np.max(R[2, 1, 0, :, j])  # down
 
-        R4[j, :, 0] = R[1, 2, 0, :, j]  # right
-        R4[j, :, 1] = R[0, 1, 0, :, j]  # up
-        R4[j, :, 2] = R[1, 0, 0, :, j]  # lift
-        R4[j, :, 3] = R[2, 1, 0, :, j]  # down
+        R4[j, :, 2] = R[1, 2, 0, :, j]  # right
+        R4[j, :, 3] = R[0, 1, 0, :, j]  # up
+        R4[j, :, 0] = R[1, 0, 0, :, j]  # lift
+        R4[j, :, 1] = R[2, 1, 0, :, j]  # down
     return R4
 
 # MAIN
