@@ -19,7 +19,7 @@ def get_sol_from_p(p_final):
     return fin_sol 
 
 
-def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start):
+def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start, num_pieces_side):
     # reconstruct visual solution
     Y, X, Z, _ = p_final.shape
     pieces_files = os.listdir(pieces_folder)
@@ -29,8 +29,8 @@ def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start)
     pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
     sol = get_sol_from_p(p_final=p_final)
     solution_img = reconstruct_puzzle(sol, Y, X, pieces, pieces_files, pieces_folder)
-    start_point = offset_start*piece_size
-    end_point = start_point + len(pieces)*piece_size
+    start_point = (offset_start)*piece_size
+    end_point = start_point + (num_pieces_side)*piece_size
     squared_solution_img = solution_img[start_point[0]:end_point[0], start_point[1]:end_point[1]]
     return squared_solution_img
 
@@ -43,12 +43,14 @@ def simple_evaluation(p_final, num_pieces_side, offset_start):
         pos_y = j % num_pieces_side
         pos_x = j // num_pieces_side
         correct_position = offset_start + np.asarray([pos_x, pos_y])
-        print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position}")
+        
         #pdb.set_trace()
         if np.isclose(np.sum(np.abs(np.subtract(estimated_pos_piece, correct_position))), 0):
             num_correct_pieces += 1
             drawing_correctness[pos_x, pos_y] = (255)
-    
+            print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [CORRECT ({pos_x}, {pos_y})]")
+        else:
+            print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [WRONG ({pos_x}, {pos_y})]")
     return num_correct_pieces, drawing_correctness
 
 
@@ -106,7 +108,11 @@ def neighbor_comparison(solution_mat, num_pieces_side, offset_start):
 
 def pixel_difference(gt_img, proposed_solution, measure='rmse'):
 
-    if np.abs(np.sum(np.subtract(gt_img.shape, proposed_solution.shape))) > 0:
+    if len(gt_img.shape) > 2:
+        gt_img = gt_img[:,:,0]
+    if len(proposed_solution.shape) > 2:
+        proposed_solution = proposed_solution[:,:,0]
+    if np.abs(np.sum(np.subtract(gt_img.shape[:2], proposed_solution.shape[:2]))) > 0:
         gt_img = cv2.resize(gt_img, proposed_solution.shape[:2])
     if measure == 'rmse':
         pdiff = np.sqrt(np.mean(np.square(gt_img - proposed_solution)))

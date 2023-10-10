@@ -30,7 +30,7 @@ def main(args):
     anchor_pos_in_puzzle = np.asarray([anchor % num_pieces, anchor // num_pieces])
     offset_start = anchor_pos[:2] - anchor_pos_in_puzzle
     pieces_folder = os.path.join(root_path, f"{fnames.pieces_folder}")
-    squared_solution_img = get_visual_solution_from_p(p_final, pieces_folder, cfg.piece_size, offset_start)
+    squared_solution_img = get_visual_solution_from_p(p_final, pieces_folder, cfg.piece_size, offset_start, num_pieces)
 
     # ref image
     im_ref = plt.imread(os.path.join(fnames.data_path, args.dataset, fnames.images_folder, f"{args.puzzle}.jpg"))
@@ -59,15 +59,15 @@ def main(args):
         json.dump(eval_res, jf, indent=2)
 
     print("\nEVALUATION")
-    print(f"Correct: {perc_correct} %")
-    print(f"Neighbours: {neighbours_val} %")
+    print(f"Correct: {perc_correct * 100:.03f} %")
+    print(f"Neighbours: {neighbours_val * 100:.03f} %")
     print(f"Pixel-wise ({measure}): {MSError}\n")
 
     solved_img_output_path = os.path.join(output_folder, 'solved.jpg')
     cv2.imwrite(solved_img_output_path, squared_solution_img*255)
 
     plt.figure(figsize=(32,32))
-    plt.suptitle(f"{args.puzzle}\ncorrect pieces = {num_correct_pieces / (num_pieces**2) * 100:.03f}%\nneighbours = {neighbours_val * 100:.03f}%\nMSE = {MSError*100:.03f}", fontsize=52)
+    plt.suptitle(f"{args.puzzle}\ncorrect pieces = {num_correct_pieces / (num_pieces**2) * 100:.03f}%\nneighbours = {neighbours_val * 100:.03f}%\nMSE = {MSError:.03f}", fontsize=52)
     plt.subplot(131)
     plt.title('reference image', fontsize=32)
     plt.imshow(im_ref, cmap='gray')
