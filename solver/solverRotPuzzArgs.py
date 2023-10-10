@@ -11,7 +11,7 @@ import configs.unified_cfg as cfg
 import configs.folder_names as fnames
 import argparse
 
-def initialization(R):  # (R, anc, anc_rot, nh, nw):
+def initialization(R, anc=-1):  # (R, anc, anc_rot, nh, nw):
     # Initialize reconstruction plan
     no_patches = R.shape[3]
 
@@ -22,7 +22,8 @@ def initialization(R):  # (R, anc, anc_rot, nh, nw):
     # Z = R.shape[2]
 
     # # Toy Puzzle (with o without initial anchor)
-    anc = cfg.init_anc
+    if anc < 0:
+        anc = cfg.init_anc
     n_side = cfg.num_patches_side
     #n_side = np.round(R.shape[4]**(1/2))
 
@@ -294,6 +295,7 @@ def main(args):
     puzzle_name = args.puzzle
     method = args.method
     num_pieces = args.pieces
+    
 
     mat = scipy.io.loadmat(os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}_p{args.penalty}.mat'))
     #mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p0.mat')
@@ -317,7 +319,7 @@ def main(args):
 
     R = R[:, :, [0,1], :, :]  # select rotation
 
-    p_initial, init_pos, x0, y0, z0 = initialization(R)  #(R, anc, anc_rot, nh, nw)
+    p_initial, init_pos, x0, y0, z0 = initialization(R, args.anchor)  #(R, anc, anc_rot, nh, nw)
     na = 27
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
@@ -332,7 +334,7 @@ def main(args):
     import matplotlib.pyplot as plt
     #solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output_8x8\\{dataset_name}\\{puzzle_name}\solution')
     #os.makedirs(solution_folder, exist_ok=True)
-    solution_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f'{fnames.solution_folder_name}')
+    solution_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anc{anchor}')
     # _pen{args.penalty}')
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, 'final.png')
@@ -404,6 +406,7 @@ if __name__ == '__main__':
     parser.add_argument('--penalty', type=int, default=20, help='penalty value used')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method used for compatibility')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--pieces', type=int, default=4, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     args = parser.parse_args()
 
     main(args)

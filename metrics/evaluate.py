@@ -47,7 +47,7 @@ def main(args):
 
     
     # output folder 
-    output_folder = os.path.join(root_path, fnames.solution_folder_name)
+    output_folder = os.path.join(root_path, fnames.evaluation_folder_name)
 
     eval_res = {
         'correct': perc_correct,
