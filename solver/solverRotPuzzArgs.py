@@ -11,6 +11,7 @@ import configs.unified_cfg as cfg
 import configs.folder_names as fnames
 import argparse
 
+
 def initialization(R, anc=-1):  # (R, anc, anc_rot, nh, nw):
     # Initialize reconstruction plan
     no_patches = R.shape[3]
@@ -27,7 +28,7 @@ def initialization(R, anc=-1):  # (R, anc, anc_rot, nh, nw):
     n_side = cfg.num_patches_side
     #n_side = np.round(R.shape[4]**(1/2))
 
-    if anc:
+    if anc > -1:
         st = R.shape[0]
         Y = (n_side-1) * 2 - 1
         X = (n_side-1) * 2 - 1
@@ -43,7 +44,7 @@ def initialization(R, anc=-1):  # (R, anc, anc_rot, nh, nw):
 
     # place initial anchor
 
-    if anc:
+    if anc > -1:
         y0 = round(Y / 2)
         x0 = round(X / 2)   # position for anchored patch (center)
         z0 = cfg.init_anc_rot        # rotation for anchored patch
