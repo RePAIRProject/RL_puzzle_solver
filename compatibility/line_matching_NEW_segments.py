@@ -12,8 +12,6 @@ import shapely
 #import configs.puzzle_from_image_cfg_exp as cfg
 import configs.unified_cfg as cfg
 import pdb 
-import skgeom as sg
-from skgeom.draw import draw
 
 
 def read_info(folder, image):
