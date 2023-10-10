@@ -13,7 +13,7 @@ pieces=8
 anchor=0
 
 # CONDA ENVIRONMENT
-conda activate repair
+#conda activate repair
 
 echo "compatibility.."
 python compatibility/line_matching_NEW_segments.py --dataset $dataset --puzzle $puzzle --pieces $pieces #--penalty $3
