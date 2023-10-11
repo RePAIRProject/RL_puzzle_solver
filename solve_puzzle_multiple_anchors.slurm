@@ -1,8 +1,9 @@
 #!/bin/bash
 
 #SBATCH --job-name=64anchors_50lines_puzzle		   		# Job name
-#SBATCH --ntasks=64                 				    # Run on a single CPU
-#SBATCH --output=RL_logs/64anchors_50lines_img0.log			    # Standard output and error log
+#SBATCH --ntasks=1                 				        # Run on a single CPU
+#SBATCH --cpus-per-task=1
+#SBATCH --output=RL_logs/64anchors_50lines_img1.log			    # Standard output and error log
 
 # PYTHONPATH
 export PYTHONPATH=${PYTHONPATH}:/home/luca.palmieri/code/RL_puzzle_solver
