@@ -13,19 +13,19 @@ pieces=8
 
 # CONDA ENVIRONMENT
 #conda activate repair
-for image in 'image_6' 'image_7' 'image_8' 'image_9' 'image_10'
+for puzzle in 'image_6' 'image_7' 'image_8' 'image_9' 'image_10' 
 do
-    echo "\nIMAGE $image"
+    echo "\nIMAGE $puzzle"
     echo "compatibility.."
     python compatibility/line_matching_NEW_segments.py --dataset $dataset --puzzle $puzzle --pieces $pieces #--penalty $3
 
     echo "solver.."
     for anchor in {0..64}
     do 
-        echo "solver with anchor $anchor"
+        echo "\nsolver with anchor $anchor"
         python solver/solverRotPuzzArgs.py --dataset $dataset --puzzle $puzzle --pieces $pieces --anchor $anchor --verbosity 0
 
-        echo "evaluating with anchor $anchor"
+        echo "\nevaluating with anchor $anchor"
         python metrics/evaluate.py --dataset $dataset --puzzle $puzzle --num_pieces $pieces --anchor $anchor
 
     done
