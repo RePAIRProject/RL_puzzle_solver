@@ -374,7 +374,7 @@ def main(args):
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, mdic)
 
-    if args.save_everything is True:
+    if args.save_frames is True:
         # intermediate steps
         frames_folders = os.path.join(solution_folder, 'frames_all')
         os.makedirs(frames_folders, exist_ok=True)
@@ -409,6 +409,8 @@ if __name__ == '__main__':
     parser.add_argument('--pieces', type=int, default=4, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
+    parser.add_argument('--verbosity', type=int, default=1, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+
     args = parser.parse_args()
 
     main(args)
