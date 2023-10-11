@@ -52,13 +52,14 @@ def main(args):
     
     # output folder 
     output_folder = os.path.join(root_path, fnames.evaluation_folder_name)
+    os.makedirs(output_folder, exist_ok=True)
 
     eval_res = {
         'correct': perc_correct,
         'neighbours': neighbours_val,
         'pixel': MSError
     }
-    json_output_path = os.path.join(output_folder, 'evaluation_anchor{anc}.json')
+    json_output_path = os.path.join(output_folder, f'evaluation_anchor{anc}.json')
     with open(json_output_path, 'w') as jf: 
         json.dump(eval_res, jf, indent=2)
 
@@ -67,7 +68,7 @@ def main(args):
     print(f"Neighbours: {neighbours_val * 100:.03f} %")
     print(f"Pixel-wise ({measure}): {MSError}\n")
 
-    solved_img_output_path = os.path.join(output_folder, 'solved_anchor{anc}.jpg')
+    solved_img_output_path = os.path.join(output_folder, f'solved_anchor{anc}.jpg')
     cv2.imwrite(solved_img_output_path, squared_solution_img*255)
 
     plt.figure(figsize=(32,32))
