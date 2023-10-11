@@ -374,27 +374,28 @@ def main(args):
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, mdic)
 
-    # intermediate steps
-    frames_folders = os.path.join(solution_folder, 'frames_all')
-    os.makedirs(frames_folders, exist_ok=True)
+    if args.save_everything is True:
+        # intermediate steps
+        frames_folders = os.path.join(solution_folder, 'frames_all')
+        os.makedirs(frames_folders, exist_ok=True)
 
-    for ff in range(f):
-        frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
-        cur_sol = all_sol[ff]
-        im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
-        im_rec = np.clip(im_rec,0,1)
-        plt.imsave(frame_path, im_rec)
+        for ff in range(f):
+            frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
+            cur_sol = all_sol[ff]
+            im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
+            im_rec = np.clip(im_rec,0,1)
+            plt.imsave(frame_path, im_rec)
 
 
-    frames_folders = os.path.join(solution_folder, 'frames_anc')
-    os.makedirs(frames_folders, exist_ok=True)
+        frames_folders = os.path.join(solution_folder, 'frames_anc')
+        os.makedirs(frames_folders, exist_ok=True)
 
-    for ff in range(f):
-        frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
-        cur_sol = all_anc[ff]
-        im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
-        im_rec = np.clip(im_rec,0,1)
-        plt.imsave(frame_path, im_rec)
+        for ff in range(f):
+            frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
+            cur_sol = all_anc[ff]
+            im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
+            im_rec = np.clip(im_rec,0,1)
+            plt.imsave(frame_path, im_rec)
 
 
 
@@ -407,6 +408,7 @@ if __name__ == '__main__':
     parser.add_argument('--method', type=str, default='deeplsd', help='method used for compatibility')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--pieces', type=int, default=4, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     args = parser.parse_args()
 
     main(args)

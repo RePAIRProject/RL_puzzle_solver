@@ -302,20 +302,24 @@ def main(args):
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, All_cost)
 
-    filename = os.path.join(output_folder, f'CM_dist_{args.method}_p{cfg.mismatch_penalty}')
-    mdic = {"All_dist": All_dist, "label": "label"}
-    scipy.io.savemat(f'{filename}.mat', mdic)
-    np.save(filename, All_dist)
-
-    filename = os.path.join(output_folder, f'CM_gamma_{args.method}_p{cfg.mismatch_penalty}')
-    mdic = {"All_gamma": All_gamma, "label": "label"}
-    scipy.io.savemat(f'{filename}.mat', mdic)
-    np.save(filename, All_gamma)
-
     filename = os.path.join(output_folder, f'R4_mat{args.method}_p{cfg.mismatch_penalty}')
     mdic = {"R4": R4, "label": "label"}
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, R4)
+
+
+    if args.save_everything is True:
+        # additional output for debug (check correctness)
+        filename = os.path.join(output_folder, f'CM_dist_{args.method}_p{cfg.mismatch_penalty}')
+        mdic = {"All_dist": All_dist, "label": "label"}
+        scipy.io.savemat(f'{filename}.mat', mdic)
+        np.save(filename, All_dist)
+
+        filename = os.path.join(output_folder, f'CM_gamma_{args.method}_p{cfg.mismatch_penalty}')
+        mdic = {"All_gamma": All_gamma, "label": "label"}
+        scipy.io.savemat(f'{filename}.mat', mdic)
+        np.save(filename, All_gamma)
+    
 
     # visualize compatibility matrices
     for rot_layer in [0]:
@@ -337,7 +341,7 @@ if __name__ == '__main__':
                         help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--pieces', type=int, default=8,
                         help='number of pieces (per side)')  # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-
+    parser.add_argument('--save_everything', default=False, action='store_true', help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
     args = parser.parse_args()
 
     # main(args)
