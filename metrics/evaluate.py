@@ -21,7 +21,7 @@ def main(args):
         anc = cfg.init_anc
 
     # read p matrix
-    solution_path = os.path.join(root_path, f"{fnames.solution_folder_name}"_anchor{args.anchor}, 'p_final.mat')
+    solution_path = os.path.join(root_path, f"{fnames.solution_folder_name}_anchor{args.anchor}", 'p_final.mat')
     solution_matrix = scipy.io.loadmat(solution_path)
     anchor = ((np.ceil(cfg.num_patches_side/2) - 1)*(cfg.num_patches_side+1)).astype(int) #solution_matrix['anchor'] 
     anchor = np.squeeze(anchor).item()
