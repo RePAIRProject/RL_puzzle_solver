@@ -55,7 +55,7 @@ def initialization(R, anc=-1):  # (R, anc, anc_rot, nh, nw):
 
     return p, init_pos, x0, y0, z0
 
-def RePairPuzz(R, p, na):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
+def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
     #na = 1
     fase = 0
     new_anc = []
@@ -88,7 +88,7 @@ def RePairPuzz(R, p, na):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
             T = cfg.Tfirst
         else:
             T = cfg.Tnext
-        p, payoff, eps, iter = solver_rot_puzzle(R, p, T, iter, 0)
+        p, payoff, eps, iter = solver_rot_puzzle(R, p, T, iter, 0, verbosity=verbosity)
 
         I = np.zeros((noPatches, 1))
         m = np.zeros((noPatches, 1))
@@ -100,18 +100,20 @@ def RePairPuzz(R, p, na):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
         I = I.astype(int)
         i1, i2, i3 = np.unravel_index(I, pj_final.shape)
 
-        print("#" * 70)
-        print("ITERATION", iter)
-        print("#" * 70)
-        
-
         fin_sol = np.concatenate((i1, i2, i3), axis=1)
-        print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
-
+        if verbosity > 0:
+            print("#" * 70)
+            print("ITERATION", iter)
+            print("#" * 70)
+            print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
+        else:
+            if iter % 1000 == 0:
+                print("iteration", iter)
         a = (m > cfg.anc_fix_tresh).astype(int)
         new_anc = np.array(fin_sol*a)
         na_new = np.sum(a)
-        print(new_anc)
+        if verbosity > 0:
+            print(new_anc)
 
         f += 1
         all_pay.append(payoff)
@@ -126,7 +128,7 @@ def RePairPuzz(R, p, na):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
     all_sol.append(fin_sol)
     return all_pay, all_sol, all_anc, p_final, eps, iter, na_new
 
-def solver_rot_puzzle(R, p, T, iter, visual):
+def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
     Z = R.shape[2]
     no_patches = R.shape[3]
     #all_p = [None] * T
@@ -166,13 +168,16 @@ def solver_rot_puzzle(R, p, T, iter, visual):
         #pay = np.sum(pq)
         payoff[t] = pay
         eps = abs(pay - payoff[t-1])
-        print(f'Iteration {t}: pay = {pay:.05f}, eps = {eps:.05f}', end='\r')
+        if verbosity > 0:
+            if verbosity == 1:
+                print(f'Iteration {t}: pay = {pay:.05f}, eps = {eps:.05f}', end='\r')
+            else:
+                print(f'Iteration {t}: pay = {pay:.05f}, eps = {eps:.05f}')
         p = np.round(p_new, 8)
-        #if visual == 1:
-            #all_p[t] = p
-
-    #all_p = all_p[0:t, 0]
-    #payoff = payoff[1:t, 0]
+        # if visual == 1:
+        #     all_p[t] = p
+        # all_p = all_p[0:t, 0]
+        # payoff = payoff[1:t, 0]
     return p, payoff, eps, iter #, all_p
 
 def visualize_result(all_pay, all_sol, all_anc, init_pos, p_final, pieces):
@@ -322,7 +327,7 @@ def main(args):
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, args.anchor)  #(R, anc, anc_rot, nh, nw)
     na = 27
-    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
+    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
     ##
 
