@@ -16,7 +16,7 @@ def main(args):
 
     root_path = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", args.dataset, args.puzzle)
     
-    anc = args.anc
+    anc = args.anchor
     if anc < 0:
         anc = cfg.init_anc
 
