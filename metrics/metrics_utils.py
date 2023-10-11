@@ -34,7 +34,7 @@ def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start,
     squared_solution_img = solution_img[start_point[0]:end_point[0], start_point[1]:end_point[1]]
     return squared_solution_img
 
-def simple_evaluation(p_final, num_pieces_side, offset_start):
+def simple_evaluation(p_final, num_pieces_side, offset_start, verbosity=1):
 
     drawing_correctness = np.zeros((num_pieces_side, num_pieces_side), dtype=np.uint8)
     num_correct_pieces = 0
@@ -48,9 +48,11 @@ def simple_evaluation(p_final, num_pieces_side, offset_start):
         if np.isclose(np.sum(np.abs(np.subtract(estimated_pos_piece, correct_position))), 0):
             num_correct_pieces += 1
             drawing_correctness[pos_x, pos_y] = (255)
-            print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [CORRECT ({pos_x}, {pos_y})]")
+            if verbosity > 0:
+                print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [CORRECT ({pos_x}, {pos_y})]")
         else:
-            print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [WRONG ({pos_x}, {pos_y})]")
+            if verbosity > 0:
+                print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [WRONG ({pos_x}, {pos_y})]")
     return num_correct_pieces, drawing_correctness
 
 

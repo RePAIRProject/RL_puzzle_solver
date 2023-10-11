@@ -23,7 +23,7 @@ echo "solver.."
 for anchor in {0..64}
 do 
     echo "solver with anchor $anchor"
-    python solver/solverRotPuzzArgs.py --dataset $dataset --puzzle $puzzle --pieces $pieces --anchor $anchor
+    python solver/solverRotPuzzArgs.py --dataset $dataset --puzzle $puzzle --pieces $pieces --anchor $anchor --verbosity 0
 
     echo "evaluating with anchor $anchor"
     python metrics/evaluate.py --dataset $dataset --puzzle $puzzle --num_pieces $pieces --anchor $anchor

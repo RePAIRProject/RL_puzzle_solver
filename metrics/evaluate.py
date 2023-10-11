@@ -41,7 +41,7 @@ def main(args):
 
     ### EVALUATION 
     # simple evaluation (# of pieces in correct position)
-    num_correct_pieces, visual_correct = simple_evaluation(p_final, num_pieces, offset_start)
+    num_correct_pieces, visual_correct = simple_evaluation(p_final, num_pieces, offset_start, verbosity=args.verbosity)
     perc_correct = num_correct_pieces / (num_pieces**2)
     # MSE error (pixel-wise difference)
     measure = 'rmse'
@@ -100,6 +100,8 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--num_pieces', type=int, default=8, help='number of pieces (per side)')                  # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('-a', '--anchor', type=int, default=-1, help='anchor piece (index)')                            # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('-v', '--visualize', default=False, action='store_true', help='use to show the solution')       # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    
     args = parser.parse_args()
 
     main(args)
