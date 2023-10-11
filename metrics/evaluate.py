@@ -85,7 +85,7 @@ def main(args):
     if args.visualize is True:
         plt.show()
     else:
-        outputpath = os.path.join(output_folder, 'visualization_solution_anchor{anc}.png')
+        outputpath = os.path.join(output_folder, f'visualization_solution_anchor{anc}.png')
         plt.tight_layout()
         plt.savefig(outputpath)
 
