@@ -334,10 +334,10 @@ def main(args):
 
     #solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output_8x8\\{dataset_name}\\{puzzle_name}\solution')
     #os.makedirs(solution_folder, exist_ok=True)
-    solution_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{anchor}')
+    solution_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{args.anchor}')
     # _pen{args.penalty}')
     os.makedirs(solution_folder, exist_ok=True)
-    final_solution = os.path.join(solution_folder, 'final.png')
+    final_solution = os.path.join(solution_folder, f'final_using_anchor{args.anchor}.png')
     plt.figure(figsize=(16, 16))
     plt.title("Final solution including all piece")
     plt.imshow((fin_im1 * 255).astype(np.uint8))
@@ -349,7 +349,7 @@ def main(args):
     fin_sol = all_anc[f-1]
     fin_im2 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
-    final_solution_anchor = os.path.join(solution_folder, 'final_only_anchor.png')
+    final_solution_anchor = os.path.join(solution_folder, f'final_only_anchor_using_anchor{args.anchor}.png')
     plt.figure(figsize=(16,16))
     plt.title("Final solution including ONLY solved pieces")
     plt.imshow((fin_im2 * 255).astype(np.uint8))
@@ -369,7 +369,7 @@ def main(args):
     plt.tight_layout()
     plt.savefig(alc_path)
 
-    filename = os.path.join(solution_folder, f'p_final')
+    filename = os.path.join(solution_folder, 'p_final')
     mdic = {"p_final": p_final, "label": "label", "anchor": cfg.init_anc, "anc_position": [x0, y0, z0]}
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, mdic)
