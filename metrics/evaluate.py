@@ -16,8 +16,11 @@ def main(args):
 
     root_path = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", args.dataset, args.puzzle)
     
+    if anc < 0:
+        anc = cfg.init_anc
+
     # read p matrix
-    solution_path = os.path.join(root_path, fnames.solution_folder_name, 'p_final.mat')
+    solution_path = os.path.join(root_path, f"{fnames.solution_folder_name}"_anchor{args.anchor}, 'p_final.mat')
     solution_matrix = scipy.io.loadmat(solution_path)
     anchor = ((np.ceil(cfg.num_patches_side/2) - 1)*(cfg.num_patches_side+1)).astype(int) #solution_matrix['anchor'] 
     anchor = np.squeeze(anchor).item()
@@ -86,13 +89,15 @@ def main(args):
 
     return 1
 
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('-d', '--dataset', type=str, default='manual_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture
-    parser.add_argument('-p', '--puzzle', type=str, default='lines1', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('-n', '--num_pieces', type=int, default=8, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('-v', '--visualize', default=False, action='store_true', help='use to show the solution')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('-d', '--dataset', type=str, default='manual_lines', help='dataset folder')                     # repair, wikiart, manual_lines, architecture
+    parser.add_argument('-p', '--puzzle', type=str, default='lines1', help='puzzle folder')                             # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('-n', '--num_pieces', type=int, default=8, help='number of pieces (per side)')                  # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('-a', '--anchor', type=int, default=-1, help='anchor piece (index)')                            # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('-v', '--visualize', default=False, action='store_true', help='use to show the solution')       # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     args = parser.parse_args()
 
     main(args)

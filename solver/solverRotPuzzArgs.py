@@ -332,10 +332,9 @@ def main(args):
     fin_sol = all_sol[f-1]
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
-    import matplotlib.pyplot as plt
     #solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output_8x8\\{dataset_name}\\{puzzle_name}\solution')
     #os.makedirs(solution_folder, exist_ok=True)
-    solution_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anc{anchor}')
+    solution_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{anchor}')
     # _pen{args.penalty}')
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, 'final.png')
