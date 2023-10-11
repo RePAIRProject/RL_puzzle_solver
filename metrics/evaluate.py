@@ -16,6 +16,7 @@ def main(args):
 
     root_path = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", args.dataset, args.puzzle)
     
+    anc = args.anc
     if anc < 0:
         anc = cfg.init_anc
 
@@ -57,7 +58,7 @@ def main(args):
         'neighbours': neighbours_val,
         'pixel': MSError
     }
-    json_output_path = os.path.join(output_folder, 'evaluation.json')
+    json_output_path = os.path.join(output_folder, 'evaluation_anchor{anc}.json')
     with open(json_output_path, 'w') as jf: 
         json.dump(eval_res, jf, indent=2)
 
@@ -66,7 +67,7 @@ def main(args):
     print(f"Neighbours: {neighbours_val * 100:.03f} %")
     print(f"Pixel-wise ({measure}): {MSError}\n")
 
-    solved_img_output_path = os.path.join(output_folder, 'solved.jpg')
+    solved_img_output_path = os.path.join(output_folder, 'solved_anchor{anc}.jpg')
     cv2.imwrite(solved_img_output_path, squared_solution_img*255)
 
     plt.figure(figsize=(32,32))
@@ -83,7 +84,7 @@ def main(args):
     if args.visualize is True:
         plt.show()
     else:
-        outputpath = os.path.join(output_folder, 'visualization_solution.png')
+        outputpath = os.path.join(output_folder, 'visualization_solution_anchor{anc}.png')
         plt.tight_layout()
         plt.savefig(outputpath)
 
