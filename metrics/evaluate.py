@@ -9,7 +9,7 @@ import os
 from solver.solverRotPuzzArgs import reconstruct_puzzle
 import cv2
 from metrics.metrics_utils import get_sol_from_p, get_visual_solution_from_p, simple_evaluation, \
-    pixel_difference, neighbor_comparison
+    pixel_difference, neighbor_comparison, get_offset
 import json 
 
 def main(args):
@@ -23,17 +23,17 @@ def main(args):
     # read p matrix
     solution_path = os.path.join(root_path, f"{fnames.solution_folder_name}_anchor{args.anchor}", 'p_final.mat')
     solution_matrix = scipy.io.loadmat(solution_path)
-    anchor = anc
+    anchor_idx = anc
     # anchor = ((np.ceil(cfg.num_patches_side/2) - 1)*(cfg.num_patches_side+1)).astype(int) #solution_matrix['anchor']
-    anchor = np.squeeze(anchor).item()
+    anchor_idx = np.squeeze(anchor_idx).item()
     anchor_pos = solution_matrix['anc_position']
     anchor_pos = np.squeeze(anchor_pos)
     p_final = solution_matrix['p_final']
 
     # visual solution
     num_pieces = args.num_pieces
-    anchor_pos_in_puzzle = np.asarray([anchor % num_pieces, anchor // num_pieces])
-    offset_start = anchor_pos[:2] - anchor_pos_in_puzzle
+    offset_start = get_offset(anchor_idx, anchor_pos, num_pieces)
+    #anchor_pos[:2] - anchor_pos_in_puzzle
     pieces_folder = os.path.join(root_path, f"{fnames.pieces_folder}")
     squared_solution_img = get_visual_solution_from_p(p_final, pieces_folder, cfg.piece_size, offset_start, num_pieces)
 
@@ -50,7 +50,6 @@ def main(args):
     # neighbours comparison
     neighbours_val = neighbor_comparison(get_sol_from_p(p_final=p_final), num_pieces, offset_start)
 
-    
     # output folder 
     output_folder = os.path.join(root_path, fnames.evaluation_folder_name)
     os.makedirs(output_folder, exist_ok=True)

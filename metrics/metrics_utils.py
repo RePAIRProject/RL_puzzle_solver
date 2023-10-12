@@ -18,6 +18,12 @@ def get_sol_from_p(p_final):
     fin_sol = np.concatenate((i1, i2, i3), axis=1)
     return fin_sol 
 
+def get_offset(anchor_idx, anchor_pos, num_pieces):
+    anchor_in_puzzle_Y = anchor_idx % num_pieces
+    anchor_in_puzzle_X = anchor_idx // num_pieces
+    anchor_pos_in_puzzle = np.asarray([anchor_in_puzzle_Y, anchor_in_puzzle_X])
+    offset_start = anchor_pos[:2] - anchor_pos_in_puzzle
+    return offset_start
 
 def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start, num_pieces_side):
     # reconstruct visual solution
@@ -39,14 +45,14 @@ def simple_evaluation(p_final, num_pieces_side, offset_start, verbosity=1):
     drawing_correctness = np.zeros((num_pieces_side, num_pieces_side), dtype=np.uint8)
     num_correct_pieces = 0
     for j in range(num_pieces_side*num_pieces_side):
-        estimated_pos_piece = np.unravel_index(np.argmax(p_final[:,:,0,j]), p_final[:,:,0,j].shape)
+        estimated_pos_piece = np.unravel_index(np.argmax(p_final[:,:,0,j]), p_final[:,:,0,j].shape)[::-1]
         correct_position_relative = get_xy_position(j, num_pieces_side, offset_start=0)
         #print(correct_position)
         correct_position = correct_position_relative + offset_start
         #pdb.set_trace()
         if np.isclose(np.sum(np.abs(np.subtract(estimated_pos_piece, correct_position))), 0):
             num_correct_pieces += 1
-            drawing_correctness[correct_position_relative[0], correct_position_relative[1]] = (255)
+            drawing_correctness[correct_position_relative[1], correct_position_relative[0]] = (255)
             if verbosity > 0:
                 print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [CORRECT ({correct_position_relative})]")
         else:
@@ -76,7 +82,7 @@ def get_neighbours(piece_idx, num_pieces_side):
 def get_xy_position(piece_idx, num_pieces_side, offset_start):
     pos_y = piece_idx % num_pieces_side
     pos_x = piece_idx // num_pieces_side
-    correct_position = offset_start + np.asarray([pos_x, pos_y])
+    correct_position = offset_start + np.asarray([pos_y, pos_x])
     return correct_position
 
 
