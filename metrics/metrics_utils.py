@@ -40,17 +40,18 @@ def simple_evaluation(p_final, num_pieces_side, offset_start, verbosity=1):
     num_correct_pieces = 0
     for j in range(num_pieces_side*num_pieces_side):
         estimated_pos_piece = np.unravel_index(np.argmax(p_final[:,:,0,j]), p_final[:,:,0,j].shape)
-        correct_position = get_xy_position(j, num_pieces_side, offset_start)
-        
+        correct_position_relative = get_xy_position(j, num_pieces_side, offset_start=0)
+        #print(correct_position)
+        correct_position = correct_position_relative + offset_start
         #pdb.set_trace()
         if np.isclose(np.sum(np.abs(np.subtract(estimated_pos_piece, correct_position))), 0):
             num_correct_pieces += 1
-            drawing_correctness[pos_x, pos_y] = (255)
+            drawing_correctness[correct_position_relative[0], correct_position_relative[1]] = (255)
             if verbosity > 0:
-                print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [CORRECT ({pos_x}, {pos_y})]")
+                print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [CORRECT ({correct_position_relative})]")
         else:
             if verbosity > 0:
-                print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [WRONG ({pos_x}, {pos_y})]")
+                print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [WRONG ({correct_position_relative})]")
     return num_correct_pieces, drawing_correctness
 
 
@@ -73,8 +74,8 @@ def get_neighbours(piece_idx, num_pieces_side):
 
 
 def get_xy_position(piece_idx, num_pieces_side, offset_start):
-    pos_x = piece_idx % num_pieces_side
-    pos_y = piece_idx // num_pieces_side
+    pos_y = piece_idx % num_pieces_side
+    pos_x = piece_idx // num_pieces_side
     correct_position = offset_start + np.asarray([pos_x, pos_y])
     return correct_position
 

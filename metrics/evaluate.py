@@ -69,7 +69,7 @@ def main(args):
     print(f"Neighbours: {neighbours_val * 100:.03f} %")
     print(f"Pixel-wise ({measure}): {MSError}\n")
 
-    solved_img_output_path = os.path.join(output_folder, f'solved_anchor{anc}.jpg')
+    solved_img_output_path = os.path.join(output_folder, f'evaluated_solution_anchor{anc}.jpg')
     cv2.imwrite(solved_img_output_path, squared_solution_img*255)
 
     plt.figure(figsize=(32,32))
