@@ -15,17 +15,17 @@ pieces=8
 #conda activate repair
 for puzzle in 'image_16' 'image_17' 'image_18' 'image_19' 'image_20' 
 do
-    echo "\nIMAGE $puzzle"
+    echo "IMAGE $puzzle"
     echo "compatibility.."
     python compatibility/line_matching_NEW_segments.py --dataset $dataset --puzzle $puzzle --pieces $pieces #--penalty $3
 
     echo "solver.."
     for anchor in {0..64}
     do 
-        echo "\nsolver with anchor $anchor"
+        echo "solver with anchor $anchor"
         python solver/solverRotPuzzArgs.py --dataset $dataset --puzzle $puzzle --pieces $pieces --anchor $anchor --verbosity 0
 
-        echo "\nevaluating with anchor $anchor"
+        echo "evaluating with anchor $anchor"
         python metrics/evaluate.py --dataset $dataset --puzzle $puzzle --num_pieces $pieces --anchor $anchor
 
     done

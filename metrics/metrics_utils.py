@@ -40,9 +40,7 @@ def simple_evaluation(p_final, num_pieces_side, offset_start, verbosity=1):
     num_correct_pieces = 0
     for j in range(num_pieces_side*num_pieces_side):
         estimated_pos_piece = np.unravel_index(np.argmax(p_final[:,:,0,j]), p_final[:,:,0,j].shape)
-        pos_y = j % num_pieces_side
-        pos_x = j // num_pieces_side
-        correct_position = offset_start + np.asarray([pos_x, pos_y])
+        correct_position = get_xy_position(nb_idx, num_pieces_side, offset_start)
         
         #pdb.set_trace()
         if np.isclose(np.sum(np.abs(np.subtract(estimated_pos_piece, correct_position))), 0):
@@ -75,8 +73,8 @@ def get_neighbours(piece_idx, num_pieces_side):
 
 
 def get_xy_position(piece_idx, num_pieces_side, offset_start):
-    pos_y = piece_idx % num_pieces_side
-    pos_x = piece_idx // num_pieces_side
+    pos_x = piece_idx % num_pieces_side
+    pos_y = piece_idx // num_pieces_side
     correct_position = offset_start + np.asarray([pos_x, pos_y])
     return correct_position
 
