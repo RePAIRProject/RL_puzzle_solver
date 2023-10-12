@@ -23,7 +23,8 @@ def main(args):
     # read p matrix
     solution_path = os.path.join(root_path, f"{fnames.solution_folder_name}_anchor{args.anchor}", 'p_final.mat')
     solution_matrix = scipy.io.loadmat(solution_path)
-    anchor = ((np.ceil(cfg.num_patches_side/2) - 1)*(cfg.num_patches_side+1)).astype(int) #solution_matrix['anchor'] 
+    anchor = anc
+    # anchor = ((np.ceil(cfg.num_patches_side/2) - 1)*(cfg.num_patches_side+1)).astype(int) #solution_matrix['anchor']
     anchor = np.squeeze(anchor).item()
     anchor_pos = solution_matrix['anc_position']
     anchor_pos = np.squeeze(anchor_pos)
@@ -44,7 +45,7 @@ def main(args):
     num_correct_pieces, visual_correct = simple_evaluation(p_final, num_pieces, offset_start, verbosity=args.verbosity)
     perc_correct = num_correct_pieces / (num_pieces**2)
     # MSE error (pixel-wise difference)
-    measure = 'rmse'
+    measure = 'mse'
     MSError = pixel_difference(squared_solution_img, im_ref, measure=measure)
     # neighbours comparison
     neighbours_val = neighbor_comparison(get_sol_from_p(p_final=p_final), num_pieces, offset_start)
