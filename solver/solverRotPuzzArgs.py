@@ -12,7 +12,7 @@ import configs.folder_names as fnames
 import argparse
 
 
-def initialization(R, anc=-1):  # (R, anc, anc_rot, nh, nw):
+def initialization(R, anc):  # (R, anc, anc_rot, nh, nw):
     # Initialize reconstruction plan
     no_patches = R.shape[3]
 
@@ -23,35 +23,26 @@ def initialization(R, anc=-1):  # (R, anc, anc_rot, nh, nw):
     # Z = R.shape[2]
 
     # # Toy Puzzle (with o without initial anchor)
-    if anc < 0:
-        anc = cfg.init_anc
+
     n_side = cfg.num_patches_side
     #n_side = np.round(R.shape[4]**(1/2))
 
-    if anc > -1:
-        st = R.shape[0]
-        Y = (n_side-1) * 2 - 1
-        X = (n_side-1) * 2 - 1
-        Z = R.shape[2]
-    else:
-        Y = n_side
-        X = n_side
-        Z = R.shape[2]
+    Y = n_side
+    X = n_side
+    Z = R.shape[2]
 
     # initialize assigment matrix
     p = np.ones((Y, X, Z, no_patches)) / (Y * X) # uniform distributed p
     init_pos = np.zeros((no_patches, 3)).astype(int)
 
     # place initial anchor
-
-    if anc > -1:
-        y0 = round(Y / 2)
-        x0 = round(X / 2)   # position for anchored patch (center)
-        z0 = cfg.init_anc_rot        # rotation for anchored patch
-        p[:, :, :, anc] = 0
-        p[y0, x0, :, :] = 0
-        p[y0, x0, z0, anc] = 1  # anchor selected patch
-        init_pos[anc, :] = ([y0, x0, z0])
+    y0 = round(Y / 2)
+    x0 = round(X / 2)  # position for anchored patch (center)
+    z0 = cfg.init_anc_rot  # rotation for anchored patch
+    p[:, :, :, anc] = 0
+    p[y0, x0, :, :] = 0
+    p[y0, x0, z0, anc] = 1  # anchor selected patch
+    init_pos[anc, :] = ([y0, x0, z0])
 
     return p, init_pos, x0, y0, z0
 
@@ -301,7 +292,6 @@ def main(args):
     puzzle_name = args.puzzle
     method = args.method
     num_pieces = args.pieces
-    
 
     mat = scipy.io.loadmat(os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}_p{args.penalty}.mat'))
     #mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p0.mat')
@@ -309,8 +299,6 @@ def main(args):
     only_lines_pieces_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
     #pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\pieces')
     R = mat['R_line']
-
-
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
@@ -325,8 +313,13 @@ def main(args):
 
     R = R[:, :, [0,1], :, :]  # select rotation
 
-    p_initial, init_pos, x0, y0, z0 = initialization(R, args.anchor)  #(R, anc, anc_rot, nh, nw)
-    na = 27
+    if args.anchor < 0:
+        anc = cfg.init_anc
+    else:
+        anc = args.anchor
+
+    p_initial, init_pos, x0, y0, z0 = initialization(R, anc)  #(R, anc, anc_rot, nh, nw)
+    na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
     ##
@@ -375,7 +368,7 @@ def main(args):
     plt.savefig(alc_path)
 
     filename = os.path.join(solution_folder, 'p_final')
-    mdic = {"p_final": p_final, "label": "label", "anchor": cfg.init_anc, "anc_position": [x0, y0, z0]}
+    mdic = {"p_final": p_final, "label": "label", "anchor": anc, "anc_position": [x0, y0, z0]}
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, mdic)
 
