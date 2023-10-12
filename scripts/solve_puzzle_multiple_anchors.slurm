@@ -9,7 +9,7 @@
 export PYTHONPATH=${PYTHONPATH}:/home/luca.palmieri/code/RL_puzzle_solver
 
 dataset='images_with_50_lines'
-puzzle='image_1'
+puzzle=$1
 pieces=8
 
 

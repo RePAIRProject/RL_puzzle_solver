@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=a64i5-10_50lines_puzzle		   		# Job name
-#SBATCH --ntasks=5                 				        # Run on a single CPU
-#SBATCH --cpus-per-task=5
-#SBATCH --output=RL_logs/64anchors_50lines_img5to10.log			    # Standard output and error log
+#SBATCH --job-name=img16-20_50lines_puzzle_64anchors		   		# Job name
+#SBATCH --ntasks=1                 				                    # Run on a single CPU
+#SBATCH --cpus-per-task=1
+#SBATCH --output=RL_logs/64anchors_50lines_img16to20.log			    # Standard output and error log
 
 # PYTHONPATH
 export PYTHONPATH=${PYTHONPATH}:/home/luca.palmieri/code/RL_puzzle_solver
@@ -13,7 +13,7 @@ pieces=8
 
 # CONDA ENVIRONMENT
 #conda activate repair
-for puzzle in 'image_6' 'image_7' 'image_8' 'image_9' 'image_10' 
+for puzzle in 'image_16' 'image_17' 'image_18' 'image_19' 'image_20' 
 do
     echo "\nIMAGE $puzzle"
     echo "compatibility.."

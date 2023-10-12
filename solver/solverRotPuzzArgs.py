@@ -414,7 +414,7 @@ if __name__ == '__main__':
     parser.add_argument('--pieces', type=int, default=4, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
-    parser.add_argument('--verbosity', type=int, default=1, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
 
     args = parser.parse_args()
 
