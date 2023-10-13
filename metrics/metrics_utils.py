@@ -26,6 +26,7 @@ def get_offset(anchor_idx, anchor_pos, num_pieces):
     return offset_start
 
 def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start, num_pieces_side):
+    
     # reconstruct visual solution
     Y, X, Z, _ = p_final.shape
     pieces_files = os.listdir(pieces_folder)
@@ -40,6 +41,34 @@ def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start,
     squared_solution_img = solution_img[start_point[0]:end_point[0], start_point[1]:end_point[1]]
     return squared_solution_img
 
+def get_true_solution_vector(num_pieces):
+
+    num_labels = np.round(np.square(num_pieces)).astype(int)
+    true_solutions = np.zeros((num_labels, 2))
+    for k in range(num_labels):
+        true_solutions[k, :] = get_xy_position(k, num_pieces, offset_start=0)
+    return true_solutions
+
+def get_pred_solution_vector(p_final, num_pieces):
+
+    num_labels = np.round(np.square(num_pieces)).astype(int)
+    pred_solutions = np.zeros((num_labels, 2))
+    for k in range(num_labels):
+        pred_solutions[k, :] = np.unravel_index(np.argmax(p_final[:,:,0,k]), p_final[:,:,0,k].shape)[::-1]
+    return pred_solutions
+
+def simple_evaluation_vector(pred_solutions, true_absolute_solution, anchor_pos, anchor_idx, num_pieces):
+
+    shift = anchor_pos[:2] - get_xy_position(anchor_idx, num_pieces, offset_start=0)
+    true_solution_anchor = true_absolute_solution + shift
+    corrects = pred_solutions == true_solution_anchor
+    # we multiply the two columns of corrects
+    # each column is one axis, we get the correct on both axis
+    # np.sum counts how many of the correctly placed pieces we had
+    num_correct_pieces = np.sum(corrects[:,0] * corrects[:,1])
+    return num_correct_pieces
+    
+
 def simple_evaluation(p_final, num_pieces_side, offset_start, verbosity=1):
 
     drawing_correctness = np.zeros((num_pieces_side, num_pieces_side), dtype=np.uint8)
@@ -48,9 +77,7 @@ def simple_evaluation(p_final, num_pieces_side, offset_start, verbosity=1):
     for j in range(num_pieces_side*num_pieces_side):
         estimated_pos_piece = np.unravel_index(np.argmax(p_final[:,:,0,j]), p_final[:,:,0,j].shape)[::-1]
         correct_position_relative = get_xy_position(j, num_pieces_side, offset_start=0)
-        #print(correct_position)
         correct_position = correct_position_relative + offset_start
-        #pdb.set_trace()
         if np.isclose(np.sum(np.abs(np.subtract(estimated_pos_piece, correct_position))), 0):
             num_correct_pieces += 1
             drawing_correctness[correct_position_relative[1], correct_position_relative[0]] = (255)
@@ -80,7 +107,7 @@ def get_neighbours(piece_idx, num_pieces_side):
     return nbs
 
 
-def get_xy_position(piece_idx, num_pieces_side, offset_start):
+def get_xy_position(piece_idx, num_pieces_side, offset_start=0):
     pos_y = piece_idx % num_pieces_side
     pos_x = piece_idx // num_pieces_side
     correct_position = offset_start + np.asarray([pos_y, pos_x])
@@ -91,6 +118,7 @@ def neighbor_comparison(solution_mat, num_pieces_side, offset_start):
 
     num_correct_neighbours = 0
     num_total_neighbours = 0
+
     for j in range(num_pieces_side*num_pieces_side):
         # where is the piece
         pos_central_piece = solution_mat[j][:2] # we are ignoring rotation!
@@ -114,14 +142,22 @@ def neighbor_comparison(solution_mat, num_pieces_side, offset_start):
     return neighbor_val
 
 
-def pixel_difference(gt_img, proposed_solution, measure='rmse'):
+def pixel_difference(proposed_solution, gt_img, measure='rmse'):
 
+    # grayscale
     if len(gt_img.shape) > 2:
         gt_img = gt_img[:,:,0]
+    # grayscale solution
     if len(proposed_solution.shape) > 2:
         proposed_solution = proposed_solution[:,:,0]
-    if np.abs(np.sum(np.subtract(gt_img.shape[:2], proposed_solution.shape[:2]))) > 0:
-        gt_img = cv2.resize(gt_img, proposed_solution.shape[:2])
+    # resizing
+    if np.abs(np.sum(np.subtract(proposed_solution.shape[:2], gt_img.shape[:2]))) > 0:
+        gt_img = cv2.resize(gt_img, proposed_solution.shape[:2], interpolation= cv2.INTER_NEAREST)
+
+    proposed_solution = np.clip(proposed_solution, 0, 1)
+    if np.max(gt_img) > 1:
+        gt_img = gt_img.astype(float) / 255.0
+    # measures
     if measure == 'rmse':
         pdiff = np.sqrt(np.mean(np.square(gt_img - proposed_solution)))
     elif measure == 'mse':

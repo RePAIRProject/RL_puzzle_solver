@@ -9,7 +9,8 @@ import os
 from solver.solverRotPuzzArgs import reconstruct_puzzle
 import cv2
 from metrics.metrics_utils import get_sol_from_p, get_visual_solution_from_p, simple_evaluation, \
-    pixel_difference, neighbor_comparison, get_offset
+    pixel_difference, neighbor_comparison, get_offset, get_true_solution_vector, \
+        get_pred_solution_vector, get_xy_position, simple_evaluation_vector
 import json 
 
 def main(args):
@@ -44,6 +45,13 @@ def main(args):
     # simple evaluation (# of pieces in correct position)
     num_correct_pieces, visual_correct = simple_evaluation(p_final, num_pieces, offset_start, verbosity=args.verbosity)
     perc_correct = num_correct_pieces / (num_pieces**2)
+
+    # vector evaluation
+    true_absolute_solution = get_true_solution_vector(num_pieces)
+    pred_solutions = get_pred_solution_vector(p_final, num_pieces)
+    num_correct_pcs_vector = simple_evaluation_vector(pred_solutions, true_absolute_solution, anchor_pos=anchor_pos, anchor_idx=anchor_idx, num_pieces=num_pieces)
+    perc_correct_vector = num_correct_pcs_vector / (num_pieces**2)
+
     # MSE error (pixel-wise difference)
     measure = 'mse'
     MSError = pixel_difference(squared_solution_img, im_ref, measure=measure)
@@ -56,6 +64,7 @@ def main(args):
 
     eval_res = {
         'correct': perc_correct,
+        'correct_vector': num_correct_pcs_vector.tolist(),
         'neighbours': neighbours_val,
         'pixel': MSError
     }
@@ -65,6 +74,7 @@ def main(args):
 
     print("\nEVALUATION")
     print(f"Correct: {perc_correct * 100:.03f} %")
+    print(f"Correct Vector: {perc_correct_vector * 100:.03f} %")
     print(f"Neighbours: {neighbours_val * 100:.03f} %")
     print(f"Pixel-wise ({measure}): {MSError}\n")
 
