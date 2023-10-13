@@ -26,9 +26,8 @@ def initialization(R, anc):  # (R, anc, anc_rot, nh, nw):
 
     n_side = cfg.num_patches_side
     #n_side = np.round(R.shape[4]**(1/2))
-
-    Y = n_side
-    X = n_side
+    Y = n_side * 2 - 1 
+    X = n_side * 2 - 1
     Z = R.shape[2]
 
     # initialize assigment matrix
@@ -36,8 +35,8 @@ def initialization(R, anc):  # (R, anc, anc_rot, nh, nw):
     init_pos = np.zeros((no_patches, 3)).astype(int)
 
     # place initial anchor
-    y0 = round(Y / 2)
-    x0 = round(X / 2)  # position for anchored patch (center)
+    y0 = n_side - 1 # round(Y / 2)
+    x0 = n_side - 1 # round(X / 2)  # position for anchored patch (center)
     z0 = cfg.init_anc_rot  # rotation for anchored patch
     p[:, :, :, anc] = 0
     p[y0, x0, :, :] = 0

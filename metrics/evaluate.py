@@ -21,7 +21,7 @@ def main(args):
         anc = cfg.init_anc
 
     # read p matrix
-    solution_path = os.path.join(root_path, f"{fnames.solution_folder_name}_anchor{args.anchor}", 'p_final.mat')
+    solution_path = os.path.join(root_path, f"{fnames.solution_folder_name}_anchor{anc}", 'p_final.mat')
     solution_matrix = scipy.io.loadmat(solution_path)
     anchor_idx = anc
     # anchor = ((np.ceil(cfg.num_patches_side/2) - 1)*(cfg.num_patches_side+1)).astype(int) #solution_matrix['anchor']
@@ -29,6 +29,7 @@ def main(args):
     anchor_pos = solution_matrix['anc_position']
     anchor_pos = np.squeeze(anchor_pos)
     p_final = solution_matrix['p_final']
+    pdb.set_trace()
 
     # visual solution
     num_pieces = args.num_pieces

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=64as_im21_50lines_puzzle		   		# Job name
+#SBATCH --job-name=im21_64as_50lines_puzzle		   		# Job name
 #SBATCH --ntasks=1                 				        # Run on a single CPU
 #SBATCH --cpus-per-task=1
 #SBATCH --output=RL_logs/64anchors_50lines_img1.log			    # Standard output and error log
