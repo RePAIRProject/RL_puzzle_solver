@@ -29,7 +29,6 @@ def main(args):
     anchor_pos = solution_matrix['anc_position']
     anchor_pos = np.squeeze(anchor_pos)
     p_final = solution_matrix['p_final']
-    pdb.set_trace()
 
     # visual solution
     num_pieces = args.num_pieces
