@@ -71,7 +71,7 @@ def main(args):
     plt.title(f'best A for pixelwise (id:{best_pixel_idx} (pos {best_pixel_pos}))', fontsize=24)
     plt.imshow(best_pixel_img, cmap='gray')
     plt.subplot(448)
-    plt.title(f'solution for worst anchor ({(1-best_pixel_val)*100:.03f} %)', fontsize=24)
+    plt.title(f'solution for best anchor ({(1-best_pixel_val)*100:.03f} %)', fontsize=24)
     solution_best_pixel = plt.imread(os.path.join(evaluation_folder, f"evaluated_solution_anchor{best_pixel_idx}.jpg"))
     plt.imshow(solution_best_pixel)
 
