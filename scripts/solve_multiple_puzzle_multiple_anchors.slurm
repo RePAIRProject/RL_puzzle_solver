@@ -19,10 +19,10 @@ for ((puzzle_num=$1; puzzle_num<$2; puzzle_num++))
 do
     echo "IMAGE $puzzle"
     #echo "compatibility.."
-    #python compatibility/line_matching_NEW_segments.py --dataset $dataset --puzzle $puzzle --pieces $pieces #--penalty $3
+    #python compatibility/line_matching_NEW_segments.py --dataset $dataset --puzzle image_$puzzle_num --pieces $pieces #--penalty $3
 
     echo "solver.."
-    for anchor in {0..64}
+    for anchor in {0..63}
     do 
         echo "solver with anchor $anchor"
         python solver/solverRotPuzzArgs.py --dataset $dataset --puzzle image_$puzzle_num --pieces $pieces --anchor $anchor --verbosity 0

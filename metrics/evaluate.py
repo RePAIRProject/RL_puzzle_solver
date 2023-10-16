@@ -36,14 +36,14 @@ def main(args):
     offset_start = get_offset(anchor_idx, anchor_pos, num_pieces)
     #anchor_pos[:2] - anchor_pos_in_puzzle
     pieces_folder = os.path.join(root_path, f"{fnames.pieces_folder}")
-    squared_solution_img = get_visual_solution_from_p(p_final, pieces_folder, cfg.piece_size, offset_start, num_pieces)
+    squared_solution_img = get_visual_solution_from_p(p_final, pieces_folder, cfg.piece_size, offset_start, num_pieces, crop=True)
 
     # ref image
     im_ref = plt.imread(os.path.join(fnames.data_path, args.dataset, fnames.images_folder, f"{args.puzzle}.jpg"))
 
     ### EVALUATION 
     # simple evaluation (# of pieces in correct position)
-    num_correct_pieces, visual_correct = simple_evaluation(p_final, num_pieces, offset_start, verbosity=args.verbosity)
+    num_correct_pieces, visual_correct = simple_evaluation(p_final, num_pieces, offset_start, anchor_idx, verbosity=args.verbosity)
     perc_correct = num_correct_pieces / (num_pieces**2)
 
     # vector evaluation
@@ -81,17 +81,29 @@ def main(args):
     solved_img_output_path = os.path.join(output_folder, f'evaluated_solution_anchor{anc}.jpg')
     cv2.imwrite(solved_img_output_path, squared_solution_img*255)
 
+    anc_xy_pos = get_xy_position(anchor_idx, num_pieces, offset_start=0)
     plt.figure(figsize=(32,32))
-    plt.suptitle(f"{args.puzzle}\ncorrect pieces = {num_correct_pieces / (num_pieces**2) * 100:.03f}%\nneighbours = {neighbours_val * 100:.03f}%\nMSE = {MSError:.03f}", fontsize=52)
-    plt.subplot(131)
+    plt.suptitle(f"{args.puzzle}\nanchor = {anchor_idx} ( position {anc_xy_pos})\ncorrect pieces = {num_correct_pieces / (num_pieces**2) * 100:.03f}%\nneighbours = {neighbours_val * 100:.03f}%\nMSE = {MSError:.03f}", fontsize=52)
+    plt.subplot(221)
     plt.title('reference image', fontsize=32)
     plt.imshow(im_ref, cmap='gray')
-    plt.subplot(133)
+    plt.subplot(223)
     plt.title(f'solution of the puzzle ({num_correct_pieces / (num_pieces**2) * 100:.03f} %)', fontsize=32)
     plt.imshow(squared_solution_img)
-    plt.subplot(132)
-    plt.title(f'correct pieces (yellow): {num_correct_pieces}', fontsize=32)
+    plt.subplot(222)
+    plt.title(f'correct pieces: {num_correct_pieces}\nanchor: blue\ncorrectly solved: green\nwrong: red', fontsize=32)
     plt.imshow(visual_correct)
+    plt.subplot(224)
+    plt.title(f'showing the grid of pieces', fontsize=32)
+    plt.imshow(squared_solution_img)
+    for j in range(1, num_pieces):
+        plt.axline([0, j*cfg.piece_size], slope=0, color='blue')
+        plt.axline([j*cfg.piece_size, 0], slope=np.inf, color='blue')
+
+    anc_center = (anc_xy_pos) * cfg.piece_size
+    box_anchor = np.asarray([[anc_center[1], anc_center[0]], [anc_center[1], anc_center[0]+cfg.piece_size], \
+                    [anc_center[1]+cfg.piece_size, anc_center[0]+cfg.piece_size], [anc_center[1]+cfg.piece_size, anc_center[0]], [anc_center[1], anc_center[0]]])
+    plt.plot(box_anchor[:,1], box_anchor[:,0], color='green', linewidth=5)
     if args.visualize is True:
         plt.show()
     else:

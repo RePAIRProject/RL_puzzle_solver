@@ -25,7 +25,7 @@ def get_offset(anchor_idx, anchor_pos, num_pieces):
     offset_start = anchor_pos[:2] - anchor_pos_in_puzzle
     return offset_start
 
-def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start, num_pieces_side):
+def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start, num_pieces_side, crop=True):
     
     # reconstruct visual solution
     Y, X, Z, _ = p_final.shape
@@ -38,8 +38,28 @@ def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start,
     solution_img = reconstruct_puzzle(sol, Y, X, pieces, pieces_files, pieces_folder)
     start_point = (offset_start)*piece_size
     end_point = start_point + (num_pieces_side)*piece_size
-    squared_solution_img = solution_img[start_point[0]:end_point[0], start_point[1]:end_point[1]]
-    return squared_solution_img
+    if crop is True:
+        solution_img = solution_img[start_point[1]:end_point[1], start_point[0]:end_point[0]]
+    return solution_img
+
+def get_best_anchor(im_ref, evaluation, num_pieces, piece_size, best='min'):
+    
+    if best=='min':
+        best_idx = np.argmin(evaluation)
+        best_val = np.min(evaluation)
+    elif best=='max':
+        best_idx = np.argmax(evaluation)
+        best_val = np.max(evaluation)
+    else:
+        print("What is best?")
+        print('choose sorting order <min> or <max>')
+        return 0
+    
+    best_pos = get_xy_position(best_idx, num_pieces)
+    anc_center = (best_pos) * piece_size
+    best_anchor = im_ref[anc_center[1]:anc_center[1] + piece_size, anc_center[0]:anc_center[0]+piece_size]
+
+    return best_anchor, best_idx, best_pos, best_val
 
 def get_true_solution_vector(num_pieces):
 
@@ -69,9 +89,9 @@ def simple_evaluation_vector(pred_solutions, true_absolute_solution, anchor_pos,
     return num_correct_pieces
     
 
-def simple_evaluation(p_final, num_pieces_side, offset_start, verbosity=1):
+def simple_evaluation(p_final, num_pieces_side, offset_start, anchor_idx, verbosity=1):
 
-    drawing_correctness = np.zeros((num_pieces_side, num_pieces_side), dtype=np.uint8)
+    drawing_correctness = np.zeros((num_pieces_side, num_pieces_side, 3), dtype=np.uint8)
     num_correct_pieces = 0
     
     for j in range(num_pieces_side*num_pieces_side):
@@ -80,10 +100,13 @@ def simple_evaluation(p_final, num_pieces_side, offset_start, verbosity=1):
         correct_position = correct_position_relative + offset_start
         if np.isclose(np.sum(np.abs(np.subtract(estimated_pos_piece, correct_position))), 0):
             num_correct_pieces += 1
-            drawing_correctness[correct_position_relative[1], correct_position_relative[0]] = (255)
+            drawing_correctness[correct_position_relative[1], correct_position_relative[0]] = (0, 255, 0)
+            if j == anchor_idx:
+                drawing_correctness[correct_position_relative[1], correct_position_relative[0]] = (0, 0, 255)
             if verbosity > 0:
                 print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [CORRECT ({correct_position_relative})]")
         else:
+            drawing_correctness[correct_position_relative[1], correct_position_relative[0]] = (255, 0, 0)
             if verbosity > 0:
                 print(f"piece {j} = estimated: {estimated_pos_piece}, correct: {correct_position} [WRONG ({correct_position_relative})]")
     return num_correct_pieces, drawing_correctness
