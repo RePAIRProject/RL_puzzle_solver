@@ -59,7 +59,15 @@ def get_best_anchor(im_ref, evaluation, num_pieces, piece_size, best='min'):
     anc_center = (best_pos) * piece_size
     best_anchor = im_ref[anc_center[1]:anc_center[1] + piece_size, anc_center[0]:anc_center[0]+piece_size]
 
-    return best_anchor, best_idx, best_pos, best_val
+    confm = np.zeros((num_pieces, num_pieces))
+    for j in range(num_pieces*num_pieces):
+        x, y = get_xy_position(j, num_pieces, offset_start=0)
+        if best=='max':
+            confm[y, x] = evaluation[j]
+        elif best=='min':
+            confm[y, x] = 1 - evaluation[j]
+            
+    return best_anchor, best_idx, best_pos, best_val, confm
 
 def get_true_solution_vector(num_pieces):
 
