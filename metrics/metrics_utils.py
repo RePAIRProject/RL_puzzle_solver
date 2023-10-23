@@ -123,6 +123,19 @@ def simple_evaluation(p_final, num_pieces_side, offset_start, anchor_idx, verbos
 def get_neighbours(piece_idx, num_pieces_side):
 
     nbs = {}
+    if (piece_idx % 8) > 0:
+        nbs['left'] = piece_idx - 1
+    if (piece_idx % 8) < 7:
+        nbs['right'] = piece_idx + 1 
+    if (piece_idx // 8) > 0:
+        nbs['top'] = piece_idx - num_pieces_side
+    if (piece_idx // 8) < 8:
+        nbs['bottom'] = piece_idx + num_pieces_side
+    return nbs
+
+def get_neighbours_old_wrong(piece_idx, num_pieces_side):
+
+    nbs = {}
     left_nb_idx = piece_idx - 1
     if left_nb_idx > -1 and left_nb_idx < (np.square(num_pieces_side) - 1):
         nbs['left'] = left_nb_idx
@@ -147,6 +160,7 @@ def get_xy_position(piece_idx, num_pieces_side, offset_start=0):
 
 def neighbor_comparison(solution_mat, num_pieces_side, offset_start):
 
+    pdb.set_trace()
     num_correct_neighbours = 0
     num_total_neighbours = 0
 
@@ -168,7 +182,10 @@ def neighbor_comparison(solution_mat, num_pieces_side, offset_start):
 
             if np.isclose(np.sum(np.subtract(xy_pos, correct_position)), 0):
                 num_correct_neighbours += 1
-    
+            else:
+                print(f'incorrect for the {nb_rel_pos} piece relative to {pos_central_piece} (id {j})')
+                print(f"it estimated: {xy_pos}, correct would be: {correct_position}")
+    pdb.set_trace()
     neighbor_val = num_correct_neighbours / num_total_neighbours
     return neighbor_val
 
