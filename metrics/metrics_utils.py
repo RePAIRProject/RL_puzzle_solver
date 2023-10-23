@@ -160,7 +160,6 @@ def get_xy_position(piece_idx, num_pieces_side, offset_start=0):
 
 def neighbor_comparison(solution_mat, num_pieces_side, offset_start):
 
-    pdb.set_trace()
     num_correct_neighbours = 0
     num_total_neighbours = 0
 
@@ -182,10 +181,9 @@ def neighbor_comparison(solution_mat, num_pieces_side, offset_start):
 
             if np.isclose(np.sum(np.subtract(xy_pos, correct_position)), 0):
                 num_correct_neighbours += 1
-            else:
-                print(f'incorrect for the {nb_rel_pos} piece relative to {pos_central_piece} (id {j})')
-                print(f"it estimated: {xy_pos}, correct would be: {correct_position}")
-    pdb.set_trace()
+            # else:
+            #     print(f'incorrect for the {nb_rel_pos} piece relative to {pos_central_piece} (id {j})')
+            #     print(f"it estimated: {xy_pos}, correct would be: {correct_position}")
     neighbor_val = num_correct_neighbours / num_total_neighbours
     return neighbor_val
 
