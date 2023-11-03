@@ -7,8 +7,9 @@ from scipy import signal
 from scipy.ndimage import rotate, shift
 from PIL import Image
 import os
-#import configs.puzzle_from_image_cfg_exp as cfg
-import configs.unified_cfg as cfg
+import configs.puzzle_from_fragments_cfg as cfg
+#import configs.unified_cfg as cfg
+
 
 
 def initialization(R):  # (R, anc, anc_rot, nh, nw):
@@ -16,25 +17,26 @@ def initialization(R):  # (R, anc, anc_rot, nh, nw):
     no_patches = R.shape[3]
 
     # # Re-Pair
-    # st = R.shape[0]
-    # Y = round(cfg.nh * (st - 1) + 1)
-    # X = round(cfg.nw * (st - 1) + 1)
-    # Z = R.shape[2]
+    anc = 3
+    st = R.shape[0]
+    Y = round(cfg.nh * (st - 1) + 1)
+    X = round(cfg.nw * (st - 1) + 1)
+    Z = R.shape[2]
 
     # # Toy Puzzle (with o without initial anchor)
-    anc = cfg.init_anc
-    n_side = cfg.num_patches_side
-    #n_side = np.round(R.shape[4]**(1/2))
-
-    if anc:
-        st = R.shape[0]
-        Y = (n_side-1) * 2 - 1
-        X = (n_side-1) * 2 - 1
-        Z = R.shape[2]
-    else:
-        Y = n_side
-        X = n_side
-        Z = R.shape[2]
+    # anc = cfg.init_anc
+    # n_side = cfg.num_patches_side
+    # #n_side = np.round(R.shape[4]**(1/2))
+    #
+    # if anc:
+    #     Y = n_side * 2 - 1
+    #     X = n_side * 2 - 1
+    #     Z = R.shape[2]
+    #
+    # else:
+    #     Y = n_side
+    #     X = n_side
+    #     Z = R.shape[2]
 
     # initialize assigment matrix
     p = np.ones((Y, X, Z, no_patches)) / (Y * X) # uniform distributed p
@@ -245,12 +247,12 @@ def reconstruct_group28_9(fin_sol, Y, X, n_rot, pieces):
     return fin_im
 
 def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
-    step = np.ceil(cfg.xy_step)
+    step = cfg.xy_step+0.4 ###
     ang = 360 / cfg.theta_grid_points
     z_rot = np.arange(0, 360, ang)
 
     pos = fin_sol
-    fin_im = np.zeros(((Y * step + cfg.p_hs).astype(int), (X * step + cfg.p_hs).astype(int), 3))
+    fin_im = np.zeros(((np.round(Y * step) + cfg.p_hs).astype(int), (np.round(X * step) + cfg.p_hs).astype(int), 3))
 
     for i in range(len(pieces)):
         image = pieces_files[pieces[i]]  # read image 1
@@ -263,8 +265,8 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
         Im = np.multiply(Im, alfa[:, :, np.newaxis])
         Im = Im[:, :, 0:3]
 
-        cc = cfg.p_hs
-        ids = (pos[i, :2] * step + cc).astype(int)
+        cc = cfg.p_hs ## ??????? +5
+        ids = (np.round(pos[i, :2] * step) + cc).astype(int)
         if pos.shape[1] == 3:
             rot = z_rot[pos[i, 2]]
             Im = rotate(Im, rot, reshape=False, mode='constant')
@@ -284,11 +286,12 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
 
 ## MAIN ##
 
-dataset_name ='exp_50_lines' # exp_50_lines manual_lines
-puzzle_name = 'image_0'  #'pablo-picasso_still-life-with-guitar-1942' image_0
+dataset_name ='repair' # exp_50_lines manual_lines  random_lines_exact_detection
+puzzle_name = 'repair_g28'  #'pablo-picasso_still-life-with-guitar-1942' image_0
 output = 'output_8x8'
+method = 'manual'
 
-mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\\{output}\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p{cfg.mismatch_penalty}.mat')
+mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\\{output}\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_{method}_p{cfg.mismatch_penalty}.mat')
 pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\\{output}\\{dataset_name}\\{puzzle_name}\pieces')
 
 R = mat['R_line']
@@ -307,7 +310,7 @@ R = R[:, :, :, :, pieces_incl]
 R = R[:, :, [0,1], :, :]  # select rotation
 
 p_initial, init_pos, x0, y0, z0 = initialization(R)  #(R, anc, anc_rot, nh, nw)
-na = 27
+na = 1
 all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
 ##
@@ -316,6 +319,10 @@ all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na)
 f = len(all_sol)
 Y, X, Z, _ = p_final.shape
 fin_sol = all_sol[f-1]
+# for presentaion
+exc_frag = [1,4,5,7]
+fin_sol[exc_frag,:] = 0
+#
 fin_im1 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
 
 import matplotlib.pyplot as plt
@@ -332,8 +339,11 @@ plt.close()
 
 f = len(all_anc)
 fin_sol = all_anc[f-1]
+# for presentaion
+exc_frag = [1,4,5,7]
+fin_sol[exc_frag,:] = 0
+#
 fin_im2 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder)
-
 final_solution_anchor = os.path.join(solution_folder, 'final_only_anchor.png')
 plt.figure(figsize=(16,16))
 plt.title("Final solution including ONLY solved pieces")
@@ -347,6 +357,10 @@ f = len(all_pay)
 f_pay = []
 for ff in range(f):
     a = all_pay[ff]
+    # for presentaion
+    exc_frag = [1, 4, 5, 7]
+    fin_sol[exc_frag, :] = 0
+    #
     f_pay = np.append(f_pay, a)
 f_pay = np.array(f_pay)
 plt.figure(figsize=(6, 6))
@@ -354,18 +368,20 @@ plt.plot(f_pay, 'r', linewidth=1)
 plt.tight_layout()
 plt.savefig(alc_path)
 
-filename = os.path.join(solution_folder, f'p_final')
-mdic = {"p_final": p_final, "label": "label", "anchor": cfg.init_anc, "anc_position": [x0, y0, z0]}
-scipy.io.savemat(f'{filename}.mat', mdic)
-np.save(filename, mdic)
+
 
 # intermediate steps
 frames_folders = os.path.join(solution_folder, 'frames_all')
 os.makedirs(frames_folders, exist_ok=True)
 
+f = len(all_sol)
 for ff in range(f):
     frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
     cur_sol = all_sol[ff]
+    # for presentaion
+    exc_frag = [1, 4, 5, 7]
+    cur_sol[exc_frag, :] = 0
+    #
     im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
     im_rec = np.clip(im_rec,0,1)
     plt.imsave(frame_path, im_rec)
@@ -374,6 +390,7 @@ for ff in range(f):
 frames_folders = os.path.join(solution_folder, 'frames_anc')
 os.makedirs(frames_folders, exist_ok=True)
 
+f = len(all_anc)
 for ff in range(f):
     frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
     cur_sol = all_anc[ff]
@@ -382,3 +399,7 @@ for ff in range(f):
     plt.imsave(frame_path, im_rec)
 
 
+# filename = os.path.join(solution_folder, f'p_final')
+# mdic = {"p_final": p_final, "label": "label", "anchor": cfg.init_anc, "anc_position": [x0, y0, z0]}
+# scipy.io.savemat(f'{filename}.mat', mdic)
+# np.save(filename, mdic)

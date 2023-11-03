@@ -90,7 +90,7 @@ def line_poligon_intersec(z_p, z_l, s1, s2, cfg):
 
         # if shapely.is_empty(shapely.intersection(candidate_line_shapely, piece_j_shape)):
         # if shapely.is_empty(shapely.intersection(candidate_line_shapely.buffer(cfg.border_tolerance), piece_j_shape.buffer(cfg.border_tolerance))):
-        if shapely.is_empty(shapely.intersection(candidate_line_shapely, piece_j_shape.buffer(cfg.border_tolerance))):
+        if shapely.is_empty((candidate_line_shapely, piece_j_shape.buffer(cfg.border_tolerance))):
             intersections.append(False)
         else:
             intersections.append(True)
@@ -334,7 +334,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('--dataset', type=str, default='exp_50_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture,exp_50_lines
+    parser.add_argument('--dataset', type=str, default='images_with_50_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture,exp_50_lines
     parser.add_argument('--puzzle', type=str, default='image_0', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # Hough, FLD
     parser.add_argument('--penalty', type=int, default=-1,
