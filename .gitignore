@@ -27,4 +27,7 @@ output_*/
 # pycache
 **/__pycache__/**
 
+# personal scripts to copy/upload stuff
+**/*_lucap.sh
+
 

@@ -77,8 +77,6 @@ def main(args):
         # neighbours comparison
         neighbours_val = neighbor_comparison(get_sol_from_p(p_final=p_final), num_pieces, offset_start)
 
-        
-
         eval_res = {
             'correct': perc_correct,
             'correct_vector': num_correct_pcs_vector.tolist(),
