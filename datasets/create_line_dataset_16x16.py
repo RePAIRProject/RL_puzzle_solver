@@ -82,11 +82,15 @@ def line_cart2pol(pt1, pt2):
 def main():
     ###############################
     num_images = 10
-    num_lines = 50
     if len(sys.argv) < 2:
-        print('Pass the line argument via command line! Ex: `python datasets/create_line_dataset_16x16.py segments`')
+        print('Pass the number of lines via command line! Ex: `python datasets/create_line_dataset_16x16.py 50 segments`')
         return 0
-    line_type = sys.argv[1]
+    num_lines = int(sys.argv[1])
+    if len(sys.argv) < 3:
+        print('Pass the line argument via command line! Ex: `python datasets/create_line_dataset_16x16.py 50 segments`')
+        return 0
+    line_type = sys.argv[2]
+    
     # height = 1000
     # width = 1000
     height = cfg.img_size
@@ -102,7 +106,7 @@ def main():
     pdb.set_trace()
 
     dataset_path = os.path.join(os.getcwd(), 'data')
-    cur_folder = os.path.join(dataset_path, f'random_{line_type}_exact_detection_16x16')
+    cur_folder = os.path.join(dataset_path, f'random_{num_lines}_{line_type}_exact_detection_16x16')
     os.makedirs(cur_folder, exist_ok=True)
 
 
@@ -118,7 +122,7 @@ def main():
         # plt.show()
 
         ## where to save patches
-        puzzle_image_folder = os.path.join(os.getcwd(), 'output_16x16', f'random_{line_type}_exact_detection')
+        puzzle_image_folder = os.path.join(os.getcwd(), 'output_16x16', f'random_{num_lines}_{line_type}_exact_detection')
         pieces_single_folder = os.path.join(puzzle_image_folder, f'image_{N}', 'pieces')
         os.makedirs(pieces_single_folder, exist_ok=True)
 
