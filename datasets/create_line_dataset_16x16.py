@@ -103,7 +103,6 @@ def main():
     print(f"H: {height}, W: {width}\nNum of pieces: {n_patches}")
     print("#" * 50)
     #################################
-    pdb.set_trace()
 
     dataset_path = os.path.join(os.getcwd(), 'data')
     cur_folder = os.path.join(dataset_path, f'random_{num_lines}_{line_type}_exact_detection_16x16')
