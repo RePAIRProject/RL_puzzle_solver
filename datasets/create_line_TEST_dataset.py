@@ -80,9 +80,9 @@ def line_cart2pol(pt1, pt2):
 
 
 ###############################
-num_images = 30
-num_lines = 50
-line_type = 'polylines'
+num_images = 10
+num_lines = 40
+line_type = 'lines'
 # height = 1000
 # width = 1000
 height = cfg.img_size
@@ -93,7 +93,7 @@ n_patches = num_patches_side * num_patches_side
 #################################
 
 dataset_path = os.path.join(f'C:\\Users\Marina\OneDrive - unive.it\RL\data')
-cur_folder = os.path.join(dataset_path, f'random_{line_type}_exact_detection')
+cur_folder = os.path.join(dataset_path, f'random_{num_lines}_{line_type}_exact_detection')
 os.makedirs(cur_folder, exist_ok=True)
 
 
@@ -110,7 +110,7 @@ for N in range(num_images):
 
     ## where to save patches
     puzzle_image_folder = os.path.join(
-        f'C:\\Users\Marina\OneDrive - unive.it\RL\output_8x8\\random_{line_type}_exact_detection')
+        f'C:\\Users\Marina\OneDrive - unive.it\RL\output_8x8\\random_{num_lines}_{line_type}_exact_detection')
     pieces_single_folder = os.path.join(puzzle_image_folder, f'image_{N}', 'pieces')
     os.makedirs(pieces_single_folder, exist_ok=True)
 

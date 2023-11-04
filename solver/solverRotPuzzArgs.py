@@ -10,6 +10,7 @@ import os
 import configs.unified_cfg as cfg
 import configs.folder_names as fnames
 import argparse
+from compatibility.line_matching_NEW_segments import read_info
 
 
 def initialization(R, anc):  # (R, anc, anc_rot, nh, nw):
@@ -283,6 +284,29 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
     return fin_im
 
 
+def select_anchor(folder):
+
+    pieces_files = os.listdir(folder)
+    json_files = [piece_file for piece_file in pieces_files if piece_file[-4:] == 'json']
+    json_files.sort()
+    n = len(json_files)
+
+    num_lines = np.zeros(n)
+    for f in range(n):
+        im = json_files[f]
+        beta, R, s1, s2, b1, b2 = read_info(folder, im)
+        num_lines[f] = len(beta)
+
+    mean_num_lines = np.round(np.mean(num_lines))
+    anc = cfg.init_anc
+
+    if num_lines[anc] < mean_num_lines:
+        good_anchors = np.array(np.where(num_lines > mean_num_lines))
+        new_anc = np.random.choice(good_anchors[0, :], 1)
+    else:
+        new_anc = anc
+    return new_anc
+
 ## MAIN ##
 def main(args):
     ## MAIN ##
@@ -296,6 +320,7 @@ def main(args):
     #mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p0.mat')
     pieces_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f"{fnames.pieces_folder}")
     only_lines_pieces_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
+    detect_output = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f"{fnames.lines_output_name}", method)
     #pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\pieces')
     R = mat['R_line']
 
@@ -316,6 +341,10 @@ def main(args):
         anc = cfg.init_anc
     else:
         anc = args.anchor
+        if anc > 0:
+            anc = select_anchor(detect_output)
+
+    print(anc)
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, anc)  #(R, anc, anc_rot, nh, nw)
     na = 1
@@ -399,12 +428,12 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('--dataset', type=str, default='manual_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture
-    parser.add_argument('--puzzle', type=str, default='lines1', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--dataset', type=str, default='images_with_50_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture
+    parser.add_argument('--puzzle', type=str, default='image_11', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--penalty', type=int, default=20, help='penalty value used')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method used for compatibility')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--pieces', type=int, default=4, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--anchor', type=int, default=2, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
 
