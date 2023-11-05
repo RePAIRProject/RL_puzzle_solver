@@ -338,12 +338,9 @@ def main(args):
     R = R[:, :, [0,1], :, :]  # select rotation
 
     if args.anchor < 0:
-        anc = cfg.init_anc
+        anc = select_anchor(detect_output)
     else:
         anc = args.anchor
-        if anc > 0:
-            anc = select_anchor(detect_output)
-
     print(anc)
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, anc)  #(R, anc, anc_rot, nh, nw)
@@ -433,7 +430,7 @@ if __name__ == '__main__':
     parser.add_argument('--penalty', type=int, default=20, help='penalty value used')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='deeplsd', help='method used for compatibility')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--pieces', type=int, default=4, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--anchor', type=int, default=2, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
 
