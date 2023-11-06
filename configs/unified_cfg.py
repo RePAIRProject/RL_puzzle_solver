@@ -8,7 +8,7 @@ This file just merges the various configuration files so that you can import onl
 from configs.line_matching_cfg import * 
 
 # pieces (size and how mnay)
-from configs.pieces_32x32_cfg import *
+from configs.dataset_16x16_cfg import *
 
 # compatibility (ranges, values, grids, .. )
 from configs.compatibility_cfg import * 
