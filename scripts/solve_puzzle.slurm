@@ -1,15 +1,15 @@
 #!/bin/bash
 
-#SBATCH --job-name=solve_50lines_puzzle		   		# Job name
-#SBATCH --ntasks=20                    				# Run on a single CPU
-#SBATCH --output=RL_logs/50lines_img0.log			# Standard output and error log
+#SBATCH --job-name=solver_%j	   		                    # Job name
+#SBATCH --ntasks=20                    				        # Run on a single CPU
+#SBATCH --output=RL_logs/exp_single_puzzle_%j.log			# Standard output and error log
 
 # PYTHONPATH
 export PYTHONPATH=${PYTHONPATH}:/home/luca.palmieri/code/RL_puzzle_solver
 
-dataset='images_with_50_lines'
-puzzle='image_0'
-pieces=8
+dataset=$1
+puzzle=$2
+pieces=$3
 anchor=0
 
 # CONDA ENVIRONMENT
