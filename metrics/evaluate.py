@@ -26,22 +26,22 @@ def main(args):
     os.makedirs(output_quantitative_folder, exist_ok=True)
     os.makedirs(output_visualization_folder, exist_ok=True)
 
+    solution_folder_names = [solution_f for solution_f in os.listdir(root_path) if 'solution_anchor' in solution_f]
     if args.all_anchors is False:
 
         given_anchor = args.anchor
         if given_anchor < 0:
-            given_anchor = cfg.init_anc
-        
-        anchors_to_evaluate = [given_anchor]
+            # take the first! (there should be only one)
+            solutions_anchors_folders = [solution_folder_names[0]]        
 
-    else: #find all anchors in the folders
-        solutions_anchors = [solution_f for solution_f in os.listdir(root_path) if 'solution_anchor' in solution_f]
-        anchors_to_evaluate = np.arange(len(solutions_anchors))
+    else: # all folders
+        solutions_anchors_folders = solution_folder_names 
+        #[solution_f for solution_f in os.listdir(root_path) if 'solution_anchor' in solution_f]
 
-    for anc in anchors_to_evaluate:
+    for solution_folder_anc in solutions_anchors_folders:
 
         # read p matrix
-        solution_path = os.path.join(root_path, f"{fnames.solution_folder_name}_anchor{anc}", 'p_final.mat')
+        solution_path = os.path.join(root_path, solution_folder_anc, 'p_final.mat')
         solution_matrix = scipy.io.loadmat(solution_path)
         anchor_idx = anc
         # anchor = ((np.ceil(cfg.num_patches_side/2) - 1)*(cfg.num_patches_side+1)).astype(int) #solution_matrix['anchor']
