@@ -10,13 +10,14 @@ export PYTHONPATH=${PYTHONPATH}:/home/luca.palmieri/code/RL_puzzle_solver
 dataset=$1
 puzzle=$2
 pieces=$3
-anchor=0
+method=$4
+anchor=27
 
 # CONDA ENVIRONMENT
 #conda activate repair
 
 echo "compatibility.."
-python compatibility/line_matching_NEW_segments.py --dataset $dataset --puzzle $puzzle --pieces $pieces #--penalty $3
+python compatibility/line_matching_NEW_segments.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method #--penalty $3
 
 echo "solver.."
 python solver/solverRotPuzzArgs.py --dataset $dataset --puzzle $puzzle --pieces $pieces --anchor $anchor
