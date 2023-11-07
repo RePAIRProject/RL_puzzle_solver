@@ -160,7 +160,7 @@ def main(args):
 
     dataset_folder = os.path.join(root_path, 'output_8x8', dataset_name)  
     images_names = os.listdir(dataset_folder)  
-    images_names = [img_n for img_n in images_names if os.path.isdir(img_n) is True]
+    images_names = [img_n for img_n in images_names if os.path.isdir(os.path.join(dataset_folder, img_n)) is True]
 
     # perturbation!
     mu = args.mean
