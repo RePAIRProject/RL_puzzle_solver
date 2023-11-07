@@ -191,7 +191,7 @@ def main(args):
         chosen_as_list = [0 if (x not in lines_to_be_perturbated) else 1 for x in np.arange(len(puzzle_list_of_segments))]
         puzzle_list_of_segments['noisy'] = chosen_as_list
 
-        noise_folder_name = f"noise_{args.noise}_p{args.percentage}"
+        noise_folder_name = f"noise_{args.noise}_p{args.percentage}_s{args.sigma}"
         target_folder = os.path.join(lines_detection_folder, noise_folder_name)
         os.makedirs(target_folder, exist_ok=True)
 
@@ -323,7 +323,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--dataset', type=str, default='random_lines_exact_detection', help='dataset name (default: "random_lines_exact_detection")') 
     parser.add_argument('-m', '--method', type=str, default='exact', help='method (default: "exact")') 
     parser.add_argument('-n', '--noise', type=str, default='positional', help='noise (default: "positional")', choices=['positional', 'structural', 'combo'])
-    parser.add_argument('-p', '--percentage', type=int, default=3, help='percentage of segments (over all pieces) to be perturbated  (default: 3)')
+    parser.add_argument('-p', '--percentage', type=int, default=30, help='percentage of segments (over all pieces) to be perturbated  (default: 30)')
     parser.add_argument('--mean', type=int, default=0, help='mean for the gaussian noise  (default: 0)')
     parser.add_argument('--std', type=int, default=2, help='standard deviation for the gaussian noise (default: 2)')
     parser.add_argument('--max', type=int, default=151, help='max value to clip the noisy data within the piece size (default: 151)')
