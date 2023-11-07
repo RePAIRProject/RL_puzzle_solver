@@ -185,7 +185,9 @@ def main(args):
         puzzle_list_of_segments = get_segments_of_puzzle(lines_to_perturb_folder)
         
         perc_ratio = args.percentage / 100
-        lines_to_be_perturbated = np.random.choice(len(puzzle_list_of_segments), np.round(len(puzzle_list_of_segments) * perc_ratio).astype(int))
+        num_fragments_to_be_perturbated = np.round(len(puzzle_list_of_segments) * perc_ratio).astype(int)
+        print(f"Perturbating {num_fragments_to_be_perturbated} over {len(puzzle_list_of_segments)} ({perc_ratio*100:.02f}%)")
+        lines_to_be_perturbated = np.random.choice(len(puzzle_list_of_segments), num_fragments_to_be_perturbated)
         #print("#" * 50)
         print("Perturbating the following segments:", lines_to_be_perturbated)
         chosen_as_list = [0 if (x not in lines_to_be_perturbated) else 1 for x in np.arange(len(puzzle_list_of_segments))]
