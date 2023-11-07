@@ -43,7 +43,7 @@ def main(args):
         # read p matrix
         solution_path = os.path.join(root_path, solution_folder_anc, 'p_final.mat')
         solution_matrix = scipy.io.loadmat(solution_path)
-        # anchor_idx = anc
+        anchor_idx = solution_matrix['anchor']
         # anchor = ((np.ceil(cfg.num_patches_side/2) - 1)*(cfg.num_patches_side+1)).astype(int) #solution_matrix['anchor']
         anchor_idx = np.squeeze(anchor_idx).item()
         anchor_pos = solution_matrix['anc_position']
