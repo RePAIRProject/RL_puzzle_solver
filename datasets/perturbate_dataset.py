@@ -245,7 +245,9 @@ def main(args):
                 'angles': noisy_angles,
                 'dists': noisy_dists,
                 'p1s': noisy_p1s,
-                'p2s': noisy_p2s
+                'p2s': noisy_p2s,
+                'b1s': [],
+                'b2s': []
             }
             #print(noisy_angles, noisy_dists, noisy_p1s, noisy_p2s)
             with open(os.path.join(target_folder, f"RPf_{piece_id_name[-5:]}.json"), 'w') as lj:
