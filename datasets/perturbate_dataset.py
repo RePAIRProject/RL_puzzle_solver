@@ -49,7 +49,7 @@ def get_total_segments(dataset_folder):
 
     #pdb.set_trace()
     for image_name in images_names:
-        lines_detection_folder = os.path.join(dataset_folder, image_name, 'lines_detection', 'deeplsd')
+        lines_detection_folder = os.path.join(dataset_folder, image_name, 'lines_detection', 'exact')
         fragments_list = get_fragments_list(lines_detection_folder)
         for fragment_path in fragments_list:
             with open(fragment_path, 'r') as fp:
@@ -180,7 +180,7 @@ def main(args):
         print("#" * 50)
         print("Working on", image_name)
         lines_detection_folder = os.path.join(full_path_image_folder, 'lines_detection')
-        lines_to_perturb_folder = os.path.join(lines_detection_folder, 'deeplsd')
+        lines_to_perturb_folder = os.path.join(lines_detection_folder, args.method)
 
         puzzle_list_of_segments = get_segments_of_puzzle(lines_to_perturb_folder)
         
@@ -253,7 +253,7 @@ def main(args):
         # json_files = [file for file in os.listdir(lines_detection_folder) if os.path.isdir(file) is False and file.endswith('.json')]
         # print(f"got {len(files)} files")
 
-        # for json_file in json_files:
+        # for json_file in json_filesrandom_lines_exact_detection:
 
         #     ### np.arange(puzzle_list_of_segments)
         #     piece_id = int(json_file[6:10])
@@ -320,12 +320,13 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Add noise to the extracted lines')  # add some description
     parser.add_argument('-r', '--root_path', type=str, default='', help='root folder (where the dataset is placed)')   
-    parser.add_argument('-d', '--dataset', type=str, default='random_lines_exact_detection', help='dataset name')   
-    parser.add_argument('-n', '--noise', type=str, default='positional', help='noise', choices=['positional', 'structural', 'combo'])
-    parser.add_argument('-p', '--percentage', type=int, default=3, help='percentage of segments (over all pieces) to be perturbated')
-    parser.add_argument('-m', '--mean', type=int, default=0, help='mean for the gaussian noise')
-    parser.add_argument('-s', '--std', type=int, default=2, help='standard deviation for the gaussian noise')
-    parser.add_argument('-x', '--max', type=int, default=151, help='max value (piece size)')
+    parser.add_argument('-d', '--dataset', type=str, default='random_lines_exact_detection', help='dataset name (default: "random_lines_exact_detection")') 
+    parser.add_argument('-m', '--method', type=str, default='exact', help='method (default: "exact")') 
+    parser.add_argument('-n', '--noise', type=str, default='positional', help='noise (default: "positional")', choices=['positional', 'structural', 'combo'])
+    parser.add_argument('-p', '--percentage', type=int, default=3, help='percentage of segments (over all pieces) to be perturbated  (default: 3)')
+    parser.add_argument('--mean', type=int, default=0, help='mean for the gaussian noise  (default: 0)')
+    parser.add_argument('--std', type=int, default=2, help='standard deviation for the gaussian noise (default: 2)')
+    parser.add_argument('--max', type=int, default=151, help='max value to clip the noisy data within the piece size (default: 151)')
 
     args = parser.parse_args()
 
