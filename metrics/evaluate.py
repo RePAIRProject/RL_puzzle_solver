@@ -83,7 +83,7 @@ def main(args):
             'neighbours': neighbours_val,
             'pixel': MSError
         }
-        json_output_path = os.path.join(output_quantitative_folder, f'evaluation_anchor{anc}.json')
+        json_output_path = os.path.join(output_quantitative_folder, f'evaluation_anchor{anchor_idx}.json')
         with open(json_output_path, 'w') as jf: 
             json.dump(eval_res, jf, indent=2)
 
@@ -93,7 +93,7 @@ def main(args):
         print(f"Neighbours: {neighbours_val * 100:.03f} %")
         print(f"Pixel-wise ({measure}): {MSError}\n")
 
-        solved_img_output_path = os.path.join(output_qualitative_folder, f'evaluated_solution_anchor{anc}.jpg')
+        solved_img_output_path = os.path.join(output_qualitative_folder, f'evaluated_solution_anchor{anchor_idx}.jpg')
         cv2.imwrite(solved_img_output_path, squared_solution_img*255)
 
         anc_xy_pos = get_xy_position(anchor_idx, num_pieces, offset_start=0)
@@ -122,10 +122,10 @@ def main(args):
         if args.visualize is True:
             plt.show()
         else:
-            outputpath = os.path.join(output_visualization_folder, f'visualization_solution_anchor{anc}.png')
+            outputpath = os.path.join(output_visualization_folder, f'visualization_solution_anchor{anchor_idx}.png')
             plt.tight_layout()
             plt.savefig(outputpath)
-        print(f'done with anchor {anc}')
+        print(f'done with anchor {anchor_idx}')
 
 
 if __name__ == '__main__':
