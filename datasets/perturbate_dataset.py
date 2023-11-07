@@ -191,7 +191,7 @@ def main(args):
         chosen_as_list = [0 if (x not in lines_to_be_perturbated) else 1 for x in np.arange(len(puzzle_list_of_segments))]
         puzzle_list_of_segments['noisy'] = chosen_as_list
 
-        noise_folder_name = f"noise_{args.noise}_p{args.percentage}_s{args.sigma}"
+        noise_folder_name = f"noise_{args.noise}_p{args.percentage}_s{sigma}"
         target_folder = os.path.join(lines_detection_folder, noise_folder_name)
         os.makedirs(target_folder, exist_ok=True)
 
