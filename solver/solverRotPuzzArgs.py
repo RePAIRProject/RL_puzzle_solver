@@ -13,7 +13,7 @@ import argparse
 from compatibility.line_matching_NEW_segments import read_info
 
 
-def initialization(R, anc):  # (R, anc, anc_rot, nh, nw):
+def initialization(R, anc, n_side):  # (R, anc, anc_rot, nh, nw):
     # Initialize reconstruction plan
     no_patches = R.shape[3]
 
@@ -25,7 +25,7 @@ def initialization(R, anc):  # (R, anc, anc_rot, nh, nw):
 
     # # Toy Puzzle (with o without initial anchor)
 
-    n_side = cfg.num_patches_side
+    # n_side = num_pieces
     #n_side = np.round(R.shape[4]**(1/2))
     Y = n_side * 2 - 1 
     X = n_side * 2 - 1
@@ -316,11 +316,11 @@ def main(args):
     method = args.method
     num_pieces = args.pieces
 
-    mat = scipy.io.loadmat(os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}_p{args.penalty}.mat'))
+    mat = scipy.io.loadmat(os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}_p{args.penalty}.mat'))
     #mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p0.mat')
-    pieces_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f"{fnames.pieces_folder}")
-    only_lines_pieces_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
-    detect_output = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f"{fnames.lines_output_name}", method)
+    pieces_folder = os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name, f"{fnames.pieces_folder}")
+    only_lines_pieces_folder = os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
+    detect_output = os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name, f"{fnames.lines_output_name}", method)
     #pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\pieces')
     R = mat['R_line']
 
@@ -343,7 +343,7 @@ def main(args):
         anc = args.anchor
     print(anc)
 
-    p_initial, init_pos, x0, y0, z0 = initialization(R, anc)  #(R, anc, anc_rot, nh, nw)
+    p_initial, init_pos, x0, y0, z0 = initialization(R, anc, num_pieces)  #(R, anc, anc_rot, nh, nw)
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
@@ -357,7 +357,7 @@ def main(args):
 
     #solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output_8x8\\{dataset_name}\\{puzzle_name}\solution')
     #os.makedirs(solution_folder, exist_ok=True)
-    solution_folder = os.path.join(f"{fnames.output_dir}_{cfg.num_patches_side}x{cfg.num_patches_side}", dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{args.anchor}_{args.method}')
+    solution_folder = os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{args.anchor}_{args.method}')
     # _pen{args.penalty}')
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{args.anchor}.png')
