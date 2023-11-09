@@ -16,5 +16,5 @@ to=$2
 for puzzle_num in {0..30}
 do
     echo "IMAGE_$puzzle_num"
-    cp /home/m.khoroshiltseva/RL_puzzle_solver/output_8x8/random_lines_exact_detection/image_$puzzle_num/selected_anchor.json output_8x8/random_lines_exact_detection/image_$puzzl_num/.
+    cp /home/m.khoroshiltseva/RL_puzzle_solver/output_8x8/random_lines_exact_detection/image_$puzzle_num/selected_anchor.json output_8x8/random_lines_exact_detection/image_$puzzle_num/.
 done
