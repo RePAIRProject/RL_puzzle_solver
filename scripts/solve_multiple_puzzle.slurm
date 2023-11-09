@@ -13,9 +13,10 @@ pieces=$2
 # CONDA ENVIRONMENT
 #conda activate repair
 for puzzle_num in {0..7}
+do
     #echo "compatibility.."
     #python compatibility/line_matching_NEW_segments.py --dataset $dataset --puzzle image_$puzzle_num --pieces $pieces --method $method #--penalty $3
-
+    
     echo "solver DEEPLSD.."
     python solver/solverRotPuzzArgs.py --dataset $dataset --puzzle image_$puzzle_num --pieces $pieces --method deeplsd
     echo "solver NOISE S1.."
@@ -27,3 +28,4 @@ for puzzle_num in {0..7}
 
     echo "evaluating.."
     python metrics/evaluate_noisy_lines.py --dataset $dataset --puzzle $puzzle --num_pieces $pieces 
+done
