@@ -8,15 +8,18 @@
 export PYTHONPATH=${PYTHONPATH}:/home/luca.palmieri/code/RL_puzzle_solver
 
 dataset=$1
-pieces=$2
+pieces=8
+from=$2
+to=$3
 
 # CONDA ENVIRONMENT
 #conda activate repair
-for puzzle_num in {0..7}
+for puzzle_num in {$from..$to}
 do
-    #echo "compatibility.."
-    #python compatibility/line_matching_NEW_segments.py --dataset $dataset --puzzle image_$puzzle_num --pieces $pieces --method $method #--penalty $3
     
+    echo "image_$puzzle_num"
+    echo "compatibility.."
+    python compatibility/line_matching_NEW_segments.py --dataset $dataset --puzzle image_$puzzle_num --pieces $pieces --method $method #--penalty $3
     echo "solver DEEPLSD.."
     python solver/solverRotPuzzArgs.py --dataset $dataset --puzzle image_$puzzle_num --pieces $pieces --method deeplsd
     echo "solver NOISE S1.."
