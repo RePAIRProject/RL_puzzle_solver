@@ -11,7 +11,7 @@ import configs.unified_cfg as cfg
 import configs.folder_names as fnames
 import argparse
 from compatibility.line_matching_NEW_segments import read_info
-
+import pdb, json
 
 def initialization(R, anc, n_side):  # (R, anc, anc_rot, nh, nw):
     # Initialize reconstruction plan
@@ -307,6 +307,14 @@ def select_anchor(folder):
         new_anc = anc
     return new_anc
 
+
+def read_anchor_from_json(puzzle_folder):
+
+    with open(os.path.join(puzzle_folder, 'selected_anchor.json'), 'r') as jf:
+        anchor_json = json.load(jf)
+    
+    return anchor_json['anchor']
+
 ## MAIN ##
 def main(args):
     ## MAIN ##
@@ -315,6 +323,8 @@ def main(args):
     puzzle_name = args.puzzle
     method = args.method
     num_pieces = args.pieces
+
+    puzzle_folder = os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name)
 
     mat = scipy.io.loadmat(os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}_p{args.penalty}.mat'))
     #mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p0.mat')
@@ -338,7 +348,7 @@ def main(args):
     R = R[:, :, [0,1], :, :]  # select rotation
 
     if args.anchor < 0:
-        anc = select_anchor(detect_output)
+        anc = read_anchor_from_json(puzzle_folder) # select_anchor(detect_output)
     else:
         anc = args.anchor
     print(anc)
