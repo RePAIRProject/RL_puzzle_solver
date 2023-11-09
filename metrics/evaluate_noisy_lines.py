@@ -21,7 +21,10 @@ def main(args):
 
     for solution_folder_name in solution_folder_names:
 
-        method_name = solution_folder_name.split("_")[-1]
+        if "noise" not in solution_folder_name:
+            method_name = solution_folder_name.split("_")[-1]
+        else:
+            method_name = solution_folder_name[solution_folder_name.index('noise'):]
         # output folder 
         output_folder = os.path.join(root_path, fnames.evaluation_folder_name, method_name)
         output_qualitative_folder = os.path.join(output_folder, 'qualitative_evaluation')
