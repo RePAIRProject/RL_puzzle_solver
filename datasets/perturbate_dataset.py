@@ -189,38 +189,58 @@ def main(args):
         num_fragments_to_be_perturbated = np.round(len(puzzle_list_of_segments) * perc_ratio).astype(int)
         print(f"Perturbating {num_fragments_to_be_perturbated} over {len(puzzle_list_of_segments)} ({perc_ratio*100:.02f}%)")
         lines_to_be_perturbated = np.random.choice(len(puzzle_list_of_segments), num_fragments_to_be_perturbated)
+        
+        
         #print("#" * 50)
         print("Perturbating the following segments:", lines_to_be_perturbated)
         chosen_as_list = [0 if (x not in lines_to_be_perturbated) else 1 for x in np.arange(len(puzzle_list_of_segments))]
         puzzle_list_of_segments['noisy'] = chosen_as_list
 
-        noise_folder_name = f"noise_{args.noise}_p{args.percentage}_s{sigma}"
+        if args.noise == 'positional':
+            noise_folder_name = f"noise_{args.noise}_p{args.percentage}_s{sigma}"
+        elif args.noise == 'structural':
+            noise_folder_name = f"noise_{args.noise}_p{args.percentage}"
+        else:
+            noise_folder_name = f"noise_{args.noise}_p{args.percentage}_m{mean}_s{sigma}"
         target_folder = os.path.join(lines_detection_folder, noise_folder_name)
         os.makedirs(target_folder, exist_ok=True)
 
         noisy_p1s = np.asarray(puzzle_list_of_segments['p1'])
         noisy_p2s = np.asarray(puzzle_list_of_segments['p2'])
-        for pert_idx in lines_to_be_perturbated:
-            # p1 = puzzle_list_of_segments['p1'][pert_idx]
-            # p2 = puzzle_list_of_segments['p2'][pert_idx]
-            chosen_p = np.random.randint(2)
-            if chosen_p == 0:
-                p1 = noisy_p1s[pert_idx]
-                noisy_p1 = p1 + np.random.normal(mu, sigma, 2)
-                noisy_p1 = np.clip(noisy_p1, 0, args.max)
 
-                noisy_p1s[pert_idx] = noisy_p1.tolist()
-            else:
-                p2 = noisy_p2s[pert_idx]
-                noisy_p2 = p2 + np.random.normal(mu, sigma, 2)
-                noisy_p2 = np.clip(noisy_p2, 0, args.max)
+        if args.noise == 'positional':
+            for pert_idx in lines_to_be_perturbated:
+                # p1 = puzzle_list_of_segments['p1'][pert_idx]
+                # p2 = puzzle_list_of_segments['p2'][pert_idx]
+                chosen_p = np.random.randint(2)
+                if chosen_p == 0:
+                    p1 = noisy_p1s[pert_idx]
+                    noisy_p1 = p1 + np.random.normal(mu, sigma, 2)
+                    noisy_p1 = np.clip(noisy_p1, 0, args.max)
 
-                noisy_p2s[pert_idx] = noisy_p2.tolist()
+                    noisy_p1s[pert_idx] = noisy_p1.tolist()
+                else:
+                    p2 = noisy_p2s[pert_idx]
+                    noisy_p2 = p2 + np.random.normal(mu, sigma, 2)
+                    noisy_p2 = np.clip(noisy_p2, 0, args.max)
+
+                    noisy_p2s[pert_idx] = noisy_p2.tolist()
 
 
-            puzzle_list_of_segments['noisy_p1'] = noisy_p1s
-            puzzle_list_of_segments['noisy_p2'] = noisy_p2s
-        
+                puzzle_list_of_segments['noisy_p1'] = noisy_p1s
+                puzzle_list_of_segments['noisy_p2'] = noisy_p2s
+
+        elif args.noise == 'structural':
+
+            remaining_segments_p1s = [p1 for j, p1 in enumerate(noisy_p1s) if j not in lines_to_be_perturbated]
+            remaining_segments_p2s = [p2 for j, p2 in enumerate(noisy_p2s) if j not in lines_to_be_perturbated]
+
+            for pert_idx in lines_to_be_perturbated:
+                noisy_p1s[pert_idx] = [-1, -1]
+                noisy_p2s[pert_idx] = [-1, -1]
+                puzzle_list_of_segments['noisy_p1'] = noisy_p1s
+                puzzle_list_of_segments['noisy_p2'] = noisy_p2s
+
         puzzle_list_of_segments.to_csv(os.path.join(target_folder, f"{image_name}.csv"))
 
         #print("#" * 50)
@@ -235,12 +255,14 @@ def main(args):
             noisy_p1s = []
             noisy_p2s = []
             for p1, p2 in zip(p1s, p2s):
+            
+                if np.sum(p1) + np.sum(p2) >= 0:
 
-                rhofld, thetafld = line_cart2pol(p1, p2)
-                noisy_angles.append(thetafld)
-                noisy_dists.append(rhofld)
-                noisy_p1s.append(p1)
-                noisy_p2s.append(p2)
+                    rhofld, thetafld = line_cart2pol(p1, p2)
+                    noisy_angles.append(thetafld)
+                    noisy_dists.append(rhofld)
+                    noisy_p1s.append(p1)
+                    noisy_p2s.append(p2)
 
             detected_lines = {
                 'angles': noisy_angles,
