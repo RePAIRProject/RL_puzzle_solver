@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=solver_noisy_lines                                       # Job name
 #SBATCH --ntasks=1                                                      # Run on a single CPU
-#SBATCH --output=RL_logs/exp_single_puzzle_noisy_%j.log                 # Standard output and error log
+#SBATCH --output=RL_logs/noise/exp_single_puzzle_noisy_%j.log                 # Standard output and error log
 
 # PYTHONPATH
 export PYTHONPATH=${PYTHONPATH}:/home/luca.palmieri/code/RL_puzzle_solver
@@ -19,7 +19,7 @@ echo "compatibility.."
 python compatibility/line_matching_NEW_segments.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method #--penalty $3
 
 echo "solver.."
-python solver/solverRotPuzzArgs.py --dataset $dataset --puzzle $puzzle --pieces $pieces
+python solver/solverRotPuzzArgs.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method
 
 echo "evaluating.."
 python metrics/evaluate.py --dataset $dataset --puzzle $puzzle --num_pieces $pieces 
