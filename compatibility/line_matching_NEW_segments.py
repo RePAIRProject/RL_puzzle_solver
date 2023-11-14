@@ -90,6 +90,7 @@ def line_poligon_intersec(z_p, z_l, s1, s2, cfg):
 
         # if shapely.is_empty(shapely.intersection(candidate_line_shapely, piece_j_shape)):
         # if shapely.is_empty(shapely.intersection(candidate_line_shapely.buffer(cfg.border_tolerance), piece_j_shape.buffer(cfg.border_tolerance))):
+        pdb.set_trace()
         if shapely.is_empty(shapely.intersection(candidate_line_shapely, piece_j_shape.buffer(cfg.border_tolerance))):
             intersections.append(False)
         else:

@@ -8,7 +8,8 @@ import scipy.io
 import os
 from configs import folder_names as fnames
 import shapely
-
+import time 
+from numba import jit
 import configs.puzzle_from_fragments_cfg as cfg
 # import configs.unified_cfg as cfg
 
@@ -97,7 +98,6 @@ def line_poligon_intersec(z_p, z_l, s1, s2, cfg):
             intersections.append(True)
     return intersections
 
-
 def line_poligon_intersec_RePair(z_p, z_l, s1, s2, poly0, cfg):
     # check if line crosses the polygon
     # z_p1 = [0,0],  z_l2 = z,
@@ -119,7 +119,29 @@ def line_poligon_intersec_RePair(z_p, z_l, s1, s2, poly0, cfg):
             intersections.append(True)
     return intersections
 
+@jit 
+def compute_distances(useful_lines_alfa1, useful_lines_alfa2, \
+        useful_lines_s11, useful_lines_s12, useful_lines_s21, useful_lines_s22):
+    n_lines_f1 = useful_lines_alfa1.shape[0]
+    n_lines_f2 = useful_lines_alfa2.shape[0]
+    dist_matrix0 = np.zeros((n_lines_f1, n_lines_f2))
+    dist_matrix = np.zeros((n_lines_f1, n_lines_f2))
+    gamma_matrix = np.zeros((n_lines_f1, n_lines_f2))
+    for i in range(n_lines_f1):
+        for j in range(n_lines_f2):
+            gamma = useful_lines_alfa1[i] - useful_lines_alfa2[j]
+            gamma_matrix[i, j] = np.abs(np.sin(gamma))
 
+            d1 = distance.euclidean(useful_lines_s11[i], useful_lines_s21[j])
+            d2 = distance.euclidean(useful_lines_s11[i], useful_lines_s22[j])
+            d3 = distance.euclidean(useful_lines_s12[i], useful_lines_s21[j])
+            d4 = distance.euclidean(useful_lines_s12[i], useful_lines_s22[j])
+
+            dist_matrix0[i, j] = np.min([d1, d2, d3, d4])
+
+    return dist_matrix, gamma_matrix, dist_matrix0
+
+@jit
 def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, cfg):
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
@@ -134,7 +156,6 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
         for ix in range(m.shape[1]):  # (z_id.shape[0]):
             for iy in range(m.shape[1]):  # (z_id.shape[0]):
                 z = z_id[ix, iy]
-
                 # check if line1 crosses the polygon2
                 # intersections1 = line_poligon_intersec(z, [0, 0], s11, s12, cfg)  # z_p2 = z,   z_l1 = [0,0]
                 intersections1 = line_poligon_intersec_RePair(z, [0, 0], s11, s12, poly2, cfg)
@@ -167,24 +188,14 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
 
                 else:
                     # Compute cost_matrix, LAP, penalty, normalize
-                    dist_matrix0 = np.zeros((n_lines_f1, n_lines_f2))
-                    dist_matrix = np.zeros((n_lines_f1, n_lines_f2))
-                    gamma_matrix = np.zeros((n_lines_f1, n_lines_f2))
-
+                    
+                    
                     useful_lines_s21 = useful_lines_s21 + z
                     useful_lines_s22 = useful_lines_s22 + z
 
-                    for i in range(n_lines_f1):
-                        for j in range(n_lines_f2):
-                            gamma = useful_lines_alfa1[i] - useful_lines_alfa2[j]
-                            gamma_matrix[i, j] = np.abs(np.sin(gamma))
-
-                            d1 = distance.euclidean(useful_lines_s11[i], useful_lines_s21[j])
-                            d2 = distance.euclidean(useful_lines_s11[i], useful_lines_s22[j])
-                            d3 = distance.euclidean(useful_lines_s12[i], useful_lines_s21[j])
-                            d4 = distance.euclidean(useful_lines_s12[i], useful_lines_s22[j])
-
-                            dist_matrix0[i, j] = np.min([d1, d2, d3, d4])
+                    dist_matrix, gamma_matrix, dist_matrix0 = compute_distances(useful_lines_alfa1, useful_lines_alfa2, \
+                                useful_lines_s11, useful_lines_s12, useful_lines_s21, useful_lines_s22)
+                    
 
                     dist_matrix[gamma_matrix > cfg.thr_coef] = cfg.badmatch_penalty
                     dist_matrix[dist_matrix0 > cfg.max_dist] = cfg.badmatch_penalty  ## new part
@@ -279,11 +290,16 @@ def main(args):
     All_cost = np.zeros((m.shape[1], m.shape[1], len(rot), n, n))
     All_norm_cost = np.zeros((m.shape[1], m.shape[1], len(rot), n, n))
 
+    timings = np.zeros(n*n)
+    time_bef = time.time()
+    time_after = 0
+
     for f1 in range(n):  # select fixed fragment
         for f2 in range(n):  # select moving and rotating fragment
-
-            print(f1)
-            print(f2)
+            time_after = time.time()
+            print(f"Iteration {(f2+1) + n * (f1)} took {(time_after-time_bef):.03f} seconds\n")
+            time_bef = time_after
+            print(f"Working on comp between {f1:02d} and {f2:02d} ({(((f1)*n+(f2+1) / (n*n)) * 100):.02f}% completed)")
 
             if f1 == f2:
                 R_norm = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1

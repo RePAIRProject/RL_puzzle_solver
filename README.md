@@ -118,7 +118,7 @@ python detect_lines_compatibility.py -rf /home/lucap/code/RL_puzzle_solver -d ma
 
 #### Compute compatibility
 ```bash
-python compatibility/line_matching_segments.py --dataset manual_lines --puzzle lines1
+python compatibility/line_matching_NEW_segments.py --dataset manual_lines --puzzle lines1
 ```
 
 #### Solver
@@ -130,6 +130,37 @@ python solver/solverRotPuzzArgs.py --dataset manual_lines --puzzle lines1
 ```bash
 python metrics/evaluate.py
 ```
+
+## Full pipeline RePAIR
+
+#### Create pieces ???
+```bash
+python preprocessing/preprocess_fragments.py -d repair
+```
+
+#### Detect lines (using deepLSD)
+```bash
+python detect_lines_compatibility.py -rf /home/lucap/code/RL_puzzle_solver -d repair
+```
+
+#### Compute regions matrices
+```bash
+python features/compute_regions_masks.py --dataset repair --puzzle decor_1
+```
+
+#### Compute polygons
+```bash
+python dataset/create_polygons.py 
+```
+
+#### Compute compatibility
+```bash
+python compatibility/line_matching_RePAIR_poly_2910.py --dataset repair --puzzle decor_1
+```
+
+
+
+
 
 #### Solve a puzzle (given pieces and detected lines)
 ```bash

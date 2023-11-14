@@ -11,13 +11,13 @@ import json, os
 from configs import repair_cfg as cfg
 from configs import folder_names as fnames
 
-from rpf_utils.visualization import save_vis
+from puzzle_utils.visualization import save_vis
 
 def main(args):
 
     ## PREPARE PIECES AND GRIDS
     #pdb.set_trace()
-    pieces = prepare_pieces(cfg, fnames, args.puzzle)
+    pieces = prepare_pieces(cfg, fnames, args.dataset, args.puzzle)
     grid_size_xy = cfg.comp_matrix_shape[0]
     grid_size_rot = cfg.comp_matrix_shape[2]
     grid, grid_step_size = create_grid(grid_size_xy, cfg.p_hs, cfg.canvas_size)
@@ -59,7 +59,7 @@ def main(args):
     print('Done calculating')
     print('#' * 50)
     print('Saving the matrix..')     
-    output_folder = os.path.join(fnames.output_dir, args.puzzle, fnames.rm_output_name)
+    output_folder = os.path.join(f"{fnames.output_dir}_8x8", args.dataset, args.puzzle, fnames.rm_output_name)
     # should we add this to the folder? it will create a subfolder that we may not need
     # f"{cfg.rm_output_dir}_{args.puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
     vis_folder = os.path.join(output_folder, fnames.visualization_folder_name)
@@ -75,7 +75,8 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')
-    parser.add_argument('--puzzle', type=str, default='repair_g28', help='puzzle to work on')
+    parser.add_argument('--dataset', type=str, default='repair', help='dataset (name of the folders)')
+    parser.add_argument('--puzzle', type=str, default='decor_1_lines', help='puzzle to work on')
     args = parser.parse_args()
     main(args)
 

@@ -42,7 +42,11 @@ NOT_MATCHING = 0.001
 
 ### LINE MATCHING
 rmax = 50
-thr_coef = 0.1
-max_dist = 1000
+thr_coef = 0.08
+max_dist = 3
+badmatch_penalty = 30
+mismatch_penalty = 20 #10
+rmax = 15 #11
+border_tolerance = piece_size // 60
 
 

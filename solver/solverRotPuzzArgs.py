@@ -12,6 +12,9 @@ import configs.folder_names as fnames
 import argparse
 from compatibility.line_matching_NEW_segments import read_info
 import pdb, json
+import torch 
+import torch.nn.functional as F 
+import time 
 
 def initialization(R, anc, n_side):  # (R, anc, anc_rot, nh, nw):
     # Initialize reconstruction plan
@@ -132,6 +135,25 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
         t += 1
         iter += 1
         q = np.zeros_like(p)
+
+        pdb.set_trace()
+        input_matrix = torch.from_numpy(p[:,:,0,:])
+        kernel_matrix = torch.from_numpy(R[:,:,0,:,:])
+
+        # Reshape the input and kernel matrices
+        input_tensor = input_matrix.unsqueeze(0).unsqueeze(0) # shape: (1, 1, 15, 15)
+        kernel_tensor = kernel_matrix.permute(2, 0, 1).unsqueeze(0) # shape: (1, 64, 3, 3)
+        input_tensor = input_tensor.expand(1, kernel_matrix.shape[2], input_tensor.shape[2], input_tensor.shape[3]) # shape: (1, 64, 15, 15)
+
+        # Create a Conv2d module
+        #conv = torch.nn.Conv2d(input_tensor.shape[1], kernel_tensor.shape[1], kernel_size=3, stride=1, padding=1, bias=False)
+        # Set the weight of the Conv2d module
+        #conv.weight = torch.nn.Parameter(kernel_tensor)
+        # Perform the convolution operation
+        #q1torch = conv(input_tensor)
+
+        torch.nn.functional.conv2d(input_tensor, kernel_tensor)
+
         for i in range(no_patches):
             ri = R[:, :, :, :, i]
             #ri = R[:, :, :, i, :] #FOR ORACLE SQUARE ONLY !!!!!
@@ -139,6 +161,7 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
                 rr = rotate(ri, z_rot[zi], reshape=False, mode='constant') #CHECK ??? method?? senso antiorario!!!
                 rr = np.roll(rr, zi, axis=2) # matlab: rr = circshift(rr,zi-1,3); z1=0!!!
                 c1 = np.zeros(p.shape)
+                t_for = time.time()
                 for j in range(no_patches):
                     for zj in range(Z):
                         rj_z = rr[:, :, zj, j]
@@ -148,6 +171,35 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
                         c1[:, :, zj, j] = cc;
 
                 q1 = np.sum(c1, axis=(2, 3))
+                print(f'with for loop took {(time.time()-t_for):.08f} seconds')
+                t_torch = time.time()
+                #pdb.set_trace()
+                # Assume input_matrix is your 2D matrix of size 15x15
+                # And kernel_matrix is your 3D matrix of size 3x3x64
+
+                input_matrix = torch.from_numpy(p[:,:,0,0])
+                kernel_matrix = torch.from_numpy(rr[:,:,0,:])
+
+                # Reshape the input and kernel matrices
+                input_tensor = input_matrix.unsqueeze(0).unsqueeze(0) # shape: (1, 1, 15, 15)
+                kernel_tensor = kernel_matrix.permute(2, 0, 1).unsqueeze(0) # shape: (1, 64, 3, 3)
+                input_tensor = input_tensor.expand(1, kernel_matrix.shape[2], input_tensor.shape[2], input_tensor.shape[3]) # shape: (1, 64, 15, 15)
+
+                # Create a Conv2d module
+                conv = torch.nn.Conv2d(input_tensor.shape[1], kernel_tensor.shape[1], kernel_size=3, stride=1, padding=1, bias=False)
+
+                # Set the weight of the Conv2d module
+                conv.weight = torch.nn.Parameter(kernel_tensor)
+
+                # Perform the convolution operation
+                q1torch = conv(input_tensor)
+
+                # rtorch = torch.unsqueeze(torch.from_numpy(np.squeeze()), 0)
+                # ptorch = torch.unsqueeze(torch.unsqueeze(torch.from_numpy(np.squeeze(p[:,:,0,0])), 0), 0)
+                # q1torch = F.conv2d(rtorch, ptorch, padding='same')
+                print(f'with torch took {(time.time()-t_torch):.08f} seconds')
+                print(q1 == q1torch.detach().numpy())
+                pdb.set_trace()
                 # q2 = (q1 != 0) * (q1 + no_patches * Z * 0.5) ## new_experiment
                 q2 = (q1 + no_patches * Z * 1)  # *0.5
                 q[:, :, zi, i] = q2

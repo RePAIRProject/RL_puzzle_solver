@@ -18,8 +18,8 @@ def center_fragment(image):
     return centered_image, mask
 
 def main(args):
-    target_img_shape = cfg.piece_size 
-    groups = [28, 35, 39, 45]
+    target_img_shape = 1501 #cfg.piece_size 
+    groups = [97]
     db_folder = args.dataset
     groups_folders = [os.path.join(db_folder, f'group_{group}') for group in groups]
     output_root_folder = 'data'
@@ -30,18 +30,18 @@ def main(args):
         os.makedirs(target_out_folder, exist_ok=True)
         os.makedirs(target_out_folder_masks, exist_ok=True)
         for piece_path in os.listdir(group_folder):
-            if 'RPf' in piece_path:
-                piece_full_path = os.path.join(group_folder, piece_path)
-                imgcv = cv2.imread(piece_full_path, cv2.IMREAD_UNCHANGED)
-                if imgcv.shape[0] != target_img_shape:
-                    imgcv = cv2.resize(imgcv, dsize=(target_img_shape, target_img_shape), interpolation=cv2.INTER_CUBIC)
-                centered_img, img_mask = center_fragment(imgcv)
-                target_path = os.path.join(target_out_folder, piece_path)
-                target_path_mask = os.path.join(target_out_folder_masks, f"{piece_path[:-4]}_mask.png")
-                #pdb.set_trace()
-                cv2.imwrite(target_path_mask, img_mask*255)
-                cv2.imwrite(target_path, centered_img)
-                print('saved centered image in', target_path)
+            #if 'RPf' in piece_path:
+            piece_full_path = os.path.join(group_folder, piece_path)
+            imgcv = cv2.imread(piece_full_path, cv2.IMREAD_UNCHANGED)
+            if imgcv.shape[0] != target_img_shape:
+                imgcv = cv2.resize(imgcv, dsize=(target_img_shape, target_img_shape), interpolation=cv2.INTER_CUBIC)
+            centered_img, img_mask = center_fragment(imgcv)
+            target_path = os.path.join(target_out_folder, piece_path)
+            target_path_mask = os.path.join(target_out_folder_masks, f"{piece_path[:-4]}_mask.png")
+            #pdb.set_trace()
+            cv2.imwrite(target_path_mask, img_mask*255)
+            cv2.imwrite(target_path, centered_img)
+            print('saved centered image in', target_path)
         #pdb.set_trace()
 
 if __name__ == '__main__':

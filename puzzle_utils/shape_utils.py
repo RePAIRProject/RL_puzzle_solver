@@ -150,15 +150,15 @@ def get_borders(piece, width=5):
     borders = mask - eroded_mask
     return borders 
 
-def prepare_pieces(cfg, fnames, puzzle_name, background=0):
+def prepare_pieces(cfg, fnames, dataset, puzzle_name, background=0):
     pieces = []
-    data_folder = os.path.join(fnames.data_path, puzzle_name, fnames.imgs_folder)
+    data_folder = os.path.join(fnames.data_path, dataset, puzzle_name, fnames.imgs_folder)
     pieces_names = os.listdir(data_folder)
     #pieces_full_path = [os.path.join(data_folder, piece_name) for piece_name in pieces_names]
     for piece_name in pieces_names:
         piece_full_path = os.path.join(data_folder, piece_name)
         piece_d = {}
-        img = cv2.imread(piece_full_path)
+        img = plt.imread(piece_full_path)
         if background != 0:
             img[img[:,:,0] == background] = 0
         if img.shape[0] != img.shape[1]:
