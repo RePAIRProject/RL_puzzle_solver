@@ -154,6 +154,7 @@ def prepare_pieces(cfg, fnames, dataset, puzzle_name, background=0):
     pieces = []
     data_folder = os.path.join(fnames.data_path, dataset, puzzle_name, fnames.imgs_folder)
     pieces_names = os.listdir(data_folder)
+    pieces_names.sort()
     #pieces_full_path = [os.path.join(data_folder, piece_name) for piece_name in pieces_names]
     for piece_name in pieces_names:
         piece_full_path = os.path.join(data_folder, piece_name)

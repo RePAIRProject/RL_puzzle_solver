@@ -9,7 +9,7 @@ import os
 from configs import folder_names as fnames
 import shapely
 import time 
-from numba import jit
+#from numba import jit
 import configs.puzzle_from_fragments_cfg as cfg
 # import configs.unified_cfg as cfg
 
@@ -119,7 +119,6 @@ def line_poligon_intersec_RePair(z_p, z_l, s1, s2, poly0, cfg):
             intersections.append(True)
     return intersections
 
-@jit 
 def compute_distances(useful_lines_alfa1, useful_lines_alfa2, \
         useful_lines_s11, useful_lines_s12, useful_lines_s21, useful_lines_s22):
     n_lines_f1 = useful_lines_alfa1.shape[0]
@@ -141,7 +140,6 @@ def compute_distances(useful_lines_alfa1, useful_lines_alfa2, \
 
     return dist_matrix, gamma_matrix, dist_matrix0
 
-@jit
 def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, cfg):
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
@@ -315,8 +313,8 @@ def main(args):
                 elif (len(alfa1) > 0 and len(alfa2) == 0) or (len(alfa1) == 0 and len(alfa2) > 0):
                     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + cfg.mismatch_penalty
                 else:
-                    poly1 = np.load(os.path.join(data_folder, args.puzzle, "polygons", poly_files[f1]))
-                    poly2 = np.load(os.path.join(data_folder, args.puzzle, "polygons", poly_files[f1]))
+                    poly1 = np.load(os.path.join(data_folder, args.puzzle, "polygons", poly_files[f1]), allow_pickle=True)
+                    poly2 = np.load(os.path.join(data_folder, args.puzzle, "polygons", poly_files[f1]), allow_pickle=True)
                     R_cost = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
                                                                            s12, s21, s22, poly1, poly2, cfg)
                 All_cost[:, :, :, f2, f1] = R_cost
