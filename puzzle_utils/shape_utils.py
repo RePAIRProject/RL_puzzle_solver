@@ -8,6 +8,14 @@ import pickle
 import scipy
 import pdb
 import os
+import shapely
+
+def get_polygon(binary_image):
+    contours, _ = cv2.findContours(binary_image.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contour_points = contours[0]
+    shapely_points = [(point[0][0], point[0][1]) for point in contour_points]  # Shapely expects points in the format (x, y)
+    polygon = shapely.Polygon(shapely_points)
+    return polygon
 
 def create_grid(grid_size, padding, canvas_size):
     axis_grid = np.linspace(padding, canvas_size - padding - 1, grid_size)
