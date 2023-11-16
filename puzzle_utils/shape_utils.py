@@ -14,6 +14,10 @@ def get_polygon(binary_image):
     contours, _ = cv2.findContours(binary_image.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contour_points = contours[0]
     shapely_points = [(point[0][0], point[0][1]) for point in contour_points]  # Shapely expects points in the format (x, y)
+    if len(shapely_points) < 4:
+        print('we have a problem, too few points', shapely_points)
+        raise ValueError('\nWe have fewer than 4 points on the polygon, so we cannot create a Shapely polygon out of this points! Maybe something went wrong with the mask?')
+        #pdb.set_trace()
     polygon = shapely.Polygon(shapely_points)
     return polygon
 

@@ -7,6 +7,7 @@ def cut_into_pieces(image, shape, num_pieces, output_path, _index):
 
     pieces = []
     if shape == 'regular':
+        print("WARNING: NOT FULLY TESTED \nbetter to use create_dataset_TEST the old script for quick creation, or maybe debug this!")
         patch_size = image.shape[0] // num_pieces
         x0_all = np.arange(0, image.shape[0], patch_size, dtype=int)
         y0_all = np.arange(0, image.shape[1], patch_size, dtype=int)
@@ -20,22 +21,29 @@ def cut_into_pieces(image, shape, num_pieces, output_path, _index):
                 ## create patch
                 patch = image[y0:y1 + 1, x0:x1 + 1]
                 centered_patch, centered_mask, shift2align = center_fragment(patch)
+                center_of_mass = np.asarray([(x1-x0)/2, (y1-y0)/2])
                 piece_dict = {
-                    'center_img': centered_patch,
-                    'orig_img': patch,
-                    'shape': box,
                     'mask': centered_mask,
+                    'centered_mask': centered_mask,
+                    'image': centered_patch,
+                    'centered_image': centered_patch,
+                    'polygon': box,
+                    'centered_polygon': box,
+                    'center_of_mass': center_of_mass,
+                    'height': patch_size,
+                    'width': patch_size,
                     'shift2center': shift2align
                 }
                 pieces.append(piece_dict)
-                
+
     if shape == 'irregular':
 
         generator = PuzzleGenerator(image, f"image_{_index:05d}")
         generator.run(num_pieces, offset_rate_h=0.2, offset_rate_w=0.2, small_region_area_ratio=0.25, rot_range=0,
             smooth_flag=False, alpha_channel=True, perc_missing_fragments=0, erosion=0, borders=False)
         generator.save_jpg_regions(output_path)
-        pieces = generator.get_pieces_from_puzzle()
+        #pieces = generator.get_pieces_from_puzzle()
+        pieces = generator.get_pieces_from_puzzle_v2()
     
     return pieces
 
