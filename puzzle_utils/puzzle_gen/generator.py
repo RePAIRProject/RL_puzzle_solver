@@ -259,9 +259,12 @@ class PuzzleGenerator:
         bg_mat = np.zeros_like(self.img)
         for i in range(self.region_cnt):
             mask_i = self.region_mat == i
-            image_i = np.where(mask_i, self.img, bg_mat)
+            if len(self.img.shape) > 2: 
+                image_i = self.img * np.repeat(mask_i, self.img.shape[2]).reshape(self.img.shape)
+            else:
+                image_i = np.where(mask_i, self.img, bg_mat)
             poly_i = get_polygon(mask_i)
-            cm_i = get_cm(mask_i)
+            cm_i = get_cm(mask_i)[::-1]
             coords = np.argwhere(mask_i)
             y0, x0 = coords.min(axis=0)
             y1, x1 = coords.max(axis=0) + 1
@@ -269,12 +272,12 @@ class PuzzleGenerator:
             w_i = x1-x0 
             ## centering
             centered_img = np.zeros_like(self.img)
-            centered_mask = np.zeros_like(self.img)
+            centered_mask = np.zeros_like(mask_i)
             center_i = np.asarray([self.img.shape[0] / 2, self.img.shape[1] / 2])
             shift2center = (center_i - cm_i)#[::1]
-            x0c = (x0+shift2center[0]).astype(int)
+            x0c = (x0+shift2center[1]).astype(int)
             x1c = (x0c + w_i).astype(int)
-            y0c = (y0+shift2center[1]).astype(int)
+            y0c = (y0+shift2center[0]).astype(int)
             y1c = (y0c + h_i).astype(int)
             centered_img[y0c:y1c, x0c:x1c] = image_i[y0:y1, x0:x1]
             centered_mask[y0c:y1c, x0c:x1c] = mask_i[y0:y1, x0:x1]

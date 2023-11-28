@@ -71,13 +71,14 @@ Example:
 def main(args):
 
     if args.output == '':
-        output_root_path = os.path.join(os.getcwd(), 'synthetic_dataset')
+        output_root_path = os.path.join(os.getcwd())
     else:
         output_root_path = args.output
     
-    data_folder = os.path.join(output_root_path, 'data')
-    puzzle_folder = os.path.join(output_root_path, 'puzzle')
-    parameter_path = os.path.join(output_root_path, 'parameters.json')
+    dataset_name = f"synthetic_{args.shape}_line_pieces"
+    data_folder = os.path.join(output_root_path, 'data', dataset_name)
+    puzzle_folder = os.path.join(output_root_path, 'output', dataset_name)
+    parameter_path = os.path.join(puzzle_folder, 'parameters.json')
     os.makedirs(data_folder, exist_ok=True)
     os.makedirs(puzzle_folder, exist_ok=True)
 
@@ -104,6 +105,7 @@ def main(args):
         cv2.imwrite(os.path.join(data_folder, f'image_{N:05d}.jpg'), img)
 
         ## make folders to save pieces and detected lines
+        puzzle_name = f'image_{N:05d}'
         single_image_folder = os.path.join(puzzle_folder, f'image_{N:05d}')
         pieces_single_folder = os.path.join(single_image_folder, 'pieces')
         os.makedirs(pieces_single_folder, exist_ok=True)
@@ -115,7 +117,7 @@ def main(args):
         os.makedirs(lines_output_folder, exist_ok=True)
 
         # this gives us the pieces
-        pieces = cut_into_pieces(img, args.shape, args.num_pieces, single_image_folder, N)
+        pieces = cut_into_pieces(img, args.shape, args.num_pieces, single_image_folder, puzzle_name)
         # pieces is a list of dicts with several keys:
         # - pieces[i]['orig_img'] is the image (4-channels, alpha-transparent) in its original location
         # - pieces[i]['center_img'] is the centered image 
@@ -236,7 +238,7 @@ if __name__ == '__main__':
     parser.add_argument('-ww', '--width', type=int, default=1920, help='width of the images')
     parser.add_argument('-ni', '--num_images', type=int, default=10, help='number of images for each number of line')
     parser.add_argument('-o', '--output', type=str, default='', help='output folder')
-    parser.add_argument('-lt', '--line_type', type=str, default='segments', choices=['segments', 'lines', 'polylines'], help='choose type of features')
+    parser.add_argument('-lt', '--line_type', type=str, default='mix', choices=['segments', 'lines', 'polylines', 'mix'], help='choose type of features')
     parser.add_argument('-th', '--thickness', type=int, default=1, help='thickness of the drawings')
     parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['regular', 'irregular'])
     parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces the images')

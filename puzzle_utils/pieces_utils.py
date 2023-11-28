@@ -3,7 +3,7 @@ import cv2
 import shapely 
 from puzzle_utils.puzzle_gen.generator import PuzzleGenerator
 
-def cut_into_pieces(image, shape, num_pieces, output_path, _index):
+def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name):
 
     pieces = []
     if shape == 'regular':
@@ -38,11 +38,10 @@ def cut_into_pieces(image, shape, num_pieces, output_path, _index):
 
     if shape == 'irregular':
 
-        generator = PuzzleGenerator(image, f"image_{_index:05d}")
+        generator = PuzzleGenerator(image, puzzle_name)
         generator.run(num_pieces, offset_rate_h=0.2, offset_rate_w=0.2, small_region_area_ratio=0.25, rot_range=0,
-            smooth_flag=False, alpha_channel=True, perc_missing_fragments=0, erosion=0, borders=False)
+            smooth_flag=True, alpha_channel=True, perc_missing_fragments=0, erosion=0, borders=False)
         generator.save_jpg_regions(output_path)
-        #pieces = generator.get_pieces_from_puzzle()
         pieces = generator.get_pieces_from_puzzle_v2()
     
     return pieces

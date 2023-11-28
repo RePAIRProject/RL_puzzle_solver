@@ -18,7 +18,7 @@ def main(args):
     ## PREPARE PIECES AND GRIDS
     #pdb.set_trace()
     pieces = prepare_pieces(cfg, fnames, args.dataset, args.puzzle)
-    pdb.set_trace()
+    #pdb.set_trace()
     grid_size_xy = cfg.comp_matrix_shape[0]
     grid_size_rot = cfg.comp_matrix_shape[2]
     grid, grid_step_size = create_grid(grid_size_xy, cfg.p_hs, cfg.canvas_size)
