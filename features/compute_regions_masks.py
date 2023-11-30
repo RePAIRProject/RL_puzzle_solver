@@ -1,6 +1,6 @@
 
 from puzzle_utils.shape_utils import prepare_pieces, create_grid, shape_pairwise_compatibility, \
-    get_outside_borders, place_on_canvas
+    get_outside_borders, place_on_canvas, get_borders_around
 import numpy as np
 import scipy
 import argparse 
@@ -32,29 +32,94 @@ def main(args):
     print('#' * 50)
     #pdb.set_trace()
     ## CREATE MATRIX
+    debug = False
+    if debug is True:
+        plt.ion()
     RM = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+    #RM_big = np.zeros((3001, 3001, grid_size_rot, len(pieces), len(pieces)))
+    overlap_M = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+    borders_M = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
     for i in range(len(pieces)):
         for j in range(len(pieces)):
-            if i == j:
-                RM[:,:,:,i,j] = -1
-            else:
-                print(f"regions for pieces {i:>2} and {j:>2}", end='\r')
-                #pdb.set_trace()
-                center_pos = cfg.canvas_size // 2
-                piece_i_on_canvas = place_on_canvas(pieces[i], (center_pos, center_pos), cfg.canvas_size, 0)
-                mask_i = cv2.resize(piece_i_on_canvas['mask'], (cfg.comp_matrix_shape[0], cfg.comp_matrix_shape[1]))
-                #outside_borders_i = get_outside_borders(mask_i, borders_width=1)
-                for t in range(grid_size_rot):
-                    piece_j_on_canvas = place_on_canvas(pieces[j], (center_pos, center_pos), cfg.canvas_size, t * cfg.theta_step)
-                    mask_j = cv2.resize(piece_j_on_canvas['mask'], (cfg.comp_matrix_shape[0], cfg.comp_matrix_shape[1]))
-                    #outside_borders_j = get_outside_borders(mask_j, borders_width=1)
-                    overlap_conv = cv2.filter2D(mask_i, -1, mask_j)
-                    thresholded_regions_map = (overlap_conv > cfg.threshold_overlap).astype(np.int32)
-                    thresholded_regions_map *= -1
-                    outside_borders_trm = get_outside_borders(thresholded_regions_map.astype(np.uint8), cfg.borders_regions_width)
-                    thresholded_regions_map += outside_borders_trm > 0
-                    #candidate_region = cv2.filter2D(outside_borders_i, -1, outside_borders_j)
-                    RM[:,:,t,i,j] = (thresholded_regions_map)
+            if i == 0 and j == 1:
+                if i == j:
+                    RM[:,:,:,i,j] = -1
+                else:
+                    print(f"regions for pieces {i:>2} and {j:>2}", end='\r')
+                    #pdb.set_trace()
+                    center_pos = cfg.canvas_size // 2
+                    piece_i_on_canvas = place_on_canvas(pieces[i], (center_pos, center_pos), cfg.canvas_size, 0)
+                    mask_i = cv2.resize(piece_i_on_canvas['mask'], (cfg.comp_matrix_shape[0], cfg.comp_matrix_shape[1]))
+                    #outside_borders_i = get_outside_borders(mask_i, borders_width=1)
+                    for t in range(grid_size_rot):
+                        piece_j_on_canvas = place_on_canvas(pieces[j], (center_pos, center_pos), cfg.canvas_size, t * cfg.theta_step)
+                        mask_j = cv2.resize(piece_j_on_canvas['mask'], (cfg.comp_matrix_shape[0], cfg.comp_matrix_shape[1]))
+                        #outside_borders_j = get_outside_borders(mask_j, bordpers_width=1)
+                        overlap_conv = cv2.filter2D(piece_i_on_canvas['mask'], -1, piece_j_on_canvas['mask'])
+                        #overlap_conv_scp = scipy.ndimage.convolve(piece_i_on_canvas['mask'], piece_j_on_canvas['mask'])
+                        thresholded_regions_map = (overlap_conv > cfg.threshold_overlap).astype(np.int32)
+                        thresholded_regions_map *= -1
+                        around_borders_trm = get_borders_around(thresholded_regions_map.astype(np.uint8), int(cfg.borders_regions_width*cfg.xy_step))
+                        thresholded_regions_map += 2*(around_borders_trm > 0)
+                        thresholded_regions_map = np.clip(thresholded_regions_map, -1, 1)
+                        RM[:,:,t,i,j] = cv2.resize(thresholded_regions_map.astype(np.uint8), (cfg.comp_matrix_shape[0], cfg.comp_matrix_shape[1]))
+                        overlap_M[:,:,t,i,j] = cv2.resize(overlap_conv, (cfg.comp_matrix_shape[0], cfg.comp_matrix_shape[1]))
+                        borders_M[:,:,t,i,j] = cv2.resize(around_borders_trm, (cfg.comp_matrix_shape[0], cfg.comp_matrix_shape[1]))
+                            #pdb.set_trace()
+                        # if t == 6:
+                        #     ooo = overlap_conv
+                            #pdb.set_trace()
+                            #cv2.imwrite(f'overlap_opencv_{(t * cfg.theta_step)//1}.ng', overlap_conv)
+                            # plt.imsave(f'overlap_opencv_{(t * cfg.theta_step)//1}.png', overlap_conv, cmap='jet')
+                            # #cv2.imwrite('mask_piece_0.png', mask_i*255)
+                            # plt.imsave('mask_piece_0.png', pieces[i]['mask'], cmap='jet')
+                            # #cv2.imwrite('mask_piece_1.png', mask_j*255)
+                            # plt.imsave('mask_piece_1.png', pieces[j]['mask'], cmap='jet')
+                            # #cv2.imwrite('thresholded_regions_map.png', thresholded_regions_map)
+                            # plt.imsave('thresholded_regions_map.png', thresholded_regions_map, cmap='jet')
+                            # plt.imsave('thresholded_regions_map_binary.png', thresholded_regions_map>0, cmap='jet')
+                            # xshift = 736    # 702
+                            # yshift = -108   #  25
+                            # thresholded_regions_map[center_pos+yshift-5:center_pos+yshift+5, center_pos+xshift-5:center_pos+xshift+5] = 255
+                            # plt.imsave('thresholded_regions_map_point.png', thresholded_regions_map, cmap='jet')
+                            # two_shapes = np.zeros((cfg.canvas_size, cfg.canvas_size))
+                            # two_shapes += piece_i_on_canvas['mask']
+                            # piece_j_hyp = place_on_canvas(pieces[j], (center_pos+yshift, center_pos+xshift), cfg.canvas_size, 90)
+                            # two_shapes += 2*piece_j_hyp['mask']
+                            # plt.imsave('pieces_placed.png', two_shapes, cmap='jet')
+                            # pdb.set_trace()
+
+                    if debug is True:
+                        #plt.figure(figsize=(32,32))
+                        plt.subplot(251)
+                        plt.title(f"mask {i}")
+                        plt.imshow(piece_i_on_canvas['mask'])
+                        plt.subplot(256)
+                        plt.title(f"mask {j}")
+                        plt.imshow(piece_j_on_canvas['mask'])
+                        xshift = 736    # 702
+                        yshift = -108   #  25
+                        debug_angles = [0, 90, 180, 270]
+                        for k, ang in enumerate(debug_angles):
+                            plt.subplot(2, 5, 2 + k)
+                            plt.title(f"{i}vs{j} at ({center_pos+yshift}, {center_pos+xshift}, {ang})")
+                            two_shapes = np.zeros((cfg.canvas_size, cfg.canvas_size))
+                            two_shapes += piece_i_on_canvas['mask']
+                            piece_j_hyp = place_on_canvas(pieces[j], (center_pos+yshift, center_pos+xshift), cfg.canvas_size, ang)
+                            two_shapes += 2*piece_j_hyp['mask']
+                            plt.imshow(two_shapes)
+                            plt.subplot(2, 5, 7 + k)
+                            
+                            ccrm = [(center_pos+yshift) // 30, (center_pos+xshift) // 30]
+                            rm_rot = RM_big[:,:,ang//90,i,j]
+                            val = rm_rot[ccrm[0], ccrm[1]]
+                            plt.title(f'region map ({ccrm[0], ccrm[1]}) = {val}')
+                            rm_rot[ccrm[0], ccrm[1]] = 2
+                            rm_rot[ccrm[1], ccrm[0]] = 3
+                            plt.imshow(rm_rot)
+                        pdb.set_trace()
+                        
+
 
     print()
     print('Done calculating')

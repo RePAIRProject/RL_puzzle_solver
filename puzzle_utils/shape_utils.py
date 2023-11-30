@@ -47,9 +47,9 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     piece_sdf = piece['sdf']
 
     if theta > 0:
-        piece_img = scipy.ndimage.rotate(piece_img, theta, reshape=False)
-        piece_mask = scipy.ndimage.rotate(piece_mask, theta, reshape=False)
-        piece_sdf = scipy.ndimage.rotate(piece_sdf, theta, reshape=False)
+        piece_img = scipy.ndimage.rotate(piece_img, theta, reshape=False, mode='constant')
+        piece_mask = scipy.ndimage.rotate(piece_mask, theta, reshape=False, mode='constant')
+        piece_sdf = scipy.ndimage.rotate(piece_sdf, theta, reshape=False, mode='constant')
         piece['cm'] = get_cm(piece_mask)
 
     #print(y_c0, y_c1+1, x_c0, x_c1+1)
@@ -78,10 +78,23 @@ def get_sd(img, background=0):
     return sd, mask 
 
 def get_outside_borders(mask, borders_width=3):
+    """
+    Get the borders outside of the mask contour (borders_width) 
+    """
     kernel_size = borders_width*2+1
     kernel = np.ones((kernel_size, kernel_size))
     dilated_mask = cv2.dilate(mask, kernel)
     return dilated_mask - mask 
+
+def get_borders_around(mask, borders_width=3):
+    """
+    Get the borders around the mask contour (half borders_width outside, half inside) 
+    """
+    kernel_size = borders_width
+    kernel = np.ones((kernel_size, kernel_size))
+    dilated_mask = cv2.dilate(mask, kernel)
+    eroded_mask = cv2.erode(mask, kernel)
+    return dilated_mask - eroded_mask
 
 def shift_img(img, x, y):
     new_img = np.zeros_like(img)
