@@ -131,6 +131,56 @@ python solver/solverRotPuzzArgs.py --dataset manual_lines --puzzle lines1
 python metrics/evaluate.py
 ```
 
+
+## Full pipeline from a dataset (folder with images)
+
+#### Create pieces from images
+```bash
+python datasets/create_pieces_from_images.py -i real_small_dataset -np 16 
+```
+
+
+#### Create region masks (takes ~5 minutes per image)
+```bash 
+python features/compute_regions_masks.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00000_escher_day_and_night
+```
+
+The output looks like:
+```bash
+Found 15 pieces:
+- piece_0000.png
+- piece_0001.png
+- piece_0002.png
+- piece_0003.png
+- piece_0004.png
+- piece_0005.png
+- piece_0006.png
+- piece_0007.png
+- piece_0008.png
+- piece_0009.png
+- piece_0010.png
+- piece_0011.png
+- piece_0012.png
+- piece_0013.png
+- piece_0014.png
+
+##################################################
+SETTINGS
+The puzzle (maybe rescaled) has size 603x1000 pixels
+Pieces are squared images of 268x268 pixels (p_hs=134)
+The region matrix has shape: [101, 101, 24, 15, 15]
+Using a grid on xy and 24 rotations on 15 pieces
+	xy_step: 5.37, rot_step: 15.0
+Canvas size: 537x537
+##################################################
+
+regions for pieces 14 and 13
+Done calculating
+##################################################
+Saving the matrix..
+Creating visualization
+```
+
 ## Full pipeline RePAIR
 
 #### Create pieces ???

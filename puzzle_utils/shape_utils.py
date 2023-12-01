@@ -9,6 +9,7 @@ import scipy
 import pdb
 import os
 import shapely
+import json
 
 def get_polygon(binary_image):
     contours, _ = cv2.findContours(binary_image.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -40,31 +41,34 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     channels = piece['img'].shape[2]
     img_on_canvas = np.zeros((canvas_size, canvas_size, channels))
     msk_on_canvas = np.zeros((canvas_size, canvas_size))
-    sdf_on_canvas = np.zeros((canvas_size, canvas_size))
-    sdf_on_canvas += np.min(piece['sdf'])
+    if 'sdf' in piece.keys():
+        sdf_on_canvas = np.zeros((canvas_size, canvas_size))
+        sdf_on_canvas += np.min(piece['sdf'])
+        piece_sdf = piece['sdf']
     piece_img = piece['img']
     piece_mask = piece['mask']
-    piece_sdf = piece['sdf']
-
     if theta > 0:
         piece_img = scipy.ndimage.rotate(piece_img, theta, reshape=False, mode='constant')
         piece_mask = scipy.ndimage.rotate(piece_mask, theta, reshape=False, mode='constant')
-        piece_sdf = scipy.ndimage.rotate(piece_sdf, theta, reshape=False, mode='constant')
+        if 'sdf' in piece.keys():
+            piece_sdf = scipy.ndimage.rotate(piece_sdf, theta, reshape=False, mode='constant')
         piece['cm'] = get_cm(piece_mask)
-
     #print(y_c0, y_c1+1, x_c0, x_c1+1)
-    img_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1, :] = piece_img
-    msk_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_mask
-    sdf_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_sdf
+    #pdb.set_trace
+    img_on_canvas[y_c0:y_c1, x_c0:x_c1, :] = piece_img
+    msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
+    if 'sdf' in piece.keys():
+        sdf_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_sdf
     shift_y = y - piece['cm'][1]
     shift_x = x - piece['cm'][0]
     cm_on_canvas = [piece['cm'][0] + shift_x, piece['cm'][1] + shift_y]
     piece_on_canvas = {
         'img': img_on_canvas.astype(int),
         'mask': msk_on_canvas,
-        'sdf': sdf_on_canvas,
         'cm': cm_on_canvas 
     }
+    if 'sdf' in piece.keys():
+        piece_on_canvas['sdf'] = sdf_on_canvas
     return piece_on_canvas
 
 def get_mask(img, background=0):
@@ -180,46 +184,32 @@ def get_borders(piece, width=5):
     kernel = np.ones((width*2+1, width*2+1))
     eroded_mask = cv2.erode(mask, kernel)
     borders = mask - eroded_mask
-    return borders 
+    return borders   
 
-def prepare_pieces_v2(cfg, fnames, dataset, puzzle_name, background=0, verbose=False):
+def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False):
     pieces = []
-    data_folder = os.path.join(fnames.output_dir, dataset, puzzle_name, fnames.pieces_folder)
+    root_folder = os.path.join(fnames.output_dir, dataset, puzzle_name)
+    data_folder = os.path.join(root_folder, fnames.pieces_folder)
     pieces_names = os.listdir(data_folder)
     pieces_names.sort()
     if verbose is True:
-        print(f"Found {len(pieces_names)} pieces:")
-        for piece_name in pieces_names:
-            print(f'- {piece_name}')
+        print(f"Found {len(pieces_names)} pieces:")           
     for piece_name in pieces_names:
+        if verbose is True:
+            print(f'- {piece_name}')
         piece_full_path = os.path.join(data_folder, piece_name)
         piece_d = {}
         img = plt.imread(piece_full_path)
-        if background != 0:
-            img[img[:,:,0] == background] = 0
-        if img.shape[0] != img.shape[1]:
-            squared_img = np.zeros((cfg.piece_size, cfg.piece_size, 3))
-            mx = cfg.piece_size - img.shape[0]
-            bx = 0
-            if mx % 2 > 0:
-                bx = 1
-            mx += bx
-            by = 0
-            my = cfg.piece_size - img.shape[1]
-            if my % 2 > 0:
-                by = 1    
-            my += by
-            squared_img[mx//2:-mx//2, my//2:-my//2] = img[:img.shape[0]-bx, :img.shape[1]-by]
-            piece_d['img'] = squared_img
-        else:
-            piece_d['img'] = img
+        piece_d['img'] = img
         piece_d['mask'] = get_mask(piece_d['img'])
         piece_d['cm'] = get_cm(piece_d['mask'])
-        piece_d['id'] = piece_name[:9]
+        piece_d['id'] = piece_name[:10] #piece_XXXXX.png
         pieces.append(piece_d)
-    return pieces
     
+    with open(os.path.join(os.getcwd(), root_folder, f'parameters_{puzzle_name}.json'), 'r') as pf:
+        parameters = json.load(pf)
 
+    return pieces, parameters
 
 def prepare_pieces(cfg, fnames, dataset, puzzle_name, background=0):
     pieces = []

@@ -162,7 +162,7 @@ def main(args):
         with open(single_image_parameters_path, 'w') as pp:
             json.dump(img_parameters, pp, indent=2)
         
-        print(f"Done with {puzzle_name}: created {j} pieces.")
+        print(f"Done with {puzzle_name}: created {j+1} pieces.")
 
     # parameters for the whole dataset
     parameters_dict['num_pieces'] = num_pieces_dict
