@@ -9,6 +9,7 @@ from scipy import interpolate, ndimage
 from glob import glob
 import pdb
 import cv2
+import shapely
 
 from puzzle_utils.puzzle_gen import utils
 from puzzle_utils.puzzle_gen.vector import Vector
@@ -257,6 +258,9 @@ class PuzzleGenerator:
     def get_pieces_from_puzzle_v2(self):
         pieces = []
         bg_mat = np.zeros_like(self.img)
+        h_max = 0
+        w_max = 0
+        padding = np.min(self.img.shape[:2]) // 30
         for i in range(self.region_cnt):
             mask_i = self.region_mat == i
             if len(self.img.shape) > 2: 
@@ -270,15 +274,19 @@ class PuzzleGenerator:
             y1, x1 = coords.max(axis=0) + 1
             h_i = y1-y0 
             w_i = x1-x0 
+            if h_i > h_max:
+                h_max = h_i 
+            if w_i > w_max:
+                w_max = w_i     
             ## centering
             centered_img = np.zeros_like(self.img)
             centered_mask = np.zeros_like(mask_i)
             center_i = np.asarray([self.img.shape[0] / 2, self.img.shape[1] / 2])
             shift2center = (center_i - cm_i)#[::1]
-            x0c = (x0+shift2center[1]).astype(int)
-            x1c = (x0c + w_i).astype(int)
-            y0c = (y0+shift2center[0]).astype(int)
-            y1c = (y0c + h_i).astype(int)
+            x0c = np.round(x0+shift2center[1]).astype(int)
+            x1c = np.round(x0c + w_i).astype(int)
+            y0c = np.round(y0+shift2center[0]).astype(int)
+            y1c = np.round(y0c + h_i).astype(int)
             centered_img[y0c:y1c, x0c:x1c] = image_i[y0:y1, x0:x1]
             centered_mask[y0c:y1c, x0c:x1c] = mask_i[y0:y1, x0:x1]
             centered_poly = get_polygon(centered_mask)
@@ -294,7 +302,28 @@ class PuzzleGenerator:
                 'width': w_i,
                 'shift2center': shift2center
             })
-        return pieces
+
+        # put pieces inside a square 
+        sq_size = max(h_max, w_max)
+        hsq = sq_size // 2
+        #pdb.set_trace()
+        # remember center ordering!
+        from_idx = np.round(center_i-hsq).astype(int)
+        to_idx = np.round(center_i+hsq).astype(int)
+        for i in range(len(pieces)):
+            squared_img = np.zeros((sq_size, sq_size, 3))
+            squared_img = centered_img[from_idx[0]:to_idx[0], from_idx[1]:to_idx[1]]
+            squared_mask = centered_mask[from_idx[0]:to_idx[0], from_idx[1]:to_idx[1]]
+            # we remove the offset in the centered polygon to get it aligned
+            xoffset = (self.img.shape[1]-sq_size) / 2   # half of the distance from the square to the shape of the image!
+            yoffset = (self.img.shape[0]-sq_size) / 2
+            squared_poly = shapely.affinity.translate(centered_poly, xoff=xoffset, yoff=yoffset)
+            pieces[i]['squared_image'] = squared_img
+            pieces[i]['squared_mask'] = squared_mask
+            pieces[i]['squared_polygon'] = squared_poly
+        #pdb.set_trace()
+
+        return pieces, sq_size
 
     def get_pieces_from_puzzle(self):
 

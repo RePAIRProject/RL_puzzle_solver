@@ -9,7 +9,7 @@ import os
 from configs import folder_names as fnames
 import shapely
 import shapely.affinity
-import configs.puzzle_from_BIG_fragments_cfg as cfg
+import configs.puzzle_from_fragments_cfg as cfg
 # import configs.unified_cfg as cfg
 import pdb
 

@@ -67,6 +67,13 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     }
     return piece_on_canvas
 
+def get_mask(img, background=0):
+    if img.shape[2] == 4:
+        mask = 1 - (img[:,:,3] == background).astype(np.uint8)
+    else:
+        mask = 1 - (img[:,:,0] == background).astype(np.uint8)
+    return mask
+
 def get_sd(img, background=0):
     if img.shape[2] == 4:
         mask = 1 - (img[:,:,3] == background).astype(np.uint8)
@@ -86,14 +93,14 @@ def get_outside_borders(mask, borders_width=3):
     dilated_mask = cv2.dilate(mask, kernel)
     return dilated_mask - mask 
 
-def get_borders_around(mask, borders_width=3):
+def get_borders_around(mask, border_dilation=3, border_erosion=3):
     """
-    Get the borders around the mask contour (half borders_width outside, half inside) 
+    Get the borders around the mask contour (border_erosion outside, border_dilation inside) 
     """
-    kernel_size = borders_width
-    kernel = np.ones((kernel_size, kernel_size))
-    dilated_mask = cv2.dilate(mask, kernel)
-    eroded_mask = cv2.erode(mask, kernel)
+    kernel_dilation = np.ones((border_dilation, border_dilation))
+    kernel_erosion = np.ones((border_erosion, border_erosion))
+    dilated_mask = cv2.dilate(mask, kernel_dilation)
+    eroded_mask = cv2.erode(mask, kernel_erosion)
     return dilated_mask - eroded_mask
 
 def shift_img(img, x, y):
@@ -174,6 +181,45 @@ def get_borders(piece, width=5):
     eroded_mask = cv2.erode(mask, kernel)
     borders = mask - eroded_mask
     return borders 
+
+def prepare_pieces_v2(cfg, fnames, dataset, puzzle_name, background=0, verbose=False):
+    pieces = []
+    data_folder = os.path.join(fnames.output_dir, dataset, puzzle_name, fnames.pieces_folder)
+    pieces_names = os.listdir(data_folder)
+    pieces_names.sort()
+    if verbose is True:
+        print(f"Found {len(pieces_names)} pieces:")
+        for piece_name in pieces_names:
+            print(f'- {piece_name}')
+    for piece_name in pieces_names:
+        piece_full_path = os.path.join(data_folder, piece_name)
+        piece_d = {}
+        img = plt.imread(piece_full_path)
+        if background != 0:
+            img[img[:,:,0] == background] = 0
+        if img.shape[0] != img.shape[1]:
+            squared_img = np.zeros((cfg.piece_size, cfg.piece_size, 3))
+            mx = cfg.piece_size - img.shape[0]
+            bx = 0
+            if mx % 2 > 0:
+                bx = 1
+            mx += bx
+            by = 0
+            my = cfg.piece_size - img.shape[1]
+            if my % 2 > 0:
+                by = 1    
+            my += by
+            squared_img[mx//2:-mx//2, my//2:-my//2] = img[:img.shape[0]-bx, :img.shape[1]-by]
+            piece_d['img'] = squared_img
+        else:
+            piece_d['img'] = img
+        piece_d['mask'] = get_mask(piece_d['img'])
+        piece_d['cm'] = get_cm(piece_d['mask'])
+        piece_d['id'] = piece_name[:9]
+        pieces.append(piece_d)
+    return pieces
+    
+
 
 def prepare_pieces(cfg, fnames, dataset, puzzle_name, background=0):
     pieces = []

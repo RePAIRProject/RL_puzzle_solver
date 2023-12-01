@@ -1,13 +1,30 @@
-import os 
+import os, pdb
 import cv2 
 import shapely 
 from puzzle_utils.puzzle_gen.generator import PuzzleGenerator
+import numpy as np
+
+def rescale_image(img, size):
+    """
+    Rescale the image (while preserving proportions) so that the largest of the two axis 
+    is equal to `size`
+    """
+    if max(img.shape[:2]) < size:
+        return img 
+    if img.shape[0] > img.shape[1]:
+        other_axis_size = np.round((size / img.shape[0]) * img.shape[1]).astype(int)
+        img = cv2.resize(img, (other_axis_size, size))  # opencv use these inverted :/
+    else:
+        other_axis_size = np.round((size / img.shape[1]) * img.shape[0]).astype(int)
+        img = cv2.resize(img, (size, other_axis_size))  # opencv use these inverted :/
+    return img 
 
 def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name):
 
     pieces = []
     if shape == 'regular':
         print("WARNING: NOT FULLY TESTED \nbetter to use create_dataset_TEST the old script for quick creation, or maybe debug this!")
+        print("we do squared pieces (rectangular not implemented yet)")
         patch_size = image.shape[0] // num_pieces
         x0_all = np.arange(0, image.shape[0], patch_size, dtype=int)
         y0_all = np.arange(0, image.shape[1], patch_size, dtype=int)
@@ -25,10 +42,13 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name):
                 piece_dict = {
                     'mask': centered_mask,
                     'centered_mask': centered_mask,
+                    'squared_mask': centered_mask,
                     'image': centered_patch,
                     'centered_image': centered_patch,
+                    'squared_image': centered_patch,
                     'polygon': box,
                     'centered_polygon': box,
+                    'squared_polygon': box,
                     'center_of_mass': center_of_mass,
                     'height': patch_size,
                     'width': patch_size,
@@ -42,9 +62,9 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name):
         generator.run(num_pieces, offset_rate_h=0.2, offset_rate_w=0.2, small_region_area_ratio=0.25, rot_range=0,
             smooth_flag=True, alpha_channel=True, perc_missing_fragments=0, erosion=0, borders=False)
         generator.save_jpg_regions(output_path)
-        pieces = generator.get_pieces_from_puzzle_v2()
+        pieces, patch_size = generator.get_pieces_from_puzzle_v2()
     
-    return pieces
+    return pieces, patch_size
 
 def center_fragment(image):
     #pdb.set_trace()

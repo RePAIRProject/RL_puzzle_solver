@@ -2,7 +2,7 @@ import numpy as np
 
 ### PREPARATION 
 # pieces and grid
-piece_size = 251
+piece_size = 1501
 p_hs = piece_size // 2
 xy_grid_points = 101
 theta_grid_points = 24
