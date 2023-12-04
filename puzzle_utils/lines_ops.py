@@ -7,7 +7,10 @@ from matplotlib import cm
 import shapely
 import pdb 
 import math 
+from scipy.spatial import distance
+from scipy.optimize import linear_sum_assignment
 #from itertools import compress
+import time 
 
 def extract_from(lines_dict):
     """
@@ -25,9 +28,9 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
     # z_p1 = [0,0],  z_l2 = z,
     # z_p2 = z,   z_l1 = [0,0],
     intersections = []
-    piece_box = shapely.box(0 - pars.p_hs, 0 - pars.p_hs, 0 + pars.p_hs, 0 + pars.p_hs)
-    piece_rotate = shapely.affinity.rotate(piece_box, theta_p, origin=[z_p[0], z_p[1]])
-    piece_trans = shapely.transform(piece_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_p)
+    piece_j_shape = poly_p.tolist() #shapely.polygons(poly_p)
+    piece_j_rotate = shapely.affinity.rotate(piece_j_shape, theta_p, origin=[pars.p_hs, pars.p_hs])
+    piece_j_trans = shapely.transform(piece_j_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_p)
 
     for (candidate_xy_start, candidate_xy_end) in zip(s1, s2):
 
@@ -36,7 +39,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
         candidate_line_trans = shapely.transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
 
         # if shapely.is_empty(shapely.intersection(candidate_line_shapely.buffer(pars.border_tolerance), piece_j_shape.buffer(pars.border_tolerance))):
-        if shapely.is_empty(shapely.intersection(candidate_line_trans, piece_trans.buffer(pars.border_tolerance))):
+        if shapely.is_empty(shapely.intersection(candidate_line_trans, piece_j_trans.buffer(pars.border_tolerance))):
             intersections.append(False)
         else:
             intersections.append(True)
@@ -46,7 +49,6 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
 def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, cfg, mask_ij, pars):
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
-    
     #for t in range(1):
     for t in range(len(rot)):
         #theta = -rot[t] * np.pi / 180  # rotation of F2
@@ -61,7 +63,9 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
 
                     # check if line1 crosses the polygon2
                     # intersections1 = line_poligon_intersec(z, [0, 0], s11, s12, cfg)  # z_p2 = z,   z_l1 = [0,0]
+                    
                     intersections1 = line_poligon_intersect(z, theta, poly2, [0, 0], 0, s11, s12, pars)
+                    
 
                     # return intersections                    
                     useful_lines_alfa1 = alfa1[intersections1] #list(compress(alfa1, intersections1)) #
