@@ -15,4 +15,5 @@ imgs_folder = 'images' # we should remove this!
 pieces_folder = 'pieces'
 edge_maps_folder = 'edge_maps'
 masks_folder = 'masks'
+polygons_folder = 'polygons'
 

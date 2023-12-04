@@ -18,7 +18,6 @@ def get_polygon(binary_image):
     if len(shapely_points) < 4:
         print('we have a problem, too few points', shapely_points)
         raise ValueError('\nWe have fewer than 4 points on the polygon, so we cannot create a Shapely polygon out of this points! Maybe something went wrong with the mask?')
-        #pdb.set_trace()
     polygon = shapely.Polygon(shapely_points)
     return polygon
 
@@ -55,8 +54,12 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
         piece['cm'] = get_cm(piece_mask)
     #print(y_c0, y_c1+1, x_c0, x_c1+1)
     #pdb.set_trace
-    img_on_canvas[y_c0:y_c1, x_c0:x_c1, :] = piece_img
-    msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
+    if piece['img'].shape[0] % 2 == 0:
+        img_on_canvas[y_c0:y_c1, x_c0:x_c1, :] = piece_img
+        msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
+    else:
+        img_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1, :] = piece_img
+        msk_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_mask
     if 'sdf' in piece.keys():
         sdf_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_sdf
     shift_y = y - piece['cm'][1]
@@ -185,6 +188,25 @@ def get_borders(piece, width=5):
     eroded_mask = cv2.erode(mask, kernel)
     borders = mask - eroded_mask
     return borders   
+
+def include_shape_info(fnames, pieces, dataset, puzzle, method):
+
+    root_folder = os.path.join(fnames.output_dir, dataset, puzzle)
+    polygons_folder = os.path.join(root_folder, fnames.polygons_folder)
+    lines_folder = os.path.join(root_folder, fnames.lines_output_name, method)
+    polygons = os.listdir(polygons_folder)
+    lines_files = os.listdir(lines_folder)
+    lines = [line for line in lines_files if line.endswith('.json')]
+    assert len(polygons) == len(lines), f'Error: have {len(polygons)} polygons files and {len(lines)} lines files, they should have the same length!'
+    for piece in pieces:
+        piece_ID = piece['id']
+        polygon_path = os.path.join(polygons_folder, f"{piece_ID}.npy")
+        piece['polygon'] = np.load(polygon_path, allow_pickle=True)
+        lines_path = os.path.join(lines_folder, f"{piece_ID}.json")
+        with open(lines_path, 'r') as file:
+            piece['extracted_lines'] = json.load(file)
+    
+    return pieces
 
 def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False):
     pieces = []

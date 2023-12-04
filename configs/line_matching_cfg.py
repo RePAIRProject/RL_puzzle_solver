@@ -1,5 +1,3 @@
-
-
 ### LINE MATCHING
 thr_coef = 0.08
 max_dist = 3

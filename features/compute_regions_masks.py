@@ -18,6 +18,7 @@ def main(args):
 
     if args.puzzle == '':  
         puzzles = os.listdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset))
+        puzzles = [puz for puz in puzzles if os.path.isdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset,puz)) is True]
     else:
         puzzles = [args.puzzle]
 
@@ -65,10 +66,10 @@ def main(args):
         borders_M = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         for i in range(len(pieces)):
             for j in range(len(pieces)):
+                print(f"regions for pieces {i:>2} and {j:>2}", end='\r')
                 if i == j:
                     RM[:,:,:,i,j] = -1
                 else:
-                    print(f"regions for pieces {i:>2} and {j:>2}", end='\r')
                     #pdb.set_trace()
                     center_pos = ppars.canvas_size // 2
                     piece_i_on_canvas = place_on_canvas(pieces[i], (center_pos, center_pos), ppars.canvas_size, 0)

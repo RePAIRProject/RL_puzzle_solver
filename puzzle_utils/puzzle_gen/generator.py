@@ -305,6 +305,8 @@ class PuzzleGenerator:
 
         # put pieces inside a square 
         sq_size = max(h_max, w_max) + padding
+        if sq_size % 2 > 0:
+            sq_size += 1 # keep square size even! :)
         hsq = sq_size // 2
         #pdb.set_trace()
         # remember center ordering!

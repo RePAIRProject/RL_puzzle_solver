@@ -83,6 +83,140 @@ DeepLSD for line detection: [DeepLSD](https://github.com/cvg/DeepLSD)
 # 3) Usage
 We use the `argparse` package for the parameters, so usually you pass parameters via command line and by using `-h` you can get some help on the parameters.
 
+The steps needed are:
+
+- Optional: Create the pieces from an image
+- Create regions mask to filter out candidate positions
+- Compute compatibility matrix
+- Launch the solver to reach the puzzle solution
+- Evaluate results
+
+## Full pipeline from a dataset (folder with images)
+
+Let's assume we have our dataset folder called `real_small_dataset`.
+The input folder should be in the code folder + `data`
+So full path could be: `~whatever_your_path~/RL_puzzle_solver/data/real_small_dataset`.
+
+The output (everything we create) would be in the code folder + `output`.
+
+### 1. Create pieces from images (fast, few seconds per image)
+Let's run the piece creation! It cuts our images into a (variable) number of pieces. 
+We set the (maximum) number with the `-np` argument. It could lead to a smaller number of pieces, depending on the size of the image! This does not affect our algorithm, which does not strictly require a fixed number of pieces.
+
+```bash
+python datasets/create_pieces_from_images.py -i real_small_dataset -np 16 
+```
+
+The output of this would be saved in `~whatever_your_path~/RL_puzzle_solver/output/synthetic_irregular_pieces_from_real_small_dataset`
+<details>
+<summary>The output on the terminal should look something like: (Click to show)</summary>
+
+```bash
+######################################################################
+#   Settings:
+#  output : /home/lucap/code/RL_puzzle_solver/output
+#  images : real_small_dataset
+#  num_pieces : 16
+#  shape : irregular
+#  rescale : 1000
+#  input_images : /home/lucap/code/RL_puzzle_solver/data/real_small_dataset
+#  puzzle_folder : /home/lucap/code/RL_puzzle_solver/output/synthetic_irregular_pieces_from_real_small_dataset
+######################################################################
+
+--------------------------------------------------
+image_00000_escher_day_and_night
+	- done with piece 00000
+	- done with piece 00001
+	- done with piece 00002
+	- done with piece 00003
+	- done with piece 00004
+	- done with piece 00005
+	- done with piece 00006
+	- done with piece 00007
+	- done with piece 00008
+	- done with piece 00009
+	- done with piece 00010
+	- done with piece 00011
+	- done with piece 00012
+	- done with piece 00013
+	- done with piece 00014
+Done with image_00000_escher_day_and_night: created 15 pieces.
+
+```
+And will continue with the next images..
+</details>
+
+### 2. Create region masks (rather slow, takes ~5 minutes per image)
+After we have created our pieces, we create the regions masks.
+```bash 
+python features/compute_regions_masks.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00000_escher_day_and_night
+```
+They will be created inside the puzzle folder (under `regions_matrix`).
+
+**TIP:** if you remove the `--puzzle` argument, it will compute the regions for the whole dataset (this may take some time, usually some minutes (3 to 5) for each image).
+
+<details>
+<summary>The output on the terminal should look something like: (Click to show)</summary>
+
+```bash
+Found 15 pieces:
+- piece_0000.png
+- piece_0001.png
+- piece_0002.png
+- piece_0003.png
+- piece_0004.png
+- piece_0005.png
+- piece_0006.png
+- piece_0007.png
+- piece_0008.png
+- piece_0009.png
+- piece_0010.png
+- piece_0011.png
+- piece_0012.png
+- piece_0013.png
+- piece_0014.png
+
+##################################################
+SETTINGS
+The puzzle (maybe rescaled) has size 603x1000 pixels
+Pieces are squared images of 268x268 pixels (p_hs=134)
+The region matrix has shape: [101, 101, 24, 15, 15]
+Using a grid on xy and 24 rotations on 15 pieces
+	xy_step: 5.37, rot_step: 15.0
+Canvas size: 537x537
+##################################################
+
+regions for pieces 14 and 14
+Done calculating
+##################################################
+Saving the matrix..
+Creating visualization
+```
+</details>
+
+### 3. Detect lines (fast, few seconds per piece, so less than a minute per image)
+The detection can be done with any edge detector. We sugget to use [DeepLSD](https://github.com/cvg/DeepLSD).
+From the detected lines, we extract and save the initial and end points plus their polar coordinates (we will use the angle).
+This script is actually launched from within the DeepLSD folder (for an easier usage of that) so it contains some hardcoded paths. 
+You can define and change your own as needed.
+```bash 
+python detect_lines_irregular.py -rf ~whatever_your_path~/RL_puzzle_solver -d synthetic_irregular_pieces_from_real_small_dataset
+```
+The lines detected will be saved inside each folder of the database (there will be one `lines_detection` folder).
+It also saves a visualization (image with lines drawn in red over it) and one representation with all white images with black lines drawn on top (without the real image colors).
+
+### 4. Compute compatibility (slow, computer pairwise, few minutes per pair, so some hours per puzzle!)
+
+
+
+
+
+| :exclamation:  These commands may be slightly outdated! Some things may change!  |
+|-----------------------------------------|
+
+<details>
+<summary>(Click to show)</summary>
+
 For example, to prepare the data from images:
 ```bash
 python preprocessing/preprocess_image_dataset.py -d dataset_name
@@ -103,6 +237,9 @@ Same for the compatibility:
 python compatibility/shape_compatibility.py --urm --puzzle puzzle_name
 ```
 Here, you can add `--urm` if you use the regions matrix (computed using the script) to speed up calculations. Otherwise, remove `--urm` to calculate fully the matrix (much slower).
+
+
+
 
 ## Full pipeline (example)
 
@@ -132,55 +269,6 @@ python metrics/evaluate.py
 ```
 
 
-## Full pipeline from a dataset (folder with images)
-
-#### Create pieces from images
-```bash
-python datasets/create_pieces_from_images.py -i real_small_dataset -np 16 
-```
-
-
-#### Create region masks (takes ~5 minutes per image)
-```bash 
-python features/compute_regions_masks.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00000_escher_day_and_night
-```
-
-The output looks like:
-```bash
-Found 15 pieces:
-- piece_0000.png
-- piece_0001.png
-- piece_0002.png
-- piece_0003.png
-- piece_0004.png
-- piece_0005.png
-- piece_0006.png
-- piece_0007.png
-- piece_0008.png
-- piece_0009.png
-- piece_0010.png
-- piece_0011.png
-- piece_0012.png
-- piece_0013.png
-- piece_0014.png
-
-##################################################
-SETTINGS
-The puzzle (maybe rescaled) has size 603x1000 pixels
-Pieces are squared images of 268x268 pixels (p_hs=134)
-The region matrix has shape: [101, 101, 24, 15, 15]
-Using a grid on xy and 24 rotations on 15 pieces
-	xy_step: 5.37, rot_step: 15.0
-Canvas size: 537x537
-##################################################
-
-regions for pieces 14 and 13
-Done calculating
-##################################################
-Saving the matrix..
-Creating visualization
-```
-
 ## Full pipeline RePAIR
 
 #### Create pieces ???
@@ -208,16 +296,14 @@ python dataset/create_polygons.py
 python compatibility/line_matching_RePAIR_poly_2910.py --dataset repair --puzzle decor_1
 ```
 
-
-
+## SCRIPTS to do multiple steps at once
 
 
 #### Solve a puzzle (given pieces and detected lines)
 ```bash
 sh solve_puzzle.sh
 ```
-
-
+</details>
 
 # 4) Known Issues
 
@@ -227,4 +313,9 @@ Input and output (respectively `data_path = 'data'` and `output_dir = 'output'` 
 
 # 5) Relevant publications
 Hopefully soon.
+
+# 6) Acknowledgements
+We use part of other open source software/tools:
+- [PuzzleSolving-tool](https://github.com/xmlyqing00/PuzzleSolving-tool) from [Yongqing Liang ](https://github.com/xmlyqing00) // We used a modified version included in this repo under `puzzle_utils/puzzle_gen` from [our fork of their framework](https://github.com/RePAIRProject/2DPuzzleSolving-tool)
+- [DeepLSD](https://github.com/cvg/DeepLSD) from [Computer Vision and Geometry Lab, ETH Zurich](https://github.com/cvg)
 
