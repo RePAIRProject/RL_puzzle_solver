@@ -28,33 +28,38 @@ The data is structured following this idea (where `data` has the input files and
 .
 ├── configs/        # configuration
 │   ├── folder_names.py     # folders
-│   └── puzzle_cfg.py       # parameters
-├── preprocessing/      # preparing the puzzle
-├── features/           # extracting features for the compatibility
-├── compatibility/      # calculating the comp. matrices
-├── solver/             # rl-based solver
-├── data/               # not included here on Github
-│   ├── wikiart/        # DATASET (collection of images)
-│   │   ├── puzzle_1/   # PUZZLE (single image)
-│   │   │   ├── images/ # color images
-│   │   │   ├── pieces/ # fragments (created with the script)
-│   │   │   └── masks/  # binary mask for the shape/contour (optional)
-│   │   ├── puzzle_2/
-│   │   │   ├── images/ # color images
-│   │   │   ├── pieces/ # fragments (created with the script)
-│   │   │   └── masks/  # binary mask for the shape/contour (optional)
-└── output/             # only partially included
-    ├── wikiart/        # DATASET name
-        ├── puzzle_1/
-        │   ├── motif_segmentation/      # motif segmentation (for repair)
-        │   ├── lines_detection/         # detected lines
-        │   ├── regions_matrix/          # candidate regions for comp speedup
-        │   └── compatibility_matrix/    # final compatibility matrix 
-        └── puzzle_2/
-            ├── motif_segmentation/
-            ├── lines_detection/
-            ├── regions_matrix/
-            └── compatibility_matrix/
+│   └── various_cfg.py      # parameters (for line_matching, for solver, ecc..)
+├── preprocessing/          # preparing the puzzle
+├── features/               # extracting features for the compatibility
+├── compatibility/          # calculating the comp. matrices
+├── solver/                 # rl-based solver
+├── data/                   # not included here on Github
+│   ├── wikiart/            # DATASET (collection of images)
+│   │   ├── image_0001      # PUZZLE (single image, jpg or png)
+│   │   ├── image_0002      # PUZZLE (single image, jpg or png)
+│   ├── real_smalL_dataset/ # DATASET (collection of images)
+│   │   ├── image_0001      # PUZZLE (single image, jpg or png)
+│   │   ├── image_0002      # PUZZLE (single image, jpg or png)
+└── output/                             
+    ├── wikiart/                        # DATASET name
+    │   ├── image_0001/
+    │   │   ├── image_scaled/           # rescaled image (to avoid large files)
+    │   │   ├── lines_detection/        # detected or extracted lines
+    │   │   ├── masks/                  # binary masks for irregular pieces
+    │   │   ├── pieces/                 # alpha-channel images of irregular pieces
+    │   │   ├── polygons/               # shapely polygons saved as .npy files 
+    │   │   ├── regions_matrix/         # candidate regions for comp speedup
+    │   │   ├── compatibility_matrix/   # final compatibility matrix 
+    │   │   ├── solution/               # solution from the solver 
+    │   │   ├── evaluation/             # numerical and visual analysis 
+    │   │   ├── parameters.json         # parameters used to create the pieces
+    │   │   ├── regions_uint8.jpg       # regions used to cut the pieces 
+    │   │   └── regions_color_coded.png # regions color-coded 
+    │   └── image_0002/
+    │       └── same as above
+    └── real_small_dataset/             # DATASET name
+        └── image_0001/
+            └── same as above
 ```
 
 # 2) Installation
