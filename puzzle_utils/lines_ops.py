@@ -22,12 +22,13 @@ def extract_from(lines_dict):
     p2s = np.asarray(lines_dict['p2s'])
     return angles, dists, p1s, p2s
 
-
 def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
     # check if line crosses the polygon
     # z_p1 = [0,0],  z_l2 = z,
     # z_p2 = z,   z_l1 = [0,0],
     intersections = []
+    useful_lines_s1 = []
+    useful_lines_s2 = []
     piece_j_shape = poly_p.tolist() #shapely.polygons(poly_p)
     piece_j_rotate = shapely.affinity.rotate(piece_j_shape, theta_p, origin=[pars.p_hs, pars.p_hs])
     piece_j_trans = shapely.transform(piece_j_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_p)
@@ -38,12 +39,21 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
         candidate_line_rotate = shapely.affinity.rotate(candidate_line_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
         candidate_line_trans = shapely.transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
 
-        # if shapely.is_empty(shapely.intersection(candidate_line_shapely.buffer(pars.border_tolerance), piece_j_shape.buffer(pars.border_tolerance))):
-        if shapely.is_empty(shapely.intersection(candidate_line_trans, piece_j_trans.buffer(pars.border_tolerance))):
+        # append to the useful lines
+        useful_lines_s1.append(np.array(candidate_line_trans.coords)[0])
+        useful_lines_s2.append(np.array(candidate_line_trans.coords)[-1])
+
+        # OLD VERSION: 
+        # if shapely.is_empty(shapely.intersection(candidate_line_trans, piece_j_trans.buffer(pars.border_tolerance))):
+        # issue: if the line is completely within the polygon, it returns True (as the geometry intersection exists)
+        # NEW VERSION
+        # we do intersection with the `boundary` of the polygon (is it faster? at least it could be, plus can remove false positive, if any)
+        if shapely.is_empty(shapely.intersection(candidate_line_trans, piece_j_trans.boundary.buffer(pars.border_tolerance))):
             intersections.append(False)
         else:
             intersections.append(True)
-    return intersections
+
+    return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
 
 
 def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, cfg, mask_ij, pars):
@@ -52,35 +62,33 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
     #for t in range(1):
     for t in range(len(rot)):
         #theta = -rot[t] * np.pi / 180  # rotation of F2
+        t_rot = time.time()
         theta = rot[t]
+        theta_rad = theta * np.pi / 180 # np.deg2rad(theta) ?
         for ix in range(m.shape[1]):        # (z_id.shape[0]):
+            t_x = time.time()
             for iy in range(m.shape[1]):    # (z_id.shape[0]):
+                t_y = time.time()
                 z = z_id[ix, iy]            # ??? [iy,ix] ??? strange...
 
                 valid_point = mask_ij[iy, ix, t]
                 if valid_point > 0:
                     #print([iy, ix, t])
 
-                    # check if line1 crosses the polygon2
-                    # intersections1 = line_poligon_intersec(z, [0, 0], s11, s12, cfg)  # z_p2 = z,   z_l1 = [0,0]
-                    
-                    intersections1 = line_poligon_intersect(z, theta, poly2, [0, 0], 0, s11, s12, pars)
-                    
+                    # check if line1 crosses the polygon2                  
+                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z, theta, poly2, [0, 0], 0, s11, s12, pars)
 
                     # return intersections                    
-                    useful_lines_alfa1 = alfa1[intersections1] #list(compress(alfa1, intersections1)) #
-                    useful_lines_rho1 = r1[intersections1] #list(compress(r1, intersections1)) #
-                    useful_lines_s11 = np.clip(s11[intersections1], 0, pars.piece_size)
-                    useful_lines_s12 = np.clip(s12[intersections1], 0, pars.piece_size)
+                    useful_lines_alfa1 = alfa1[intersections1] # no rotation here!
+                    useful_lines_s11 = useful_lines_s11[intersections1]
+                    useful_lines_s12 = useful_lines_s12[intersections1]
 
                     # check if line2 crosses the polygon1
-                    # intersections2 = line_poligon_intersec([0, 0], z, s21, s22, cfg)  # z_p1 = [0,0],  z_l2 = z
-                    intersections2 = line_poligon_intersect([0, 0], 0, poly1, z, theta, s21, s22, pars)
+                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z, theta, s21, s22, pars)
 
-                    useful_lines_alfa2 = alfa2[intersections2] #list(compress(alfa2, intersections1)) #alfa2[intersections2]
-                    useful_lines_rho2 = r2[intersections2] #list(compress(r2, intersections1)) #r2[intersections2]
-                    useful_lines_s21 = np.clip(s21[intersections2], 0, pars.piece_size)
-                    useful_lines_s22 = np.clip(s22[intersections2], 0, pars.piece_size)
+                    useful_lines_alfa2 = alfa2[intersections2] - theta_rad # the rotation!
+                    useful_lines_s21 = useful_lines_s21[intersections2]
+                    useful_lines_s22 = useful_lines_s22[intersections2]
 
                     n_lines_f1 = useful_lines_alfa1.shape[0]
                     n_lines_f2 = useful_lines_alfa2.shape[0]
@@ -97,9 +105,6 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
                         dist_matrix0 = np.zeros((n_lines_f1, n_lines_f2))
                         dist_matrix = np.zeros((n_lines_f1, n_lines_f2))
                         gamma_matrix = np.zeros((n_lines_f1, n_lines_f2))
-
-                        useful_lines_s21 = useful_lines_s21 + z
-                        useful_lines_s22 = useful_lines_s22 + z
 
                         for i in range(n_lines_f1):
                             for j in range(n_lines_f2):
@@ -128,6 +133,10 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
                         tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
 
                     R_cost[iy, ix, t] = tot_cost
+                
+                #print(f"comp on y took {(time.time()-t_y):.02f} seconds")
+            #print(f"comp on x,y took {(time.time()-t_x):.02f} seconds")
+        print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
 
     return R_cost
 
@@ -160,8 +169,12 @@ def compute_cost_matrix_LAP(idx1, idx2, pieces, regions_mask, cmp_parameters, pp
             poly1 = pieces[idx1]['polygon']
             poly2 = pieces[idx2]['polygon']
             mask_ij = regions_mask[:, :, :, idx2, idx1]
+            candidate_values = np.sum(mask_ij)
+            t1 = time.time()
             R_cost = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
                                         s12, s21, s22, poly1, poly2, cfg, mask_ij, ppars)
+            if verbose is True:
+                print(f"cost matrix piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} values) ")
             #print(R_cost)
     return R_cost
 

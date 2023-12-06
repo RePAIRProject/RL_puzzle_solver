@@ -210,9 +210,14 @@ python detect_lines_irregular.py -rf ~whatever_your_path~/RL_puzzle_solver -d sy
 The lines detected will be saved inside each folder of the database (there will be one `lines_detection` folder).
 It also saves a visualization (image with lines drawn in red over it) and one representation with all white images with black lines drawn on top (without the real image colors).
 
-### 4. Compute compatibility (slow, computer pairwise, few minutes per pair, so some hours per puzzle!)
+### 4. Compute compatibility (very slow, computed pairwise, few minutes per pair, so some hours per puzzle!)
+The compatibility can be compute using:
+```bash
+python compatibility/comp_irregular.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_name --jobs N --save_visualization True --method deeplsd --penalty value
+```
+where `--jobs` can be used to run in parallel the computations, `--method` tells the script where to find the extracted lines, `--penalty` is the penalty value (to use the correct compatibility matrix), `--save_visualization` writes a color-coded version of all the compatibility matrix and `puzzle` and `dataset` are the input data.
 
-
+### 5. Running the solver to get the solution (slow, half an hour per puzzle)
 
 
 

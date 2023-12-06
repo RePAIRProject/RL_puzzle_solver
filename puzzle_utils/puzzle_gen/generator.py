@@ -317,8 +317,8 @@ class PuzzleGenerator:
             squared_img = pieces[i]['centered_image'][from_idx[0]:to_idx[0], from_idx[1]:to_idx[1]]
             squared_mask = pieces[i]['centered_mask'][from_idx[0]:to_idx[0], from_idx[1]:to_idx[1]]
             # we remove the offset in the centered polygon to get it aligned
-            xoffset = (self.img.shape[1]-sq_size) / 2   # half of the distance from the square to the shape of the image!
-            yoffset = (self.img.shape[0]-sq_size) / 2
+            xoffset = - (self.img.shape[1]-sq_size) / 2   # half of the distance from the square to the shape of the image!
+            yoffset = - (self.img.shape[0]-sq_size) / 2
             squared_poly = shapely.affinity.translate(pieces[i]['centered_polygon'], xoff=xoffset, yoff=yoffset)
             pieces[i]['squared_image'] = squared_img
             pieces[i]['squared_mask'] = squared_mask

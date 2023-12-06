@@ -83,11 +83,9 @@ def main(args):
         else:
             for i in range(n):  # select fixed fragment
                 for j in range(n):
-                    ji_mat = compute_cost_matrix_LAP(i, j, pieces, region_mask, cmp_parameters, ppars)
+                    ji_mat = compute_cost_matrix_LAP(i, j, pieces, region_mask, cmp_parameters, ppars, verbose=True)
                     All_cost[:, :, :, j, i] = ji_mat
                     All_norm_cost[:,:,:,j,i] = np.maximum(1 - ji_mat / cfg.rmax, 0)
-        
-        pdb.set_trace()
 
         # apply region masks
         R_line = (All_norm_cost * region_mask) * 2
@@ -97,7 +95,7 @@ def main(args):
             R_line[:, :, :, jj, jj] = -1
 
         # save output
-        output_folder = os.path.join("fnames.output_dir", args.dataset, args.puzzle, fnames.cm_output_name)
+        output_folder = os.path.join(fnames.output_dir, args.dataset, args.puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
         filename = os.path.join(output_folder, f'CM_lines_{args.method}_p{cfg.mismatch_penalty}')
         mdic = {"R_line": R_line, "label": "label"}
@@ -114,9 +112,9 @@ def main(args):
         os.makedirs(vis_folder, exist_ok=True)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(R_line, pieces, os.path.join(vis_folder, f'visualization_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"compatibility matrix {puzzle}", all_rotation=False)
+            save_vis(R_line, pieces, os.path.join(vis_folder, f'visualization_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=False)
             if args.save_everything:
-                save_vis(All_cost, pieces, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"cost matrix {puzzle}", all_rotation=False)
+                save_vis(All_cost, pieces, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=False)
         print(f'Done with {puzzle}\n')
 
 if __name__ == '__main__':
@@ -126,7 +124,7 @@ if __name__ == '__main__':
     parser.add_argument('--puzzle', type=str, default='', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
-    parser.add_argument('--jobs', type=int, default=2, help='how many jobs (if you want to parallelize the execution')
+    parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')
     parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
     parser.add_argument('--save_everything', default=False, action='store_true',
                         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
