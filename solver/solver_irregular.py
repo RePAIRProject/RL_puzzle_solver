@@ -30,6 +30,7 @@ def initialization(R, anc, puzzle_type):  # (R, anc, anc_rot, nh, nw):
         X = (n_side * 2 - 1).astype(int)
         Z = R.shape[2]
 
+    pdb.set_trace()
     # initialize assigment matrix
     p = np.ones((Y, X, Z, no_patches)) / (Y * X) # uniform distributed p
     init_pos = np.zeros((no_patches, 3)).astype(int)

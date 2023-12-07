@@ -218,7 +218,10 @@ python compatibility/comp_irregular.py --dataset synthetic_irregular_pieces_from
 where `--jobs` can be used to run in parallel the computations, `--method` tells the script where to find the extracted lines, `--penalty` is the penalty value (to use the correct compatibility matrix), `--save_visualization` writes a color-coded version of all the compatibility matrix and `puzzle` and `dataset` are the input data.
 
 ### 5. Running the solver to get the solution (slow, half an hour per puzzle)
-
+At the moment we have some issues, still work in progress
+```bash
+python solver/solver_irregular.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00005_wireframe_00190925 --method deeplsd --anchor 5 --pieces 0 --penalty 40
+```
 
 
 | :exclamation:  These commands may be slightly outdated! Some things may change!  |
