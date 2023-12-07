@@ -19,12 +19,12 @@ def initialization(R, anc, puzzle_type):  # (R, anc, anc_rot, nh, nw):
     no_patches = R.shape[3]
     n_side = np.round(R.shape[3] ** (1 / 2))  # for Toy square puzzle
 
-    if puzzle_type == 'repair':
+    if puzzle_type == 'irregular':
         # RePair puzzle
         Y = np.round(0.5 * (canvas - 1) * (no_patches + 1) + 1).astype(int)
         X = Y
         Z = R.shape[2]
-    else:
+    else: # regular
         # Toy Puzzle (square puzzle)
         Y = np.round(n_side * 2 - 1).astype(int)
         X = (n_side * 2 - 1).astype(int)
@@ -346,7 +346,7 @@ def main(args):
         anc = args.anchor
     print(f"Using anchor the piece with id: {anc}")
 
-    p_initial, init_pos, x0, y0, z0 = initialization(R, anc, dataset_name)  #(R, anc, anc_rot, nh, nw)
+    p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.type)  #(R, anc, anc_rot, nh, nw)
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
@@ -430,6 +430,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
     parser.add_argument('--dataset', type=str, default='random_50_lines_exact_detection', help='dataset folder')   # repair, wikiart, manual_lines, architecture
     parser.add_argument('--puzzle', type=str, default='image_0', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--type', type=str, default='irregular', help='puzzle type (regular or irregular)')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--penalty', type=int, default=20, help='penalty value used')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='exact', help='method used for compatibility')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--pieces', type=int, default=0, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
