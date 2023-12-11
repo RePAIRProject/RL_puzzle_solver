@@ -7,7 +7,6 @@ from scipy import signal
 from scipy.ndimage import rotate, shift
 from PIL import Image
 import os
-import configs.unified_cfg as cfg
 import configs.folder_names as fnames
 import argparse
 from compatibility.line_matching_NEW_segments import read_info
@@ -30,7 +29,6 @@ def initialization(R, anc, puzzle_type):  # (R, anc, anc_rot, nh, nw):
         X = (n_side * 2 - 1).astype(int)
         Z = R.shape[2]
 
-    pdb.set_trace()
     # initialize assigment matrix
     p = np.ones((Y, X, Z, no_patches)) / (Y * X) # uniform distributed p
     init_pos = np.zeros((no_patches, 3)).astype(int)
@@ -166,10 +164,7 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
             else:
                 print(f'Iteration {t}: pay = {pay:.05f}, eps = {eps:.05f}')
         p = np.round(p_new, 8)
-        # if visual == 1:
-        #     all_p[t] = p
-        # all_p = all_p[0:t, 0]
-        # payoff = payoff[1:t, 0]
+
     return p, payoff, eps, iter #, all_p
 
 def visualize_result(all_pay, all_sol, all_anc, init_pos, p_final, pieces):
@@ -239,7 +234,6 @@ def reconstruct_group28_9(fin_sol, Y, X, n_rot, pieces):
         if np.min(pos[i, :2]) > 0:
             if pos.shape[1] == 3:
                 rot = z_rot[pos[i, 2]]
-                #Im = np.array(Image.fromarray(Im).rotate(rot, expand=True))
                 Im = rotate(Im, rot, reshape=False, mode='constant')
 
             fin_im[id[0] - 500:id[0] + 500, id[1] - 500:id[1] + 500, :] = Im + fin_im[id[0] - 500:id[0] + 500,
@@ -274,14 +268,6 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder):
                                                                                    ids[0] - cc:ids[0] + cc + 1,
                                                                                    ids[1] - cc:ids[1] + cc + 1, :]
                                                                            
-        # if np.min(pos[i, :2]) > 0:
-        #     if pos.shape[1] == 3:
-        #         rot = z_rot[pos[i, 2]]
-        #         Im = rotate(Im, rot, reshape=False, mode='constant')
-        #     fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
-        #                                                                                ids[0] - cc:ids[0] + cc + 1,
-        #                                                                                ids[1] - cc:ids[1] + cc + 1, :]
-
     return fin_im
 
 
@@ -310,7 +296,6 @@ def select_anchor(folder):
 
 ## MAIN ##
 def main(args):
-    ## MAIN ##
 
     dataset_name = args.dataset
     puzzle_name = args.puzzle
@@ -321,13 +306,10 @@ def main(args):
     else:
         output_root_folder = f"{fnames.output_dir}_{num_pieces}x{num_pieces}"
 
-
     mat = scipy.io.loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}_p{args.penalty}.mat'))
-    #mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p0.mat')
     pieces_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.pieces_folder}")
     only_lines_pieces_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
     detect_output = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.lines_output_name}", method)
-    #pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\pieces')
     R = mat['R_line']
 
     pieces_files = os.listdir(pieces_folder)
@@ -341,6 +323,9 @@ def main(args):
     R = R[:, :, :, pieces_incl, :] ## re-arange Rmatrix
     R = R[:, :, :, :, pieces_incl]
 
+    if args.few_rotations > 0:
+        R = R[:,:,:int(args.few_rotations),:,:]
+
     if args.anchor < 0:
         anc = select_anchor(detect_output)
     else:
@@ -351,8 +336,15 @@ def main(args):
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
-    ##
+    solution_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{args.anchor}_{args.method}')
 
+    ## SAVE THE MATRIX BEFORE ANY VISUALIZATION
+    filename = os.path.join(solution_folder, 'p_final')
+    mdic = {"p_final": p_final, "label": "label", "anchor": anc, "anc_position": [x0, y0, z0]}
+    scipy.io.savemat(f'{filename}.mat', mdic)
+    np.save(filename, mdic)
+
+    ### VISUALIZATION
     ## visualize results
     f = len(all_sol)
     Y, X, Z, _ = p_final.shape
@@ -361,7 +353,6 @@ def main(args):
 
     #solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output_8x8\\{dataset_name}\\{puzzle_name}\solution')
     #os.makedirs(solution_folder, exist_ok=True)
-    solution_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{args.anchor}_{args.method}')
     # _pen{args.penalty}')
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{args.anchor}.png')
@@ -396,11 +387,6 @@ def main(args):
     plt.tight_layout()
     plt.savefig(alc_path)
 
-    filename = os.path.join(solution_folder, 'p_final')
-    mdic = {"p_final": p_final, "label": "label", "anchor": anc, "anc_position": [x0, y0, z0]}
-    scipy.io.savemat(f'{filename}.mat', mdic)
-    np.save(filename, mdic)
-
     if args.save_frames is True:
         # intermediate steps
         frames_folders = os.path.join(solution_folder, 'frames_all')
@@ -412,7 +398,6 @@ def main(args):
             im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
             im_rec = np.clip(im_rec,0,1)
             plt.imsave(frame_path, im_rec)
-
 
         frames_folders = os.path.join(solution_folder, 'frames_anc')
         os.makedirs(frames_folders, exist_ok=True)
@@ -438,6 +423,7 @@ if __name__ == '__main__':
     parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
 
     args = parser.parse_args()
 

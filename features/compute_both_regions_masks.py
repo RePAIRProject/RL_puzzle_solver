@@ -10,7 +10,7 @@ import json, os
 from configs import folder_names as fnames
 
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, shape_pairwise_compatibility, \
-    get_outside_borders, place_on_canvas, get_borders_around
+    get_outside_borders, place_on_canvas, get_borders_around, include_shape_info
 from puzzle_utils.pieces_utils import calc_parameters
 from puzzle_utils.visualization import save_vis
 
@@ -36,9 +36,20 @@ def main(args):
         print("-" * 50)
         print(puzzle)
         pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, puzzle, args.num_pieces, verbose=True)
-        ppars = calc_parameters(img_parameters)
+        # PARAMETERS
+        puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
+        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
+        if os.path.exists(cmp_parameter_path):
+            print("never tested! remove this comment afterwars (line 53 of comp_irregular.py)")
+            with open(cmp_parameter_path, 'r') as cp:
+                ppars = json.load(cmp_parameter_path)
+        else:
+            ppars = calc_parameters(img_parameters)
 
-        pdb.set_trace()
+        # INCLUDE SHAPE
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method)
+
+        #pdb.set_trace()
         grid_size_xy = ppars.comp_matrix_shape[0]
         grid_size_rot = ppars.comp_matrix_shape[2]
         grid, grid_step_size = create_grid(grid_size_xy, ppars.p_hs, ppars.canvas_size)
@@ -60,43 +71,50 @@ def main(args):
         debug = False
         if debug is True:
             plt.ion()
-        RM = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+                      
+        RM_combo = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         #RM_big = np.zeros((3001, 3001, grid_size_rot, len(pieces), len(pieces)))
-        overlap_M = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
-        borders_M = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+        RM_lines = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+        RM_shapes = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         for i in range(len(pieces)):
             for j in range(len(pieces)):
                 print(f"regions for pieces {i:>2} and {j:>2}", end='\r')
                 if i == j:
-                    RM[:,:,:,i,j] = -1
+                    RM_combo[:,:,:,i,j] = -1
+                    RM_lines[:,:,:,i,j] = -1
+                    RM_shapes[:,:,:,i,j] = -1
                 else:
                     #pdb.set_trace()
                     center_pos = ppars.canvas_size // 2
                     piece_i_on_canvas = place_on_canvas(pieces[i], (center_pos, center_pos), ppars.canvas_size, 0)
-                    mask_i = cv2.resize(piece_i_on_canvas['mask'], (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                    mask_i = cv2.resize(piece_i_on_canvas['lines_mask'], (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
                     #outside_borders_i = get_outside_borders(mask_i, borders_width=1)
                     for t in range(grid_size_rot):
                         piece_j_on_canvas = place_on_canvas(pieces[j], (center_pos, center_pos), ppars.canvas_size, t * ppars.theta_step)
-                        mask_j = cv2.resize(piece_j_on_canvas['mask'], (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                        mask_j = cv2.resize(piece_j_on_canvas['lines_mask'], (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
                         #outside_borders_j = get_outside_borders(mask_j, bordpers_width=1)
-                        overlap_conv = cv2.filter2D(piece_i_on_canvas['mask'], -1, piece_j_on_canvas['mask'])
-                        #overlap_conv_scp = scipy.ndimage.convolve(piece_i_on_canvas['mask'], piece_j_on_canvas['mask'])
-                        thresholded_regions_map = (overlap_conv > ppars.threshold_overlap).astype(np.int32)
+                        overlap_lines = cv2.filter2D(piece_i_on_canvas['lines_mask'], -1, piece_j_on_canvas['lines_mask'])
+                        overlap_shapes = cv2.filter2D(piece_i_on_canvas['mask'], -1, piece_j_on_canvas['mask'])
+                        thresholded_regions_map = (overlap_shapes > ppars.threshold_overlap).astype(np.int32)
                         thresholded_regions_map *= -1
                         around_borders_trm = get_borders_around(thresholded_regions_map.astype(np.uint8), border_dilation=int(ppars.borders_regions_width_outside*ppars.xy_step), border_erosion=int(ppars.borders_regions_width_inside*ppars.xy_step))
                         thresholded_regions_map += 2*(around_borders_trm > 0)
                         thresholded_regions_map = np.clip(thresholded_regions_map, -1, 1)
-
+                        binary_overlap_lines = (overlap_lines > ppars.threshold_overlap_lines).astype(np.int32)
+                        combo = around_borders_trm * binary_overlap_lines
+   
                         # we convert the matrix to resize the image without losing the values
-                        converted = (thresholded_regions_map+1).astype(np.uint8)
-                        resized = cv2.resize(converted, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
+                        converted_shape = (thresholded_regions_map+1).astype(np.uint8)
+                        resized_shape = cv2.resize(converted_shape, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
+
+                        converted_combo = (combo+1).astype(np.uint8)
+                        resized_combo = cv2.resize(converted_combo, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
 
                         # These are the matrices
-                        RM[:,:,t,i,j] = (resized.astype(np.int32) - 1)
-                        overlap_M[:,:,t,i,j] = cv2.resize(overlap_conv, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
-                        borders_M[:,:,t,i,j] = cv2.resize(around_borders_trm, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                        RM_combo[:,:,t,i,j] = (resized_combo.astype(np.int32) - 1)
+                        RM_lines[:,:,t,i,j] = cv2.resize(binary_overlap_lines.astype(np.uint8), (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                        RM_shapes[:,:,t,i,j] = (resized_shape.astype(np.int32) - 1)
                         
-
                     #####################################################
                     #####################################################
                     #####################################################
@@ -141,28 +159,23 @@ def main(args):
             output_root_dir = f"{fnames.output_dir}_8x8"
         else:
             output_root_dir = fnames.output_dir
-        
-        cmp_parameter_path = os.path.join(output_root_dir, 'compatibility_parameters.json')
-        with open(cmp_parameter_path, 'w') as pp:
-            json.dump(ppars, pp, indent=2)
         output_folder = os.path.join(output_root_dir, args.dataset, puzzle, fnames.rm_output_name)
         # should we add this to the folder? it will create a subfolder that we may not need
         # f"{ppars.rm_output_dir}_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
         vis_folder = os.path.join(output_folder, fnames.visualization_folder_name)
         os.makedirs(vis_folder, exist_ok=True)
         RM_D = {}
-        RM_D['RM'] = RM
-        if args.save_everything is True:
-            RM_D['overlap'] = overlap_M
-            RM_D['borders'] = borders_M
+        RM_D['RM'] = RM_combo
+        RM_D['RM_lines'] = RM_lines
+        RM_D['RM_shapes'] = RM_shapes
+
         filename = f'{output_folder}/RM_{puzzle}'
         scipy.io.savemat(f'{filename}.mat', RM_D)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(RM, pieces, os.path.join(vis_folder, f'visualization_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", all_rotation=False)
-            if args.save_everything:
-                save_vis(overlap_M, pieces, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"overlap {puzzle}", all_rotation=False)
-                save_vis(borders_M, pieces, os.path.join(vis_folder, f'visualization_borders_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"borders {puzzle}", all_rotation=False)
+            save_vis(RM, pieces, os.path.join(vis_folder, f'visualization_combo_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", all_rotation=False)
+            save_vis(RM_lines, pieces, os.path.join(vis_folder, f'visualization_lines_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"overlap {puzzle}", all_rotation=False)
+            save_vis(RM_shapes, pieces, os.path.join(vis_folder, f'visualization_shapes_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"borders {puzzle}", all_rotation=False)
         print(f'Done with {puzzle}\n')
 
 if __name__ == '__main__':
@@ -170,6 +183,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')
     parser.add_argument('--dataset', type=str, default='repair', help='dataset (name of the folders)')
     parser.add_argument('--puzzle', type=str, default='', help='puzzle to work on - leave empty to generate for the whole dataset')
+    parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
     parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
     parser.add_argument('-np', '--num_pieces', type=int, default=0, help='number of pieces (per side) - use 0 (default value) for synthetic pieces')  # 8

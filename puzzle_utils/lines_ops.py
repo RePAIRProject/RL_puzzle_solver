@@ -12,6 +12,15 @@ from scipy.optimize import linear_sum_assignment
 #from itertools import compress
 import time 
 
+
+def draw_lines(lines_dict, img_shape):
+    angles, dists, p1s, p2s = extract_from(lines_dict)
+    lines_img = np.zeros(shape=img_shape[:2], dtype=np.uint8)
+    for p1, p2 in zip(p1s, p2s):
+        lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(255), thickness=1)        
+    #cv2.imwrite(os.path.join(lin_output, f"{pieces_names[k][:-4]}_l.jpg"), 255-lines_img)
+    return lines_img 
+
 def extract_from(lines_dict):
     """
     It just unravels the different parts of the extracted line dictionary 
@@ -69,8 +78,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
             t_x = time.time()
             for iy in range(m.shape[1]):    # (z_id.shape[0]):
                 t_y = time.time()
-                z = z_id[ix, iy]            # ??? [iy,ix] ??? strange...
-
+                z = z_id[iy, ix]            # ??? [iy,ix] ??? strange...
                 valid_point = mask_ij[iy, ix, t]
                 if valid_point > 0:
                     #print([iy, ix, t])

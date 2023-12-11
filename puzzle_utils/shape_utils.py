@@ -10,6 +10,7 @@ import pdb
 import os
 import shapely
 import json
+from puzzle_utils.lines_ops import draw_lines
 
 def get_polygon(binary_image):
     contours, _ = cv2.findContours(binary_image.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -31,6 +32,9 @@ def create_grid(grid_size, padding, canvas_size):
     return pieces_grid, grid_step_size
 
 def place_on_canvas(piece, coords, canvas_size, theta=0):
+    ## TODO:
+    # check keys in piece because we may forget something half-way
+    # for example `lines_mask` ?
     y, x = coords
     hs = piece['img'].shape[0] // 2
     y_c0 = int(y-hs)
@@ -40,10 +44,15 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     channels = piece['img'].shape[2]
     img_on_canvas = np.zeros((canvas_size, canvas_size, channels))
     msk_on_canvas = np.zeros((canvas_size, canvas_size))
+    #lines_on_canvas = np.zeros((canvas_size, canvas_size))
+    pdb.set_trace
     if 'sdf' in piece.keys():
         sdf_on_canvas = np.zeros((canvas_size, canvas_size))
         sdf_on_canvas += np.min(piece['sdf'])
         piece_sdf = piece['sdf']
+    if 'lines_mask' in piece.keys():
+        lines_on_canvas = np.zeros((canvas_size, canvas_size))
+        piece_lines_mask = piece['lines_mask']
     piece_img = piece['img']
     piece_mask = piece['mask']
     if theta > 0:
@@ -51,27 +60,39 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
         piece_mask = scipy.ndimage.rotate(piece_mask, theta, reshape=False, mode='constant')
         if 'sdf' in piece.keys():
             piece_sdf = scipy.ndimage.rotate(piece_sdf, theta, reshape=False, mode='constant')
+        if 'lines_mask' in piece.keys():
+            piece_lines_mask = scipy.ndimage.rotate(piece_lines_mask, theta, reshape=False, mode='constant')
         piece['cm'] = get_cm(piece_mask)
     #print(y_c0, y_c1+1, x_c0, x_c1+1)
     #pdb.set_trace
     if piece['img'].shape[0] % 2 == 0:
         img_on_canvas[y_c0:y_c1, x_c0:x_c1, :] = piece_img
         msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
+        if 'sdf' in piece.keys():
+            sdf_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_sdf
+        if 'lines_mask' in piece.keys():
+            lines_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_lines_mask
     else:
         img_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1, :] = piece_img
         msk_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_mask
-    if 'sdf' in piece.keys():
-        sdf_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_sdf
+        if 'sdf' in piece.keys():
+            sdf_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_sdf
+        if 'lines_mask' in piece.keys():
+            lines_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_lines_mask
+
+        
     shift_y = y - piece['cm'][1]
     shift_x = x - piece['cm'][0]
     cm_on_canvas = [piece['cm'][0] + shift_x, piece['cm'][1] + shift_y]
     piece_on_canvas = {
         'img': img_on_canvas.astype(int),
         'mask': msk_on_canvas,
-        'cm': cm_on_canvas 
+        'cm': cm_on_canvas,
     }
     if 'sdf' in piece.keys():
         piece_on_canvas['sdf'] = sdf_on_canvas
+    if 'lines_mask' in piece.keys():
+        piece_on_canvas['lines_mask'] = lines_on_canvas
     return piece_on_canvas
 
 def get_mask(img, background=0):
@@ -205,7 +226,8 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method):
         lines_path = os.path.join(lines_folder, f"{piece_ID}.json")
         with open(lines_path, 'r') as file:
             piece['extracted_lines'] = json.load(file)
-    
+        drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape)
+        piece['lines_mask'] = drawn_lines
     return pieces
 
 def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False):

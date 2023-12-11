@@ -27,6 +27,7 @@ def calc_parameters(parameters):
     ppars['xy_step'] = ppars.pairwise_comp_range / (ppars.comp_matrix_shape[0] - 1)
     ppars['theta_step'] = (360 / ppars.comp_matrix_shape[2])
     ppars['threshold_overlap'] = ppars.piece_size / 2
+    ppars['threshold_overlap_lines'] = ppars.piece_size / 4
     ppars['borders_regions_width_outside'] = 2
     ppars['borders_regions_width_inside'] = 5
     ppars['border_tolerance'] = ppars.piece_size // 60

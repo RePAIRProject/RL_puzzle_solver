@@ -46,7 +46,15 @@ def main(args):
         print("-" * 50)
         print(puzzle)
         pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, puzzle, verbose=True)
-        ppars = calc_parameters(img_parameters)
+
+        puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
+        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
+        if os.path.exists(cmp_parameter_path):
+            print("never tested! remove this comment afterwars (line 53 of comp_irregular.py)")
+            with open(cmp_parameter_path, 'r') as cp:
+                ppars = json.load(cmp_parameter_path)
+        else:
+            ppars = calc_parameters(img_parameters)
 
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method)
 
