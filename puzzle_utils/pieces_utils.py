@@ -15,10 +15,12 @@ class CfgParameters(dict):
 def calc_parameters(parameters):
 
     ppars = CfgParameters()
+    # pieces
     ppars['piece_size'] = parameters['piece_size']
     ppars['num_pieces'] = parameters['num_pieces']
     ppars['img_size'] = parameters['size']
     ppars['p_hs'] = ppars.piece_size // 2
+    # grid
     ppars['xy_grid_points'] = 101
     ppars['theta_grid_points'] = 24
     ppars['comp_matrix_shape'] = [ppars.xy_grid_points, ppars.xy_grid_points, ppars.theta_grid_points]
@@ -26,6 +28,7 @@ def calc_parameters(parameters):
     ppars['canvas_size'] = ppars.pairwise_comp_range #+ 2 * p_hs + 1 
     ppars['xy_step'] = ppars.pairwise_comp_range / (ppars.comp_matrix_shape[0] - 1)
     ppars['theta_step'] = (360 / ppars.comp_matrix_shape[2])
+    # region
     ppars['threshold_overlap'] = ppars.piece_size / 2
     ppars['threshold_overlap_lines'] = ppars.piece_size / 4
     ppars['borders_regions_width_outside'] = 2

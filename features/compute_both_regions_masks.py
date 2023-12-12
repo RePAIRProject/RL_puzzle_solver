@@ -67,13 +67,8 @@ def main(args):
         print('#' * 50)
         print()
 
-        ## CREATE MATRIX
-        debug = False
-        if debug is True:
-            plt.ion()
-                      
+        ## CREATE MATRIX                      
         RM_combo = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
-        #RM_big = np.zeros((3001, 3001, grid_size_rot, len(pieces), len(pieces)))
         RM_lines = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         RM_shapes = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         for i in range(len(pieces)):
@@ -112,45 +107,10 @@ def main(args):
                         resized_combo = cv2.resize(converted_combo, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
 
                         # These are the matrices
-                        RM_combo[:,:,t,i,j] = (resized_combo.astype(np.int32) - 1)
-                        RM_lines[:,:,t,i,j] = cv2.resize(binary_overlap_lines.astype(np.uint8), (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
-                        RM_shapes[:,:,t,i,j] = (resized_shape.astype(np.int32) - 1)
+                        RM_combo[:,:,t,j,i] = (resized_combo.astype(np.int32) - 1)
+                        RM_lines[:,:,t,j,i] = cv2.resize(binary_overlap_lines.astype(np.uint8), (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                        RM_shapes[:,:,t,j,i] = (resized_shape.astype(np.int32) - 1)
                         
-                    #####################################################
-                    #####################################################
-                    #####################################################
-                    if debug is True:
-                        #plt.figure(figsize=(32,32))
-                        plt.subplot(251)
-                        plt.title(f"mask {i}")
-                        plt.imshow(piece_i_on_canvas['mask'])
-                        plt.subplot(256)
-                        plt.title(f"mask {j}")
-                        plt.imshow(piece_j_on_canvas['mask'])
-                        xshift = 736    # 702
-                        yshift = -108   #  25
-                        debug_angles = [0, 90, 180, 270]
-                        for k, ang in enumerate(debug_angles):
-                            plt.subplot(2, 5, 2 + k)
-                            plt.title(f"{i}vs{j} at ({center_pos+yshift}, {center_pos+xshift}, {ang})")
-                            two_shapes = np.zeros((ppars.canvas_size, ppars.canvas_size))
-                            two_shapes += piece_i_on_canvas['mask']
-                            piece_j_hyp = place_on_canvas(pieces[j], (center_pos+yshift, center_pos+xshift), ppars.canvas_size, ang)
-                            two_shapes += 2*piece_j_hyp['mask']
-                            plt.imshow(two_shapes)
-                            plt.subplot(2, 5, 7 + k)
-                            
-                            ccrm = [(center_pos+yshift) // 30, (center_pos+xshift) // 30]
-                            rm_rot = RM_big[:,:,ang//90,i,j]
-                            val = rm_rot[ccrm[0], ccrm[1]]
-                            plt.title(f'region map ({ccrm[0], ccrm[1]}) = {val}')
-                            rm_rot[ccrm[0], ccrm[1]] = 2
-                            rm_rot[ccrm[1], ccrm[0]] = 3
-                            plt.imshow(rm_rot)
-                        pdb.set_trace()
-                    #####################################################
-                    #####################################################
-                    #####################################################
 
         print("\n")
         print('Done calculating')

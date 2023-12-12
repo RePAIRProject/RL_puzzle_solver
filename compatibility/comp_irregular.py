@@ -10,8 +10,7 @@ from configs import folder_names as fnames
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info
 from puzzle_utils.pieces_utils import calc_parameters
 from puzzle_utils.visualization import save_vis
-from puzzle_utils.lines_ops import compute_cost_matrix_LAP
-from configs import line_matching_cfg as cfg
+from puzzle_utils.lines_ops import compute_cost_matrix_LAP, calc_line_matching_parameters
 
 def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
     first_element = comp_as_list[0]
@@ -21,7 +20,7 @@ def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
         for j in range(n):
             ji_mat = comp_as_list[i*n + j]
             cost_matrix[:,:,:,j,i] = ji_mat
-            norm_cost_matrix[:,:,:,j,i] = np.maximum(1 - ji_mat / cfg.rmax, 0)
+            norm_cost_matrix[:,:,:,j,i] = np.maximum(1 - ji_mat / norm_value, 0)
     return cost_matrix, norm_cost_matrix
 
 def main(args):
@@ -56,6 +55,8 @@ def main(args):
         else:
             ppars = calc_parameters(img_parameters)
 
+        line_matching_parameters = calc_line_matching_parameters(ppars)
+
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method)
 
         region_mask_mat = scipy.io.loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
@@ -72,7 +73,7 @@ def main(args):
         z_id = m * z_rad
         ang = ppars.theta_step
         rot = np.arange(0, 360 - ang + 1, ang)
-        cmp_parameters = (p, z_id, m, rot, cfg)
+        cmp_parameters = (p, z_id, m, rot, line_matching_parameters)
         n = len(pieces)
 
         # COST MATRICES 
@@ -87,13 +88,13 @@ def main(args):
             #with parallel_backend('threading', n_jobs=args.jobs):
             costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
             #costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
-            All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n, norm_value=cfg.rmax)
+            All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n, norm_value=line_matching_parameters.rmax)
         else:
             for i in range(n):  # select fixed fragment
                 for j in range(n):
                     ji_mat = compute_cost_matrix_LAP(i, j, pieces, region_mask, cmp_parameters, ppars, verbose=True)
                     All_cost[:, :, :, j, i] = ji_mat
-                    All_norm_cost[:,:,:,j,i] = np.maximum(1 - ji_mat / cfg.rmax, 0)
+                    All_norm_cost[:,:,:,j,i] = np.maximum(1 - ji_mat / line_matching_parameters.rmax, 0)
 
         # apply region masks
         R_line = (All_norm_cost * region_mask) * 2
@@ -105,13 +106,13 @@ def main(args):
         # save output
         output_folder = os.path.join(fnames.output_dir, args.dataset, args.puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
-        filename = os.path.join(output_folder, f'CM_lines_{args.method}_p{cfg.mismatch_penalty}')
+        filename = os.path.join(output_folder, f'CM_lines_{args.method}_p{line_matching_parameters.mismatch_penalty}')
         mdic = {"R_line": R_line, "label": "label"}
         scipy.io.savemat(f'{filename}.mat', mdic)
         np.save(filename, R_line)
 
         if args.save_everything is True:
-            filename = os.path.join(output_folder, f'CM_cost_{args.method}_p{cfg.mismatch_penalty}')
+            filename = os.path.join(output_folder, f'CM_cost_{args.method}_p{line_matching_parameters.mismatch_penalty}')
             mdic = {"All_cost": All_cost, "label": "label"}
             scipy.io.savemat(f'{filename}.mat', mdic)
             np.save(filename, All_cost)

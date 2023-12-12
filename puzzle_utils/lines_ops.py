@@ -12,6 +12,17 @@ from scipy.optimize import linear_sum_assignment
 #from itertools import compress
 import time 
 
+class CfgParameters(dict):
+    __getattr__ = dict.__getitem__
+
+def calc_line_matching_parameters(parameters):
+    lm_pars = CfgParameters()
+    lm_pars['thr_coef'] = 0.08
+    lm_pars['max_dist'] = parameters.xy_step 
+    lm_pars['badmatch_penalty'] = lm_pars['max_dist'] * 5 / 3 # parameters.piece_size / 3 #?
+    lm_pars['mismatch_penalty'] = lm_pars['max_dist'] * 4 / 3 # parameters.piece_size / 4 #?
+    lm_pars['rmax'] = lm_pars['max_dist'] * 7 / 6
+    return lm_pars
 
 def draw_lines(lines_dict, img_shape):
     angles, dists, p1s, p2s = extract_from(lines_dict)
@@ -65,7 +76,8 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
 
 
-def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, cfg, mask_ij, pars):
+def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp, mask_ij, pars):
+    # lmp is the old cfg (with the parameters)
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
     #for t in range(1):
@@ -84,7 +96,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
                     #print([iy, ix, t])
 
                     # check if line1 crosses the polygon2                  
-                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z, theta, poly2, [0, 0], 0, s11, s12, pars)
+                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z, -theta, poly2, [0, 0], 0, s11, s12, pars)
 
                     # return intersections                    
                     useful_lines_alfa1 = alfa1[intersections1] # no rotation here!
@@ -92,9 +104,9 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
                     useful_lines_s12 = useful_lines_s12[intersections1]
 
                     # check if line2 crosses the polygon1
-                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z, theta, s21, s22, pars)
+                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z, -theta, s21, s22, pars)
 
-                    useful_lines_alfa2 = alfa2[intersections2] - theta_rad # the rotation!
+                    useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
                     useful_lines_s21 = useful_lines_s21[intersections2]
                     useful_lines_s22 = useful_lines_s22[intersections2]
 
@@ -102,11 +114,11 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
                     n_lines_f2 = useful_lines_alfa2.shape[0]
 
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
-                        tot_cost = cfg.max_dist * 2  # accept with some cost
+                        tot_cost = lmp.max_dist * 2  # accept with some cost
 
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
-                        tot_cost = cfg.mismatch_penalty * n_lines
+                        tot_cost = lmp.mismatch_penalty * n_lines
 
                     else:
                         # Compute cost_matrix, LAP, penalty, normalize
@@ -124,11 +136,11 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
                                 d3 = distance.euclidean(useful_lines_s12[i], useful_lines_s21[j])
                                 d4 = distance.euclidean(useful_lines_s12[i], useful_lines_s22[j])
 
-                                dist_matrix0[i, j] = np.min([d1, d2, d3, d4])
+                                dist_matrix[i, j] = np.min([d1, d2, d3, d4])
 
-                        dist_matrix[gamma_matrix > cfg.thr_coef] = cfg.badmatch_penalty
-                        dist_matrix[dist_matrix0 > cfg.max_dist] = cfg.badmatch_penalty
-                        # dist_matrix[dist_matrix0 > cfg.badmatch_penalty] = cfg.badmatch_penalty
+                        dist_matrix[gamma_matrix > lmp.thr_coef] = lmp.badmatch_penalty
+                        dist_matrix[dist_matrix > lmp.max_dist] = lmp.badmatch_penalty
+                        # dist_matrix[dist_matrix0 > lmp.badmatch_penalty] = lmp.badmatch_penalty
 
                         # # LAP
                         row_ind, col_ind = linear_sum_assignment(dist_matrix)
@@ -136,7 +148,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
                         #print([tot_cost])
 
                         # # penalty
-                        penalty = np.abs(n_lines_f1 - n_lines_f2) * cfg.mismatch_penalty  # no matches penalty
+                        penalty = np.abs(n_lines_f1 - n_lines_f2) * lmp.mismatch_penalty  # no matches penalty
                         tot_cost = (tot_cost + penalty)
                         tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
 
@@ -153,7 +165,7 @@ def compute_cost_matrix_LAP(idx1, idx2, pieces, regions_mask, cmp_parameters, pp
     Wrapper for the cost computation, so that it can be called in one-line, making it easier to parallelize using joblib's Parallel (in comp_irregular.py) 
     """
 
-    (p, z_id, m, rot, cfg) = cmp_parameters
+    (p, z_id, m, rot, line_matching_pars) = cmp_parameters
     n = len(pieces)
     
     if verbose is True:
@@ -168,10 +180,10 @@ def compute_cost_matrix_LAP(idx1, idx2, pieces, regions_mask, cmp_parameters, pp
 
         if len(alfa1) == 0 and len(alfa2) == 0:
             #print('no lines')
-            R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + cfg.max_dist * 2
+            R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + line_matching_pars.max_dist * 2
         elif (len(alfa1) > 0 and len(alfa2) == 0) or (len(alfa1) == 0 and len(alfa2) > 0):
             #print('only one side with lines')
-            R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + cfg.mismatch_penalty
+            R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + line_matching_pars.mismatch_penalty
         else:
             #print('values!')
             poly1 = pieces[idx1]['polygon']
@@ -180,30 +192,11 @@ def compute_cost_matrix_LAP(idx1, idx2, pieces, regions_mask, cmp_parameters, pp
             candidate_values = np.sum(mask_ij)
             t1 = time.time()
             R_cost = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                                        s12, s21, s22, poly1, poly2, cfg, mask_ij, ppars)
+                                        s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
             if verbose is True:
                 print(f"cost matrix piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} values) ")
             #print(R_cost)
     return R_cost
-
-# def polar_cartesian_check():
-# print("check polar/cart")
-# print("polar")
-# print(angles, dists)
-# print('\n')
-# cartesians = polar2cartesian(seg_img, angles, dists)
-# print('cartesian')
-# print(cartesians)
-# print('\n\n')
-# for j, cartline in enumerate(cartesians):
-#     #cartline = line_pol2cart(angle, dist)
-#     print(f'\noriginal polar: theta={angles[j]:.3f}, rho={dists[j]:.3f}')
-#     print(f'converted to cartesian: pt1 = ({cartline[0]:.3f}, {cartline[1]:.3f}), pt2 = ({cartline[2]:.3f}, {cartline[3]:.3f})')
-#     rho, theta = line_cart2pol(cartline[0:2], cartline[2:4])
-#     print(f'polar: theta={theta:.3f}, rho={rho:.3f}')
-
-# print('\n\n')
-# pdb.set_trace()
 
 # Convert polar coordinates to Cartesian coordinates and display the result
 def polar2cartesian(image, angles, dists, show_image=False):
