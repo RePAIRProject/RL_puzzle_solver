@@ -101,8 +101,9 @@ def main(args):
                         thresholded_regions_map += 2*(around_borders_trm > 0)
                         thresholded_regions_map = np.clip(thresholded_regions_map, -1, 1)
                         binary_overlap_lines = (overlap_lines > ppars.threshold_overlap_lines).astype(np.int32)
-                        combo = around_borders_trm * binary_overlap_lines
-   
+                        combo = thresholded_regions_map * binary_overlap_lines
+                        combo[thresholded_regions_map < 0] = -1 #enforce -1 in the overlapping areas
+
                         # we convert the matrix to resize the image without losing the values
                         converted_shape = (thresholded_regions_map+1).astype(np.uint8)
                         resized_shape = cv2.resize(converted_shape, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
@@ -173,7 +174,7 @@ def main(args):
         scipy.io.savemat(f'{filename}.mat', RM_D)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(RM, pieces, os.path.join(vis_folder, f'visualization_combo_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", all_rotation=False)
+            save_vis(RM_combo, pieces, os.path.join(vis_folder, f'visualization_combo_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", all_rotation=False)
             save_vis(RM_lines, pieces, os.path.join(vis_folder, f'visualization_lines_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"overlap {puzzle}", all_rotation=False)
             save_vis(RM_shapes, pieces, os.path.join(vis_folder, f'visualization_shapes_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"borders {puzzle}", all_rotation=False)
         print(f'Done with {puzzle}\n')
