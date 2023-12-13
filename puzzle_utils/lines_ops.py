@@ -96,7 +96,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
                     #print([iy, ix, t])
 
                     # check if line1 crosses the polygon2                  
-                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z, -theta, poly2, [0, 0], 0, s11, s12, pars)
+                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0], 0, s11, s12, pars)
 
                     # return intersections                    
                     useful_lines_alfa1 = alfa1[intersections1] # no rotation here!
@@ -104,7 +104,7 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
                     useful_lines_s12 = useful_lines_s12[intersections1]
 
                     # check if line2 crosses the polygon1
-                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z, -theta, s21, s22, pars)
+                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, s21, s22, pars)
 
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
                     useful_lines_s21 = useful_lines_s21[intersections2]
@@ -140,7 +140,6 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
 
                         dist_matrix[gamma_matrix > lmp.thr_coef] = lmp.badmatch_penalty
                         dist_matrix[dist_matrix > lmp.max_dist] = lmp.badmatch_penalty
-                        # dist_matrix[dist_matrix0 > lmp.badmatch_penalty] = lmp.badmatch_penalty
 
                         # # LAP
                         row_ind, col_ind = linear_sum_assignment(dist_matrix)
