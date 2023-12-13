@@ -75,7 +75,7 @@ def main(args):
     else:
         output_root_path = args.output
     
-    dataset_name = f"synthetic_{args.shape}_line_pieces"
+    dataset_name = f"synthetic_{args.shape}_pieces_by_drawing_lines"
     data_folder = os.path.join(output_root_path, 'data', dataset_name)
     puzzle_folder = os.path.join(output_root_path, 'output', dataset_name)
     parameter_path = os.path.join(puzzle_folder, 'parameters.json')
@@ -94,9 +94,11 @@ def main(args):
         print("# ", parkey, ":", parameters_dict[parkey])
     print("#" * 70)
     print()
-    with open(parameter_path, 'w') as pp:
-        json.dump(parameter_path, pp, indent=2)
     
+    
+    num_pieces_dict = {}
+    img_sizes_dict = {}
+
     for N in range(args.num_images):
         ## create images with lines
         img, all_lines = create_random_image(args.line_type, args.num_lines, args.height, args.width)
@@ -105,7 +107,9 @@ def main(args):
         cv2.imwrite(os.path.join(data_folder, f'image_{N:05d}.jpg'), img)
 
         ## make folders to save pieces and detected lines
+        print("-" * 50)
         puzzle_name = f'image_{N:05d}'
+        print(puzzle_name)
         single_image_folder = os.path.join(puzzle_folder, f'image_{N:05d}')
         pieces_single_folder = os.path.join(single_image_folder, 'pieces')
         os.makedirs(pieces_single_folder, exist_ok=True)
@@ -117,18 +121,35 @@ def main(args):
         os.makedirs(lines_output_folder, exist_ok=True)
 
         # this gives us the pieces
-        pieces = cut_into_pieces(img, args.shape, args.num_pieces, single_image_folder, puzzle_name)
+        pieces, patch_size = cut_into_pieces(img, args.shape, args.num_pieces, single_image_folder, puzzle_name)
         # pieces is a list of dicts with several keys:
-        # - pieces[i]['orig_img'] is the image (4-channels, alpha-transparent) in its original location
-        # - pieces[i]['center_img'] is the centered image 
-        # - pieces[i]['shape'] is the shape (as a shapely polygon)
+        # - pieces[i]['centered_image'] is the centered image 
+        # - pieces[i]['centered_mask'] is the centered mask (as binary image)
+        # - pieces[i]['centered_polygon'] is the shape (as a shapely polygon)
+        # - pieces[i]['squared_image'] is the centered image in a square
+        # - pieces[i]['squared_mask'] is the centered mask (as binary image) in a square
+        # - pieces[i]['squared_polygon'] is the centered shape (as a shapely polygon) in the square
+        # - pieces[i]['polygon'] is the shape (as a shapely polygon) in its original position
         # - pieces[i]['shift2center'] is the translation to align the shape to the center of the square
 
         for j, piece in enumerate(pieces):
             ## save patch
-            cv2.imwrite(os.path.join(pieces_single_folder, f"piece_{j:04d}.png"), piece['centered_image'])
-            cv2.imwrite(os.path.join(masks_single_folder, f"piece_{j:04d}.png"), piece['centered_mask'] * 255)
-            np.save(os.path.join(poly_single_folder, f"piece_{j:04d}"), piece['centered_polygon'])
+            cv2.imwrite(os.path.join(pieces_single_folder, f"piece_{j:04d}.png"), piece['squared_image'])
+            cv2.imwrite(os.path.join(masks_single_folder, f"piece_{j:04d}.png"), piece['squared_mask'] * 255)
+            np.save(os.path.join(poly_single_folder, f"piece_{j:04d}"), piece['squared_polygon'])
+
+            num_pieces_dict[puzzle_name] = j+1
+            img_sizes_dict[puzzle_name] = img.shape
+
+            # parameters of the single image!
+            img_parameters = {}
+            img_parameters['piece_size'] = int(patch_size)
+            img_parameters['num_pieces'] = j+1
+            img_parameters['size'] = img.shape
+
+            single_image_parameters_path = os.path.join(single_image_folder, f'parameters_{puzzle_name}.json')
+            with open(single_image_parameters_path, 'w') as pp:
+                json.dump(img_parameters, pp, indent=2)
 
             ## we create the container for the lines
             angles = []
@@ -228,7 +249,15 @@ def main(args):
             }
             with open(os.path.join(lines_output_folder, f"piece_{j:04d}.json"), 'w') as lj:
                 json.dump(detected_lines, lj, indent=3)
+
             print(f'done with image_{N:05d}/piece_{j:04d}')
+        
+        print(f"Done with {puzzle_name}: created {j+1} pieces.")
+    
+    parameters_dict['num_pieces'] = num_pieces_dict
+    parameters_dict['img_sizes'] = img_sizes_dict
+    with open(parameter_path, 'w') as pp:
+        json.dump(parameter_path, pp, indent=2)
 
 if __name__ == '__main__':
 

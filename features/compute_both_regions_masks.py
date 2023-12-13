@@ -75,9 +75,9 @@ def main(args):
             for j in range(len(pieces)):
                 print(f"regions for pieces {i:>2} and {j:>2}", end='\r')
                 if i == j:
-                    RM_combo[:,:,:,i,j] = -1
-                    RM_lines[:,:,:,i,j] = -1
-                    RM_shapes[:,:,:,i,j] = -1
+                    RM_combo[:,:,:,j,i] = -1
+                    RM_lines[:,:,:,j,i] = -1
+                    RM_shapes[:,:,:,j,i] = -1
                 else:
                     #pdb.set_trace()
                     center_pos = ppars.canvas_size // 2

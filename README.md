@@ -151,6 +151,11 @@ Done with image_00000_escher_day_and_night: created 15 pieces.
 And will continue with the next images..
 </details>
 
+### 1b. Create pieces by drawing lines (so that you have exact extracted lines!)
+```bash
+python datasets/create_irregular_pieces_by_drawing_lines.py -nl 50 -hh 1000 -ww 1000 -ni 50 -s irregular -np 16 -sv True
+```
+
 ### 2. Create region masks (rather slow, takes ~5 minutes per image)
 After we have created our pieces, we create the regions masks.
 ```bash 
