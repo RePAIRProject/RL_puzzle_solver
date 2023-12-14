@@ -260,6 +260,7 @@ class PuzzleGenerator:
         bg_mat = np.zeros_like(self.img)
         h_max = 0
         w_max = 0
+        dist_cm_max = 0
         padding = np.min(self.img.shape[:2]) // 30
         for i in range(self.region_cnt):
             mask_i = self.region_mat == i
@@ -274,6 +275,10 @@ class PuzzleGenerator:
             y1, x1 = coords.max(axis=0) + 1
             h_i = y1-y0 
             w_i = x1-x0 
+            
+            dists_from_cm = np.linalg.norm(np.array(cm_i[::-1]) - np.array(poly_i.exterior.coords[:]), axis=1)
+            if np.max(dists_from_cm) > dist_cm_max:
+                dist_cm_max = np.max(dists_from_cm)
             if h_i > h_max:
                 h_max = h_i 
             if w_i > w_max:
@@ -304,11 +309,13 @@ class PuzzleGenerator:
             })
 
         # put pieces inside a square 
-        sq_size = max(h_max, w_max) + padding
+        sq_size = max(h_max, w_max, dist_cm_max) + padding
+        # it should always be dist_cm_max which is the maximum radius from the center of mass 
+        # and is the radius of the circle where the piece can be included. Using this as the 
+        # size of the image guarantees that the piece does not go out of the square even during rotation
         if sq_size % 2 > 0:
             sq_size += 1 # keep square size even! :)
         hsq = sq_size // 2
-        #pdb.set_trace()
         # remember center ordering!
         from_idx = np.round(center_i-hsq).astype(int)
         to_idx = np.round(center_i+hsq).astype(int)
@@ -323,7 +330,6 @@ class PuzzleGenerator:
             pieces[i]['squared_image'] = squared_img
             pieces[i]['squared_mask'] = squared_mask
             pieces[i]['squared_polygon'] = squared_poly
-        #pdb.set_trace()
 
         return pieces, sq_size
 
