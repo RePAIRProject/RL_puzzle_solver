@@ -224,7 +224,7 @@ def get_borders(piece, width=5):
     borders = mask - eroded_mask
     return borders   
 
-def include_shape_info(fnames, pieces, dataset, puzzle, method):
+def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1):
 
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle)
     polygons_folder = os.path.join(root_folder, fnames.polygons_folder)
@@ -240,7 +240,7 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method):
         lines_path = os.path.join(lines_folder, f"{piece_ID}.json")
         with open(lines_path, 'r') as file:
             piece['extracted_lines'] = json.load(file)
-        drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape)
+        drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape, line_thickness)
         piece['lines_mask'] = drawn_lines
     return pieces
 

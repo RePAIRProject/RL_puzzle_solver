@@ -4,7 +4,7 @@ import cv2
 import numpy as np 
 import scipy
 
-def save_vis(cm, pieces, path, rot_step, title='', draw_figsize=(100, 100), all_rotation=False, save_every=6, img_format='jpg'):
+def save_vis(cm, pieces, rot_step, path, title='', draw_figsize=(100, 100), all_rotation=False, save_every=6, img_format='jpg'):
     
     rotation_range = np.arange(cm.shape[2])
     for rr in rotation_range:

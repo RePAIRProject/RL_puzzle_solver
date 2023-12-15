@@ -81,7 +81,7 @@ def main(args):
     else:
         output_root_path = args.output
     
-    dataset_name = f"synthetic_{args.shape}_pieces_by_drawing_lines_{randomword(6)}"
+    dataset_name = f"synthetic_{args.shape}_{args.num_pieces}_pieces_by_drawing_lines_{randomword(6)}"
     data_folder = os.path.join(output_root_path, 'data', dataset_name)
     puzzle_folder = os.path.join(output_root_path, 'output', dataset_name)
     parameter_path = os.path.join(puzzle_folder, 'parameters.json')
@@ -101,7 +101,7 @@ def main(args):
     print("#" * 70)
     print()
     
-    
+        
     num_pieces_dict = {}
     img_sizes_dict = {}
 

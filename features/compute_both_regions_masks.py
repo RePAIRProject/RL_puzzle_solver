@@ -47,7 +47,7 @@ def main(args):
             ppars = calc_parameters(img_parameters)
 
         # INCLUDE SHAPE
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method)
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_thickness=3)
 
         #pdb.set_trace()
         grid_size_xy = ppars.comp_matrix_shape[0]
@@ -134,9 +134,9 @@ def main(args):
         scipy.io.savemat(f'{filename}.mat', RM_D)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(RM_combo, pieces, os.path.join(vis_folder, f'visualization_combo_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", all_rotation=False)
-            save_vis(RM_lines, pieces, os.path.join(vis_folder, f'visualization_lines_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"overlap {puzzle}", all_rotation=False)
-            save_vis(RM_shapes, pieces, os.path.join(vis_folder, f'visualization_shapes_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"borders {puzzle}", all_rotation=False)
+            save_vis(RM_combo, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_combo_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", all_rotation=False)
+            save_vis(RM_lines, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_lines_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"overlap {puzzle}", all_rotation=False)
+            save_vis(RM_shapes, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_shapes_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"borders {puzzle}", all_rotation=False)
         print(f'Done with {puzzle}\n')
 
 if __name__ == '__main__':

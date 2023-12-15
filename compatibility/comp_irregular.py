@@ -121,9 +121,9 @@ def main(args):
         os.makedirs(vis_folder, exist_ok=True)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(R_line, pieces, os.path.join(vis_folder, f'visualization_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=False)
+            save_vis(R_line, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=False)
             if args.save_everything:
-                save_vis(All_cost, pieces, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=False)
+                save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=False)
         print(f'Done with {puzzle}\n')
 
 if __name__ == '__main__':
