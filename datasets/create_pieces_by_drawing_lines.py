@@ -188,8 +188,10 @@ def main(args):
                             #print(int_line)
                             if len(list(zip(*int_line.xy))) > 1: # two intersections meaning it crosses
                                 pi1, pi2 = list(zip(*int_line.xy))
-                                p1 = np.array(np.round(pi1 + piece['shift2center'][::-1]).astype(int))  ## CHECK !!!
-                                p2 = np.array(np.round(pi2 + piece['shift2center'][::-1]).astype(int))  ## CHECK !!! 
+                                p1 = np.array(np.round(pi1).astype(int))  ## CHECK !!!
+                                p2 = np.array(np.round(pi2).astype(int))  ## CHECK !!!
+                                # p1 = np.array(np.round(pi1 + piece['shift2center']).astype(int))  ## CHECK !!!
+                                # p2 = np.array(np.round(pi2 + piece['shift2center']).astype(int))  ## CHECK !!! 
                                 # p1 = np.array(np.round(pi1 - shift_piece ).astype(int))  ## CHECK !!!
                                 # p2 = np.array(np.round(pi2 - shift_piece ).astype(int))  ## CHECK !!!
                                 # p1 = np.array(np.round(pi1).astype(int))  ## CHECK !!!
@@ -225,13 +227,13 @@ def main(args):
                 os.makedirs(line_vis, exist_ok=True)
                 os.makedirs(lines_only, exist_ok=True)
                 len_lines = len(angles)
-                lines_img = np.zeros(shape=piece['centered_image'].shape, dtype=np.uint8)
+                lines_img = np.zeros(shape=piece['image'].shape, dtype=np.uint8)
                 lines_only_transparent = np.zeros((lines_img.shape[0], lines_img.shape[1], 4))
-                lines_only_transparent[:,:,3] = piece['centered_mask']
+                lines_only_transparent[:,:,3] = piece['mask']
                 if len_lines > 0:
                     plt.figure()
                     plt.title(f'extracted {len_lines} segments')
-                    plt.imshow(piece['centered_image'])
+                    plt.imshow(piece['image'])
                     for p1, p2 in zip(p1s, p2s):
                         plt.plot((p1[0], p2[0]), (p1[1], p2[1]), color='red', linewidth=1)        
                     plt.savefig(os.path.join(line_vis, f"piece_{j:04d}.jpg"))
@@ -246,14 +248,14 @@ def main(args):
                     plt.imsave(os.path.join(lines_only, f"piece_{j:04d}_t.png"), lines_only_transparent)
                 else:
                     plt.title('no lines')
-                    plt.imshow(piece['centered_image'])    
+                    plt.imshow(piece['image'])    
                     plt.savefig(os.path.join(line_vis, f"piece_{j:04d}.jpg"))
                     plt.close()
                     #cv2.imwrite(os.path.join(lines_only, f"piece_{j:04d}_l.jpg"), 255-lines_img)
                     plt.imsave(os.path.join(lines_only, f"piece_{j:04d}_t.png"), lines_only_transparent)
             #####
 
-
+            # THESE ARE THE COORDINATES OF THE ORIGINAL PIECE
             detected_lines = {
                 'angles': angles,
                 'dists': dists,
@@ -262,9 +264,31 @@ def main(args):
                 'b1s': b1s,
                 'b2s': b2s
             }
-            with open(os.path.join(lines_output_folder, f"piece_{j:04d}.json"), 'w') as lj:
+            orig_coords_folder = os.path.join(lines_output_folder, 'original_coords')
+            os.makedirs(orig_coords_folder, exist_ok=True)
+            with open(os.path.join(orig_coords_folder, f"piece_{j:04d}.json"), 'w') as lj:
                 json.dump(detected_lines, lj, indent=3)
 
+            # NOW WE RE-ALIGN THE EXTRACTED LINES TO THE 'SQUARED' img, mask, polygon..
+            squared_angles = []
+            squared_p1s = []
+            squared_p2s = []
+            for ang, p1, p2 in zip(angles, p1s, p2s):
+                squared_angles.append(ang) # no rotation, but this will change as soon as we introduce rotation
+                squared_p1s.append((p1 + piece['shift2center'][::-1] + piece['shift2square'][::-1]).tolist())
+                squared_p2s.append((p2 + piece['shift2center'][::-1] + piece['shift2square'][::-1]).tolist())
+
+            # dists, b1 and b2 are not used
+            aligned_lines = {
+                'angles': squared_angles,
+                'dists': [],
+                'p1s': squared_p1s,
+                'p2s': squared_p2s,
+                'b1s': [],
+                'b2s': []
+            }
+            with open(os.path.join(lines_output_folder, f"piece_{j:04d}.json"), 'w') as lj:
+                json.dump(aligned_lines, lj, indent=3)
             print(f'done with image_{N:05d}/piece_{j:04d}')
         
         print(f"Done with {puzzle_name}: created {j+1} pieces.")

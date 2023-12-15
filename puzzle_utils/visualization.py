@@ -2,11 +2,13 @@ import matplotlib.pyplot as plt
 import pdb 
 import cv2 
 import numpy as np 
+import scipy
 
-def save_vis(cm, pieces, path, title='', draw_figsize=(100, 100), all_rotation=False, save_every=6, img_format='jpg'):
+def save_vis(cm, pieces, path, rot_step, title='', draw_figsize=(100, 100), all_rotation=False, save_every=6, img_format='jpg'):
     
     rotation_range = np.arange(cm.shape[2])
     for rr in rotation_range:
+        theta = rr * rot_step
         if all_rotation is False and (rr % save_every) == 0:
             fig, axs = plt.subplots(cm.shape[3]+1, cm.shape[4]+1, figsize=draw_figsize) #, sharex=True, sharey=True)
             fig.suptitle(title, fontsize=44)  
@@ -20,7 +22,11 @@ def save_vis(cm, pieces, path, title='', draw_figsize=(100, 100), all_rotation=F
                 axs[0, a].imshow(cv2.cvtColor(pieces[a-1]['img'], cv2.COLOR_BGR2RGB))
                 axs[0, a].xaxis.set_visible(False)
                 axs[0, a].yaxis.set_visible(False)
-                axs[a, 0].imshow(cv2.cvtColor(pieces[a-1]['img'], cv2.COLOR_BGR2RGB))
+                if theta > 0:
+                    rotated_img = scipy.ndimage.rotate(pieces[a-1]['img'], theta, reshape=False, mode='constant')
+                else:
+                    rotated_img = pieces[a-1]['img']
+                axs[a, 0].imshow(cv2.cvtColor(rotated_img, cv2.COLOR_BGR2RGB))
                 axs[a, 0].xaxis.set_visible(False)
                 axs[a, 0].yaxis.set_visible(False)
                 axs[a, 0].set_title(pieces[a-1]['id'], loc='left', fontsize=32)

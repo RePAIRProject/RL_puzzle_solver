@@ -331,6 +331,7 @@ class PuzzleGenerator:
             pieces[i]['squared_image'] = squared_img
             pieces[i]['squared_mask'] = squared_mask
             pieces[i]['squared_polygon'] = squared_poly
+            pieces[i]['shift2square'] = np.asarray([xoffset, yoffset])
 
         return pieces, sq_size
 
