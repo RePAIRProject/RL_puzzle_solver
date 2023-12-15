@@ -309,7 +309,8 @@ class PuzzleGenerator:
             })
 
         # put pieces inside a square 
-        sq_size = max(h_max, w_max, dist_cm_max) + padding
+        diam_dist_cm = int(dist_cm_max * 2)
+        sq_size = max(h_max, w_max, diam_dist_cm) + padding
         # it should always be dist_cm_max which is the maximum radius from the center of mass 
         # and is the radius of the circle where the piece can be included. Using this as the 
         # size of the image guarantees that the piece does not go out of the square even during rotation

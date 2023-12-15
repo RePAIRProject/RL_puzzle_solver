@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from puzzle_utils.dataset_gen import generate_random_point, create_random_image
 from puzzle_utils.lines_ops import line_cart2pol
 from puzzle_utils.pieces_utils import cut_into_pieces
+import random, string
 
 """
 This script generate new datasets for puzzle solving based on lines:
@@ -68,6 +69,11 @@ Example:
     └── image_NNNNN/
 """
 
+
+def randomword(length):
+   letters = string.ascii_lowercase
+   return ''.join(random.choice(letters) for i in range(length))
+
 def main(args):
 
     if args.output == '':
@@ -75,7 +81,7 @@ def main(args):
     else:
         output_root_path = args.output
     
-    dataset_name = f"synthetic_{args.shape}_pieces_by_drawing_lines"
+    dataset_name = f"synthetic_{args.shape}_pieces_by_drawing_lines_{randomword(6)}"
     data_folder = os.path.join(output_root_path, 'data', dataset_name)
     puzzle_folder = os.path.join(output_root_path, 'output', dataset_name)
     parameter_path = os.path.join(puzzle_folder, 'parameters.json')
@@ -111,6 +117,9 @@ def main(args):
         puzzle_name = f'image_{N:05d}'
         print(puzzle_name)
         single_image_folder = os.path.join(puzzle_folder, f'image_{N:05d}')
+        scaled_image_folder = os.path.join(single_image_folder, 'image_scaled')
+        os.makedirs(scaled_image_folder, exist_ok=True)
+        cv2.imwrite(os.path.join(scaled_image_folder, f"output_image_{N:05d}.png"), img)
         pieces_single_folder = os.path.join(single_image_folder, 'pieces')
         os.makedirs(pieces_single_folder, exist_ok=True)
         masks_single_folder = os.path.join(single_image_folder, 'masks')
@@ -179,8 +188,8 @@ def main(args):
                             #print(int_line)
                             if len(list(zip(*int_line.xy))) > 1: # two intersections meaning it crosses
                                 pi1, pi2 = list(zip(*int_line.xy))
-                                p1 = np.array(np.round(pi1 + piece['shift2center']).astype(int))  ## CHECK !!!
-                                p2 = np.array(np.round(pi2 + piece['shift2center']).astype(int))  ## CHECK !!! 
+                                p1 = np.array(np.round(pi1 + piece['shift2center'][::-1]).astype(int))  ## CHECK !!!
+                                p2 = np.array(np.round(pi2 + piece['shift2center'][::-1]).astype(int))  ## CHECK !!! 
                                 # p1 = np.array(np.round(pi1 - shift_piece ).astype(int))  ## CHECK !!!
                                 # p2 = np.array(np.round(pi2 - shift_piece ).astype(int))  ## CHECK !!!
                                 # p1 = np.array(np.round(pi1).astype(int))  ## CHECK !!!
@@ -217,6 +226,8 @@ def main(args):
                 os.makedirs(lines_only, exist_ok=True)
                 len_lines = len(angles)
                 lines_img = np.zeros(shape=piece['centered_image'].shape, dtype=np.uint8)
+                lines_only_transparent = np.zeros((lines_img.shape[0], lines_img.shape[1], 4))
+                lines_only_transparent[:,:,3] = piece['centered_mask']
                 if len_lines > 0:
                     plt.figure()
                     plt.title(f'extracted {len_lines} segments')
@@ -229,13 +240,17 @@ def main(args):
                     #pdb.set_trace()
                     for p1, p2 in zip(p1s, p2s):
                         lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(255, 255, 255), thickness=1)        
-                    cv2.imwrite(os.path.join(lines_only, f"piece_{j:04d}_l.jpg"), 255-lines_img)
+                    #cv2.imwrite(os.path.join(lines_only, f"piece_{j:04d}_l.jpg"), 255-lines_img)
+                    binary_01_mask = (255 - lines_img) / 255
+                    lines_only_transparent[:,:,:3] = np.dstack((binary_01_mask, binary_01_mask, binary_01_mask))
+                    plt.imsave(os.path.join(lines_only, f"piece_{j:04d}_t.png"), lines_only_transparent)
                 else:
                     plt.title('no lines')
                     plt.imshow(piece['centered_image'])    
                     plt.savefig(os.path.join(line_vis, f"piece_{j:04d}.jpg"))
                     plt.close()
-                    cv2.imwrite(os.path.join(lines_only, f"piece_{j:04d}_l.jpg"), 255-lines_img)
+                    #cv2.imwrite(os.path.join(lines_only, f"piece_{j:04d}_l.jpg"), 255-lines_img)
+                    plt.imsave(os.path.join(lines_only, f"piece_{j:04d}_t.png"), lines_only_transparent)
             #####
 
 

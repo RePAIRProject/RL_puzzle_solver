@@ -123,7 +123,7 @@ def main(args):
         single_image_folder = os.path.join(puzzle_folder, puzzle_name)
         scaled_image_folder = os.path.join(single_image_folder, 'image_scaled')
         os.makedirs(scaled_image_folder, exist_ok=True)
-        cv2.imwrite(os.path.join(scaled_image_folder, f"rescaled_{img_name}.png"), img)
+        cv2.imwrite(os.path.join(scaled_image_folder, f"output_{img_name}.png"), img)
         pieces_single_folder = os.path.join(single_image_folder, 'pieces')
         os.makedirs(pieces_single_folder, exist_ok=True)
         masks_single_folder = os.path.join(single_image_folder, 'masks')
