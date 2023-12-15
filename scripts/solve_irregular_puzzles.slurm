@@ -18,15 +18,26 @@ echo "## compatibility.."
 python compatibility/comp_irregular.py --dataset synthetic_irregular_4_pieces_by_drawing_lines_ccayvh --jobs 0 --method exact 
 
 
-
 echo "16pieces"
 echo "## region matrices.."
 #echo "python features/compute_both_regions_masks.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method"
-python features/compute_both_regions_masks.py --dataset synthetic_irregular_4_pieces_by_drawing_lines_ccayvh --method exact
+python features/compute_both_regions_masks.py --dataset synthetic_irregular_16_pieces_by_drawing_lines_ruyuvx --method exact
 
 echo "## compatibility.."
 #echo "python compatibility/comp_irregular.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method"
-python compatibility/comp_irregular.py --dataset synthetic_irregular_4_pieces_by_drawing_lines_ccayvh --jobs 0 --method exact 
+python compatibility/comp_irregular.py --dataset synthetic_irregular_16_pieces_by_drawing_lines_ruyuvx --jobs 0 --method exact 
+
+
+echo "real data"
+echo "## region matrices.."
+#echo "python features/compute_both_regions_masks.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method"
+python features/compute_both_regions_masks.py --dataset synthetic_irregular_pieces_from_real_small_dataset --method exact
+
+echo "## compatibility.."
+#echo "python compatibility/comp_irregular.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method"
+python compatibility/comp_irregular.py --dataset synthetic_irregular_pieces_from_real_small_dataset --jobs 0 --method exact 
+
+
 
 # echo "## solver.."
 # echo "python solver/solverRotPuzzArgs.py --dataset $dataset --puzzle $puzzle --pieces $pieces --anchor $anchor"
