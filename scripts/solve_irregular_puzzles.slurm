@@ -25,17 +25,26 @@ python features/compute_both_regions_masks.py --dataset synthetic_irregular_16_p
 
 echo "## compatibility.."
 #echo "python compatibility/comp_irregular.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method"
-python compatibility/comp_irregular.py --dataset synthetic_irregular_16_pieces_by_drawing_lines_ruyuvx --jobs 0 --method exact 
+python compatibility/comp_irregular.py --dataset synthetic_irregular_16_pieces_by_drawing_lines_ruyuvx --jobs 8 --method exact 
 
 
-echo "real data"
+echo "real data 00005"
 echo "## region matrices.."
 #echo "python features/compute_both_regions_masks.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method"
-python features/compute_both_regions_masks.py --dataset synthetic_irregular_pieces_from_real_small_dataset --method exact
+python features/compute_both_regions_masks.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00005_wireframe_00190925 --method exact
 
 echo "## compatibility.."
 #echo "python compatibility/comp_irregular.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method"
-python compatibility/comp_irregular.py --dataset synthetic_irregular_pieces_from_real_small_dataset --jobs 0 --method exact 
+python compatibility/comp_irregular.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00005_wireframe_00190925 --jobs 8 --method exact 
+
+echo "real data 00009"
+echo "## region matrices.."
+#echo "python features/compute_both_regions_masks.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method"
+python features/compute_both_regions_masks.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00009_wireframe_00035326 --method exact
+
+echo "## compatibility.."
+#echo "python compatibility/comp_irregular.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method"
+python compatibility/comp_irregular.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00009_wireframe_00035326 --jobs 8 --method exact
 
 
 
