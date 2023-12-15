@@ -41,11 +41,17 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     y_c1 = int(y+hs)
     x_c0 = int(x-hs)
     x_c1 = int(x+hs)
-    channels = piece['img'].shape[2]
-    img_on_canvas = np.zeros((canvas_size, canvas_size, channels))
+    if len(piece['img'].shape) > 2:
+        img_with_channels =True
+        channels = piece['img'].shape[2]
+    else:
+        img_with_channels = False
+    if img_with_channels is True:
+        img_on_canvas = np.zeros((canvas_size, canvas_size, channels))
+    else:
+        img_on_canvas = np.zeros((canvas_size, canvas_size))
     msk_on_canvas = np.zeros((canvas_size, canvas_size))
     #lines_on_canvas = np.zeros((canvas_size, canvas_size))
-    pdb.set_trace
     if 'sdf' in piece.keys():
         sdf_on_canvas = np.zeros((canvas_size, canvas_size))
         sdf_on_canvas += np.min(piece['sdf'])
@@ -66,14 +72,21 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     #print(y_c0, y_c1+1, x_c0, x_c1+1)
     #pdb.set_trace
     if piece['img'].shape[0] % 2 == 0:
-        img_on_canvas[y_c0:y_c1, x_c0:x_c1, :] = piece_img
+        if img_with_channels is True:
+            img_on_canvas[y_c0:y_c1, x_c0:x_c1, :] = piece_img
+        else:
+            img_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_img
         msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
         if 'sdf' in piece.keys():
             sdf_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_sdf
         if 'lines_mask' in piece.keys():
             lines_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_lines_mask
     else:
-        img_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1, :] = piece_img
+        if img_with_channels is True:
+            img_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1, :] = piece_img
+        else:
+            img_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_img
+        
         msk_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_mask
         if 'sdf' in piece.keys():
             sdf_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_sdf
@@ -96,6 +109,7 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     return piece_on_canvas
 
 def get_mask(img, background=0):
+
     if img.shape[2] == 4:
         mask = 1 - (img[:,:,3] == background).astype(np.uint8)
     else:
@@ -210,7 +224,7 @@ def get_borders(piece, width=5):
     borders = mask - eroded_mask
     return borders   
 
-def include_shape_info(fnames, pieces, dataset, puzzle, method):
+def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1):
 
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle)
     polygons_folder = os.path.join(root_folder, fnames.polygons_folder)
@@ -226,7 +240,7 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method):
         lines_path = os.path.join(lines_folder, f"{piece_ID}.json")
         with open(lines_path, 'r') as file:
             piece['extracted_lines'] = json.load(file)
-        drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape)
+        drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape, line_thickness)
         piece['lines_mask'] = drawn_lines
     return pieces
 
@@ -234,6 +248,7 @@ def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False)
     pieces = []
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle_name)
     data_folder = os.path.join(root_folder, fnames.pieces_folder)
+    masks_folder = os.path.join(root_folder, fnames.masks_folder)
     pieces_names = os.listdir(data_folder)
     pieces_names.sort()
     if verbose is True:
@@ -245,7 +260,8 @@ def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False)
         piece_d = {}
         img = plt.imread(piece_full_path)
         piece_d['img'] = img
-        piece_d['mask'] = get_mask(piece_d['img'])
+        mask_full_path = os.path.join(masks_folder, piece_name)
+        piece_d['mask'] = plt.imread(mask_full_path)
         piece_d['cm'] = get_cm(piece_d['mask'])
         piece_d['id'] = piece_name[:10] #piece_XXXXX.png
         pieces.append(piece_d)
