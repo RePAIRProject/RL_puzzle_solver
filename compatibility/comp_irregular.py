@@ -104,7 +104,7 @@ def main(args):
             R_line[:, :, :, jj, jj] = -1
 
         # save output
-        output_folder = os.path.join(fnames.output_dir, args.dataset, args.puzzle, fnames.cm_output_name)
+        output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
         filename = os.path.join(output_folder, f'CM_lines_{args.method}_p{line_matching_parameters.mismatch_penalty}')
         mdic = {"R_line": R_line, "label": "label"}
