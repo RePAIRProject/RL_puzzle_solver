@@ -12,36 +12,30 @@ import configs.folder_names as fnames
 import argparse
 from compatibility.line_matching_NEW_segments import read_info
 import pdb, json
-import torch 
-import torch.nn.functional as F 
-import time 
+import torch
+import time
 
-def initialization(R, anc, n_side):  # (R, anc, anc_rot, nh, nw):
+from puzzle_utils.pieces_utils import calc_parameters
+
+def initialization(R, anc):
+
     # Initialize reconstruction plan
+    no_grid_points = R.shape[0]
     no_patches = R.shape[3]
+    no_rotations = R.shape[2]
 
-    # # Re-Pair
-    # st = R.shape[0]
-    # Y = round(cfg.nh * (st - 1) + 1)
-    # X = round(cfg.nw * (st - 1) + 1)
-    # Z = R.shape[2]
+    Y = round(0.5 * (no_grid_points - 1) * (no_patches + 1) + 1)
+    X = Y
+    Z = no_rotations
 
-    # # Toy Puzzle (with o without initial anchor)
-
-    # n_side = num_pieces
-    #n_side = np.round(R.shape[4]**(1/2))
-    Y = n_side * 2 - 1 
-    X = n_side * 2 - 1
-    Z = R.shape[2]
-
-    # initialize assigment matrix
-    p = np.ones((Y, X, Z, no_patches)) / (Y * X) # uniform distributed p
+    # initialize assignment matrix
+    p = np.ones((Y, X, Z, no_patches)) / (Y * X)  # uniform distributed p
     init_pos = np.zeros((no_patches, 3)).astype(int)
 
-    # place initial anchor
-    y0 = n_side - 1 # round(Y / 2)
-    x0 = n_side - 1 # round(X / 2)  # position for anchored patch (center)
-    z0 = cfg.init_anc_rot  # rotation for anchored patch
+    # place anchored patch (center)
+    y0 = round(Y / 2)
+    x0 = round(X / 2)
+    z0 = 0  # rotation for anchored patch
     p[:, :, :, anc] = 0
     p[y0, x0, :, :] = 0
     p[y0, x0, z0, anc] = 1  # anchor selected patch
@@ -51,7 +45,7 @@ def initialization(R, anc, n_side):  # (R, anc, anc_rot, nh, nw):
 
 def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
     #na = 1
-    fase = 0
+    faze = 0
     new_anc = []
     na_new = na
     f = 0
@@ -66,10 +60,9 @@ def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, T
     while eps != 0 and iter < cfg.Tmax:
         if na_new > na:
             na = na_new
-            fase += 1
+            faze += 1
             p = np.ones((Y, X, Z, noPatches)) / (Y * X)
-            if iter>3000:
-                p = p+cfg.pert_noise
+
             for jj in range(noPatches):
                 if new_anc[jj, 0] != 0:
                     y = new_anc[jj, 0]
@@ -78,21 +71,22 @@ def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, T
                     p[:, :, :, jj] = 0
                     p[y, x, :, :] = 0
                     p[y, x, z, jj] = 1
-        if fase == 0:
+
+        if faze == 0:
             T = cfg.Tfirst
         else:
             T = cfg.Tnext
         p, payoff, eps, iter = solver_rot_puzzle(R, p, T, iter, 0, verbosity=verbosity)
 
-        I = np.zeros((noPatches, 1))
+        idx = np.zeros((noPatches, 1))
         m = np.zeros((noPatches, 1))
 
         for j in range(noPatches):
             pj_final = p[:, :, :, j]
-            m[j, 0], I[j, 0] = np.max(pj_final), np.argmax(pj_final)
+            m[j, 0], idx[j, 0] = np.max(pj_final), np.argmax(pj_final)
 
-        I = I.astype(int)
-        i1, i2, i3 = np.unravel_index(I, pj_final.shape)
+        idx = idx.astype(int)
+        i1, i2, i3 = np.unravel_index(idx, p[:, :, :, 1].shape)
 
         fin_sol = np.concatenate((i1, i2, i3), axis=1)
         if verbosity > 0:
@@ -103,6 +97,7 @@ def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, T
         else:
             if iter % 1000 == 0:
                 print("iteration", iter)
+
         a = (m > cfg.anc_fix_tresh).astype(int)
         new_anc = np.array(fin_sol*a)
         na_new = np.sum(a)
@@ -113,22 +108,19 @@ def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, T
         all_pay.append(payoff)
         all_sol.append(fin_sol)
         all_anc.append(new_anc)
-        # if na_new > na:
-        #     all_sol.append(fin_sol)
-        #     all_anc.append(new_anc)
-        p_final = p
 
-    #all_sol[fase]=fin_sol ##
-    all_sol.append(fin_sol)
+    p_final = p
+    # all_sol.append(fin_sol)
     return all_pay, all_sol, all_anc, p_final, eps, iter, na_new
 
 def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
-    Z = R.shape[2]
+    no_rotations = R.shape[2]
     no_patches = R.shape[3]
-    #all_p = [None] * T
+
     payoff = np.zeros(T+1)
-    z_st = 360 / Z
-    z_rot = np.arange(0, 360 - z_st + 1, z_st)
+    z_step = 360 / no_rotations
+    z_rot = np.arange(0, 360 - z_step + 1, z_step)
+
     t = 0
     eps = np.inf
     while t < T and eps > 0:
@@ -137,12 +129,12 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
         q = np.zeros_like(p)
 
         pdb.set_trace()
-        input_matrix = torch.from_numpy(p[:,:,0,:])
-        kernel_matrix = torch.from_numpy(R[:,:,0,:,:])
+        input_matrix = torch.from_numpy(p[:, :, 0,: ])
+        kernel_matrix = torch.from_numpy(R[:, :, 0, :, :])
 
         # Reshape the input and kernel matrices
-        input_tensor = input_matrix.unsqueeze(0).unsqueeze(0) # shape: (1, 1, 15, 15)
-        kernel_tensor = kernel_matrix.permute(2, 0, 1).unsqueeze(0) # shape: (1, 64, 3, 3)
+        input_tensor = input_matrix.unsqueeze(0).unsqueeze(0)  # shape: (1, 1, 15, 15)
+        kernel_tensor = kernel_matrix.permute(2, 0, 1).unsqueeze(0)  # shape: (1, 64, 3, 3)
         input_tensor = input_tensor.expand(1, kernel_matrix.shape[2], input_tensor.shape[2], input_tensor.shape[3]) # shape: (1, 64, 15, 15)
 
         # Create a Conv2d module
@@ -157,26 +149,28 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
         for i in range(no_patches):
             ri = R[:, :, :, :, i]
             #ri = R[:, :, :, i, :] #FOR ORACLE SQUARE ONLY !!!!!
-            for zi in [0]: #range([Z]):
-                rr = rotate(ri, z_rot[zi], reshape=False, mode='constant') #CHECK ??? method?? senso antiorario!!!
-                rr = np.roll(rr, zi, axis=2) # matlab: rr = circshift(rr,zi-1,3); z1=0!!!
+
+            for zi in range(no_rotations):
+                rr = rotate(ri, z_rot[zi], reshape=False, mode='constant')  #  senso antiorario!!!
+                rr = np.roll(rr, zi, axis=2)  # matlab: rr = circshift(rr,zi-1,3); z1=0!!!
                 c1 = np.zeros(p.shape)
+
                 t_for = time.time()
                 for j in range(no_patches):
-                    for zj in range(Z):
+                    for zj in range(no_rotations):
                         rj_z = rr[:, :, zj, j]
                         pj_z = p[:, :, zj, j]
-                        # cc = cv.filter2D(pj_z,-1, np.rot90(rj_z, 2)) # solves inverse order ??? - wrong!!
+                        # cc = cv.filter2D(pj_z,-1, np.rot90(rj_z, 2)) # solves inverse order ??? - wrong ??
                         cc = cv.filter2D(pj_z, -1, rj_z)
-                        c1[:, :, zj, j] = cc;
+                        c1[:, :, zj, j] = cc
 
                 q1 = np.sum(c1, axis=(2, 3))
                 print(f'with for loop took {(time.time()-t_for):.08f} seconds')
+
                 t_torch = time.time()
                 #pdb.set_trace()
                 # Assume input_matrix is your 2D matrix of size 15x15
                 # And kernel_matrix is your 3D matrix of size 3x3x64
-
                 input_matrix = torch.from_numpy(p[:,:,0,0])
                 kernel_matrix = torch.from_numpy(rr[:,:,0,:])
 
@@ -200,8 +194,9 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
                 print(f'with torch took {(time.time()-t_torch):.08f} seconds')
                 print(q1 == q1torch.detach().numpy())
                 pdb.set_trace()
-                # q2 = (q1 != 0) * (q1 + no_patches * Z * 0.5) ## new_experiment
-                q2 = (q1 + no_patches * Z * 1)  # *0.5
+
+                # q2 = (q1 != 0) * (q1 + no_patches * no_rotations * 1) ## new_experiment
+                q2 = (q1 + no_patches * no_rotations * 1)
                 q[:, :, zi, i] = q2
         pq = p * q
         e = 1e-11
@@ -371,19 +366,18 @@ def read_anchor_from_json(puzzle_folder):
 def main(args):
     ## MAIN ##
 
+
     dataset_name = args.dataset
     puzzle_name = args.puzzle
     method = args.method
     num_pieces = args.pieces
 
-    puzzle_folder = os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name)
+    puzzle_folder = os.path.join(fnames.output_dir, dataset_name, puzzle_name)
 
-    mat = scipy.io.loadmat(os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}_p{args.penalty}.mat'))
-    #mat = scipy.io.loadmat(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\compatibility_matrix\\CM_lines_deeplsd_p0.mat')
-    pieces_folder = os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name, f"{fnames.pieces_folder}")
-    only_lines_pieces_folder = os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
-    detect_output = os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name, f"{fnames.lines_output_name}", method)
-    #pieces_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output\\{dataset_name}\\{puzzle_name}\pieces')
+    mat = scipy.io.loadmat(os.path.join(fnames.output_dir, dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}.mat'))
+    pieces_folder = os.path.join(fnames.output_dir, dataset_name, puzzle_name, f"{fnames.pieces_folder}")
+    only_lines_pieces_folder = os.path.join(fnames.output_dir, dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
+    detect_output = os.path.join(fnames.output_dir, dataset_name, puzzle_name, f"{fnames.lines_output_name}", method)
     R = mat['R_line']
 
     pieces_files = os.listdir(pieces_folder)
@@ -394,22 +388,23 @@ def main(args):
     pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
 
     pieces_incl = [p for p in np.arange(0, len(all_pieces)) if p not in pieces_excl]
-    R = R[:, :, :, pieces_incl, :] ## re-arange Rmatrix
+
+
+    R = R[:, :, :, pieces_incl, :]  # re-arange Rmatrix
     R = R[:, :, :, :, pieces_incl]
 
-    R = R[:, :, [0,1], :, :]  # select rotation
+    #R = R[:, :, [0,1], :, :]  # select rotation
 
     if args.anchor < 0:
-        anc = read_anchor_from_json(puzzle_folder) # select_anchor(detect_output)
+        anc = read_anchor_from_json(puzzle_folder)  # select_anchor(detect_output)
     else:
         anc = args.anchor
     print(anc)
 
-    p_initial, init_pos, x0, y0, z0 = initialization(R, anc, num_pieces)  #(R, anc, anc_rot, nh, nw)
-    na = 1
-    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
+    p_initial, init_pos, x0, y0, z0 = initialization(R, anc)  # (R, anc, anc_rot, nh, nw)
 
-    ##
+    na = 1
+    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity)  # (R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
     ## visualize results
     f = len(all_sol)
@@ -419,7 +414,7 @@ def main(args):
 
     #solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output_8x8\\{dataset_name}\\{puzzle_name}\solution')
     #os.makedirs(solution_folder, exist_ok=True)
-    solution_folder = os.path.join(f"{fnames.output_dir}_{num_pieces}x{num_pieces}", dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{args.anchor}_{args.method}')
+    solution_folder = os.path.join(fnames.output_dir, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{args.anchor}_{args.method}')
     # _pen{args.penalty}')
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{args.anchor}.png')
@@ -483,18 +478,17 @@ def main(args):
             plt.imsave(frame_path, im_rec)
 
 
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
     parser.add_argument('--dataset', type=str, default='images_with_50_lines', help='dataset folder')   # repair, wikiart, manual_lines, architecture
-    parser.add_argument('--puzzle', type=str, default='image_11', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--penalty', type=int, default=20, help='penalty value used')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--method', type=str, default='deeplsd', help='method used for compatibility')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--pieces', type=int, default=8, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--puzzle', type=str, default='image_11', help='puzzle folder')
+    # parser.add_argument('--penalty', type=int, default=20, help='penalty value used')
+    parser.add_argument('--method', type=str, default='deeplsd', help='method used for compatibility')
+    # parser.add_argument('--pieces', type=int, default=8, help='number of pieces (per side)')
+    parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
-    parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
 
     args = parser.parse_args()
 
