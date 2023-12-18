@@ -283,6 +283,7 @@ def select_anchor(folder):
 ## MAIN ##
 def main(args):
 
+    print(os.getcwd())
     dataset_name = args.dataset
     puzzle_name = args.puzzle
     method = args.method
@@ -322,7 +323,7 @@ def main(args):
         anc = args.anchor
     print(f"Using anchor the piece with id: {anc}")
 
-    p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.type)  #(R, anc, anc_rot, nh, nw)
+    p_initial, init_pos, x0, y0, z0 = initialization(R, anc)  #(R, anc, anc_rot, nh, nw)
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
@@ -404,8 +405,8 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('--dataset', type=str, default='random_50_lines_exact_detection', help='dataset folder')   # repair, wikiart, manual_lines, architecture
-    parser.add_argument('--puzzle', type=str, default='image_0', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--dataset', type=str, default='synthetic_irregular_4_pieces_by_drawing_lines_ccayvh', help='dataset folder')   # repair, wikiart, manual_lines, architecture
+    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     # parser.add_argument('--type', type=str, default='irregular', help='puzzle type (regular or irregular)')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     # parser.add_argument('--penalty', type=int, default=20, help='penalty value used')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--method', type=str, default='exact', help='method used for compatibility')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
