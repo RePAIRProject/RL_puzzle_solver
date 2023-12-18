@@ -39,6 +39,8 @@ def initialization(R, anc):
     p[y0, x0, z0, anc] = 1  # anchor selected patch
     init_pos[anc, :] = ([y0, x0, z0])
 
+    print("P:", p.shape)
+
     return p, init_pos, x0, y0, z0
 
 def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
@@ -54,6 +56,8 @@ def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, T
     all_sol = []
     all_anc = []
     Y, X, Z, noPatches = p.shape
+
+    print("started solving..")
 
     while eps != 0 and iter < cfg.Tmax:
         if na_new > na:
@@ -278,7 +282,7 @@ def select_anchor(folder):
     good_anchors = np.array(np.where(num_lines > mean_num_lines))
     new_anc = np.random.choice(good_anchors[0, :], 1)
 
-    return new_anc
+    return new_anc[0]
 
 ## MAIN ##
 def main(args):
@@ -328,6 +332,7 @@ def main(args):
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
     solution_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{anc}_{args.method}')
+    os.makedirs(solution_folder, exist_ok=True)
 
     ## SAVE THE MATRIX BEFORE ANY VISUALIZATION
     filename = os.path.join(solution_folder, 'p_final')
