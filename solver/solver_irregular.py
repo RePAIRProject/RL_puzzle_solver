@@ -14,6 +14,7 @@ from puzzle_utils.pieces_utils import calc_parameters
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, place_on_canvas
 
 def initialization(R, anc):
+    z0 = 0 # rotation for anchored patch
     # Initialize reconstruction plan
     no_grid_points = R.shape[0]
     no_patches = R.shape[3]
@@ -30,7 +31,7 @@ def initialization(R, anc):
     # place anchored patch (center)
     y0 = round(Y / 2)
     x0 = round(X / 2)
-    z0 = 0  # rotation for anchored patch
+
     p[:, :, :, anc] = 0
     p[y0, x0, :, :] = 0
     p[y0, x0, z0, anc] = 1
@@ -230,7 +231,7 @@ def main(args):
     method = args.method
     num_pieces = args.pieces
 
-    pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
+    pieces_dict, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
     ppars = calc_parameters(img_parameters)
 
     if num_pieces < 1:
@@ -257,7 +258,10 @@ def main(args):
     R = R[:, :, :, :, pieces_incl]
 
     if args.few_rotations > 0:
-        R = R[:, :, :int(args.few_rotations), :, :]
+        n_rot = R.shape[2]
+        rot_incl = np.arange(0, n_rot, n_rot/args.few_rotations)
+        rot_incl = rot_incl.astype(int)
+        R = R[:, :, rot_incl, :, :]
 
     if args.anchor < 0:
         anc = select_anchor(detect_output)
@@ -348,8 +352,8 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='synthetic_irregular_16_pieces_by_drawing_lines_ruyuvx', help='dataset folder')
-    parser.add_argument('--puzzle', type=str, default='', help='puzzle folder')
+    parser.add_argument('--dataset', type=str, default='synthetic_irregular_4_pieces_by_drawing_lines_ccayvh', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder')
     # parser.add_argument('--type', type=str, default='irregular', help='puzzle type (regular or irregular)')
     # parser.add_argument('--penalty', type=int, default=20, help='penalty value used')
     parser.add_argument('--method', type=str, default='exact', help='method used for compatibility')  # exact, deeplsd
@@ -357,7 +361,7 @@ if __name__ == '__main__':
     parser.add_argument('--anchor', type=int, default=0, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
-    parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
+    parser.add_argument('--few_rotations', type=int, default=2, help='uses only few rotations to make it faster')
 
     args = parser.parse_args()
 
