@@ -230,7 +230,7 @@ def main(args):
     method = args.method
     num_pieces = args.pieces
 
-    pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
+    pieces_dict, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
     ppars = calc_parameters(img_parameters)
 
     if num_pieces < 1:
@@ -284,7 +284,7 @@ def main(args):
     Y, X, Z, _ = p_final.shape
     fin_sol = all_sol[f-1]
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars)
-    # alternative method for reconstruction (with transparency on overlap becaus of b/w image)
+    # alternative method for reconstruction (with transparency on overlap because of b/w image)
     fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
     final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
     plt.imsave(final_solution_v2, fin_im_v2)
