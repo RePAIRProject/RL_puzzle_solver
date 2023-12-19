@@ -128,16 +128,16 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
         q = np.zeros_like(p)
         for i in range(no_patches):
             ri = R[:, :, :, :, i]
-            # ri = R[:, :, :, i, :] # FOR ORACLE SQUARE ONLY
+            # ri = R[:, :, :, i, :]  # FOR ORACLE SQUARE ONLY
             for zi in range(no_rotations):
                 rr = rotate(ri, z_rot[zi], reshape=False, mode='constant') #CHECK ??? method?? senso antiorario!!!
-                rr = np.roll(rr, zi, axis=2) # matlab: rr = circshift(rr,zi-1,3); z1=0!!!
+                rr = np.roll(rr, zi, axis=2)  # matlab: rr = circshift(rr,zi-1,3); z1=0!!!
                 c1 = np.zeros(p.shape)
                 for j in range(no_patches):
                     for zj in range(no_rotations):
                         rj_z = rr[:, :, zj, j]
                         pj_z = p[:, :, zj, j]
-                        # cc = cv.filter2D(pj_z,-1, np.rot90(rj_z, 2)) # solves inverse order ??? - wrong!!
+                        #cc = cv.filter2D(pj_z,-1, np.rot90(rj_z, 2)) # solves inverse order ??? - wrong!!
                         cc = cv.filter2D(pj_z, -1, rj_z)
                         c1[:, :, zj, j] = cc
 
@@ -259,9 +259,12 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars
         if pos.shape[1] == 3:
             rot = z_rot[pos[i, 2]]
             Im = rotate(Im, rot, reshape=False, mode='constant')
-        fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
-                                                                                   ids[0] - cc:ids[0] + cc + 1,
-                                                                                   ids[1] - cc:ids[1] + cc + 1, :]
+        fin_im[ids[0] - cc:ids[0] + cc, ids[1] - cc:ids[1] + cc, :] = Im + fin_im[
+                                                                                  ids[0] - cc:ids[0] + cc,
+                                                                                  ids[1] - cc:ids[1] + cc, :]
+        #fin_im[ids[1] - cc:ids[1] + cc, ids[0] - cc:ids[0] + cc, :] = Im + fin_im[
+        #                                                                           ids[1] - cc:ids[1] + cc,
+        #                                                                           ids[0] - cc:ids[0] + cc, :]
     return fin_im
 
 
@@ -309,6 +312,7 @@ def main(args):
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
+    print(pieces_files)
     pieces_excl = []
     # pieces_excl = np.array([3,4,7,8,11,15]);
     all_pieces = np.arange(len(pieces_files))
@@ -328,6 +332,7 @@ def main(args):
     print(f"Using anchor the piece with id: {anc}")
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, anc)  #(R, anc, anc_rot, nh, nw)
+    print(p_initial.shape)
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
 
@@ -419,7 +424,7 @@ if __name__ == '__main__':
     parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--few_rotations', type=int, default=2, help='uses only few rotations to make it faster')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
 
     args = parser.parse_args()
 
