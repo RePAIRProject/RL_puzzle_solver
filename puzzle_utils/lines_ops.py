@@ -189,7 +189,7 @@ def compute_cost_matrix_LAP(idx1, idx2, pieces, regions_mask, cmp_parameters, pp
             poly1 = pieces[idx1]['polygon']
             poly2 = pieces[idx2]['polygon']
             mask_ij = regions_mask[:, :, :, idx2, idx1]
-            candidate_values = np.sum(mask_ij)
+            candidate_values = np.sum(mask_ij > 0)
             t1 = time.time()
             R_cost = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
                                         s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)

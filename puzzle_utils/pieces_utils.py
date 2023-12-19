@@ -22,7 +22,7 @@ def calc_parameters(parameters):
     ppars['p_hs'] = ppars.piece_size // 2
     # grid
     ppars['xy_grid_points'] = 101
-    ppars['theta_grid_points'] = 24
+    ppars['theta_grid_points'] = 4 # 24
     ppars['comp_matrix_shape'] = [ppars.xy_grid_points, ppars.xy_grid_points, ppars.theta_grid_points]
     ppars['pairwise_comp_range'] = 4 * (ppars.p_hs) + 1
     ppars['canvas_size'] = ppars.pairwise_comp_range #+ 2 * p_hs + 1 

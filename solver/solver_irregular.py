@@ -11,8 +11,7 @@ import argparse
 from compatibility.line_matching_NEW_segments import read_info
 import configs.solver_cfg as cfg
 from puzzle_utils.pieces_utils import calc_parameters
-from puzzle_utils.shape_utils import prepare_pieces_v2
-
+from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, place_on_canvas
 
 def initialization(R, anc):
     # Initialize reconstruction plan
@@ -156,6 +155,25 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
         p = np.round(p_new, 8)
     return p, payoff, eps, iter
 
+def reconstruct_puzzle_v2(solved_positions, Y, X, pieces, ppars, use_RGB=True):
+
+    if use_RGB:
+        canvas_image = np.zeros((np.round(Y * ppars.xy_step + ppars.p_hs).astype(int), np.round(X * ppars.xy_step + ppars.p_hs).astype(int), 3))
+    else:
+        canvas_image = np.zeros((np.round(Y * ppars.xy_step + ppars.p_hs).astype(int), np.round(X * ppars.xy_step + ppars.p_hs).astype(int)))
+    for i, piece in enumerate(pieces):
+        target_pos = solved_positions[i,:2] * ppars.xy_step
+        target_rot = solved_positions[i, 2] * ppars.theta_step
+        placed_piece = place_on_canvas(piece, target_pos, canvas_image.shape[0], target_rot)
+        if use_RGB:
+            if len(placed_piece['img'].shape) > 2:
+                canvas_image += placed_piece['img']
+            else:
+                canvas_image += np.repeat(placed_piece['img'], 3).reshape(canvas_image.shape)
+        else:
+            canvas_image += placed_piece['img']
+
+    return canvas_image
 
 def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars):
     step = np.ceil(ppars.xy_step)
@@ -266,6 +284,10 @@ def main(args):
     Y, X, Z, _ = p_final.shape
     fin_sol = all_sol[f-1]
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars)
+    # alternative method for reconstruction (with transparency on overlap becaus of b/w image)
+    fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
+    final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
+    plt.imsave(final_solution_v2, fin_im_v2)
 
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')
@@ -327,7 +349,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
     parser.add_argument('--dataset', type=str, default='synthetic_irregular_16_pieces_by_drawing_lines_ruyuvx', help='dataset folder')
-    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder')
+    parser.add_argument('--puzzle', type=str, default='', help='puzzle folder')
     # parser.add_argument('--type', type=str, default='irregular', help='puzzle type (regular or irregular)')
     # parser.add_argument('--penalty', type=int, default=20, help='penalty value used')
     parser.add_argument('--method', type=str, default='exact', help='method used for compatibility')  # exact, deeplsd
@@ -335,7 +357,7 @@ if __name__ == '__main__':
     parser.add_argument('--anchor', type=int, default=0, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
-    parser.add_argument('--few_rotations', type=int, default=4, help='uses only few rotations to make it faster')
+    parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
 
     args = parser.parse_args()
 

@@ -9,7 +9,7 @@ from configs.pieces_cfg import num_patches_side
 #nw = 3  # 2 for repair
 
 ### SOLVER
-Tfirst = 200
+Tfirst = 100
 Tnext = 100
-Tmax = 7000
-anc_fix_tresh = 0.55
+Tmax = 3000
+anc_fix_tresh = 0.75

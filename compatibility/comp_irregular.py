@@ -106,13 +106,13 @@ def main(args):
         # save output
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
-        filename = os.path.join(output_folder, f'CM_lines_{args.method}_p{line_matching_parameters.mismatch_penalty}')
+        filename = os.path.join(output_folder, f'CM_lines_{args.method}')
         mdic = {"R_line": R_line, "label": "label"}
         scipy.io.savemat(f'{filename}.mat', mdic)
         np.save(filename, R_line)
 
         if args.save_everything is True:
-            filename = os.path.join(output_folder, f'CM_cost_{args.method}_p{line_matching_parameters.mismatch_penalty}')
+            filename = os.path.join(output_folder, f'CM_cost_{args.method}')
             mdic = {"All_cost": All_cost, "label": "label"}
             scipy.io.savemat(f'{filename}.mat', mdic)
             np.save(filename, All_cost)
@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
     parser.add_argument('--dataset', type=str, default='synthetic_irregular_pieces_from_real_small_dataset', help='dataset folder')  # repair
-    parser.add_argument('--puzzle', type=str, default='image_00009_wireframe_00035326', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
+    parser.add_argument('--puzzle', type=str, default='', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--jobs', type=int, default=6, help='how many jobs (if you want to parallelize the execution')
