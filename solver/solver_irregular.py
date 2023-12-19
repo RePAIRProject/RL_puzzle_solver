@@ -3,8 +3,7 @@ import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
 import scipy.io
-from scipy import signal
-from scipy.ndimage import rotate, shift
+from scipy.ndimage import rotate
 from PIL import Image
 import os
 import configs.folder_names as fnames
@@ -12,11 +11,10 @@ import argparse
 from compatibility.line_matching_NEW_segments import read_info
 import configs.solver_cfg as cfg
 from puzzle_utils.pieces_utils import calc_parameters
-from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info
-import pdb
+from puzzle_utils.shape_utils import prepare_pieces_v2
+
 
 def initialization(R, anc):
-
     # Initialize reconstruction plan
     no_grid_points = R.shape[0]
     no_patches = R.shape[3]
@@ -27,7 +25,7 @@ def initialization(R, anc):
     Z = no_rotations
 
     # initialize assignment matrix
-    p = np.ones((Y, X, Z, no_patches)) / (Y * X)  # uniform distributed p
+    p = np.ones((Y, X, Z, no_patches)) / (Y * X)  # uniform
     init_pos = np.zeros((no_patches, 3)).astype(int)
 
     # place anchored patch (center)
@@ -36,15 +34,14 @@ def initialization(R, anc):
     z0 = 0  # rotation for anchored patch
     p[:, :, :, anc] = 0
     p[y0, x0, :, :] = 0
-    p[y0, x0, z0, anc] = 1  # anchor selected patch
+    p[y0, x0, z0, anc] = 1
     init_pos[anc, :] = ([y0, x0, z0])
 
     print("P:", p.shape)
-
     return p, init_pos, x0, y0, z0
 
-def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, Tmax):
-    #na = 1
+
+def RePairPuzz(R, p, na, verbosity=1):
     faze = 0
     new_anc = []
     na_new = na
@@ -58,7 +55,6 @@ def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, T
     Y, X, Z, noPatches = p.shape
 
     print("started solving..")
-
     while eps != 0 and iter < cfg.Tmax:
         if na_new > na:
             na = na_new
@@ -103,7 +99,6 @@ def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, T
         na_new = np.sum(a)
         if verbosity > 0:
             print(new_anc)
-
         f += 1
         all_pay.append(payoff)
         all_sol.append(fin_sol)
@@ -113,10 +108,10 @@ def RePairPuzz(R, p, na, verbosity=1):  # (R, p, anc_fix_tresh, Tfirst, Tnext, T
     p_final = p
     return all_pay, all_sol, all_anc, p_final, eps, iter, na_new
 
+
 def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
     no_rotations = R.shape[2]
     no_patches = R.shape[3]
-    #all_p = [None] * T
     payoff = np.zeros(T+1)
     z_st = 360 / no_rotations
     z_rot = np.arange(0, 360 - z_st + 1, z_st)
@@ -128,28 +123,28 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
         q = np.zeros_like(p)
         for i in range(no_patches):
             ri = R[:, :, :, :, i]
-            # ri = R[:, :, :, i, :]  # FOR ORACLE SQUARE ONLY
+            #  ri = R[:, :, :, i, :]  # FOR ORACLE SQUARE ONLY
             for zi in range(no_rotations):
-                rr = rotate(ri, z_rot[zi], reshape=False, mode='constant') #CHECK ??? method?? senso antiorario!!!
-                rr = np.roll(rr, zi, axis=2)  # matlab: rr = circshift(rr,zi-1,3); z1=0!!!
+                rr = rotate(ri, z_rot[zi], reshape=False, mode='constant')
+                rr = np.roll(rr, zi, axis=2)
                 c1 = np.zeros(p.shape)
                 for j in range(no_patches):
                     for zj in range(no_rotations):
                         rj_z = rr[:, :, zj, j]
                         pj_z = p[:, :, zj, j]
-                        #cc = cv.filter2D(pj_z,-1, np.rot90(rj_z, 2)) # solves inverse order ??? - wrong!!
+                        # cc = cv.filter2D(pj_z, -1, np.rot90(rj_z, 2)) # solves in inverse order !?!
                         cc = cv.filter2D(pj_z, -1, rj_z)
                         c1[:, :, zj, j] = cc
 
                 q1 = np.sum(c1, axis=(2, 3))
                 # q2 = (q1 != 0) * (q1 + no_patches * no_rotations * 0.5) ## new_experiment
-                q2 = (q1 + no_patches * no_rotations * 1)  # q2 = (q1 + no_patches) #non-rotation case
+                q2 = (q1 + no_patches * no_rotations * 1)
                 q[:, :, zi, i] = q2
 
         pq = p * q  # e = 1e-11
         p_new = pq / (np.sum(pq, axis=(0, 1, 2)))
         p_new = np.where(np.isnan(p_new), 0, p_new)
-        pay = np.sum(p_new * q)  # pay = np.sum(pq)
+        pay = np.sum(p_new * q)
 
         payoff[t] = pay
         eps = abs(pay - payoff[t-1])
@@ -159,81 +154,8 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
             else:
                 print(f'Iteration {t}: pay = {pay:.05f}, eps = {eps:.05f}')
         p = np.round(p_new, 8)
-
     return p, payoff, eps, iter
 
-def visualize_result(all_pay, all_sol, all_anc, init_pos, p_final, pieces):
-    Y, X, Z, _ = p_final.shape
-    # init_im = reconstruct_toy9(init_pos, Y, X)
-    init_im = reconstruct_group28_9(init_pos, Y, X, Z, pieces)
-
-    faze = len(all_sol)  # faze = all_sol.shape[1]
-    col = 2
-    row = faze
-    t = 1
-
-    plt.figure()
-    plt.subplot(col, row, t)
-    plt.imshow((init_im * 255).astype(np.uint8))
-
-    for f in range(faze - 1):
-        t += 1
-        new_anc = all_anc[f]
-        # faze_im = reconstruct_toy9(new_anc, Y, X)
-        faze_im = reconstruct_group28_9(new_anc, Y, X, Z, pieces)
-        plt.subplot(col, row, t)
-        plt.imshow((faze_im * 255).astype(np.uint8))
-
-    for f in range(faze):
-        t += 1
-        fin_sol = all_sol[f]
-        if fin_sol.size != 0:
-            # faze_im = reconstruct_toy9(fin_sol, Y, X)
-            faze_im = reconstruct_group28_9(fin_sol, Y, X, Z, pieces)
-            plt.subplot(col, row, t)
-            plt.imshow((faze_im * 255).astype(np.uint8))
-    plt.show()
-
-    plt.figure()
-    plt.imshow((faze_im * 255).astype(np.uint8))
-    plt.show()
-
-    f_pay = []
-    for ff in range(faze):
-        a = all_pay[ff]
-        f_pay = np.append(f_pay, a)
-    f_pay = np.array(f_pay)
-    plt.figure()
-    plt.plot(f_pay, 'r', linewidth=1)
-    plt.show()
-
-def reconstruct_group28_9(fin_sol, Y, X, n_rot, pieces):
-    step = 38
-    #pieces = [p for p in pieces if p not in pieces[pieces_excl]]
-    ang = 360 / n_rot
-    z_rot = np.arange(0, 360, ang)
-    pos = fin_sol
-    fin_im = np.zeros((Y * step + 1000, X * step + 1000, 3))
-
-    for i in range(pos.shape[0]):
-        im_num = pieces[i]
-        in_file = f'C:/Users/Marina/PycharmProjects/WP3-PuzzleSolving/Compatibility/data/repair/group_28/ready/RPf_00{im_num}.png'
-        Im0 = Image.open(in_file).convert('RGBA')
-        Im = np.array(Im0) / 255.0
-        Im1 = Image.open(in_file).convert('RGBA').split()
-        alfa = np.array(Im1[3]) / 255.0
-        Im = np.multiply(Im, alfa[:, :, np.newaxis])
-        Im = Im[:,:,0:3]
-
-        id = pos[i, :2] * step - step + 500
-        if np.min(pos[i, :2]) > 0:
-            if pos.shape[1] == 3:
-                rot = z_rot[pos[i, 2]]
-                Im = rotate(Im, rot, reshape=False, mode='constant')
-
-            fin_im[id[0] - 500:id[0] + 500, id[1] - 500:id[1] + 500, :] = Im + fin_im[id[0] - 500:id[0] + 500,
-                                                                               id[1] - 500:id[1] + 500, :]
-    return fin_im
 
 def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars):
     step = np.ceil(ppars.xy_step)
@@ -259,17 +181,11 @@ def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars
         if pos.shape[1] == 3:
             rot = z_rot[pos[i, 2]]
             Im = rotate(Im, rot, reshape=False, mode='constant')
-        fin_im[ids[0] - cc:ids[0] + cc, ids[1] - cc:ids[1] + cc, :] = Im + fin_im[
-                                                                                  ids[0] - cc:ids[0] + cc,
-                                                                                  ids[1] - cc:ids[1] + cc, :]
-        #fin_im[ids[1] - cc:ids[1] + cc, ids[0] - cc:ids[0] + cc, :] = Im + fin_im[
-        #                                                                           ids[1] - cc:ids[1] + cc,
-        #                                                                           ids[0] - cc:ids[0] + cc, :]
+        fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :] = Im+fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :]
     return fin_im
 
 
 def select_anchor(folder):
-
     pieces_files = os.listdir(folder)
     json_files = [piece_file for piece_file in pieces_files if piece_file[-4:] == 'json']
     json_files.sort()
@@ -287,9 +203,9 @@ def select_anchor(folder):
 
     return new_anc[0]
 
-## MAIN ##
-def main(args):
 
+#  MAIN
+def main(args):
     print(os.getcwd())
     dataset_name = args.dataset
     puzzle_name = args.puzzle
@@ -319,7 +235,7 @@ def main(args):
     pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
 
     pieces_incl = [p for p in np.arange(0, len(all_pieces)) if p not in pieces_excl]
-    R = R[:, :, :, pieces_incl, :] ## re-arange Rmatrix
+    R = R[:, :, :, pieces_incl, :]  # re-arrange R-matrix
     R = R[:, :, :, :, pieces_incl]
 
     if args.few_rotations > 0:
@@ -331,30 +247,26 @@ def main(args):
         anc = args.anchor
     print(f"Using anchor the piece with id: {anc}")
 
-    p_initial, init_pos, x0, y0, z0 = initialization(R, anc)  #(R, anc, anc_rot, nh, nw)
+    p_initial, init_pos, x0, y0, z0 = initialization(R, anc)  # (R, anc, anc_rot, nh, nw)
     print(p_initial.shape)
     na = 1
-    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity) #(R, p_initial, anc_fix_tresh, Tfirst, Tnext, Tmax)
+    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity)
 
     solution_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{anc}_{args.method}')
     os.makedirs(solution_folder, exist_ok=True)
 
-    ## SAVE THE MATRIX BEFORE ANY VISUALIZATION
+    #  SAVE THE MATRIX BEFORE ANY VISUALIZATION
     filename = os.path.join(solution_folder, 'p_final')
     mdic = {"p_final": p_final, "label": "label", "anchor": anc, "anc_position": [x0, y0, z0]}
     scipy.io.savemat(f'{filename}.mat', mdic)
     np.save(filename, mdic)
 
-    ### VISUALIZATION
-    ## visualize results
+#   VISUALIZATION
     f = len(all_sol)
     Y, X, Z, _ = p_final.shape
     fin_sol = all_sol[f-1]
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars)
 
-    #solution_folder = os.path.join(f'C:\\Users\Marina\PycharmProjects\RL_puzzle_solver\output_8x8\\{dataset_name}\\{puzzle_name}\solution')
-    #os.makedirs(solution_folder, exist_ok=True)
-    # _pen{args.penalty}')
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')
     plt.figure(figsize=(16, 16))
@@ -411,21 +323,98 @@ def main(args):
             plt.imsave(frame_path, im_rec)
 
 
-
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='........ ')  # add some discription
-    parser.add_argument('--dataset', type=str, default='synthetic_irregular_4_pieces_by_drawing_lines_ccayvh', help='dataset folder')   # repair, wikiart, manual_lines, architecture
-    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    # parser.add_argument('--type', type=str, default='irregular', help='puzzle type (regular or irregular)')           # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    # parser.add_argument('--penalty', type=int, default=20, help='penalty value used')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--method', type=str, default='exact', help='method used for compatibility')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--pieces', type=int, default=0, help='number of pieces (per side)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser = argparse.ArgumentParser(description='........ ')  # add some description
+    parser.add_argument('--dataset', type=str, default='synthetic_irregular_16_pieces_by_drawing_lines_ruyuvx', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder')
+    # parser.add_argument('--type', type=str, default='irregular', help='puzzle type (regular or irregular)')
+    # parser.add_argument('--penalty', type=int, default=20, help='penalty value used')
+    parser.add_argument('--method', type=str, default='exact', help='method used for compatibility')  # exact, deeplsd
+    parser.add_argument('--pieces', type=int, default=0, help='number of pieces (per side)')
+    parser.add_argument('--anchor', type=int, default=0, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
-    parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('--few_rotations', type=int, default=2, help='uses only few rotations to make it faster')                 # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
+    parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
+    parser.add_argument('--few_rotations', type=int, default=4, help='uses only few rotations to make it faster')
 
     args = parser.parse_args()
 
     main(args)
+
+
+
+# def visualize_result(all_pay, all_sol, all_anc, init_pos, p_final, pieces, pieces_files, pieces_folder, ppars):
+#     Y, X, Z, _ = p_final.shape
+#     # init_im = reconstruct_toy9(init_pos, Y, X)
+#     # init_im = reconstruct_group28_9(init_pos, Y, X, Z, pieces)
+#     init_im = reconstruct_puzzle(init_pos, Y, X, pieces, pieces_files, pieces_folder, ppars)
+#
+#     faze = len(all_sol)
+#     col = 2
+#     row = faze
+#     t = 1
+#
+#     plt.figure()
+#     plt.subplot(col, row, t)
+#     plt.imshow((init_im * 255).astype(np.uint8))
+#
+#     for f in range(faze - 1):
+#         t += 1
+#         new_anc = all_anc[f]
+#         # faze_im = reconstruct_toy9(new_anc, Y, X)
+#         # faze_im = reconstruct_group28_9(new_anc, Y, X, Z, pieces)
+#         faze_im = reconstruct_puzzle(new_anc, Y, X, pieces, pieces_files, pieces_folder, ppars)
+#         plt.subplot(col, row, t)
+#         plt.imshow((faze_im * 255).astype(np.uint8))
+#
+#     for f in range(faze):
+#         t += 1
+#         fin_sol = all_sol[f]
+#         if fin_sol.size != 0:
+#             # faze_im = reconstruct_toy9(fin_sol, Y, X)
+#             # faze_im = reconstruct_group28_9(fin_sol, Y, X, Z, pieces)
+#             faze_im = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars)
+#             plt.subplot(col, row, t)
+#             plt.imshow((faze_im * 255).astype(np.uint8))
+#     plt.show()
+#
+#     plt.figure()
+#     plt.imshow((faze_im * 255).astype(np.uint8))
+#     plt.show()
+#
+#     f_pay = []
+#     for ff in range(faze):
+#         a = all_pay[ff]
+#         f_pay = np.append(f_pay, a)
+#     f_pay = np.array(f_pay)
+#     plt.figure()
+#     plt.plot(f_pay, 'r', linewidth=1)
+#     plt.show()
+
+# def reconstruct_group28_9(fin_sol, Y, X, n_rot, pieces):
+#     step = 38
+#     #pieces = [p for p in pieces if p not in pieces[pieces_excl]]
+#     ang = 360 / n_rot
+#     z_rot = np.arange(0, 360, ang)
+#     pos = fin_sol
+#     fin_im = np.zeros((Y * step + 1000, X * step + 1000, 3))
+#
+#     for i in range(pos.shape[0]):
+#         im_num = pieces[i]
+#         in_file = f'C:/Users/Marina/PycharmProjects/WP3-PuzzleSolving/Compatibility/data/repair/group_28/ready/RPf_00{im_num}.png'
+#         Im0 = Image.open(in_file).convert('RGBA')
+#         Im = np.array(Im0) / 255.0
+#         Im1 = Image.open(in_file).convert('RGBA').split()
+#         alfa = np.array(Im1[3]) / 255.0
+#         Im = np.multiply(Im, alfa[:, :, np.newaxis])
+#         Im = Im[:,:,0:3]
+#
+#         id = pos[i, :2] * step - step + 500
+#         if np.min(pos[i, :2]) > 0:
+#             if pos.shape[1] == 3:
+#                 rot = z_rot[pos[i, 2]]
+#                 Im = rotate(Im, rot, reshape=False, mode='constant')
+#
+#             fin_im[id[0] - 500:id[0] + 500, id[1] - 500:id[1] + 500, :] = Im + fin_im[id[0] - 500:id[0] + 500,
+#                                                                                id[1] - 500:id[1] + 500, :]
+#     return fin_im
