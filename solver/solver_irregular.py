@@ -15,7 +15,7 @@ from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_sha
 
 
 def initialization(R, anc):
-    z0 = 2  # rotation for anchored patch
+    z0 = 3  # rotation for anchored patch
     # Initialize reconstruction plan
     no_grid_points = R.shape[0]
     no_patches = R.shape[3]
@@ -165,7 +165,7 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, pieces, ppars, use_RGB=True):
         canvas_image = np.zeros((np.round(Y * ppars.xy_step + ppars.p_hs).astype(int), np.round(X * ppars.xy_step + ppars.p_hs).astype(int)))
     for i, piece in enumerate(pieces):
         target_pos = solved_positions[i,:2] * ppars.xy_step
-        target_rot = solved_positions[i, 2] * ppars.theta_step
+        target_rot = solved_positions[i, 2] * ppars.theta_step ## ERR !!! - recalculate theta step in the case of few rotations
         placed_piece = place_on_canvas(piece, target_pos, canvas_image.shape[0], target_rot)
         if use_RGB:
             if len(placed_piece['img'].shape) > 2:
@@ -179,7 +179,6 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, pieces, ppars, use_RGB=True):
 
 def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars):
     step = np.ceil(ppars.xy_step)
-    ang = 360 / ppars.theta_grid_points
     ang = 360 / Z
     z_rot = np.arange(0, 360, ang)
 
