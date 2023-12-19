@@ -13,8 +13,9 @@ import configs.solver_cfg as cfg
 from puzzle_utils.pieces_utils import calc_parameters
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, place_on_canvas
 
+
 def initialization(R, anc):
-    z0 = 0 # rotation for anchored patch
+    z0 = 2  # rotation for anchored patch
     # Initialize reconstruction plan
     no_grid_points = R.shape[0]
     no_patches = R.shape[3]
@@ -176,9 +177,10 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, pieces, ppars, use_RGB=True):
 
     return canvas_image
 
-def reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars):
+def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars):
     step = np.ceil(ppars.xy_step)
     ang = 360 / ppars.theta_grid_points
+    ang = 360 / Z
     z_rot = np.arange(0, 360, ang)
 
     pos = fin_sol
@@ -219,7 +221,6 @@ def select_anchor(folder):
     mean_num_lines = np.round(np.mean(num_lines))
     good_anchors = np.array(np.where(num_lines > mean_num_lines))
     new_anc = np.random.choice(good_anchors[0, :], 1)
-
     return new_anc[0]
 
 
@@ -287,7 +288,7 @@ def main(args):
     f = len(all_sol)
     Y, X, Z, _ = p_final.shape
     fin_sol = all_sol[f-1]
-    fin_im1 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars)
+    fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
     # alternative method for reconstruction (with transparency on overlap becaus of b/w image)
     fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
     final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
@@ -304,7 +305,7 @@ def main(args):
 
     f = len(all_anc)
     fin_sol = all_anc[f-1]
-    fin_im2 = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars)
+    fin_im2 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
 
     final_solution_anchor = os.path.join(solution_folder, f'final_only_anchor_using_anchor{anc}.png')
     plt.figure(figsize=(16,16))
@@ -334,7 +335,7 @@ def main(args):
         for ff in range(f):
             frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
             cur_sol = all_sol[ff]
-            im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
+            im_rec = reconstruct_puzzle(cur_sol, Y, X, Z, pieces, pieces_files, pieces_folder)
             im_rec = np.clip(im_rec,0,1)
             plt.imsave(frame_path, im_rec)
 
@@ -344,7 +345,7 @@ def main(args):
         for ff in range(f):
             frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
             cur_sol = all_anc[ff]
-            im_rec = reconstruct_puzzle(cur_sol, Y, X, pieces, pieces_files, pieces_folder)
+            im_rec = reconstruct_puzzle(cur_sol, Y, X, Z, pieces, pieces_files, pieces_folder)
             im_rec = np.clip(im_rec,0,1)
             plt.imsave(frame_path, im_rec)
 
@@ -361,7 +362,7 @@ if __name__ == '__main__':
     parser.add_argument('--anchor', type=int, default=0, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
-    parser.add_argument('--few_rotations', type=int, default=2, help='uses only few rotations to make it faster')
+    parser.add_argument('--few_rotations', type=int, default=4, help='uses only few rotations to make it faster')
 
     args = parser.parse_args()
 
