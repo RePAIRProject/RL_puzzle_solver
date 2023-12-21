@@ -15,7 +15,7 @@ from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_sha
 
 
 def initialization(R, anc):
-    z0 = 3  # rotation for anchored patch
+    z0 = 0  # rotation for anchored patch
     # Initialize reconstruction plan
     no_grid_points = R.shape[0]
     no_patches = R.shape[3]

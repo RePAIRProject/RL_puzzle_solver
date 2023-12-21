@@ -18,7 +18,7 @@ class CfgParameters(dict):
 
 def calc_line_matching_parameters(parameters):
     lm_pars = CfgParameters()
-    lm_pars['thr_coef'] = 0.08
+    lm_pars['thr_coef'] = 0.08          # np.deg2rad(parameters.theta_step) * 1.9 #
     lm_pars['max_dist'] = parameters.xy_step 
     lm_pars['badmatch_penalty'] = lm_pars['max_dist'] * 5 / 3 # parameters.piece_size / 3 #?
     lm_pars['mismatch_penalty'] = lm_pars['max_dist'] * 4 / 3 # parameters.piece_size / 4 #?

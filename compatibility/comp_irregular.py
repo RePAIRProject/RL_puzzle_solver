@@ -79,6 +79,20 @@ def main(args):
         # COST MATRICES 
         All_cost = np.zeros((m.shape[1], m.shape[1], len(rot), n, n))
         All_norm_cost = np.zeros((m.shape[1], m.shape[1], len(rot), n, n))
+        
+        # check sizes
+        if region_mask.shape[2] != All_norm_cost.shape[2]:
+            step = region_mask.shape[2] / All_norm_cost.shape[2] 
+            if np.abs(step - int(step)) > 0:
+                print('WRONG THETA STEP')
+                print("SKIPPING")
+                return 0
+            else:
+                step = int(step)
+                print(f"Seems compatibility has few values of rotation, using only a part of the region mask, each {step} values")
+                region_mask = region_mask[:,:,::step,:,:]
+                print("now region mask shape is:", region_mask.shape)
+                
 
         # TO BE PARALLELIZED
         if args.jobs > 1:
@@ -96,8 +110,9 @@ def main(args):
                     All_cost[:, :, :, j, i] = ji_mat
                     All_norm_cost[:,:,:,j,i] = np.maximum(1 - ji_mat / line_matching_parameters.rmax, 0)
 
-        # apply region masks
+        # we recover the zero outside when the two fragments are away from ech other
         R_line = (All_norm_cost * region_mask) * 2
+        # and we get -1 on the overlapping inside region 
         R_line[R_line < 0] = -1
         # it should not be needed
         for jj in range(n):
@@ -121,9 +136,9 @@ def main(args):
         os.makedirs(vis_folder, exist_ok=True)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(R_line, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=False)
+            save_vis(R_line, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=True)
             if args.save_everything:
-                save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=False)
+                save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=True)
         print(f'Done with {puzzle}\n')
 
 if __name__ == '__main__':
