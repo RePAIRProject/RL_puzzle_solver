@@ -59,7 +59,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
     for (candidate_xy_start, candidate_xy_end) in zip(s1, s2):
 
         candidate_line_shapely0 = shapely.LineString((candidate_xy_start, candidate_xy_end))
-        candidate_line_rotate = affinity.rotate(candidate_line_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
+        candidate_line_rotate = rotate(candidate_line_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
         candidate_line_trans = transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
 
         # append to the useful lines
