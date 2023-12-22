@@ -1,5 +1,5 @@
 import numpy as np
-import scipy
+from scipy.io import savemat 
 import argparse 
 import pdb
 import matplotlib.pyplot as plt 
@@ -131,7 +131,7 @@ def main(args):
         RM_D['RM_shapes'] = RM_shapes
 
         filename = f'{output_folder}/RM_{puzzle}'
-        scipy.io.savemat(f'{filename}.mat', RM_D)
+        savemat(f'{filename}.mat', RM_D)
         if args.save_visualization is True:
             print('Creating visualization')
             save_vis(RM_combo, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_combo_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", all_rotation=False)
