@@ -1,5 +1,5 @@
 import numpy as np
-import scipy
+from scipy.io import savemat 
 import argparse 
 import pdb
 import matplotlib.pyplot as plt 
@@ -49,7 +49,7 @@ def main(args):
         # INCLUDE SHAPE
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_thickness=3)
 
-        #pdb.set_trace()
+        #pdb.set_trace()    
         grid_size_xy = ppars.comp_matrix_shape[0]
         grid_size_rot = ppars.comp_matrix_shape[2]
         grid, grid_step_size = create_grid(grid_size_xy, ppars.p_hs, ppars.canvas_size)
@@ -131,7 +131,7 @@ def main(args):
         RM_D['RM_shapes'] = RM_shapes
 
         filename = f'{output_folder}/RM_{puzzle}'
-        scipy.io.savemat(f'{filename}.mat', RM_D)
+        savemat(f'{filename}.mat', RM_D)
         if args.save_visualization is True:
             print('Creating visualization')
             save_vis(RM_combo, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_combo_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", all_rotation=False)
@@ -142,8 +142,8 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')
-    parser.add_argument('--dataset', type=str, default='synthetic_irregular_pieces_by_drawing_lines_nwqmbu', help='dataset (name of the folders)')
-    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle to work on - leave empty to generate for the whole dataset')
+    parser.add_argument('--dataset', type=str, default='', help='dataset (name of the folders)')
+    parser.add_argument('--puzzle', type=str, default='', help='puzzle to work on - leave empty to generate for the whole dataset')
     parser.add_argument('--method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
     parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
