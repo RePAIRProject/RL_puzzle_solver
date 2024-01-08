@@ -289,7 +289,7 @@ def main(args):
     fin_sol = all_sol[f-1]
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
     # alternative method for reconstruction (with transparency on overlap becaus of b/w image)
-    fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
+    #fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
     final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
     plt.imsave(final_solution_v2, fin_im_v2)
 
