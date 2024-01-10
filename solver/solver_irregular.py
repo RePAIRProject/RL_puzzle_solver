@@ -154,7 +154,7 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
                 print(f'Iteration {t}: pay = {pay:.05f}, eps = {eps:.05f}', end='\r')
             else:
                 print(f'Iteration {t}: pay = {pay:.05f}, eps = {eps:.05f}')
-        p = np.round(p_new, 8)
+        p = np.round(p_new, 18)
     return p, payoff, eps, iter
 
 def reconstruct_puzzle_v2(solved_positions, Y, X, pieces, ppars, use_RGB=True):
@@ -352,16 +352,16 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='synthetic_irregular_4_pieces_by_drawing_lines_ccayvh', help='dataset folder')
-    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder')
+    parser.add_argument('--dataset', type=str, default='synthetic_irregular_pieces_from_real_small_dataset', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='image_00001_maps_medieval', help='puzzle folder')
     # parser.add_argument('--type', type=str, default='irregular', help='puzzle type (regular or irregular)')
     # parser.add_argument('--penalty', type=int, default=20, help='penalty value used')
-    parser.add_argument('--method', type=str, default='exact', help='method used for compatibility')  # exact, deeplsd
+    parser.add_argument('--method', type=str, default='deeplsd', help='method used for compatibility')  # exact, deeplsd
     parser.add_argument('--pieces', type=int, default=0, help='number of pieces (per side)')
     parser.add_argument('--anchor', type=int, default=0, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
-    parser.add_argument('--few_rotations', type=int, default=4, help='uses only few rotations to make it faster')
+    parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
 
     args = parser.parse_args()
 

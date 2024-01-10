@@ -160,6 +160,90 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
 
     return R_cost
 
+
+# compute cost matrix NEW version
+def compute_cost_matrix_NEW_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp,
+                                   mask_ij, pars):
+    # lmp is the old cfg (with the parameters)
+    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+
+    # for t in range(1):
+    for t in range(len(rot)):
+        theta = rot[t]
+        theta_rad = theta * np.pi / 180  # np.deg2rad(theta) ?
+        for ix in range(m.shape[1]):  # (z_id.shape[0]):
+            for iy in range(m.shape[1]):  # (z_id.shape[0]):
+                z = z_id[iy, ix]
+                valid_point = mask_ij[iy, ix, t]
+                if valid_point > 0:
+                    # check if line1 crosses the polygon2
+                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2,
+                                                                                                [0, 0], 0, s11, s12,
+                                                                                                pars)
+                    # return intersections
+                    useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
+                    useful_lines_s11 = useful_lines_s11[intersections1]
+                    useful_lines_s12 = useful_lines_s12[intersections1]
+
+                    # check if line2 crosses the polygon1
+                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1,
+                                                                                                z[::-1], -theta, s21,
+                                                                                                s22, pars)
+                    useful_lines_alfa2 = alfa2[intersections2] + theta_rad  # the rotation!
+                    useful_lines_s21 = useful_lines_s21[intersections2]
+                    useful_lines_s22 = useful_lines_s22[intersections2]
+
+                    n_lines_f1 = useful_lines_alfa1.shape[0]
+                    n_lines_f2 = useful_lines_alfa2.shape[0]
+
+                    # 1. Lines Importance
+                    line_importance_f1 = np.zeros(n_lines_f1)
+                    for idx in range(n_lines_f1):
+                        line_importance_f1[idx] = distance.euclidean(useful_lines_s11[idx], useful_lines_s12[idx])
+
+                    line_importance_f2 = np.zeros(n_lines_f2)
+                    for idx in range(n_lines_f2):
+                        line_importance_f2[idx] = distance.euclidean(useful_lines_s21[idx], useful_lines_s22[idx])
+
+                    ######################################
+                    # 1. Gamma, Distance, Confidence
+                    cont_confidence = -1
+                    cont_conf_f1 = -1
+                    cont_conf_f2 = -1
+
+                    if n_lines_f1 > 0 and n_lines_f2 > 0:
+                        gamma_matrix = np.zeros((n_lines_f1, n_lines_f2))
+                        dist_matrix = np.zeros((n_lines_f1, n_lines_f2))
+                        for i in range(n_lines_f1):
+                            for j in range(n_lines_f2):
+                                gamma = useful_lines_alfa1[i] - useful_lines_alfa2[j]
+                                gamma_matrix[i, j] = np.abs(np.sin(gamma))
+
+                                d1 = distance.euclidean(useful_lines_s11[i], useful_lines_s21[j])
+                                d2 = distance.euclidean(useful_lines_s11[i], useful_lines_s22[j])
+                                d3 = distance.euclidean(useful_lines_s12[i], useful_lines_s21[j])
+                                d4 = distance.euclidean(useful_lines_s12[i], useful_lines_s22[j])
+
+                                dist_matrix[i, j] = np.min([d1, d2, d3, d4])
+
+                        thr_gamma = 0.08  # lmp.thr_coef
+                        thr_dist = 11  # lmp.max_dist
+                        cont_confidence = np.zeros((n_lines_f1, n_lines_f2)) - 1  # initially is NEGATIVE
+                        cont_confidence[gamma_matrix < thr_gamma] = 1  # positive confidence to co-linear lines
+                        cont_confidence[dist_matrix > thr_dist] = -1  # negative confidence to distant lines
+
+                        cont_conf_f1 = np.max(cont_confidence, 0)  # confidence vector (-1/1) for lines of A
+                        cont_conf_f2 = np.max(cont_confidence, 1)  # confidence vector (-1/1) for lines of B
+
+                    cost_f1 = np.sum(cont_conf_f1 * line_importance_f1)
+                    cost_f2 = np.sum(cont_conf_f2 * line_importance_f2)
+
+                    tot_cost = cost_f1 + cost_f2  # sum of confident lines - sum of non-confident lines
+                    R_cost[iy, ix, t] = tot_cost
+
+    return R_cost
+
+
 def compute_cost_matrix_LAP(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, verbose=True):
     """
     Wrapper for the cost computation, so that it can be called in one-line, making it easier to parallelize using joblib's Parallel (in comp_irregular.py) 
@@ -191,8 +275,12 @@ def compute_cost_matrix_LAP(idx1, idx2, pieces, regions_mask, cmp_parameters, pp
             mask_ij = regions_mask[:, :, :, idx2, idx1]
             candidate_values = np.sum(mask_ij > 0)
             t1 = time.time()
-            R_cost = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                                        s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
+            #R_cost = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
+            #                            s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
+
+            R_cost = compute_cost_matrix_NEW_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
+                                         s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
+
             if verbose is True:
                 print(f"cost matrix piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} values) ")
             #print(R_cost)
