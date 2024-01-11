@@ -10,7 +10,7 @@ from configs import folder_names as fnames
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info
 from puzzle_utils.pieces_utils import calc_parameters
 from puzzle_utils.visualization import save_vis
-from puzzle_utils.lines_ops import compute_cost_matrix_LAP, calc_line_matching_parameters
+from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
 
 def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
     first_element = comp_as_list[0]
@@ -100,23 +100,26 @@ def main(args):
             #pool = multiprocessing.Pool(args.jobs)
             #costs_list = zip(*pool.map(compute_cost_matrix_LAP, [(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n)]))
             #with parallel_backend('threading', n_jobs=args.jobs):
-            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
+            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
             #costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
             All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n, norm_value=line_matching_parameters.rmax)
         else:
             for i in range(n):  # select fixed fragment
                 for j in range(n):
-                    ji_mat = compute_cost_matrix_LAP(i, j, pieces, region_mask, cmp_parameters, ppars, verbose=True)
+                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbose=True)
                     All_cost[:, :, :, j, i] = ji_mat
-                    All_norm_cost[:,:,:,j,i] = np.maximum(1 - ji_mat / line_matching_parameters.rmax, 0)
 
-        # we recover the zero outside when the two fragments are away from ech other
-        R_line = (All_norm_cost * region_mask) * 2
-        # and we get -1 on the overlapping inside region 
-        R_line[R_line < 0] = -1
+        All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO!!!
+        # All_norm_cost = np.maximum(1 - ji_mat / line_matching_parameters.rmax, 0)
+
+        only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
+        R_line = All_norm_cost+only_negative_region  # insert negative regions to cost matrix
+
         # it should not be needed
-        for jj in range(n):
-            R_line[:, :, :, jj, jj] = -1
+        # R_line = (All_norm_cost * region_mask) * 2
+        # R_line[R_line < 0] = -1
+        # for jj in range(n):
+        #     R_line[:, :, :, jj, jj] = -1
 
         # save output
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
@@ -145,7 +148,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
     parser.add_argument('--dataset', type=str, default='synthetic_irregular_pieces_from_real_small_dataset', help='dataset folder')  # repair
-    parser.add_argument('--puzzle', type=str, default='', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
+    parser.add_argument('--puzzle', type=str, default='image_00002_wireframe_00037047', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')

@@ -227,24 +227,32 @@ def compute_cost_matrix_NEW_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                                 dist_matrix[i, j] = np.min([d1, d2, d3, d4])
 
                         thr_gamma = 0.08  # lmp.thr_coef
-                        thr_dist = 11  # lmp.max_dist
+                        thr_dist = 3  # lmp.max_dist
                         cont_confidence = np.zeros((n_lines_f1, n_lines_f2)) - 1  # initially is NEGATIVE
                         cont_confidence[gamma_matrix < thr_gamma] = 1  # positive confidence to co-linear lines
                         cont_confidence[dist_matrix > thr_dist] = -1  # negative confidence to distant lines
 
-                        cont_conf_f1 = np.max(cont_confidence, 0)  # confidence vector (-1/1) for lines of A
-                        cont_conf_f2 = np.max(cont_confidence, 1)  # confidence vector (-1/1) for lines of B
+                        cont_conf_f1 = np.max(cont_confidence, 1)  # confidence vector (-1/1) for lines of A
+                        cont_conf_f2 = np.max(cont_confidence, 0)  # confidence vector (-1/1) for lines of B
 
                     cost_f1 = np.sum(cont_conf_f1 * line_importance_f1)
                     cost_f2 = np.sum(cont_conf_f2 * line_importance_f2)
 
-                    tot_cost = cost_f1 + cost_f2  # sum of confident lines - sum of non-confident lines
+                      # sum of confident lines - sum of non-confident lines
+                    if cost_f1 > 0 and cost_f2 > 0:
+                        tot_cost = cost_f1 + cost_f2
+                        print(f"cost for pieces {cost_f1} and {cost_f2} in {[iy, ix, t]}")
+
+                    tot_cost = cost_f1 + cost_f2
                     R_cost[iy, ix, t] = tot_cost
 
+    rrr = np.max(R_cost)
+    print(f"max R value {rrr}")
+    R_cost = np.maximum(R_cost, 0)
     return R_cost
 
 
-def compute_cost_matrix_LAP(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, verbose=True):
+def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, verbose=True):
     """
     Wrapper for the cost computation, so that it can be called in one-line, making it easier to parallelize using joblib's Parallel (in comp_irregular.py) 
     """
@@ -275,7 +283,7 @@ def compute_cost_matrix_LAP(idx1, idx2, pieces, regions_mask, cmp_parameters, pp
             mask_ij = regions_mask[:, :, :, idx2, idx1]
             candidate_values = np.sum(mask_ij > 0)
             t1 = time.time()
-            #R_cost = compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
+            #R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
             #                            s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
 
             R_cost = compute_cost_matrix_NEW_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
