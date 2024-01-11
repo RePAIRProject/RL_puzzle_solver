@@ -9,7 +9,7 @@ def save_vis(cm, pieces, rot_step, path, title='', draw_figsize=(100, 100), all_
     rotation_range = np.arange(cm.shape[2])
     for rr in rotation_range:
         theta = rr * rot_step
-        if all_rotation is False and (rr % save_every) == 0:
+        if all_rotation is True or (all_rotation is False and (rr % save_every) == 0):
             fig, axs = plt.subplots(cm.shape[3]+1, cm.shape[4]+1, figsize=draw_figsize) #, sharex=True, sharey=True)
             fig.suptitle(title, fontsize=44)  
             for x_plot in range(1, cm.shape[3]+1):
