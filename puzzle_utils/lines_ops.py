@@ -18,13 +18,14 @@ import time
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
-def calc_line_matching_parameters(parameters):
+def calc_line_matching_parameters(parameters, cmp_cost='new'):
     lm_pars = CfgParameters()
     lm_pars['thr_coef'] = 0.08
     lm_pars['max_dist'] = 0.70*(parameters.xy_step)
     lm_pars['badmatch_penalty'] = lm_pars['max_dist'] * 5 / 3 # parameters.piece_size / 3 #?
     lm_pars['mismatch_penalty'] = lm_pars['max_dist'] * 4 / 3 # parameters.piece_size / 4 #?
     lm_pars['rmax'] = lm_pars['max_dist'] * 7 / 6
+    lm_pars['cmp_cost'] = cmp_cost
     return lm_pars
 
 def draw_lines(lines_dict, img_shape, thickness=1, color=255):
@@ -164,8 +165,12 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
 
 
 # compute cost matrix NEW version
-def compute_cost_matrix_NEW_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp,
+def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp,
                                    mask_ij, pars):
+    """
+    Compute the cost using the Line-Confidence-Importance method (LCI), which weights the contribution of each line 
+    (positive or negative) using the confidence (at the moment binary) and the importance (the length of the line).
+    """
     # lmp is the old cfg (with the parameters)
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
@@ -285,11 +290,16 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
             mask_ij = regions_mask[:, :, :, idx2, idx1]
             candidate_values = np.sum(mask_ij > 0)
             t1 = time.time()
-            #R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-            #                            s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
-
-            R_cost = compute_cost_matrix_NEW_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                                         s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
+            if line_matching_pars.cmp_cost == 'LAP':
+                R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
+                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
+            elif line_matching_pars.cmp_cost == 'LCI':
+                R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
+                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
+            else:
+                print('weird: using {line_matching_pars.cmp_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
+                R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
+                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
 
             if verbose is True:
                 print(f"cost matrix piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} values) ")

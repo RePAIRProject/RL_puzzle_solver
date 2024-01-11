@@ -53,11 +53,11 @@ def main(args):
             with open(cmp_parameter_path, 'r') as cp:
                 ppars = json.load(cmp_parameter_path)
         else:
-            ppars = calc_parameters(img_parameters)
+            ppars = calc_parameters(img_parameters, args.xy, args.theta)
 
-        line_matching_parameters = calc_line_matching_parameters(ppars)
+        line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
 
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method)
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method)
 
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
         region_mask = region_mask_mat['RM']
@@ -124,14 +124,14 @@ def main(args):
         # save output
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
-        filename = os.path.join(output_folder, f'CM_lines_{args.method}')
-        mdic = {"R_line": R_line, "label": "label"}
+        filename = os.path.join(output_folder, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}')
+        mdic = {"R_line": R_line, "label": "label", "method":args.det_method, "cost":args.cmp_cost, "xy_grid_pts": args.xy, "theta_grid_pts": args.theta}
         savemat(f'{filename}.mat', mdic)
         np.save(filename, R_line)
 
         if args.save_everything is True:
-            filename = os.path.join(output_folder, f'CM_cost_{args.method}')
-            mdic = {"All_cost": All_cost, "label": "label"}
+            filename = os.path.join(output_folder, f'CM_all_cost_lines_{args.det_method}_cost_{args.cmp_cost}')
+            mdic = {"All_cost": All_cost, "label": "label", "method":args.det_method, "cost":args.cmp_cost, "xy_grid_pts": args.xy, "theta_grid_pts": args.theta}
             savemat(f'{filename}.mat', mdic)
             np.save(filename, All_cost)
         
@@ -139,21 +139,24 @@ def main(args):
         os.makedirs(vis_folder, exist_ok=True)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(R_line, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=True)
+            save_vis(R_line, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_linesdet_{args.det_method}_cost_{args.cmp_cost}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=True)
             if args.save_everything:
-                save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=True)
+                save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_linesdet_{args.det_method}_cost_{args.cmp_cost}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=True)
         print(f'Done with {puzzle}\n')
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
     parser.add_argument('--dataset', type=str, default='synthetic_irregular_pieces_from_real_small_dataset', help='dataset folder')  # repair
-    parser.add_argument('--puzzle', type=str, default='image_00002_wireframe_00037047', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
-    parser.add_argument('--method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
+    parser.add_argument('--puzzle', type=str, default='', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
+    parser.add_argument('--det_method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')
     parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
     parser.add_argument('--save_everything', default=False, action='store_true',
                         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
+    parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
+    parser.add_argument('--xy', type=int, default=101, help='xy size of the compatibility')
+    parser.add_argument('--theta', type=str, default=24, help='theta size of the compatibility')                 
     args = parser.parse_args()
     main(args)
