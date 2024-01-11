@@ -2,7 +2,7 @@
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
-import scipy.io
+from scipy.io import savemat, loadmat
 from scipy.ndimage import rotate
 from PIL import Image
 import os
@@ -239,7 +239,7 @@ def main(args):
     else:
         output_root_folder = f"{fnames.output_dir}_{num_pieces}x{num_pieces}"
 
-    mat = scipy.io.loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}.mat'))
+    mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}.mat'))
     pieces_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.pieces_folder}")
     only_lines_pieces_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
     detect_output = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.lines_output_name}", method)
@@ -280,7 +280,7 @@ def main(args):
     #  SAVE THE MATRIX BEFORE ANY VISUALIZATION
     filename = os.path.join(solution_folder, 'p_final')
     mdic = {"p_final": p_final, "label": "label", "anchor": anc, "anc_position": [x0, y0, z0]}
-    scipy.io.savemat(f'{filename}.mat', mdic)
+    savemat(f'{filename}.mat', mdic)
     np.save(filename, mdic)
 
 #   VISUALIZATION
@@ -289,9 +289,9 @@ def main(args):
     fin_sol = all_sol[f-1]
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
     # alternative method for reconstruction (with transparency on overlap becaus of b/w image)
-    fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
-    final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
-    plt.imsave(final_solution_v2, fin_im_v2)
+    # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
+    # final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
+    # plt.imsave(final_solution_v2, fin_im_v2)
 
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')

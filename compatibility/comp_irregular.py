@@ -3,7 +3,7 @@ from joblib import Parallel, delayed
 import multiprocessing
 import numpy as np 
 import pdb, os, json
-import scipy 
+from scipy.io import loadmat, savemat
 
 # internal
 from configs import folder_names as fnames
@@ -59,7 +59,7 @@ def main(args):
 
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method)
 
-        region_mask_mat = scipy.io.loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
+        region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
         region_mask = region_mask_mat['RM']
         
         # parameters and grid
@@ -126,13 +126,13 @@ def main(args):
         os.makedirs(output_folder, exist_ok=True)
         filename = os.path.join(output_folder, f'CM_lines_{args.method}')
         mdic = {"R_line": R_line, "label": "label"}
-        scipy.io.savemat(f'{filename}.mat', mdic)
+        savemat(f'{filename}.mat', mdic)
         np.save(filename, R_line)
 
         if args.save_everything is True:
             filename = os.path.join(output_folder, f'CM_cost_{args.method}')
             mdic = {"All_cost": All_cost, "label": "label"}
-            scipy.io.savemat(f'{filename}.mat', mdic)
+            savemat(f'{filename}.mat', mdic)
             np.save(filename, All_cost)
         
         vis_folder = os.path.join(output_folder, fnames.visualization_folder_name)

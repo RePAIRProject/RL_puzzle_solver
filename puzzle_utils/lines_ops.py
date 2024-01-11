@@ -6,6 +6,8 @@ from matplotlib import pyplot as plt
 from sklearn.cluster import DBSCAN
 from matplotlib import cm
 import shapely
+from shapely import transform
+from shapely.affinity import rotate
 import pdb 
 import math 
 from scipy.spatial import distance
@@ -51,14 +53,14 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
     useful_lines_s1 = []
     useful_lines_s2 = []
     piece_j_shape = poly_p.tolist() #shapely.polygons(poly_p)
-    piece_j_rotate = shapely.affinity.rotate(piece_j_shape, theta_p, origin=[pars.p_hs, pars.p_hs])
-    piece_j_trans = shapely.transform(piece_j_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_p)
+    piece_j_rotate = rotate(piece_j_shape, theta_p, origin=[pars.p_hs, pars.p_hs])
+    piece_j_trans = transform(piece_j_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_p)
 
     for (candidate_xy_start, candidate_xy_end) in zip(s1, s2):
 
         candidate_line_shapely0 = shapely.LineString((candidate_xy_start, candidate_xy_end))
-        candidate_line_rotate = shapely.affinity.rotate(candidate_line_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
-        candidate_line_trans = shapely.transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
+        candidate_line_rotate = rotate(candidate_line_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
+        candidate_line_trans = transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
 
         # append to the useful lines
         useful_lines_s1.append(np.array(candidate_line_trans.coords)[0])
