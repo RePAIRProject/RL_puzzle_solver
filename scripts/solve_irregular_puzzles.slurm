@@ -7,7 +7,6 @@
 # PYTHONPATH
 export PYTHONPATH=${PYTHONPATH}:/home/luca.palmieri/code/RL_puzzle_solver
 
-
 echo "4pieces"
 echo "## region matrices.."
 #echo "python features/compute_both_regions_masks.py --dataset $dataset --puzzle $puzzle --pieces $pieces --method $method"
