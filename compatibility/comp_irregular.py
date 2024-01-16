@@ -157,6 +157,6 @@ if __name__ == '__main__':
                         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
     parser.add_argument('--xy', type=int, default=101, help='xy size of the compatibility')
-    parser.add_argument('--theta', type=str, default=24, help='theta size of the compatibility')                 
+    parser.add_argument('--theta', type=str, default=1, help='theta size of the compatibility')
     args = parser.parse_args()
     main(args)
