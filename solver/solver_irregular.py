@@ -9,10 +9,13 @@ import os
 import configs.folder_names as fnames
 import argparse
 from compatibility.line_matching_NEW_segments import read_info
-import configs.solver_cfg as cfg
+#import configs.solver_cfg as cfg
 from puzzle_utils.pieces_utils import calc_parameters
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, place_on_canvas
+import datetime
 
+class CfgParameters(dict):
+    __getattr__ = dict.__getitem__
 
 def initialization(R, anc):
     z0 = 0  # rotation for anchored patch
@@ -42,7 +45,7 @@ def initialization(R, anc):
     return p, init_pos, x0, y0, z0
 
 
-def RePairPuzz(R, p, na, verbosity=1):
+def RePairPuzz(R, p, na, cfg, verbosity=1):
     faze = 0
     new_anc = []
     na_new = na
@@ -149,11 +152,11 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
 
         payoff[t] = pay
         eps = abs(pay - payoff[t-1])
-        if verbosity > 0:
-            if verbosity == 1:
-                print(f'Iteration {t}: pay = {pay:.05f}, eps = {eps:.05f}', end='\r')
+        if verbosity > 1:
+            if verbosity == 2:
+                print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}', end='\r')
             else:
-                print(f'Iteration {t}: pay = {pay:.05f}, eps = {eps:.05f}')
+                print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}')
         p = np.round(p_new, 18)
     return p, payoff, eps, iter
 
@@ -225,11 +228,36 @@ def select_anchor(folder):
 
 #  MAIN
 def main(args):
-    print(os.getcwd())
+
+    print("Solver log\nSearch for `SOLVER_START_TIME` or `SOLVER_END_TIME` if you want to see which images are done")
+
+    #print(os.getcwd())
     dataset_name = args.dataset
     puzzle_name = args.puzzle
     method = args.method
     num_pieces = args.pieces
+
+    print()
+    print("-" * 50)
+    print("-- SOLVER_START_TIME -- ")
+    # get the current date and time
+    now = datetime.datetime.now()
+    print(f"{now}\nStarted working on {puzzle_name}")
+    print(f"Dataset: {args.dataset}")
+    print("-" * 50)
+
+    cfg = CfgParameters()
+    # pieces
+    cfg['Tfirst'] = args.tfirst
+    cfg['Tnext'] = args.tnext
+    cfg['Tmax'] = args.tmax
+    cfg['anc_fix_tresh'] = args.thresh
+    print('\tPARAMETERS')
+    for cfg_key in cfg.keys():
+        print(f"{cfg_key}: {cfg[cfg_key]}")
+    print("-" * 50)
+
+    pdb.set_trace()
 
     pieces_dict, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
     ppars = calc_parameters(img_parameters)
@@ -272,7 +300,7 @@ def main(args):
     p_initial, init_pos, x0, y0, z0 = initialization(R, anc)  # (R, anc, anc_rot, nh, nw)
     print(p_initial.shape)
     na = 1
-    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, verbosity=args.verbosity)
+    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity)
 
     solution_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{anc}_{args.method}')
     os.makedirs(solution_folder, exist_ok=True)
@@ -347,6 +375,14 @@ def main(args):
             im_rec = reconstruct_puzzle(cur_sol, Y, X, Z, pieces, pieces_files, pieces_folder)
             im_rec = np.clip(im_rec,0,1)
             plt.imsave(frame_path, im_rec)
+    
+    print("-" * 50)
+    print("-- SOLVER_END_TIME -- ")
+    # get the current date and time
+    now = datetime.datetime.now()
+    print(f"{now}")
+    print(f'Done with {puzzle_name}\n')
+    print("-" * 50)
 
 
 if __name__ == '__main__':
@@ -362,6 +398,11 @@ if __name__ == '__main__':
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
+    parser.add_argument('--tfirst', type=int, default=300, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
+    parser.add_argument('--tnext', type=int, default=300, help='the step for multi-phase (each tnext reset)')
+    parser.add_argument('--tmax', type=int, default=3000, help='the final number of iterations (it exits after tmax)')
+    parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
+
 
     args = parser.parse_args()
 

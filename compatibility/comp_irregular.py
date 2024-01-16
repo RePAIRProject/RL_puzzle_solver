@@ -4,6 +4,9 @@ import multiprocessing
 import numpy as np 
 import pdb, os, json
 from scipy.io import loadmat, savemat
+import datetime
+
+
 
 # internal
 from configs import folder_names as fnames
@@ -25,6 +28,8 @@ def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
 
 def main(args):
 
+    print("Compatibility log\nSearch for `CMP_START_TIME` or `CMP_END_TIME` if you want to see which images are done")
+
     if args.puzzle == '':  
         puzzles = os.listdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset))
         puzzles = [puz for puz in puzzles if os.path.isdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset,puz)) is True]
@@ -43,8 +48,19 @@ def main(args):
         # ppars is a dict but can be accessed by pieces_paramters.property!
         print()
         print("-" * 50)
-        print(puzzle)
+        print("-- CMP_START_TIME -- ")
+        # get the current date and time
+        now = datetime.datetime.now()
+        print(f"{now}\nStarted working on {puzzle}")
+        print(f"Dataset: {args.dataset}")
+        print("-" * 50)
+        print("\tPIECES")
         pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, puzzle, verbose=True)
+        print("-" * 50)
+        print('\tIMAGE PARAMETERS')
+        for cfg_key in img_parameters.keys():
+            print(f"{cfg_key}: {img_parameters[cfg_key]}")
+        
 
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
         cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
@@ -56,6 +72,12 @@ def main(args):
             ppars = calc_parameters(img_parameters, args.xy, args.theta)
 
         line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
+        print("-" * 50)
+        print('\tLINE MATCHING PARAMETERS')
+        for cfg_key in line_matching_parameters.keys():
+            print(f"{cfg_key}: {line_matching_parameters[cfg_key]}")
+        print("-" * 50)
+        pdb.set_trace()
 
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method)
 
@@ -100,13 +122,13 @@ def main(args):
             #pool = multiprocessing.Pool(args.jobs)
             #costs_list = zip(*pool.map(compute_cost_matrix_LAP, [(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n)]))
             #with parallel_backend('threading', n_jobs=args.jobs):
-            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
+            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
             #costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
             All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n, norm_value=line_matching_parameters.rmax)
         else:
             for i in range(n):  # select fixed fragment
                 for j in range(n):
-                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbose=True)
+                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
                     All_cost[:, :, :, j, i] = ji_mat
 
         All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
@@ -142,7 +164,14 @@ def main(args):
             save_vis(R_line, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_linesdet_{args.det_method}_cost_{args.cmp_cost}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=True)
             if args.save_everything:
                 save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_linesdet_{args.det_method}_cost_{args.cmp_cost}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=True)
+        
+        print("-" * 50)
+        print("-- CMP_END_TIME -- ")
+        # get the current date and time
+        now = datetime.datetime.now()
+        print(f"{now}")
         print(f'Done with {puzzle}\n')
+        print("-" * 50)
 
 if __name__ == '__main__':
 
@@ -155,6 +184,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
     parser.add_argument('--save_everything', default=False, action='store_true',
                         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
+    parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
     parser.add_argument('--xy', type=int, default=101, help='xy size of the compatibility')
     parser.add_argument('--theta', type=str, default=24, help='theta size of the compatibility')                 

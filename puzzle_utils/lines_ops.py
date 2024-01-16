@@ -159,7 +159,8 @@ def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s2
                 
                 #print(f"comp on y took {(time.time()-t_y):.02f} seconds")
             #print(f"comp on x,y took {(time.time()-t_x):.02f} seconds")
-        print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
+        if verbosity > 2:
+            print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
 
     return R_cost
 
@@ -248,7 +249,8 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                       # sum of confident lines - sum of non-confident lines
                     if cost_f1 > 0 and cost_f2 > 0:
                         tot_cost = cost_f1 + cost_f2
-                        print(f"cost for pieces {cost_f1} and {cost_f2} in {[iy, ix, t]}")
+                        if verbosity > 2:
+                            print(f"cost for pieces {cost_f1} and {cost_f2} in {[iy, ix, t]}")
 
                     tot_cost = cost_f1 + cost_f2
                     R_cost[iy, ix, t] = tot_cost
@@ -259,7 +261,7 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
     return R_cost
 
 
-def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, verbose=True):
+def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, verbosity=1):
     """
     Wrapper for the cost computation, so that it can be called in one-line, making it easier to parallelize using joblib's Parallel (in comp_irregular.py) 
     """
@@ -292,17 +294,17 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
             t1 = time.time()
             if line_matching_pars.cmp_cost == 'LAP':
                 R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
+                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars, verbosity=args.verbosity)
             elif line_matching_pars.cmp_cost == 'LCI':
                 R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
+                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars, verbosity=args.verbosity)
             else:
                 print('weird: using {line_matching_pars.cmp_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
                 R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
                     s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars)
 
-            if verbose is True:
-                print(f"cost matrix piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} values) ")
+            if verbosity > 1:
+                print(f"computed cost matrix for piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} candidate values) ")
             #print(R_cost)
     return R_cost
 
