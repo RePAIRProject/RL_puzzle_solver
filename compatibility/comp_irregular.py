@@ -109,8 +109,11 @@ def main(args):
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbose=True)
                     All_cost[:, :, :, j, i] = ji_mat
 
-        All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
-        # All_norm_cost = np.maximum(1 - ji_mat / line_matching_parameters.rmax, 0)
+
+        if args.cmp_cost == 'LCI':
+            All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
+        else:  # args.cmp_cost == 'LAP':
+            All_norm_cost = np.maximum(1 - ji_mat / line_matching_parameters.rmax, 0)
 
         only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
         R_line = All_norm_cost+only_negative_region  # insert negative regions to cost matrix
