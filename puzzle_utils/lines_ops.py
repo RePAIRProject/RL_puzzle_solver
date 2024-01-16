@@ -80,7 +80,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
 
 
-def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp, mask_ij, pars):
+def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp, mask_ij, pars, verbosity=1):
     # lmp is the old cfg (with the parameters)
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
@@ -167,7 +167,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
 
 # compute cost matrix NEW version
 def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp,
-                                   mask_ij, pars):
+                                   mask_ij, pars, verbosity=1):
     """
     Compute the cost using the Line-Confidence-Importance method (LCI), which weights the contribution of each line 
     (positive or negative) using the confidence (at the moment binary) and the importance (the length of the line).
@@ -256,7 +256,8 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                     R_cost[iy, ix, t] = tot_cost
 
     rrr = np.max(R_cost)
-    print(f"max R value {rrr}")
+    if verbosity > 2:
+        print(f"max R value {rrr}")
     R_cost = np.maximum(R_cost, 0)
     return R_cost
 
@@ -269,7 +270,7 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
     (p, z_id, m, rot, line_matching_pars) = cmp_parameters
     n = len(pieces)
     
-    if verbose is True:
+    if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
 
     if idx1 == idx2:
@@ -294,10 +295,10 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
             t1 = time.time()
             if line_matching_pars.cmp_cost == 'LAP':
                 R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars, verbosity=args.verbosity)
+                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars, verbosity=verbosity)
             elif line_matching_pars.cmp_cost == 'LCI':
                 R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars, verbosity=args.verbosity)
+                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars, verbosity=verbosity)
             else:
                 print('weird: using {line_matching_pars.cmp_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
                 R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
