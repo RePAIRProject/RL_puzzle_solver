@@ -234,7 +234,7 @@ def main(args):
     #print(os.getcwd())
     dataset_name = args.dataset
     puzzle_name = args.puzzle
-    method = args.method
+    method = args.det_method
     num_pieces = args.pieces
 
     print()
@@ -265,8 +265,13 @@ def main(args):
     else:
         output_root_folder = f"{fnames.output_dir}_{num_pieces}x{num_pieces}"
 
-    mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}.mat'))
+    if args.cmp_cost =='LAP':
+        mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}.mat'))
+    else:
+        mat = loadmat(
+        os.path.join(output_root_folder, dataset_name, puzzle_name, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
     pieces_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.pieces_folder}")
+
     only_lines_pieces_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
     detect_output = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.lines_output_name}", method)
     R = mat['R_line']
@@ -300,7 +305,7 @@ def main(args):
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity)
 
-    solution_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{anc}_{args.method}')
+    solution_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{anc}_{method}')
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
 
@@ -391,7 +396,8 @@ if __name__ == '__main__':
     parser.add_argument('--puzzle', type=str, default='image_00001_maps_medieval', help='puzzle folder')
     # parser.add_argument('--type', type=str, default='irregular', help='puzzle type (regular or irregular)')
     # parser.add_argument('--penalty', type=int, default=20, help='penalty value used')
-    parser.add_argument('--method', type=str, default='deeplsd', help='method used for compatibility')  # exact, deeplsd
+    parser.add_argument('--det_method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
+    parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')  # LAP, LCI
     parser.add_argument('--pieces', type=int, default=0, help='number of pieces (per side)')
     parser.add_argument('--anchor', type=int, default=0, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
@@ -401,7 +407,6 @@ if __name__ == '__main__':
     parser.add_argument('--tnext', type=int, default=300, help='the step for multi-phase (each tnext reset)')
     parser.add_argument('--tmax', type=int, default=5000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
-
 
     args = parser.parse_args()
 
