@@ -257,8 +257,6 @@ def main(args):
         print(f"{cfg_key}: {cfg[cfg_key]}")
     print("-" * 50)
 
-    pdb.set_trace()
-
     pieces_dict, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
     ppars = calc_parameters(img_parameters)
 
@@ -400,7 +398,7 @@ if __name__ == '__main__':
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
     parser.add_argument('--tfirst', type=int, default=300, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
     parser.add_argument('--tnext', type=int, default=300, help='the step for multi-phase (each tnext reset)')
-    parser.add_argument('--tmax', type=int, default=3000, help='the final number of iterations (it exits after tmax)')
+    parser.add_argument('--tmax', type=int, default=5000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
 
 

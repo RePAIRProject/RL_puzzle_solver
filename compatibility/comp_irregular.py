@@ -77,7 +77,6 @@ def main(args):
         for cfg_key in line_matching_parameters.keys():
             print(f"{cfg_key}: {line_matching_parameters[cfg_key]}")
         print("-" * 50)
-        pdb.set_trace()
 
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method)
 
@@ -131,8 +130,11 @@ def main(args):
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
                     All_cost[:, :, :, j, i] = ji_mat
 
-        All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
-        # All_norm_cost = np.maximum(1 - ji_mat / line_matching_parameters.rmax, 0)
+
+        if args.cmp_cost == 'LCI':
+            All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
+        else:  # args.cmp_cost == 'LAP':
+            All_norm_cost = np.maximum(1 - ji_mat / line_matching_parameters.rmax, 0)
 
         only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
         R_line = All_norm_cost+only_negative_region  # insert negative regions to cost matrix
@@ -187,6 +189,6 @@ if __name__ == '__main__':
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
     parser.add_argument('--xy', type=int, default=101, help='xy size of the compatibility')
-    parser.add_argument('--theta', type=str, default=24, help='theta size of the compatibility')                 
+    parser.add_argument('--theta', type=str, default=1, help='theta size of the compatibility')
     args = parser.parse_args()
     main(args)

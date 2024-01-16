@@ -80,7 +80,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
 
 
-def compute_cost_matrix(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp, mask_ij, pars):
+def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp, mask_ij, pars):
     # lmp is the old cfg (with the parameters)
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
