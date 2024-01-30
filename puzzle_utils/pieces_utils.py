@@ -54,7 +54,7 @@ def rescale_image(img, size):
         img = cv2.resize(img, (size, other_axis_size))  # opencv use these inverted :/
     return img 
 
-def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name):
+def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, rmap=None, num_regions=0):
 
     pieces = []
     if shape == 'regular':
@@ -99,6 +99,16 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name):
         generator.save_jpg_regions(output_path)
         pieces, patch_size = generator.get_pieces_from_puzzle_v2()
     
+    if shape == 'regions' and rmap is not None:
+        generator = PuzzleGenerator(image, puzzle_name)
+        if num_regions > 0:
+            generator.region_cnt = num_regions
+        else:
+            generator.region_cnt = np.max(rmap)
+        generator.region_mat = rmap 
+        generator.save_jpg_regions(output_path)
+        pieces, patch_size = generator.get_pieces_from_puzzle_v2(start_from=1)
+
     return pieces, patch_size
 
 def center_fragment(image):

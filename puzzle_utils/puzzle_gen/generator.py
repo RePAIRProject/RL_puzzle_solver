@@ -255,14 +255,14 @@ class PuzzleGenerator:
         # change to cmap='gray' for grayscale color coding
         plt.imsave(os.path.join(folder_path, 'regions_col_coded.jpg'), self.region_mat, cmap='jet')
 
-    def get_pieces_from_puzzle_v2(self):
+    def get_pieces_from_puzzle_v2(self, start_from=0):
         pieces = []
         bg_mat = np.zeros_like(self.img)
         h_max = 0
         w_max = 0
         dist_cm_max = 0
         padding = np.min(self.img.shape[:2]) // 30
-        for i in range(self.region_cnt):
+        for i in range(start_from, self.region_cnt):
             mask_i = self.region_mat == i
             if len(self.img.shape) > 2: 
                 image_i = self.img * np.repeat(mask_i, self.img.shape[2]).reshape(self.img.shape)

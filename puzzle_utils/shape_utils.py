@@ -348,3 +348,17 @@ def shape_pairwise_compatibility(piece_i, piece_j, x_j, y_j, theta_j, puzzle_cfg
     comp_shape = compute_shape_score(piece_i_canvas, piece_j_canvas, mregion_mask, sigma=60) #components[1]['sigma'])
 
     return comp_shape
+
+def process_region_map(region_map, perc_min=0.02):
+    """
+    It eliminates small regions and keep only the one who are "big" enough 
+    """
+    uvals = np.unique(region_map)
+    rmap = np.zeros_like(region_map)
+    rc = 1
+    min_pixels = region_map.shape[0] * region_map.shape[1] * perc_min
+    for uval in np.unique(region_map): 
+        if np.sum(region_map==uval) > min_pixels and uval > 0:
+            rmap += (region_map==uval).astype(np.uint8) * rc
+            rc += 1
+    return rmap, rc
