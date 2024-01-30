@@ -265,6 +265,7 @@ def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False)
         piece_d['cm'] = get_cm(piece_d['mask'])
         piece_d['id'] = piece_name[:10] #piece_XXXXX.png
         pieces.append(piece_d)
+        pdb.set_trace()
     
     with open(os.path.join(os.getcwd(), root_folder, f'parameters_{puzzle_name}.json'), 'r') as pf:
         parameters = json.load(pf)

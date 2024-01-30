@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 
 import random
+import pdb 
 
 def generate_random_point(ranges, distribution='uniform', on_axis=-1):
 
@@ -24,45 +25,45 @@ def generate_random_point(ranges, distribution='uniform', on_axis=-1):
 
     return p1
 
-def create_random_image(line_type, num_lines, width, height, is_closed = False, thickness=1, color=(0, 0, 0)):
+
+def create_random_image(line_type, num_lines, width, height, is_closed = False, thickness = 1, col = 0):
 
     img2draw = np.ones(shape=(width, height), dtype=np.uint8) * 255
     img_shape = [width, height]
 
     all_lines = np.zeros((num_lines, 4))
-
-    if line_type == 'mix':
+    
+    if line_type == 'mix': 
         for j in range(num_lines):
             if j == 0:
                 axis1, axis2 = random.sample(range(0, 4), 2)  # select two axis
                 p1 = generate_random_point(img_shape, distribution='uniform', on_axis=axis1)
                 p2 = generate_random_point(img_shape, distribution='uniform', on_axis=axis2)
-                img2draw = cv2.line(img2draw, p1, p2, color=color, thickness=thickness)
+                img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
             
             else:
                 choice = np.random.uniform(7)
                 if choice < 2:
                     p1 = generate_random_point(img_shape, distribution='uniform')
                     p2 = generate_random_point(img_shape, distribution='uniform')
-                    img2draw = cv2.line(img2draw, p1, p2, color=color, thickness=thickness)
+                    img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
                 elif choice < 4:
                     axis1, axis2 = random.sample(range(0, 4), 2)  # select two axis
                     p1 = generate_random_point(img_shape, distribution='uniform')
                     p2 = generate_random_point(img_shape, distribution='uniform', on_axis=axis2)
-                    img2draw = cv2.line(img2draw, p1, p2, color=color, thickness=thickness)
+                    img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
                 elif choice < 6:
                     axis1, axis2 = random.sample(range(0, 4), 2)  # select two axis
                     p1 = generate_random_point(img_shape, distribution='uniform', on_axis=axis1)
                     p2 = generate_random_point(img_shape, distribution='uniform', on_axis=axis2)
-                    img2draw = cv2.line(img2draw, p1, p2, color=color, thickness=thickness)
+                    img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
                 else:
                     p1 = p2 # continue from last point (kind of polyline)
                     p2 = generate_random_point(img_shape, distribution='uniform')
-                    img2draw = cv2.line(img2draw, p1, p2, color=color, thickness=thickness)
+                    img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
 
             all_lines[j, 0:2] = p1
             all_lines[j, 2:4] = p2
-
 
     elif line_type == 'polylines':
         n_lines = num_lines+1
@@ -70,7 +71,7 @@ def create_random_image(line_type, num_lines, width, height, is_closed = False, 
         for k in range(n_lines):
             r_ax = np.round(np.clip(np.random.uniform(-4, 3.7), -1, 3)).astype(int)
             pts[k, :] = generate_random_point(img_shape, distribution='uniform', on_axis=r_ax)
-        img2draw = cv2.polylines(img2draw, [pts], isClosed=is_closed, color=color, thickness=thickness)
+        img2draw = cv2.polylines(img2draw, [pts], isClosed=is_closed, color=col, thickness=thickness)
 
         all_lines[:, 0:2] = pts[:-1, :]
         all_lines[:, 2:4] = pts[1:, :]
@@ -90,5 +91,91 @@ def create_random_image(line_type, num_lines, width, height, is_closed = False, 
 
             all_lines[j, 0:2] = p1
             all_lines[j, 2:4] = p2
+
+    return img2draw, all_lines
+
+def create_random_coloured_image(line_type, num_lines, width, height, is_closed = False, thickness = 1, num_colors = 1):
+
+    img2draw = np.ones(shape=(width, height, 3), dtype=np.uint8) * 255
+    img_shape = [width, height]
+
+    all_lines = np.zeros((num_lines, 7))
+    if num_colors == 1:
+        colors = [[0, 0, 0]]
+    elif num_colors == 3:
+        colors = [[0, 255, 0], [255, 0, 0], [0, 0, 255]]
+    elif num_colors == 5:
+        colors = [[0, 0, 0], [0, 255, 0], [255, 0, 0], [0, 0, 255], [0, 150, 150]]
+    else:
+        print("\nWrong number of colors. Right now it can be one of: [1, 3, 5] only!\nUsing only one color\n")
+        colors = [[0, 0, 0]]
+
+    if line_type == 'mix':
+        for j in range(num_lines):
+            
+            col = colors[np.random.choice(len(colors))]
+            if j == 0:
+                axis1, axis2 = random.sample(range(0, 4), 2)  # select two axis
+                p1 = generate_random_point(img_shape, distribution='uniform', on_axis=axis1)
+                p2 = generate_random_point(img_shape, distribution='uniform', on_axis=axis2)
+                img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
+            
+            else:
+                choice = np.random.uniform(7)
+                if choice < 2:
+                    p1 = generate_random_point(img_shape, distribution='uniform')
+                    p2 = generate_random_point(img_shape, distribution='uniform')
+                    img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
+                elif choice < 4:
+                    axis1, axis2 = random.sample(range(0, 4), 2)  # select two axis
+                    p1 = generate_random_point(img_shape, distribution='uniform')
+                    p2 = generate_random_point(img_shape, distribution='uniform', on_axis=axis2)
+                    img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
+                elif choice < 6:
+                    axis1, axis2 = random.sample(range(0, 4), 2)  # select two axis
+                    p1 = generate_random_point(img_shape, distribution='uniform', on_axis=axis1)
+                    p2 = generate_random_point(img_shape, distribution='uniform', on_axis=axis2)
+                    img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
+                else:
+                    p1 = p2 # continue from last point (kind of polyline)
+                    p2 = generate_random_point(img_shape, distribution='uniform')
+                    img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
+
+            all_lines[j, 0:2] = p1
+            all_lines[j, 2:4] = p2
+            all_lines[j, 4:7] = col
+
+
+    elif line_type == 'polylines':
+        n_lines = num_lines+1
+        pts = np.zeros((n_lines, 2), dtype=np.int32)
+        colors = np.zeros((n_lines, 3), dtype=np.int32)
+        for k in range(n_lines):
+            colors[k, :] = colors[np.random.choice(len(colors))]
+            r_ax = np.round(np.clip(np.random.uniform(-4, 3.7), -1, 3)).astype(int)
+            pts[k, :] = generate_random_point(img_shape, distribution='uniform', on_axis=r_ax)
+        img2draw = cv2.polylines(img2draw, [pts], isClosed=is_closed, color=colors[k, :], thickness=thickness)
+
+        all_lines[:, 0:2] = pts[:-1, :]
+        all_lines[:, 2:4] = pts[1:, :]
+        all_lines[:, 4:7] = colors[:, :]
+
+    else:
+        for j in range(num_lines):
+            col = colors[np.random.choice(len(colors))]
+            if line_type == 'segments':
+                p1 = generate_random_point(img_shape, distribution='uniform')
+                p2 = generate_random_point(img_shape, distribution='uniform')
+                img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
+
+            else:  # line_type == 'lines':
+                axis1, axis2 = random.sample(range(0, 4), 2)  # select two axis
+                p1 = generate_random_point(img_shape, distribution='uniform', on_axis=axis1)
+                p2 = generate_random_point(img_shape, distribution='uniform', on_axis=axis2)
+                img2draw = cv2.line(img2draw, p1, p2, color=col, thickness=thickness)
+
+            all_lines[j, 0:2] = p1
+            all_lines[j, 2:4] = p2
+            all_lines[j, 4:7] = col
 
     return img2draw, all_lines
