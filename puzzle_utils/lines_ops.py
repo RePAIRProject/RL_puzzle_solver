@@ -42,9 +42,11 @@ def extract_from(lines_dict):
     """
     angles = np.asarray(lines_dict['angles'])
     dists = np.asarray(lines_dict['dists'])
+    colors = np.asarray(lines_dict['colors'])
     p1s = np.asarray(lines_dict['p1s'])
     p2s = np.asarray(lines_dict['p2s'])
-    return angles, dists, p1s, p2s
+    colors = np.asarray(lines_dict['colors'])
+    return angles, colors, dists, p1s, p2s
 
 def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
     # check if line crosses the polygon
@@ -80,7 +82,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
 
 
-def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp, mask_ij, pars, verbosity=1):
+def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, lmp, mask_ij, pars, verbosity=1):
     # lmp is the old cfg (with the parameters)
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
@@ -103,14 +105,16 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                     intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0], 0, s11, s12, pars)
 
                     # return intersections                    
-                    useful_lines_alfa1 = alfa1[intersections1] # no rotation here!
+                    useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
+                    useful_lines_color1 = color1[intersections1]
                     useful_lines_s11 = useful_lines_s11[intersections1]
                     useful_lines_s12 = useful_lines_s12[intersections1]
 
                     # check if line2 crosses the polygon1
                     intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, s21, s22, pars)
 
-                    useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
+                    useful_lines_alfa2 = alfa2[intersections2] + theta_rad  # the rotation!
+                    useful_lines_color2 = color2[intersections2]
                     useful_lines_s21 = useful_lines_s21[intersections2]
                     useful_lines_s22 = useful_lines_s22[intersections2]
 
@@ -129,9 +133,12 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                         dist_matrix0 = np.zeros((n_lines_f1, n_lines_f2))
                         dist_matrix = np.zeros((n_lines_f1, n_lines_f2))
                         gamma_matrix = np.zeros((n_lines_f1, n_lines_f2))
+                        color_matrix = np.zeros((n_lines_f1, n_lines_f2))
 
                         for i in range(n_lines_f1):
                             for j in range(n_lines_f2):
+                                # new
+                                color_matrix[i, j] = numpy.all(useful_lines_color1(i) == useful_lines_color2(j))  ## check output !!!
                                 gamma = useful_lines_alfa1[i] - useful_lines_alfa2[j]
                                 gamma_matrix[i, j] = np.abs(np.sin(gamma))
 
@@ -144,6 +151,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
 
                         dist_matrix[gamma_matrix > lmp.thr_coef] = lmp.badmatch_penalty
                         dist_matrix[dist_matrix > lmp.max_dist] = lmp.badmatch_penalty
+                        dist_matrix[color_matrix < 1] = lmp.badmatch_penalty ## Check if works !!!
 
                         # # LAP
                         row_ind, col_ind = linear_sum_assignment(dist_matrix)
@@ -166,7 +174,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
 
 
 # compute cost matrix NEW version
-def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp,
+def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, lmp,
                                    mask_ij, pars, verbosity=1):
     """
     Compute the cost using the Line-Confidence-Importance method (LCI), which weights the contribution of each line 
@@ -190,6 +198,7 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                                                                                                 pars)
                     # return intersections
                     useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
+                    useful_lines_color1 = color1[intersections1]
                     useful_lines_s11 = useful_lines_s11[intersections1]
                     useful_lines_s12 = useful_lines_s12[intersections1]
 
@@ -198,6 +207,7 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                                                                                                 z[::-1], -theta, s21,
                                                                                                 s22, pars)
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad  # the rotation!
+                    useful_lines_color2 = color2[intersections2]
                     useful_lines_s21 = useful_lines_s21[intersections2]
                     useful_lines_s22 = useful_lines_s22[intersections2]
 
@@ -224,6 +234,8 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                         dist_matrix = np.zeros((n_lines_f1, n_lines_f2))
                         for i in range(n_lines_f1):
                             for j in range(n_lines_f2):
+                                ## NEW - check output !!!
+                                color_matrix[i, j] = numpy.all(useful_lines_color1(i) == useful_lines_color2(j))
                                 gamma = useful_lines_alfa1[i] - useful_lines_alfa2[j]
                                 gamma_matrix[i, j] = np.abs(np.sin(gamma))
 
@@ -239,6 +251,8 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                         cont_confidence = np.zeros((n_lines_f1, n_lines_f2)) - 1  # initially is NEGATIVE
                         cont_confidence[gamma_matrix < thr_gamma] = 1  # positive confidence to co-linear lines
                         cont_confidence[dist_matrix > thr_dist] = -1  # negative confidence to distant lines
+                        # # new - check if works !!!
+                        cont_confidence[color_matrix < 1] = -1  # negative confidence color non matching
 
                         cont_conf_f1 = np.max(cont_confidence, 1)  # confidence vector (-1/1) for lines of A
                         cont_conf_f2 = np.max(cont_confidence, 0)  # confidence vector (-1/1) for lines of B
@@ -277,8 +291,8 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
         #print('idx == ')
         R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
     else:
-        alfa1, r1, s11, s12 = extract_from(pieces[idx1]['extracted_lines'])
-        alfa2, r2, s21, s22 = extract_from(pieces[idx2]['extracted_lines'])
+        alfa1, color1, r1, s11, s12 = extract_from(pieces[idx1]['extracted_lines'])
+        alfa2, color2, r2, s21, s22 = extract_from(pieces[idx2]['extracted_lines'])
 
         if len(alfa1) == 0 and len(alfa2) == 0:
             #print('no lines')
@@ -295,10 +309,10 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
             t1 = time.time()
             if line_matching_pars.cmp_cost == 'LAP':
                 R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars, verbosity=verbosity)
+                    s12, s21, s22, poly1, poly2,  color1, color2, line_matching_pars, mask_ij, ppars, verbosity=verbosity)
             elif line_matching_pars.cmp_cost == 'LCI':
                 R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                    s12, s21, s22, poly1, poly2, line_matching_pars, mask_ij, ppars, verbosity=verbosity)
+                    s12, s21, s22, poly1, poly2, color1, color2, line_matching_pars, mask_ij, ppars, verbosity=verbosity)
             else:
                 print('weird: using {line_matching_pars.cmp_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
                 R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
