@@ -47,7 +47,7 @@ def main(args):
             ppars = calc_parameters(img_parameters)
 
         # INCLUDE SHAPE
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_thickness=3)
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_thickness=3, use_colors=args.use_colors)  ## use colors come args!!1
 
         #pdb.set_trace()    
         grid_size_xy = ppars.comp_matrix_shape[0]
@@ -148,6 +148,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
     parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
     parser.add_argument('-np', '--num_pieces', type=int, default=0, help='number of pieces (per side) - use 0 (default value) for synthetic pieces')  # 8
+    parser.add_argument('--use_colors', type=bool, default=True, help='use colors of lines')
     args = parser.parse_args()
     main(args)
 

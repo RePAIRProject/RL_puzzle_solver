@@ -78,7 +78,7 @@ def main(args):
             print(f"{cfg_key}: {line_matching_parameters[cfg_key]}")
         print("-" * 50)
 
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method)
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, use_colors=args.use_colors)
 
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
         region_mask = region_mask_mat['RM']
@@ -127,7 +127,7 @@ def main(args):
         else:
             for i in range(n):  # select fixed fragment
                 for j in range(n):
-                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
+                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity, use_colors=args.use_colors)
                     All_cost[:, :, :, j, i] = ji_mat
 
 
@@ -190,5 +190,6 @@ if __name__ == '__main__':
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
     parser.add_argument('--xy', type=int, default=101, help='xy size of the compatibility')
     parser.add_argument('--theta', type=int, default=1, help='theta size of the compatibility')
+    parser.add_argument('--use_colors', type=bool, default=True, help='use colors of lines')
     args = parser.parse_args()
     main(args)
