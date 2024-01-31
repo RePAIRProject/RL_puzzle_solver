@@ -39,6 +39,33 @@ def calc_parameters(parameters, xy_grid_points=101, theta_grid_points=24):
 
     return ppars
 
+def calc_parameters_v2(parameters, xy_step=3, xy_grid_points=101, theta_step=45):
+    
+    ppars = CfgParameters()
+    # pieces
+    ppars['piece_size'] = parameters['piece_size']
+    ppars['num_pieces'] = parameters['num_pieces']
+    ppars['img_size'] = parameters['size']
+    ppars['p_hs'] = ppars.piece_size // 2
+
+    # create grid starting from the step
+    ppars['xy_step'] = xy_step
+    ppars['xy_grid_points'] = xy_grid_points
+    ppars['theta_step'] = theta_step
+    ppars['theta_grid_points'] = np.round(360 / theta_step).astype(np.uint8)
+    ppars['pairwise_comp_range'] = xy_step * (xy_grid_points - 1)
+    ppars['canvas_size'] = ppars.pairwise_comp_range + 2 * (ppars.p_hs + 1)
+    ppars['comp_matrix_shape'] = [ppars.xy_grid_points, ppars.xy_grid_points, ppars.theta_grid_points]
+
+    # region
+    ppars['threshold_overlap'] = ppars.piece_size / 2
+    ppars['threshold_overlap_lines'] = ppars.piece_size / 4
+    ppars['borders_regions_width_outside'] = 2
+    ppars['borders_regions_width_inside'] = 5
+    ppars['border_tolerance'] = ppars.piece_size // 60
+
+    return ppars
+
 def rescale_image(img, size):
     """
     Rescale the image (while preserving proportions) so that the largest of the two axis 

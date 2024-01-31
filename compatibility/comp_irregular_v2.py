@@ -5,13 +5,12 @@ import numpy as np
 import pdb, os, json
 from scipy.io import loadmat, savemat
 import datetime
-
-
+import matplotlib.pyplot as plt 
 
 # internal
 from configs import folder_names as fnames
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info
-from puzzle_utils.pieces_utils import calc_parameters
+from puzzle_utils.pieces_utils import calc_parameters_v2
 from puzzle_utils.visualization import save_vis
 from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
 
@@ -69,7 +68,7 @@ def main(args):
             with open(cmp_parameter_path, 'r') as cp:
                 ppars = json.load(cmp_parameter_path)
         else:
-            ppars = calc_parameters(img_parameters, args.xy, args.theta)
+            ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
         line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
         print("-" * 50)
@@ -128,6 +127,21 @@ def main(args):
             for i in range(n):  # select fixed fragment
                 for j in range(n):
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
+                    if i != j and args.DEBUG is True:
+                        plt.subplot(321); plt.imshow(pieces[i]['img']); plt.title(f"piece {i}")
+                        plt.subplot(322); plt.imshow(pieces[j]['img']); plt.title(f"piece {j}")
+                        plt.subplot(323); plt.imshow(region_mask[:,:,0,i,j], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map")
+                        plt.subplot(324); plt.imshow(ji_mat[:,:,0], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("cost")
+                        if args.cmp_cost == 'LCI':
+                            norm_cmp = ji_mat[:,:,0] / np.max(ji_mat[:,:,0]) #np.maximum(1 - ji_mat[:,:,0] / line_matching_parameters.rmax, 0)
+                            plt.subplot(325); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
+                            plt.subplot(326); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,0,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
+                        else:
+                            norm_cmp = np.maximum(1 - ji_mat[:,:,0] / line_matching_parameters.rmax, 0)
+                            plt.subplot(325); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
+                            plt.subplot(326); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,0,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
+                        plt.show()
+                        pdb.set_trace()
                     All_cost[:, :, :, j, i] = ji_mat
 
 
@@ -137,7 +151,7 @@ def main(args):
             All_norm_cost = np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
 
         only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
-        R_line = All_norm_cost+only_negative_region  # insert negative regions to cost matrix
+        R_line = All_norm_cost + only_negative_region  # insert negative regions to cost matrix
 
         # it should not be needed
         # R_line = (All_norm_cost * region_mask) * 2
@@ -149,13 +163,29 @@ def main(args):
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
         filename = os.path.join(output_folder, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}')
-        mdic = {"R_line": R_line, "label": "label", "method":args.det_method, "cost":args.cmp_cost, "xy_grid_pts": args.xy, "theta_grid_pts": args.theta}
+        mdic = {
+                    "R_line": R_line, 
+                    "label": "label", 
+                    "method":args.det_method, 
+                    "cost":args.cmp_cost, 
+                    "xy_step": args.xy_step, 
+                    "xy_grid_points": args.xy_grid_points, 
+                    "theta_step": args.theta_step
+                }
         savemat(f'{filename}.mat', mdic)
         np.save(filename, R_line)
 
         if args.save_everything is True:
             filename = os.path.join(output_folder, f'CM_all_cost_lines_{args.det_method}_cost_{args.cmp_cost}')
-            mdic = {"All_cost": All_cost, "label": "label", "method":args.det_method, "cost":args.cmp_cost, "xy_grid_pts": args.xy, "theta_grid_pts": args.theta}
+            mdic = {
+                        "All_cost": All_cost, 
+                        "label": "label", 
+                        "method":args.det_method, 
+                        "cost":args.cmp_cost, 
+                        "xy_step": args.xy_step, 
+                        "xy_grid_points": args.xy_grid_points, 
+                        "theta_step": args.theta_step
+                    }
             savemat(f'{filename}.mat', mdic)
             np.save(filename, All_cost)
         
@@ -185,10 +215,14 @@ if __name__ == '__main__':
     parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')
     parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
     parser.add_argument('--save_everything', default=False, action='store_true',
-                        help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
+        help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
-    parser.add_argument('--xy', type=int, default=101, help='xy size of the compatibility')
-    parser.add_argument('--theta', type=int, default=1, help='theta size of the compatibility')
+    parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
+    parser.add_argument('--xy_grid_points', type=int, default=7, 
+        help='the number of points in the grid (for each axis, total number will be the square of what is given)')
+    parser.add_argument('--theta_step', type=int, default=90, help='degrees of each rotation')
+    parser.add_argument('--DEBUG', action='store_true', default=False, help='WARNING: will use debugger! It stops and show the matrices!')
+
     args = parser.parse_args()
     main(args)

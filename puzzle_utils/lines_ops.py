@@ -82,14 +82,14 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
 
 def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, lmp, mask_ij, pars, verbosity=1):
     # lmp is the old cfg (with the parameters)
-    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+    R_cost = np.ones((m.shape[1], m.shape[1], len(rot))) * (lmp.badmatch_penalty + 1)
 
     #for t in range(1):
     for t in range(len(rot)):
-        #theta = -rot[t] * np.pi / 180  # rotation of F2
+        #theta = -rot[t] * np.pi / 180      # rotation of F2
         t_rot = time.time()
         theta = rot[t]
-        theta_rad = theta * np.pi / 180 # np.deg2rad(theta) ?
+        theta_rad = theta * np.pi / 180     # np.deg2rad(theta) ?
         for ix in range(m.shape[1]):        # (z_id.shape[0]):
             t_x = time.time()
             for iy in range(m.shape[1]):    # (z_id.shape[0]):
@@ -98,12 +98,12 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                 valid_point = mask_ij[iy, ix, t]
                 if valid_point > 0:
                     #print([iy, ix, t])
-
+                    
                     # check if line1 crosses the polygon2                  
                     intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0], 0, s11, s12, pars)
 
                     # return intersections                    
-                    useful_lines_alfa1 = alfa1[intersections1] # no rotation here!
+                    useful_lines_alfa1 = alfa1[intersections1]          # no rotation here!
                     useful_lines_s11 = useful_lines_s11[intersections1]
                     useful_lines_s12 = useful_lines_s12[intersections1]
 
@@ -116,9 +116,8 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
 
                     n_lines_f1 = useful_lines_alfa1.shape[0]
                     n_lines_f2 = useful_lines_alfa2.shape[0]
-
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
-                        tot_cost = lmp.max_dist * 2  # accept with some cost
+                        tot_cost = lmp.max_dist * 2                     # accept with some cost
 
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
@@ -149,16 +148,17 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                         row_ind, col_ind = linear_sum_assignment(dist_matrix)
                         tot_cost = dist_matrix[row_ind, col_ind].sum()
                         #print([tot_cost])
-
+                        
                         # # penalty
                         penalty = np.abs(n_lines_f1 - n_lines_f2) * lmp.mismatch_penalty  # no matches penalty
                         tot_cost = (tot_cost + penalty)
                         tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
-
+                    
                     R_cost[iy, ix, t] = tot_cost
-                
-                #print(f"comp on y took {(time.time()-t_y):.02f} seconds")
-            #print(f"comp on x,y took {(time.time()-t_x):.02f} seconds")
+                if verbosity > 4:
+                    print(f"comp on y took {(time.time()-t_y):.02f} seconds")
+            if verbosity > 3:
+                print(f"comp on x,y took {(time.time()-t_x):.02f} seconds")
         if verbosity > 2:
             print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
 
