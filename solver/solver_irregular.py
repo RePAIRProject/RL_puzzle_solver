@@ -331,7 +331,7 @@ def main(args):
     f = len(all_sol)
     Y, X, Z, _ = p_final.shape
     fin_sol = all_sol[f-1]
-    pdb.set_trace()
+    #pdb.set_trace()
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
     fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
     # fin_im_v3 = reconstruct_puzzle_vis(fin_sol, pieces_folder, ppars, suffix='')
