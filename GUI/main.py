@@ -9,6 +9,7 @@ from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.uix. behaviors import DragBehavior
+
 import json
 
 
