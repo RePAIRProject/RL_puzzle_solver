@@ -6,6 +6,7 @@ import pdb, os, json
 from scipy.io import loadmat, savemat
 import datetime
 import matplotlib.pyplot as plt 
+import time 
 
 # internal
 from configs import folder_names as fnames
@@ -38,6 +39,7 @@ def main(args):
     print(f"\nWill calculate compatibility matrices for: {puzzles}\n")
     for puzzle in puzzles:
 
+        time_start_puzzle = time.time()
         ######
         # PREPARE PIECES AND GRIDS
         # 
@@ -116,7 +118,7 @@ def main(args):
 
         # TO BE PARALLELIZED
         if args.jobs > 1:
-            print(f'trying to run {args.jobs} parallel jobs with multiprocessing')
+            print(f'running {args.jobs} parallel jobs with multiprocessing')
             #pool = multiprocessing.Pool(args.jobs)
             #costs_list = zip(*pool.map(compute_cost_matrix_LAP, [(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n)]))
             #with parallel_backend('threading', n_jobs=args.jobs):
@@ -158,7 +160,9 @@ def main(args):
         # R_line[R_line < 0] = -1
         # for jj in range(n):
         #     R_line[:, :, :, jj, jj] = -1
-
+        print("-" * 50)
+        print(f"Compatibility for this puzzle took {(time.time()-time_start_puzzle):.02f} seconds")
+        print("-" * 50)
         # save output
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)

@@ -14,6 +14,7 @@ from puzzle_utils.pieces_utils import calc_parameters_v2
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, place_on_canvas
 import datetime
 import pdb 
+import time 
 
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
@@ -245,6 +246,7 @@ def main(args):
     print()
     print("-" * 50)
     print("-- SOLVER_START_TIME -- ")
+    time_start_puzzle = time.time()
     # get the current date and time
     now = datetime.datetime.now()
     print(f"{now}\nStarted working on {puzzle_name}")
@@ -310,6 +312,10 @@ def main(args):
     #print(p_initial.shape)
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity)
+
+    print("-" * 50)
+    print(f"Solving this puzzle took {(time.time()-time_start_puzzle):.02f} seconds")
+    print("-" * 50)
 
     solution_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{anc}_{method}_cost_{args.cmp_cost}_rot{args.few_rotations}')
     os.makedirs(solution_folder, exist_ok=True)

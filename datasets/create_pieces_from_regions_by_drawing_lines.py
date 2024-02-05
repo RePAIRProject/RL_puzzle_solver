@@ -112,7 +112,7 @@ def main(args):
     for N, region_map_rel_path in enumerate(list_of_region_maps):
 
         region_map = cv2.imread(os.path.join(args.input, region_map_rel_path), 0)
-        rmap, num_regions = process_region_map(region_map, perc_min=0.02)
+        rmap, num_regions = process_region_map(region_map)
         
         h, w = rmap.shape
         ## create images with lines
