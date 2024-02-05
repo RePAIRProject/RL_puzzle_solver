@@ -86,7 +86,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
 
 def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, lmp, mask_ij, pars, verbosity=1):
     # lmp is the old cfg (with the parameters)
-    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+    R_cost = np.ones((m.shape[1], m.shape[1], len(rot)))*(lmp.badmatch_penalty + 1)
 
     #for t in range(1):
     for t in range(len(rot)):
@@ -139,7 +139,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                         for i in range(n_lines_f1):
                             for j in range(n_lines_f2):
                                 # new
-                                color_matrix[i, j] = numpy.all(useful_lines_color1(i) == useful_lines_color2(j))  ## check output !!!
+                                color_matrix[i, j] = np.all(useful_lines_color1[i, :] == useful_lines_color2[j, :])
                                 gamma = useful_lines_alfa1[i] - useful_lines_alfa2[j]
                                 gamma_matrix[i, j] = np.abs(np.sin(gamma))
 

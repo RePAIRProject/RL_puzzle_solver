@@ -266,7 +266,10 @@ def main(args):
         output_root_folder = f"{fnames.output_dir}_{num_pieces}x{num_pieces}"
 
     if args.cmp_cost =='LAP':
-        mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}.mat'))
+        #mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}.mat'))
+        mat = loadmat(
+            os.path.join(output_root_folder, dataset_name, puzzle_name, fnames.cm_output_name,
+                         f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
     else:
         mat = loadmat(
         os.path.join(output_root_folder, dataset_name, puzzle_name, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
@@ -397,13 +400,13 @@ if __name__ == '__main__':
     # parser.add_argument('--type', type=str, default='irregular', help='puzzle type (regular or irregular)')
     # parser.add_argument('--penalty', type=int, default=20, help='penalty value used')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
-    parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')  # LAP, LCI
+    parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation')  # LAP, LCI
     parser.add_argument('--pieces', type=int, default=0, help='number of pieces (per side)')
     parser.add_argument('--anchor', type=int, default=0, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=2, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=1, help='uses only few rotations to make it faster')
-    parser.add_argument('--tfirst', type=int, default=750, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
+    parser.add_argument('--tfirst', type=int, default=1500, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
     parser.add_argument('--tnext', type=int, default=500, help='the step for multi-phase (each tnext reset)')
     parser.add_argument('--tmax', type=int, default=5000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.55, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')

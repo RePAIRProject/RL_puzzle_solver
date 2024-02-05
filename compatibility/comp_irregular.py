@@ -134,7 +134,7 @@ def main(args):
         if args.cmp_cost == 'LCI':
             All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
         else:  # args.cmp_cost == 'LAP':
-            All_norm_cost = np.maximum(1 - ji_mat / line_matching_parameters.rmax, 0)
+            All_norm_cost = np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
 
         only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
         R_line = All_norm_cost+only_negative_region  # insert negative regions to cost matrix
@@ -179,15 +179,16 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
     parser.add_argument('--dataset', type=str, default='synthetic_irregular_9_pieces_by_drawing_coloured_lines_peynrh', help='dataset folder')  # repair
-    parser.add_argument('--puzzle', type=str, default='image_00001', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
+    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
-    parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')
+    parser.add_argument('--jobs', type=int, default=0
+                        , help='how many jobs (if you want to parallelize the execution')
     parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
     parser.add_argument('--save_everything', default=False, action='store_true',
                         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
-    parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
+    parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation LAP or LCI')   # LCI LAP
     parser.add_argument('--xy', type=int, default=101, help='xy size of the compatibility')
     parser.add_argument('--theta', type=int, default=1, help='theta size of the compatibility')
     parser.add_argument('--use_colors', type=bool, default=True, help='use colors of lines')
