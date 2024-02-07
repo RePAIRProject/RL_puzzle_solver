@@ -10,8 +10,10 @@ from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.uix. behaviors import DragBehavior
 
+
 import json
 
+from MoveableImage import MovableImage
 
 # class GUI(Widget):
 #     pass
@@ -57,43 +59,12 @@ def json_reader(file):
 
 def image_reader(image_number):
     source = "Images/top10/" + file_names[image_number]
-    image = MovableImage()
+    image = MovableImage(click_label)
     image.source = source
     return image
 
 
 buttons = []
-
-
-class MovableImage(DragBehavior, Image):
-    def __init__(self, angle=0, **kwargs):
-        super(MovableImage, self).__init__(**kwargs)
-        self.drag_timeout = 10000000
-        self.drag_distance = 0
-        self.image_number = None
-        self.drag_rectangle = [self.x, self.y, self.width, self.height]
-        self.rotate = Rotate(angle)
-
-        self.canvas.before.add(PushMatrix())
-        self.canvas.before.add(self.rotate)
-        self.canvas.after.add(PopMatrix())
-
-        self.bind()
-        # self.bind(self.update_canvas)
-
-    def update_canvas(self, *args):
-        self.rotate.origin = self.center
-    # def on_touch_down(self, touch):
-    #     if self.collide_point(*touch.pos):
-    #         click_label.text = str(self.image_number + 1)
-
-    def on_pos(self, *args):
-        print("here")
-        self.drag_rectangle = [self.x, self.y, self.width, self.height]
-        click_label.text = str(self.image_number + 1)
-
-    def on_size(self, *args):
-        self.drag_rectangle = [self.x, self.y, self.width, self.height]
 
 
 class Image(Image):
