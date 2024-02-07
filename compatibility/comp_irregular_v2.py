@@ -122,13 +122,13 @@ def main(args):
             #pool = multiprocessing.Pool(args.jobs)
             #costs_list = zip(*pool.map(compute_cost_matrix_LAP, [(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n)]))
             #with parallel_backend('threading', n_jobs=args.jobs):
-            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
+            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity, use_colors=args.use_colors) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
             #costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
             All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n, norm_value=line_matching_parameters.rmax)
         else:
             for i in range(n):  # select fixed fragment
                 for j in range(n):
-                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
+                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity, use_colors=args.use_colors)
                     if i != j and args.DEBUG is True:
                         plt.subplot(321); plt.imshow(pieces[i]['img']); plt.title(f"piece {i}")
                         plt.subplot(322); plt.imshow(pieces[j]['img']); plt.title(f"piece {j}")
@@ -212,9 +212,9 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
-    parser.add_argument('--dataset', type=str, default='synthetic_irregular_pieces_from_real_small_dataset', help='dataset folder')  # repair
-    parser.add_argument('--puzzle', type=str, default='', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
-    parser.add_argument('--det_method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
+    parser.add_argument('--dataset', type=str, default='synthetic_irregular_9_pieces_by_drawing_coloured_lines_peynrh', help='dataset folder')  # repair
+    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
+    parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')
     parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
@@ -226,6 +226,7 @@ if __name__ == '__main__':
     parser.add_argument('--xy_grid_points', type=int, default=7, 
         help='the number of points in the grid (for each axis, total number will be the square of what is given)')
     parser.add_argument('--theta_step', type=int, default=90, help='degrees of each rotation')
+    parser.add_argument('--use_colors', type=bool, default=True, help='use colors of lines')
     parser.add_argument('--DEBUG', action='store_true', default=False, help='WARNING: will use debugger! It stops and show the matrices!')
 
     args = parser.parse_args()
