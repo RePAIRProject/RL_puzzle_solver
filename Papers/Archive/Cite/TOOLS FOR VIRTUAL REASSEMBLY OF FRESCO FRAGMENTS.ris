@@ -1,0 +1,33 @@
+
+
+
+
+
+
+
+TY  - JOUR
+T1  - Tools for Virtual Reassembly of Fresco Fragments
+AU  - Brown, Benedict
+AU  - Laken, Lara
+AU  - Dutré, Philip
+AU  - Van Gool, Luc
+AU  - Rusinkiewicz, Szymon
+AU  - Weyrich, Tim
+Y1  - 2012/06/01
+PY  - 2012
+DA  - 2012/06/01
+N1  - doi: 10.1260/2047-4970.1.2.313
+DO  - 10.1260/2047-4970.1.2.313
+T2  - International Journal of Heritage in the Digital Era
+JF  - International Journal of Heritage in the Digital Era
+SP  - 313
+EP  - 329
+VL  - 1
+IS  - 2
+PB  - SAGE Publications
+N2  - The process of reassembling fragmented wall paintings is currently prohibitively time consuming, limiting the amount of material that can be examined and reconstructed. Computer-assisted technologies hold the promise of helping humans in this task, making it possible to digitize detailed shape, color, and surface relief information for each fragment. The data can be used for documentation, visualization (both on- and off-site), virtual restoration, and to automatically propose matches between fragments. Our focus in this paper is on improving the workflow, tools, and visualizations, as they are used by archaeologists and conservators to scan fragments and find matches. In particular, we evaluate the system's performance and user experience in ongoing acquisition and matching work on material from a Roman excavation in Tongeren, Belgium. Compared to prior systems, we can acquire fragments approximately 10 times faster, and support a wider range of fragment sizes (from 1 cm to 20 cm in diameter).
+SN  - 2047-4970
+M3  - doi: 10.1260/2047-4970.1.2.313
+UR  - https://doi.org/10.1260/2047-4970.1.2.313
+Y2  - 2024/02/07
+ER  - 
