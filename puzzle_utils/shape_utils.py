@@ -265,7 +265,6 @@ def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False)
         piece_d['cm'] = get_cm(piece_d['mask'])
         piece_d['id'] = piece_name[:10] #piece_XXXXX.png
         pieces.append(piece_d)
-        #pdb.set_trace()
     
     with open(os.path.join(os.getcwd(), root_folder, f'parameters_{puzzle_name}.json'), 'r') as pf:
         parameters = json.load(pf)
@@ -348,3 +347,20 @@ def shape_pairwise_compatibility(piece_i, piece_j, x_j, y_j, theta_j, puzzle_cfg
     comp_shape = compute_shape_score(piece_i_canvas, piece_j_canvas, mregion_mask, sigma=60) #components[1]['sigma'])
 
     return comp_shape
+
+def process_region_map(region_map, perc_min=0.015):
+    """
+    It eliminates small regions and keep only the one who are "big" enough 
+    """
+    uvals = np.unique(region_map)
+    rmap = np.zeros_like(region_map)
+    rc = 1
+    min_pixels = region_map.shape[0] * region_map.shape[1] * perc_min
+    for uval in np.unique(region_map): 
+        # print(f"region with value:{uval} has {np.sum(region_map==uval)} pixels")
+        # plt.imshow(region_map==uval)
+        # plt.show()
+        if np.sum(region_map==uval) > min_pixels and uval > 0:
+            rmap += (region_map==uval).astype(np.uint8) * rc
+            rc += 1
+    return rmap, rc

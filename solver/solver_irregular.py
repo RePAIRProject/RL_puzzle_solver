@@ -10,9 +10,11 @@ import configs.folder_names as fnames
 import argparse
 from compatibility.line_matching_NEW_segments import read_info
 #import configs.solver_cfg as cfg
-from puzzle_utils.pieces_utils import calc_parameters
+from puzzle_utils.pieces_utils import calc_parameters_v2
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, place_on_canvas
 import datetime
+import pdb 
+import time 
 
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
@@ -24,7 +26,8 @@ def initialization(R, anc):
     no_patches = R.shape[3]
     no_rotations = R.shape[2]
 
-    Y = round(0.5 * (no_grid_points - 1) * (no_patches + 1) + 1)
+    Y = round(no_grid_points * 2 + 1) 
+    # Y = round(0.5 * (no_grid_points - 1) * (no_patches + 1) + 1)
     X = Y
     Z = no_rotations
 
@@ -95,19 +98,23 @@ def RePairPuzz(R, p, na, cfg, verbosity=1):
             print("ITERATION", iter)
             print("#" * 70)
             print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
-        else:
-            if iter % 1000 == 0:
-                print("iteration", iter)
         a = (m > cfg.anc_fix_tresh).astype(int)
         new_anc = np.array(fin_sol*a)
         na_new = np.sum(a)
-        if verbosity > 0:
-            print(new_anc)
+        # if verbosity > 0:
+        #     print("#" * 70)
+        #     print(f"fixed solution for a new piece (at iteration {iter}):")
+        #     print(new_anc)
         f += 1
         all_pay.append(payoff)
         all_sol.append(fin_sol)
         all_anc.append(new_anc)
 
+    # if verbosity > 0:
+    #     print("#" * 70)
+    #     print("ITERATION", iter)
+    #     print("#" * 70)
+    #     print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
     # all_sol.append(fin_sol)
     p_final = p
     return all_pay, all_sol, all_anc, p_final, eps, iter, na_new
@@ -184,9 +191,8 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, pp
     step = np.ceil(ppars.xy_step)
     ang = 360 / Z
     z_rot = np.arange(0, 360, ang)
-
     pos = fin_sol
-    fin_im = np.zeros(((Y * step + ppars.p_hs).astype(int), (X * step + ppars.p_hs).astype(int), 3))
+    fin_im = np.zeros(((Y * step + (ppars.p_hs+1) * 2).astype(int), (X * step + (ppars.p_hs+1) * 2).astype(int), 3))
 
     for i in range(len(pieces)):
         image = pieces_files[pieces[i]]  # read image 1
@@ -240,6 +246,7 @@ def main(args):
     print()
     print("-" * 50)
     print("-- SOLVER_START_TIME -- ")
+    time_start_puzzle = time.time()
     # get the current date and time
     now = datetime.datetime.now()
     print(f"{now}\nStarted working on {puzzle_name}")
@@ -258,7 +265,7 @@ def main(args):
     print("-" * 50)
 
     pieces_dict, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
-    ppars = calc_parameters(img_parameters)
+    ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
     if num_pieces < 1:
         output_root_folder = fnames.output_dir
@@ -266,13 +273,10 @@ def main(args):
         output_root_folder = f"{fnames.output_dir}_{num_pieces}x{num_pieces}"
 
     if args.cmp_cost =='LAP':
-        #mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}.mat'))
-        mat = loadmat(
-            os.path.join(output_root_folder, dataset_name, puzzle_name, fnames.cm_output_name,
-                         f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
+        # mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}.mat'))
+        mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
     else:
-        mat = loadmat(
-        os.path.join(output_root_folder, dataset_name, puzzle_name, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
+        mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
     pieces_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.pieces_folder}")
 
     only_lines_pieces_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
@@ -308,6 +312,10 @@ def main(args):
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity)
 
+    print("-" * 50)
+    print(f"Solving this puzzle took {(time.time()-time_start_puzzle):.02f} seconds")
+    print("-" * 50)
+
     solution_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{anc}_{method}_cost_{args.cmp_cost}_rot{args.few_rotations}')
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
@@ -322,11 +330,14 @@ def main(args):
     f = len(all_sol)
     Y, X, Z, _ = p_final.shape
     fin_sol = all_sol[f-1]
+    #pdb.set_trace()
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
+    fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
+    # fin_im_v3 = reconstruct_puzzle_vis(fin_sol, pieces_folder, ppars, suffix='')
     # alternative method for reconstruction (with transparency on overlap becaus of b/w image)
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
-    # final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
-    # plt.imsave(final_solution_v2, fin_im_v2)
+    final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
+    plt.imsave(final_solution_v2, fin_im_v2)
 
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')
@@ -410,6 +421,10 @@ if __name__ == '__main__':
     parser.add_argument('--tnext', type=int, default=500, help='the step for multi-phase (each tnext reset)')
     parser.add_argument('--tmax', type=int, default=5000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.55, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
+    parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
+    parser.add_argument('--xy_grid_points', type=int, default=7, 
+        help='the number of points in the grid (for each axis, total number will be the square of what is given)')
+    parser.add_argument('--theta_step', type=int, default=90, help='degrees of each rotation')
 
     args = parser.parse_args()
 

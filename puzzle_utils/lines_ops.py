@@ -44,7 +44,7 @@ def extract_from(lines_dict, use_colors=False):
     dists = np.asarray(lines_dict['dists'])
     p1s = np.asarray(lines_dict['p1s'])
     p2s = np.asarray(lines_dict['p2s'])
-    if use_colors==True:
+    if use_colors == True:
         colors = np.asarray(lines_dict['colors'])
         return angles, dists, p1s, p2s, colors
     else:
@@ -86,14 +86,13 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
 
 def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, lmp, mask_ij, pars, verbosity=1):
     # lmp is the old cfg (with the parameters)
-    R_cost = np.ones((m.shape[1], m.shape[1], len(rot)))*(lmp.badmatch_penalty + 1)
-
+    R_cost = np.ones((m.shape[1], m.shape[1], len(rot))) * (lmp.badmatch_penalty + 1)
     #for t in range(1):
     for t in range(len(rot)):
-        #theta = -rot[t] * np.pi / 180  # rotation of F2
+        #theta = -rot[t] * np.pi / 180      # rotation of F2
         t_rot = time.time()
         theta = rot[t]
-        theta_rad = theta * np.pi / 180 # np.deg2rad(theta) ?
+        theta_rad = theta * np.pi / 180     # np.deg2rad(theta) ?
         for ix in range(m.shape[1]):        # (z_id.shape[0]):
             t_x = time.time()
             for iy in range(m.shape[1]):    # (z_id.shape[0]):
@@ -113,8 +112,8 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
 
                     # check if line2 crosses the polygon1
                     intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, s21, s22, pars)
+                    useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
 
-                    useful_lines_alfa2 = alfa2[intersections2] + theta_rad  # the rotation!
                     useful_lines_color2 = color2[intersections2]
                     useful_lines_s21 = useful_lines_s21[intersections2]
                     useful_lines_s22 = useful_lines_s22[intersections2]
@@ -123,7 +122,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                     n_lines_f2 = useful_lines_alfa2.shape[0]
 
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
-                        tot_cost = lmp.max_dist * 2  # accept with some cost
+                        tot_cost = lmp.max_dist * 2                     # accept with some cost
 
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
@@ -152,25 +151,26 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
 
                         dist_matrix[gamma_matrix > lmp.thr_coef] = lmp.badmatch_penalty
                         dist_matrix[dist_matrix > lmp.max_dist] = lmp.badmatch_penalty
-                        dist_matrix[color_matrix < 1] = lmp.badmatch_penalty ## Check if works !!!
+                        dist_matrix[color_matrix < 1] = lmp.badmatch_penalty  ## Check if works !!!
+
 
                         # # LAP
                         row_ind, col_ind = linear_sum_assignment(dist_matrix)
                         tot_cost = dist_matrix[row_ind, col_ind].sum()
                         #print([tot_cost])
-
+                        
                         # # penalty
                         penalty = np.abs(n_lines_f1 - n_lines_f2) * lmp.mismatch_penalty  # no matches penalty
                         tot_cost = (tot_cost + penalty)
                         tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
-
+                    
                     R_cost[iy, ix, t] = tot_cost
-                
-                #print(f"comp on y took {(time.time()-t_y):.02f} seconds")
-            #print(f"comp on x,y took {(time.time()-t_x):.02f} seconds")
+                if verbosity > 4:
+                    print(f"comp on y took {(time.time()-t_y):.02f} seconds")
+            if verbosity > 3:
+                print(f"comp on x,y took {(time.time()-t_x):.02f} seconds")
         if verbosity > 2:
             print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
-
     return R_cost
 
 
@@ -237,7 +237,7 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                         for i in range(n_lines_f1):
                             for j in range(n_lines_f2):
                                 ## NEW - check output !!!
-                                color_matrix[i, j] = np.all(useful_lines_color1[i,:] == useful_lines_color2[j,:])
+                                color_matrix[i, j] = np.all(useful_lines_color1[i, :] == useful_lines_color2[j, :])
                                 gamma = useful_lines_alfa1[i] - useful_lines_alfa2[j]
                                 gamma_matrix[i, j] = np.abs(np.sin(gamma))
 
@@ -310,16 +310,15 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
             candidate_values = np.sum(mask_ij > 0)
             t1 = time.time()
             if line_matching_pars.cmp_cost == 'LAP':
-                R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                    s12, s21, s22, poly1, poly2, color1, color2, line_matching_pars, mask_ij, ppars, verbosity=verbosity)
+                R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, line_matching_pars,
+                                                 mask_ij, ppars, verbosity=verbosity)
             elif line_matching_pars.cmp_cost == 'LCI':
-                R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                    s12, s21, s22, poly1, poly2, color1, color2, line_matching_pars, mask_ij, ppars, verbosity=verbosity)
+                R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, line_matching_pars,
+                                                        mask_ij, ppars, verbosity=verbosity)
             else:
                 print('weird: using {line_matching_pars.cmp_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
-                R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11,
-                    s12, s21, s22, poly1, poly2, color1, color2, line_matching_pars, mask_ij, ppars)
-
+                R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, line_matching_pars,
+                                                        mask_ij, ppars)
             if verbosity > 1:
                 print(f"computed cost matrix for piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} candidate values) ")
             #print(R_cost)

@@ -39,6 +39,33 @@ def calc_parameters(parameters, xy_grid_points=101, theta_grid_points=24):
 
     return ppars
 
+def calc_parameters_v2(parameters, xy_step=3, xy_grid_points=101, theta_step=45):
+    
+    ppars = CfgParameters()
+    # pieces
+    ppars['piece_size'] = parameters['piece_size']
+    ppars['num_pieces'] = parameters['num_pieces']
+    ppars['img_size'] = parameters['size']
+    ppars['p_hs'] = ppars.piece_size // 2
+
+    # create grid starting from the step
+    ppars['xy_step'] = xy_step
+    ppars['xy_grid_points'] = xy_grid_points
+    ppars['theta_step'] = theta_step
+    ppars['theta_grid_points'] = np.round(360 / theta_step).astype(np.uint8)
+    ppars['pairwise_comp_range'] = xy_step * (xy_grid_points - 1)
+    ppars['canvas_size'] = ppars.pairwise_comp_range + 2 * (ppars.p_hs + 1)
+    ppars['comp_matrix_shape'] = [ppars.xy_grid_points, ppars.xy_grid_points, ppars.theta_grid_points]
+
+    # region
+    ppars['threshold_overlap'] = ppars.piece_size / 2
+    ppars['threshold_overlap_lines'] = ppars.piece_size / 4
+    ppars['borders_regions_width_outside'] = 2
+    ppars['borders_regions_width_inside'] = 5
+    ppars['border_tolerance'] = ppars.piece_size // 60
+
+    return ppars
+
 def rescale_image(img, size):
     """
     Rescale the image (while preserving proportions) so that the largest of the two axis 
@@ -54,7 +81,7 @@ def rescale_image(img, size):
         img = cv2.resize(img, (size, other_axis_size))  # opencv use these inverted :/
     return img 
 
-def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name):
+def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, rmap=None, num_regions=0):
 
     pieces = []
     if shape == 'regular':
@@ -99,6 +126,16 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name):
         generator.save_jpg_regions(output_path)
         pieces, patch_size = generator.get_pieces_from_puzzle_v2()
     
+    if shape == 'regions' and rmap is not None:
+        generator = PuzzleGenerator(image, puzzle_name)
+        if num_regions > 0:
+            generator.region_cnt = num_regions
+        else:
+            generator.region_cnt = np.max(rmap)
+        generator.region_mat = rmap 
+        generator.save_jpg_regions(output_path)
+        pieces, patch_size = generator.get_pieces_from_puzzle_v2(start_from=1)
+
     return pieces, patch_size
 
 def center_fragment(image):
