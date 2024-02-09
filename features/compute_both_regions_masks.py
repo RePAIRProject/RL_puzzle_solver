@@ -47,7 +47,7 @@ def main(args):
             ppars = calc_parameters(img_parameters, args.xy, args.theta)
 
         # INCLUDE SHAPE
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_thickness=3)
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_thickness=3, use_colors=args.use_colors)  ## use colors come args!!1
 
         #pdb.set_trace()    
         grid_size_xy = ppars.comp_matrix_shape[0]
@@ -153,6 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('-np', '--num_pieces', type=int, default=0, help='number of pieces (per side) - use 0 (default value) for synthetic pieces')  # 8
     parser.add_argument('--xy', type=int, default=101, help='xy size of the compatibility')
     parser.add_argument('--theta', type=int, default=1, help='theta size of the compatibility')
+    parser.add_argument('--use_colors', type=bool, default=True, help='use colors of lines')
     args = parser.parse_args()
     main(args)
 

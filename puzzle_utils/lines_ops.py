@@ -87,7 +87,6 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
 def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, lmp, mask_ij, pars, verbosity=1):
     # lmp is the old cfg (with the parameters)
     R_cost = np.ones((m.shape[1], m.shape[1], len(rot))) * (lmp.badmatch_penalty + 1)
-
     #for t in range(1):
     for t in range(len(rot)):
         #theta = -rot[t] * np.pi / 180      # rotation of F2
@@ -113,8 +112,8 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
 
                     # check if line2 crosses the polygon1
                     intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, s21, s22, pars)
-
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
+
                     useful_lines_color2 = color2[intersections2]
                     useful_lines_s21 = useful_lines_s21[intersections2]
                     useful_lines_s22 = useful_lines_s22[intersections2]
@@ -153,6 +152,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                         dist_matrix[gamma_matrix > lmp.thr_coef] = lmp.badmatch_penalty
                         dist_matrix[dist_matrix > lmp.max_dist] = lmp.badmatch_penalty
                         dist_matrix[color_matrix < 1] = lmp.badmatch_penalty  ## Check if works !!!
+
 
                         # # LAP
                         row_ind, col_ind = linear_sum_assignment(dist_matrix)
@@ -319,7 +319,6 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
                 print('weird: using {line_matching_pars.cmp_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
                 R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, line_matching_pars,
                                                         mask_ij, ppars)
-
             if verbosity > 1:
                 print(f"computed cost matrix for piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} candidate values) ")
             #print(R_cost)

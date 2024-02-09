@@ -306,8 +306,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='It creates `ni` images with `nl` of lines/segments')
     parser.add_argument('-nl', '--num_lines', type=int, default=50, help='min number of lines')
-    parser.add_argument('-hh', '--height', type=int, default=1920, help='height of the images')
-    parser.add_argument('-ww', '--width', type=int, default=1920, help='width of the images')
+    parser.add_argument('-hh', '--height', type=int, default=300, help='height of the images')
+    parser.add_argument('-ww', '--width', type=int, default=300, help='width of the images')
     parser.add_argument('-ni', '--num_images', type=int, default=10, help='number of images for each number of line')
     parser.add_argument('-o', '--output', type=str, default='', help='output folder')
     parser.add_argument('-lt', '--line_type', type=str, default='mix', choices=['segments', 'lines', 'polylines', 'mix'], help='choose type of features')
