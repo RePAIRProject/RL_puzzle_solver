@@ -2,6 +2,7 @@ import os, pdb
 import cv2 
 import shapely 
 from puzzle_utils.puzzle_gen.generator import PuzzleGenerator
+from puzzle_utils.shape_utils import get_sd, get_mask, get_cm, shift_img
 import numpy as np
 
 """
@@ -81,7 +82,7 @@ def rescale_image(img, size):
         img = cv2.resize(img, (size, other_axis_size))  # opencv use these inverted :/
     return img 
 
-def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, rmap=None, num_regions=0):
+def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns_map=None, save_extrapolated_regions=False):
 
     pieces = []
     if shape == 'regular':
@@ -119,27 +120,34 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, rmap=Non
                 pieces.append(piece_dict)
 
     if shape == 'irregular':
-
         generator = PuzzleGenerator(image, puzzle_name)
         generator.run(num_pieces, offset_rate_h=0.2, offset_rate_w=0.2, small_region_area_ratio=0.25, rot_range=0,
             smooth_flag=True, alpha_channel=True, perc_missing_fragments=0, erosion=0, borders=False)
         generator.save_jpg_regions(output_path)
         pieces, patch_size = generator.get_pieces_from_puzzle_v2()
+        if save_extrapolated_regions is True:
+            frags, extr_frags = generator.get_extrapolated_regions()
+            extr_folder = os.path.join(output_path, 'extrapolated')
+            os.makedirs(extr_folder, exist_ok=True)
+            for j in range(len(frags)):
+                centered_fragment, _m, _s = center_fragment(frags[j])
+                cv2.imwrite(os.path.join(extr_folder, f"piece_{j:04d}.png"), centered_fragment)
+                centered_extr_fragment, _m, _s = center_fragment(extr_frags[j])
+                cv2.imwrite(os.path.join(extr_folder, f"piece_{j:04d}_ext.png"), centered_extr_fragment)
+
     
-    if shape == 'regions' and rmap is not None:
+    if shape == 'pattern' and patterns_map is not None:
         generator = PuzzleGenerator(image, puzzle_name)
-        if num_regions > 0:
-            generator.region_cnt = num_regions
-        else:
-            generator.region_cnt = np.max(rmap)
-        generator.region_mat = rmap 
+        generator.region_cnt = num_pieces
+        generator.region_mat = patterns_map 
         generator.save_jpg_regions(output_path)
         pieces, patch_size = generator.get_pieces_from_puzzle_v2(start_from=1)
+        if save_extrapolated_regions is True:
+            generator.save_extrapolated_regions(output_path)
 
     return pieces, patch_size
 
 def center_fragment(image):
-    #pdb.set_trace()
     sd, mask = get_sd(image)
     cm = get_cm(mask)
     center_pos = [np.round(image.shape[0]/2).astype(int), np.round(image.shape[1]/2).astype(int)]

@@ -231,13 +231,30 @@ class PuzzleGenerator:
         f.close()
         print('\tSave to %s & %d.txt' % (file_path, iter))
 
-    def save_extrapolated_regions(self, iter):
+    def get_extrapolated_regions(self, extr_pixels=10):
+        pieces = []
+        extr_pieces = []
+        dilation_kernel = np.ones((extr_pixels * 2 + 1, extr_pixels * 2 + 1))
+        for reg_val in range(self.region_cnt): # in np.unique(self.region_mat):
+            cur_reg = self.region_mat == reg_val
+            dilated_reg = cv2.dilate(cur_reg.astype(np.uint8), dilation_kernel, iterations=1)
+            rgba_ex = cv2.cvtColor(self.img, cv2.COLOR_RGB2RGBA)
+            rgba_ex[:, :, 3] = 255*(dilated_reg)
+            rgba = cv2.cvtColor(self.img, cv2.COLOR_RGB2RGBA)
+            rgba[:, :, 3] = 255*(cur_reg)
+            pieces.append(rgba)
+            extr_pieces.append(rgba_ex)
+        return pieces, extr_pieces
 
-        extrap_folder = os.path.join(self.puzzle_folder, str(iter), 'extrapolated')
+    def save_extrapolated_regions(self, iter=1, folder=''):
+        
+        if folder == '':
+            extrap_folder = os.path.join(self.puzzle_folder, str(iter), 'extrapolated')
+        else:
+            extrap_folder = folder
         if not os.path.exists(extrap_folder):
             os.mkdir(extrap_folder)
         #pdb.set_trace()
-        #region_mat_np = np.array(self.region_mat, np.uint32)
         for reg_val in range(self.region_cnt): # in np.unique(self.region_mat):
             cur_reg = self.region_mat == reg_val
             dilation_kernel = np.random.rand(self.dilation_kernel_size, self.dilation_kernel_size)
@@ -249,11 +266,11 @@ class PuzzleGenerator:
             rgba[:, :, 3] = 255*(cur_reg)
             cv2.imwrite(os.path.join(extrap_folder, f'piece-{reg_val}_ex.png'), rgba_ex)
             cv2.imwrite(os.path.join(extrap_folder, f'piece-{reg_val}.png'), rgba)
+            print(os.path.join(extrap_folder, f'piece-{reg_val}.png'))
 
     def save_jpg_regions(self, folder_path):
         regions_path = os.path.join(folder_path, 'regions')
         os.makedirs(regions_path, exist_ok=True)
-        
         cv2.imwrite(os.path.join(regions_path, 'regions_uint8.png'), self.region_mat)
         # change to cmap='gray' for grayscale color coding
         plt.imsave(os.path.join(regions_path, 'regions_col_coded.jpg'), self.region_mat, cmap='jet')

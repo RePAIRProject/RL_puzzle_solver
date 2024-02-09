@@ -4,11 +4,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 # import helper functions
-from puzzle_utils.dataset_gen import generate_random_point, create_random_image
+from puzzle_utils.dataset_gen import generate_random_point, create_random_coloured_image
 from puzzle_utils.lines_ops import line_cart2pol
 from puzzle_utils.pieces_utils import cut_into_pieces
 from puzzle_utils.shape_utils import process_region_map
-
 import random, string
 
 """
@@ -82,8 +81,13 @@ def main(args):
         output_root_path = os.path.join(os.getcwd())
     else:
         output_root_path = args.output
+
     
-    dataset_name = f"synthetic_region_maps_pieces_by_drawing_lines_{randomword(6)}"
+    if args.shape == 'pattern':
+        num_pieces_string = ''
+    else:
+        num_pieces_string = f'{args.num_pieces}_'
+    dataset_name = f"synthetic_{args.shape}_{num_pieces_string}pieces_by_drawing_coloured_lines_{randomword(6)}"
     data_folder = os.path.join(output_root_path, 'data', dataset_name)
     puzzle_folder = os.path.join(output_root_path, 'output', dataset_name)
     parameter_path = os.path.join(puzzle_folder, 'parameters.json')
@@ -92,7 +96,6 @@ def main(args):
 
     # save parameters
     parameters_dict = vars(args) # create dict from namespace
-    parameters_dict['input'] = args.input
     parameters_dict['output'] = output_root_path
     parameters_dict['data_folder'] = data_folder
     parameters_dict['puzzle_folder'] = puzzle_folder
@@ -104,23 +107,29 @@ def main(args):
     print("#" * 70)
     print()
     
+        
     num_pieces_dict = {}
     img_sizes_dict = {}
 
-    list_of_region_maps = os.listdir(args.input)
+    if args.shape == 'pattern':
+        list_of_patterns_names = os.listdir(args.patterns_folder)
+        num_images_to_be_created = len(list_of_patterns_names)
+    else:
+        num_images_to_be_created = args.num_images
 
-    for N, region_map_rel_path in enumerate(list_of_region_maps):
-
-        region_map = cv2.imread(os.path.join(args.input, region_map_rel_path), 0)
-        rmap, num_regions = process_region_map(region_map)
-        
-        h, w = rmap.shape
+    for N in range(num_images_to_be_created):
         ## create images with lines
-        img, all_lines = create_random_image(args.line_type, args.num_lines, h, w)
+        img, all_lines = create_random_coloured_image(args.line_type, args.num_lines, args.height, args.width, num_colors=args.num_colors)
 
         ## save created image
         cv2.imwrite(os.path.join(data_folder, f'image_{N:05d}.jpg'), img)
 
+        # only for patterns
+        if args.shape == 'pattern':
+            region_map = cv2.imread(os.path.join(args.patterns_folder, list_of_patterns_names[N]), 0)
+            pattern_map, num_pieces = process_region_map(region_map)
+        else:
+            num_pieces = args.num_pieces
         ## make folders to save pieces and detected lines
         print("-" * 50)
         puzzle_name = f'image_{N:05d}'
@@ -139,7 +148,10 @@ def main(args):
         os.makedirs(lines_output_folder, exist_ok=True)
 
         # this gives us the pieces
-        pieces, patch_size = cut_into_pieces(img, 'pattern', 0, single_image_folder, puzzle_name, rmap=rmap, num_regions=num_regions)
+        if args.shape == 'pattern':
+            pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, patterns_map=pattern_map, save_extrapolated_regions=args.extrapolation)
+        else:
+            pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, save_extrapolated_regions=args.extrapolation)
         # pieces is a list of dicts with several keys:
         # - pieces[i]['centered_image'] is the centered image 
         # - pieces[i]['centered_mask'] is the centered mask (as binary image)
@@ -176,10 +188,12 @@ def main(args):
             p2s = []
             b1s = []
             b2s = []
+            cols = []
 
             ## lines on the .json file
             for i in range(args.num_lines):
                 line = shapely.LineString([all_lines[i, 0:2], all_lines[i, 2:4]])
+                col_line = all_lines[i, 4:7].tolist()
                 intersect = shapely.intersection(line, piece['polygon'])  # points of intersection line with the piece
                 if not shapely.is_empty(intersect): # we have intersection, so the line is important for this piece
                     #print(intersect)
@@ -210,6 +224,7 @@ def main(args):
                                 dists.append(rho)
                                 p1s.append(p1.tolist())
                                 p2s.append(p2.tolist())
+                                cols.append(col_line)
 
                             ## OLD VERSION WITH DIFF SHAPE OF FRAGs IMAGE
                             # #print(int_line)
@@ -250,10 +265,10 @@ def main(args):
                     # save one black&white image of the lines
                     #pdb.set_trace()
                     for p1, p2 in zip(p1s, p2s):
-                        lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(255, 255, 255), thickness=1)        
+                        lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=col_line, thickness=1)        
                     #cv2.imwrite(os.path.join(lines_only, f"piece_{j:04d}_l.jpg"), 255-lines_img)
                     binary_01_mask = (255 - lines_img) / 255
-                    lines_only_transparent[:,:,:3] = np.dstack((binary_01_mask, binary_01_mask, binary_01_mask))
+                    lines_only_transparent[:,:,:3] = binary_01_mask
                     plt.imsave(os.path.join(lines_only, f"piece_{j:04d}_t.png"), lines_only_transparent)
                 else:
                     plt.title('no lines')
@@ -263,7 +278,6 @@ def main(args):
                     #cv2.imwrite(os.path.join(lines_only, f"piece_{j:04d}_l.jpg"), 255-lines_img)
                     plt.imsave(os.path.join(lines_only, f"piece_{j:04d}_t.png"), lines_only_transparent)
             #####
-
             # THESE ARE THE COORDINATES OF THE ORIGINAL PIECE
             detected_lines = {
                 'angles': angles,
@@ -271,7 +285,8 @@ def main(args):
                 'p1s': p1s,
                 'p2s': p2s,
                 'b1s': b1s,
-                'b2s': b2s
+                'b2s': b2s,
+                'colors': cols
             }
             orig_coords_folder = os.path.join(lines_output_folder, 'original_coords')
             os.makedirs(orig_coords_folder, exist_ok=True)
@@ -294,7 +309,8 @@ def main(args):
                 'p1s': squared_p1s,
                 'p2s': squared_p2s,
                 'b1s': [],
-                'b2s': []
+                'b2s': [],
+                'colors': cols
             }
             with open(os.path.join(lines_output_folder, f"piece_{j:04d}.json"), 'w') as lj:
                 json.dump(aligned_lines, lj, indent=3)
@@ -309,54 +325,25 @@ def main(args):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='It creates `ni` images with `nl` of lines/segments')
-    parser.add_argument('-nl', '--num_lines', type=int, default=50, help='min number of lines')
-    parser.add_argument('-i', '--input', type=str, default='', help='input folder with region maps')
-    parser.add_argument('-o', '--output', type=str, default='', help='output folder')
+    parser = argparse.ArgumentParser(
+        description='It generates synthetic puzzle by first drawing (colored) segments/lines on an image, \
+            then cutting it into pieces and saving pieces and the segments. \
+            Check the parameters for details about size, line_type, colors, number of pieces and so on.')
+    # line generation
     parser.add_argument('-lt', '--line_type', type=str, default='mix', choices=['segments', 'lines', 'polylines', 'mix'], help='choose type of features')
+    parser.add_argument('-nl', '--num_lines', type=int, default=50, help='number of lines drawn in the image')
+    parser.add_argument('-ncol', '--num_colors', type=int, default=5, choices=[1, 3, 5], help='number of different colors')
+    parser.add_argument('-hh', '--height', type=int, default=300, help='height of the images')
+    parser.add_argument('-ww', '--width', type=int, default=300, help='width of the images')
     parser.add_argument('-th', '--thickness', type=int, default=1, help='thickness of the drawings')
-    parser.add_argument('-sv', "--save_visualization", dest="save_visualization", \
-        help="Use it to create visualization", action="store_true")
+    # image generation
+    parser.add_argument('-ni', '--num_images', type=int, default=10, help='number of different version of images generated for each number of line')
+    parser.add_argument('-o', '--output', type=str, default='', help='output folder')
+    # cutting pieces 
+    parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['regular', 'pattern', 'irregular'])
+    parser.add_argument('-pf', '--patterns_folder', type=str, default='', help='(used only if shape == pattern): the folder where the patterns are stored')
+    parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces in which each puzzle image is cut')
+    parser.add_argument('-sv', "--save_visualization", help="Use it to create visualization", action="store_true")
+    parser.add_argument('-extr', "--extrapolation", help="Use it to create visualization", action="store_true")
     args = parser.parse_args()
     main(args)
-
-
-# ###############################
-# num_images = 10
-# num_lines = 40
-# line_type = 'lines'
-# # height = 1000
-# # width = 1000
-# height = cfg.img_size
-# width = cfg.img_size
-# patch_size = cfg.piece_size
-# num_patches_side = cfg.num_patches_side
-# n_patches = num_patches_side * num_patches_side
-# #################################
-
-# dataset_path = os.path.join(f'C:\\Users\Marina\OneDrive - unive.it\RL\data')
-# cur_folder = os.path.join(dataset_path, f'random_{num_lines}_{line_type}_exact_detection')
-# os.makedirs(cur_folder, exist_ok=True)
-
-
-# print(f'creating images with {num_lines} lines', end='\r')
-# for N in range(num_images):
-#     ## create images with lines
-#     img, all_lines = create_random_image2(line_type, num_lines, height, width)
-
-
-
-# if __name__ == '__main__':
-#
-#     parser = argparse.ArgumentParser(description='It creates images with min, ..., max number of lines/segments (from min to max)')
-#     parser.add_argument('-min', '--min_lines', type=int, default=1, help='min number of lines')
-#     parser.add_argument('-max', '--max_lines', type=int, default=10, help='max number of lines')
-#     parser.add_argument('-hh', '--height', type=int, default=1920, help='height of the images')
-#     parser.add_argument('-ww', '--width', type=int, default=1920, help='width of the images')
-#     parser.add_argument('-i', '--imgs_per_line', type=int, default=10, help='number of images for each number of line')
-#     parser.add_argument('-o', '--output', type=str, default='', help='output folder')
-#     parser.add_argument('-t', '--type', type=str, default='segments', choices=['segments', 'lines', 'polylines'], help='choose type of features')
-#     parser.add_argument('-th', '--thickness', type=int, default=1, help='thickness of the drawings')
-#
-#     args = parser.parse_args()
-#     main(args)
