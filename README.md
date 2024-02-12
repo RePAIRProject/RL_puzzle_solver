@@ -165,7 +165,7 @@ python data_generator/synth_puzzle.py -nl 30 -sv -ni 1 -s pattern -pf data/patte
 ##### Arguments
 `nl` is the number of lines, `-sv` saves the lines visualization, `-ni` is the number of images, `-s` the shape.
 <details>
-<summary>You can get the updated version running `python data_generator/synth_puzzle.py -h` (Click to show an example)</summary>
+<summary>You can get the updated version running <pre><code>python data_generator/synth_puzzle.py -h</pre></code> (Click to show an example)</summary>
 <pre><code>
 usage: synth_puzzle.py [-h] [-lt {segments,lines,polylines,mix}] [-nl NUM_LINES] [-ncol {1,3,5}] [-hh HEIGHT]
                        [-ww WIDTH] [-th THICKNESS] [-ni NUM_IMAGES] [-o OUTPUT] [-s {regular,pattern,irregular}]
