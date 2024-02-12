@@ -105,6 +105,8 @@ So full path could be: `~whatever_your_path~/RL_puzzle_solver/data/real_small_da
 The output (everything we create) would be in the code folder + `output`.
 
 ### 1. Create pieces from images (fast, few seconds per image)
+| :exclamation:  This section is not updated!  |
+|-----------------------------------------|
 Let's run the piece creation! It cuts our images into a (variable) number of pieces. 
 We set the (maximum) number with the `-np` argument. It could lead to a smaller number of pieces, depending on the size of the image! This does not affect our algorithm, which does not strictly require a fixed number of pieces.
 
@@ -211,14 +213,32 @@ optional arguments:
 
 </details>
 
-### 2. Create region masks (rather slow, takes ~5 minutes per image)
-After we have created our pieces, we create the regions masks.
+### 2. Detect lines (fast, few seconds per piece, so less than a minute per image)
+| :exclamation:  This section is not updated!  |
+|-----------------------------------------|
+The detection can be done with any edge detector. We sugget to use [DeepLSD](https://github.com/cvg/DeepLSD).
+From the detected lines, we extract and save the initial and end points plus their polar coordinates (we will use the angle).
+This script is actually launched from within the DeepLSD folder (for an easier usage of that) so it contains some hardcoded paths. 
+You can define and change your own as needed.
 ```bash 
-python features/compute_regions_masks.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00000_escher_day_and_night
+python detect_lines_irregular.py -rf ~whatever_your_path~/RL_puzzle_solver -d synthetic_irregular_pieces_from_real_small_dataset
 ```
-They will be created inside the puzzle folder (under `regions_matrix`).
+The lines detected will be saved inside each folder of the database (there will be one `lines_detection` folder).
+It also saves a visualization (image with lines drawn in red over it) and one representation with all white images with black lines drawn on top (without the real image colors).
 
-**TIP:** if you remove the `--puzzle` argument, it will compute the regions for the whole dataset (this may take some time, usually some minutes (3 to 5) for each image).
+### 3. Create region masks (fast, seconds to minutes)
+After we have created our pieces, we create the regions masks.
+Depending on which pieces you have, you may get very different results in terms of performances.
+This highly depends on the shape of the (pairwise) compatbility matrix (the region matrix has the same shape)
+```bash 
+python features/compute_both_regions_masks.py --dataset dataset_name --puzzle image_00000 --method exact --xy_step 30 --xy_grid_points 7 --theta_step 90
+```
+Where `--dataset` selects the dataset, `--puzzle` the image/puzzle, `--method` how the lines were extracted (usually `exact` or `deeplsd`), `-xy_step` is the distance between two possible candidate position on the `xy` plane, `--theta_step` the same in the rotation space (in degrees).
+The `--xy_grid_points` control the shape of the grid (which will be $N\timesN$)
+
+The script will create and save the outcome inside the puzzle folder (under `regions_matrix`).
+
+**TIP:** if you remove the `--puzzle` argument, it will compute the regions for the whole dataset.
 
 <details>
 <summary>The output on the terminal should look something like: (Click to show)</summary>
@@ -258,17 +278,6 @@ Saving the matrix..
 Creating visualization
 ```
 </details>
-
-### 3. Detect lines (fast, few seconds per piece, so less than a minute per image)
-The detection can be done with any edge detector. We sugget to use [DeepLSD](https://github.com/cvg/DeepLSD).
-From the detected lines, we extract and save the initial and end points plus their polar coordinates (we will use the angle).
-This script is actually launched from within the DeepLSD folder (for an easier usage of that) so it contains some hardcoded paths. 
-You can define and change your own as needed.
-```bash 
-python detect_lines_irregular.py -rf ~whatever_your_path~/RL_puzzle_solver -d synthetic_irregular_pieces_from_real_small_dataset
-```
-The lines detected will be saved inside each folder of the database (there will be one `lines_detection` folder).
-It also saves a visualization (image with lines drawn in red over it) and one representation with all white images with black lines drawn on top (without the real image colors).
 
 ### 4. Compute compatibility (very slow, computed pairwise, few minutes per pair, so some hours per puzzle!)
 The compatibility can be compute using:

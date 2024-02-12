@@ -11,7 +11,7 @@ from configs import folder_names as fnames
 
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, shape_pairwise_compatibility, \
     get_outside_borders, place_on_canvas, get_borders_around, include_shape_info
-from puzzle_utils.pieces_utils import calc_parameters_v2
+from puzzle_utils.pieces_utils import calc_parameters
 from puzzle_utils.visualization import save_vis
 
 def main(args):
@@ -44,10 +44,10 @@ def main(args):
             with open(cmp_parameter_path, 'r') as cp:
                 ppars = json.load(cmp_parameter_path)
         else:
-            ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
+            ppars = calc_parameters(img_parameters, args.xy, args.theta)
 
         # INCLUDE SHAPE
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_thickness=3)
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_thickness=3, use_colors=args.use_colors)  ## use colors come args!!1
 
         #pdb.set_trace()    
         grid_size_xy = ppars.comp_matrix_shape[0]
@@ -92,12 +92,7 @@ def main(args):
                         overlap_shapes = cv2.filter2D(piece_i_on_canvas['mask'], -1, piece_j_on_canvas['mask'])
                         thresholded_regions_map = (overlap_shapes > ppars.threshold_overlap).astype(np.int32)
                         thresholded_regions_map *= -1
-                        # around_borders_trm = get_borders_around(thresholded_regions_map.astype(np.uint8), 
-                        #     border_dilation=int(ppars.borders_regions_width_outside*ppars.xy_step), 
-                        #     border_erosion=int(ppars.borders_regions_width_inside*ppars.xy_step))
-                        around_borders_trm = get_borders_around(thresholded_regions_map.astype(np.uint8), 
-                            border_dilation=int(ppars.borders_regions_width_outside*ppars.xy_grid_points), 
-                            border_erosion=int(ppars.borders_regions_width_inside*ppars.xy_grid_points))
+                        around_borders_trm = get_borders_around(thresholded_regions_map.astype(np.uint8), border_dilation=int(ppars.borders_regions_width_outside*ppars.xy_step), border_erosion=int(ppars.borders_regions_width_inside*ppars.xy_step))
                         thresholded_regions_map += 2*(around_borders_trm > 0)
                         thresholded_regions_map = np.clip(thresholded_regions_map, -1, 1)
                         binary_overlap_lines = (overlap_lines > ppars.threshold_overlap_lines).astype(np.int32)
@@ -105,48 +100,20 @@ def main(args):
                         combo[thresholded_regions_map < 0] = -1 #enforce -1 in the overlapping areas
 
                         # we convert the matrix to resize the image without losing the values
-                        thr_reg_map_shape_uint = (thresholded_regions_map+1).astype(np.uint8)
-                        thr_reg_map_comp_range = thr_reg_map_shape_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
-                        resized_shape = cv2.resize(thr_reg_map_comp_range, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
+                        converted_shape = (thresholded_regions_map+1).astype(np.uint8)
+                        resized_shape = cv2.resize(converted_shape, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
 
-                        combo_uint = (combo+1).astype(np.uint8)
-                        combo_comp_range = combo_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
-                        resized_combo = cv2.resize(combo_comp_range, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
+                        converted_combo = (combo+1).astype(np.uint8)
+                        resized_combo = cv2.resize(converted_combo, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
 
-                        resized_lines = cv2.resize(binary_overlap_lines.astype(np.uint8), (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
                         # These are the matrices
                         RM_combo[:,:,t,j,i] = (resized_combo.astype(np.int32) - 1)
-                        RM_lines[:,:,t,j,i] = resized_lines
+                        RM_lines[:,:,t,j,i] = cv2.resize(binary_overlap_lines.astype(np.uint8), (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
                         RM_shapes[:,:,t,j,i] = (resized_shape.astype(np.int32) - 1)
+
+
+
                         
-                        if args.DEBUG is True:
-                            plt.subplot(531); plt.imshow(piece_i_on_canvas['img']); plt.title("Fixed in the center")
-                            plt.subplot(532); plt.imshow(piece_j_on_canvas['img']); plt.title("Moving around")
-                            coords = (center_pos + 3 * ppars.xy_step, center_pos - 1 * ppars.xy_step)
-                            print(coords)
-                            piece_j_correct = place_on_canvas(pieces[j], coords, ppars.canvas_size, 0)
-                            plt.subplot(533); plt.imshow(piece_i_on_canvas['img'] + piece_j_correct['img'])
-                            # plt.subplot(333); plt.imshow(around_borders_trm); plt.title("Borders")
-                            # shapes
-                            plt.subplot(534); plt.imshow(overlap_shapes); plt.title("Overlap Shapes")
-                            # plt.subplot(435); plt.imshow(around_borders_trm); plt.title("Borders")
-                            # plt.subplot(435); plt.imshow(thresholded_regions_map); plt.title("Region Map Shapes")
-                            plt.subplot(535); plt.imshow(thr_reg_map_comp_range); plt.title("Region Map Shapes (uint8)")
-                            plt.subplot(536); plt.imshow(resized_shape); plt.title("Region Map Shapes (resized)")
-                            # lines
-                            plt.subplot(537); plt.imshow(overlap_lines); plt.title("Overlap Lines (values)")
-                            plt.subplot(538); plt.imshow(binary_overlap_lines); plt.title("Overlap Lines (mask)")
-                            plt.subplot(539); plt.imshow(resized_lines); plt.title("Overlap Lines (resized)")
-                            # combo
-                            plt.subplot(5,3,10); plt.imshow(combo); plt.title("Overlap Combo (mask)")
-                            plt.subplot(5,3,11); plt.imshow(combo_comp_range); plt.title("Overlap Combo (uint8)")
-                            plt.subplot(5,3,12); plt.imshow(resized_combo); plt.title("Overlap Combo (resized)")
-                            # results
-                            plt.subplot(5,3,13); plt.imshow(RM_lines[:,:,t,j,i]); plt.title("Lines")
-                            plt.subplot(5,3,14); plt.imshow(RM_shapes[:,:,t,j,i]); plt.title("Shapes")
-                            plt.subplot(5,3,15); plt.imshow(RM_combo[:,:,t,j,i]); plt.title("Combo")
-                            plt.show()
-                            pdb.set_trace()
 
         print("\n")
         print('Done calculating')
@@ -170,9 +137,9 @@ def main(args):
         savemat(f'{filename}.mat', RM_D)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(RM_combo, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_combo_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", save_every=2, all_rotation=False)
-            save_vis(RM_lines, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_lines_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"overlap {puzzle}", save_every=2, all_rotation=False)
-            save_vis(RM_shapes, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_shapes_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"borders {puzzle}", save_every=2, all_rotation=False)
+            save_vis(RM_combo, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_combo_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", all_rotation=False)
+            save_vis(RM_lines, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_lines_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"overlap {puzzle}", all_rotation=False)
+            save_vis(RM_shapes, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_shapes_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"borders {puzzle}", all_rotation=False)
         print(f'Done with {puzzle}\n')
 
 if __name__ == '__main__':
@@ -184,11 +151,9 @@ if __name__ == '__main__':
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
     parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
     parser.add_argument('-np', '--num_pieces', type=int, default=0, help='number of pieces (per side) - use 0 (default value) for synthetic pieces')  # 8
-    parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
-    parser.add_argument('--xy_grid_points', type=int, default=7, 
-        help='the number of points in the grid (for each axis, total number will be the square of what is given)')
-    parser.add_argument('--theta_step', type=int, default=90, help='degrees of each rotation')
-    parser.add_argument('--DEBUG', action='store_true', default=False, help='WARNING: will use debugger! It stops and show the matrices!')
+    parser.add_argument('--xy', type=int, default=101, help='xy size of the compatibility')
+    parser.add_argument('--theta', type=int, default=1, help='theta size of the compatibility')
+    parser.add_argument('--use_colors', type=bool, default=True, help='use colors of lines')
     args = parser.parse_args()
     main(args)
 
