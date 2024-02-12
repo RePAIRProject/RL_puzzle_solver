@@ -163,11 +163,12 @@ This requires patterns in a folder (which in the below command is assumed to be 
 python data_generator/synth_puzzle.py -nl 30 -sv -ni 1 -s pattern -pf data/patterns --extr
 ```
 ##### Arguments
-`nl` is the number of lines, `-sv` saves the lines visualization, `-ni` is the number of images, `-s` the shape.
+`-nl` is the number of lines, `-sv` saves the lines visualization, `-ni` is the number of images, `-s` the shape, `-extr` extrapolates the fragments, `-pf` is the pattern folder.
 You can get the full list of argument options running <pre><code>python data_generator/synth_puzzle.py -h</pre></code> 
 <details>
 <summary>(Click to show an example)</summary>
 <pre><code>
+> python data_generator/synth_puzzle.py -h
 usage: synth_puzzle.py [-h] [-lt {segments,lines,polylines,mix}] [-nl NUM_LINES] [-ncol {1,3,5}] [-hh HEIGHT]
                        [-ww WIDTH] [-th THICKNESS] [-ni NUM_IMAGES] [-o OUTPUT] [-s {regular,pattern,irregular}]
                        [-pf PATTERNS_FOLDER] [-np NUM_PIECES] [-sv] [-noR] [-extr]
