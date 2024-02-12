@@ -93,12 +93,14 @@ def main(args):
     parameter_path = os.path.join(puzzle_folder, 'parameters.json')
     os.makedirs(data_folder, exist_ok=True)
     os.makedirs(puzzle_folder, exist_ok=True)
+    use_rotation = (not args.do_not_rotate)
 
     # save parameters
     parameters_dict = vars(args) # create dict from namespace
     parameters_dict['output'] = output_root_path
     parameters_dict['data_folder'] = data_folder
     parameters_dict['puzzle_folder'] = puzzle_folder
+    parameters_dict['use_rotation'] = use_rotation
     print()
     print("#" * 70)
     print("#   Settings:")
@@ -146,22 +148,13 @@ def main(args):
         os.makedirs(poly_single_folder, exist_ok=True)
         lines_output_folder = os.path.join(single_image_folder, 'lines_detection', 'exact')
         os.makedirs(lines_output_folder, exist_ok=True)
-
+            
         # this gives us the pieces
         if args.shape == 'pattern':
             pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, patterns_map=pattern_map, save_extrapolated_regions=args.extrapolation)
         else:
             pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, save_extrapolated_regions=args.extrapolation)
-        # pieces is a list of dicts with several keys:
-        # - pieces[i]['centered_image'] is the centered image 
-        # - pieces[i]['centered_mask'] is the centered mask (as binary image)
-        # - pieces[i]['centered_polygon'] is the shape (as a shapely polygon)
-        # - pieces[i]['squared_image'] is the centered image in a square
-        # - pieces[i]['squared_mask'] is the centered mask (as binary image) in a square
-        # - pieces[i]['squared_polygon'] is the centered shape (as a shapely polygon) in the square
-        # - pieces[i]['polygon'] is the shape (as a shapely polygon) in its original position
-        # - pieces[i]['shift2center'] is the translation to align the shape to the center of the square
-
+        
         for j, piece in enumerate(pieces):
             ## save patch
             cv2.imwrite(os.path.join(pieces_single_folder, f"piece_{j:04d}.png"), piece['squared_image'])
@@ -196,7 +189,6 @@ def main(args):
                 col_line = all_lines[i, 4:7].tolist()
                 intersect = shapely.intersection(line, piece['polygon'])  # points of intersection line with the piece
                 if not shapely.is_empty(intersect): # we have intersection, so the line is important for this piece
-                    #print(intersect)
                     intersection_lines = []
                     # Assume 'multiline' is your MultiLineString object
                     if isinstance(intersect, shapely.geometry.MultiLineString):
@@ -204,8 +196,7 @@ def main(args):
                         intersection_lines = intersect.geoms
                     elif isinstance(intersect, shapely.geometry.LineString):
                         intersection_lines = [intersect]
-                    # else:
-                        # skip 
+                    # else: # skip 
                     if len(intersection_lines) > 0: 
                         for int_line in intersection_lines:
                             #print(int_line)
@@ -213,12 +204,6 @@ def main(args):
                                 pi1, pi2 = list(zip(*int_line.xy))
                                 p1 = np.array(np.round(pi1).astype(int))  ## CHECK !!!
                                 p2 = np.array(np.round(pi2).astype(int))  ## CHECK !!!
-                                # p1 = np.array(np.round(pi1 + piece['shift2center']).astype(int))  ## CHECK !!!
-                                # p2 = np.array(np.round(pi2 + piece['shift2center']).astype(int))  ## CHECK !!! 
-                                # p1 = np.array(np.round(pi1 - shift_piece ).astype(int))  ## CHECK !!!
-                                # p2 = np.array(np.round(pi2 - shift_piece ).astype(int))  ## CHECK !!!
-                                # p1 = np.array(np.round(pi1).astype(int))  ## CHECK !!!
-                                # p2 = np.array(np.round(pi2).astype(int))  ## CHECK !!!
                                 rho, theta = line_cart2pol(p1, p2)
                                 angles.append(theta)
                                 dists.append(rho)
@@ -226,25 +211,6 @@ def main(args):
                                 p2s.append(p2.tolist())
                                 cols.append(col_line)
 
-                            ## OLD VERSION WITH DIFF SHAPE OF FRAGs IMAGE
-                            # #print(int_line)
-                            # if len(list(zip(*int_line.xy))) > 1: # two intersections meaning it crosses
-                            #     pi1, pi2 = list(zip(*int_line.xy))
-                            #     #pdb.set_trace()
-                            #     shift_piece = np.asarray([piece['corner_x'], piece['corner_y']])
-                            #     p1 = np.array(np.round(pi1 - shift_piece + piece['shift2center_frag']).astype(int))  ## CHECK !!!
-                            #     p2 = np.array(np.round(pi2 - shift_piece + piece['shift2center_frag']).astype(int))  ## CHECK !!! 
-                            #     # p1 = np.array(np.round(pi1 - shift_piece ).astype(int))  ## CHECK !!!
-                            #     # p2 = np.array(np.round(pi2 - shift_piece ).astype(int))  ## CHECK !!!
-                            #     # p1 = np.array(np.round(pi1).astype(int))  ## CHECK !!!
-                            #     # p2 = np.array(np.round(pi2).astype(int))  ## CHECK !!!
-                            #     rho, theta = line_cart2pol(p1, p2)
-                            #     angles.append(theta)
-                            #     dists.append(rho)
-                            #     p1s.append(p1.tolist())
-                            #     p2s.append(p2.tolist())
-
-            #####
             if args.save_visualization:
                 line_vis = os.path.join(lines_output_folder, 'visualization')
                 lines_only = os.path.join(lines_output_folder, 'lines_only')
@@ -344,6 +310,7 @@ if __name__ == '__main__':
     parser.add_argument('-pf', '--patterns_folder', type=str, default='', help='(used only if shape == pattern): the folder where the patterns are stored')
     parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces in which each puzzle image is cut')
     parser.add_argument('-sv', "--save_visualization", help="Use it to create visualization", action="store_true")
-    parser.add_argument('-extr', "--extrapolation", help="Use it to create visualization", action="store_true")
+    parser.add_argument('-noR', "--do_not_rotate", help="Use it to disable rotation!", action="store_true")
+    parser.add_argument('-extr', "--extrapolation", help="Use it to create an extrapolated version of each fragment", action="store_true")
     args = parser.parse_args()
     main(args)

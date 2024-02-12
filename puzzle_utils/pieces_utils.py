@@ -1,9 +1,13 @@
-import os, pdb
+import os, pdb, json
 import cv2 
 import shapely 
+from shapely.affinity import rotate as rotate_poly
 from puzzle_utils.puzzle_gen.generator import PuzzleGenerator
 from puzzle_utils.shape_utils import get_sd, get_mask, get_cm, shift_img
 import numpy as np
+from scipy.ndimage import rotate as rotate_img
+
+import matplotlib.pyplot as plt
 
 """
 Thanks Friedrich -- Слава Україні 
@@ -82,7 +86,7 @@ def rescale_image(img, size):
         img = cv2.resize(img, (size, other_axis_size))  # opencv use these inverted :/
     return img 
 
-def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns_map=None, save_extrapolated_regions=False):
+def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns_map=None, rotate_pieces=True, save_extrapolated_regions=False):
 
     pieces = []
     if shape == 'regular':
@@ -134,7 +138,7 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
                 cv2.imwrite(os.path.join(extr_folder, f"piece_{j:04d}.png"), centered_fragment)
                 centered_extr_fragment, _m, _s = center_fragment(extr_frags[j])
                 cv2.imwrite(os.path.join(extr_folder, f"piece_{j:04d}_ext.png"), centered_extr_fragment)
-
+        
     
     if shape == 'pattern' and patterns_map is not None:
         generator = PuzzleGenerator(image, puzzle_name)
@@ -145,7 +149,78 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         if save_extrapolated_regions is True:
             generator.save_extrapolated_regions(output_path)
 
+    if rotate_pieces == True:
+        # plt.subplot(121)
+        # plt.imshow(pieces[7]['squared_image'])
+        # plt.plot(*(pieces[7]['squared_polygon'].boundary.xy))
+        rotated_pieces, rotation_info = randomly_rotate_pieces(pieces, chances_to_be_rotated=0.4, possible_rotation=4)
+        save_rotation_info(rotation_info, output_path)
+        # plt.subplot(122)
+        # print(rotation_info)
+        # plt.title(f'rotation: {rotation_info["piece_0007"]} degrees')
+        # plt.plot(*(rotated_pieces[7]['squared_polygon'].boundary.xy))
+        # plt.imshow(rotated_pieces[7]['squared_image'])
+        # plt.show()
+        # pdb.set_trace()
+        return rotated_pieces, patch_size
+    # if we do not use rotation, we return the original pieces
     return pieces, patch_size
+
+def save_rotation_info(rotation_info, output_path):
+    with open(os.path.join(output_path, 'rotation_info.json'), 'w') as rij:
+        json.dump(rotation_info, rij, indent=3)
+
+def rotate_piece(piece, rot_ang_deg):
+    """
+    Piece is a dict with keys (at least):
+    - 'mask': centered_mask,
+    - 'centered_mask': centered_mask,
+    - 'image': centered_patch,
+    - 'centered_image': centered_patch,
+    - 'polygon': box,
+    - 'centered_polygon': box,
+
+    We rotate only everything that start with "squared_" 
+    // polygon is rotate with `shapely.affinity.rotate`
+    // image with `scipy.ndimage.rotate`
+    """
+    rot_origin = [piece['squared_image'].shape[0] // 2, piece['squared_image'].shape[1] // 2]
+    # scipy uses angle in degree for images
+    # print(f"\tSize before:\nimg={piece['centered_image'].shape}\nmask={piece['centered_mask'].shape}\n")
+    piece['squared_image'] = rotate_img(piece['squared_image'], rot_ang_deg, reshape=False, mode='constant')
+    piece['squared_mask'] = rotate_img(piece['squared_mask'], rot_ang_deg, reshape=False, mode='constant')
+    # shapely (for polygons) uses the negative angle and needs origin of rotation!
+    piece['squared_polygon'] = rotate_poly(piece['squared_polygon'], -rot_ang_deg, origin=rot_origin)
+    # print(f"\tSize after:\nimg={piece['centered_image'].shape}\nmask={piece['centered_mask'].shape}\n")
+    return piece
+
+
+def randomly_rotate_pieces(pieces, chances_to_be_rotated=0.3, possible_rotation=4):
+    """Pieces is a list of dictionary containing the pieces"""
+    rot_info = {}
+    for j in range(len(pieces)):
+        if chances_to_be_rotated > 0.99:
+            rotate_this_one = True
+        else:
+            chance_num = np.round(1 / chances_to_be_rotated) - 1
+            rotate_this_one = np.round(np.random.uniform() * chance_num).astype(np.uint8)
+        if rotate_this_one == 1:
+            # plt.subplot(121)
+            # plt.imshow(pieces[j]['centered_image'])
+            rot_num = possible_rotation - 1
+            random_rotation_deg = np.round(np.random.uniform() * rot_num).astype(np.uint8) * 90
+            rot_info[f"piece_{j:04d}"] = float(random_rotation_deg)
+            rotated_piece_dict = rotate_piece(pieces[j], random_rotation_deg)
+            pieces[j] = rotated_piece_dict
+            # plt.subplot(122)
+            # plt.title(f'rotation: {random_rotation_deg} degrees (@randomly_rotate_pieces)')
+            # plt.imshow(pieces[j]['centered_image'])
+            # plt.show()
+            # pdb.set_trace()
+        else:
+            rot_info[f"piece_{j:04d}"] = 0
+        
+    return pieces, rot_info
 
 def center_fragment(image):
     sd, mask = get_sd(image)

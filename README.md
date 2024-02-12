@@ -152,9 +152,62 @@ And will continue with the next images..
 </details>
 
 ### 1b. Create pieces by drawing lines (so that you have exact extracted lines!)
+We have two options:
+##### Irregular shapes
 ```bash
-python datasets/create_irregular_pieces_by_drawing_lines.py -nl 50 -hh 1000 -ww 1000 -ni 50 -s irregular -np 16 -sv True
+python data_generator/synth_puzzle.py -nl 30 -sv -ni 1 -s irregular
 ```
+##### Using patterns
+This requires patterns in a folder (which in the below command is assumed to be `data/patterns`)
+```bash
+python data_generator/synth_puzzle.py -nl 30 -sv -ni 1 -s pattern -pf data/patterns --extr
+```
+##### Arguments
+`nl` is the number of lines, `-sv` saves the lines visualization, `-ni` is the number of images, `-s` the shape.
+<details>
+<summary>You can get the updated version running `python data_generator/synth_puzzle.py -h` (Click to show an example)</summary>
+<pre><code>
+usage: synth_puzzle.py [-h] [-lt {segments,lines,polylines,mix}] [-nl NUM_LINES] [-ncol {1,3,5}] [-hh HEIGHT]
+                       [-ww WIDTH] [-th THICKNESS] [-ni NUM_IMAGES] [-o OUTPUT] [-s {regular,pattern,irregular}]
+                       [-pf PATTERNS_FOLDER] [-np NUM_PIECES] [-sv] [-noR] [-extr]
+
+It generates synthetic puzzle by first drawing (colored) segments/lines on an image, then cutting it into pieces and
+saving pieces and the segments. Check the parameters for details about size, line_type, colors, number of pieces and
+so on.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -lt {segments,lines,polylines,mix}, --line_type {segments,lines,polylines,mix}
+                        choose type of features
+  -nl NUM_LINES, --num_lines NUM_LINES
+                        number of lines drawn in the image
+  -ncol {1,3,5}, --num_colors {1,3,5}
+                        number of different colors
+  -hh HEIGHT, --height HEIGHT
+                        height of the images
+  -ww WIDTH, --width WIDTH
+                        width of the images
+  -th THICKNESS, --thickness THICKNESS
+                        thickness of the drawings
+  -ni NUM_IMAGES, --num_images NUM_IMAGES
+                        number of different version of images generated for each number of line
+  -o OUTPUT, --output OUTPUT
+                        output folder
+  -s {regular,pattern,irregular}, --shape {regular,pattern,irregular}
+                        shape of the pieces
+  -pf PATTERNS_FOLDER, --patterns_folder PATTERNS_FOLDER
+                        (used only if shape == pattern): the folder where the patterns are stored
+  -np NUM_PIECES, --num_pieces NUM_PIECES
+                        number of pieces in which each puzzle image is cut
+  -sv, --save_visualization
+                        Use it to create visualization
+  -noR, --do_not_rotate
+                        Use it to disable rotation!
+  -extr, --extrapolation
+                        Use it to create an extrapolated version of each fragment
+</code></pre>
+
+</details>
 
 ### 2. Create region masks (rather slow, takes ~5 minutes per image)
 After we have created our pieces, we create the regions masks.
