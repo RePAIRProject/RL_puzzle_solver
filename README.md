@@ -178,7 +178,7 @@ The compatibility can be compute using:
 python compatibility/comp_irregular.py --dataset dataset_name --puzzle image_name --det_method exact --cmp_cost LAP --xy_step 30 --xy_grid_points 7 --theta_step 90 --verbosity 1
 ```
 Where `--dataset` selects the dataset, `--puzzle` the image/puzzle,  `--jobs` can be used to run in parallel the computations, `--det_method` is the method used to extract lines (`deeplsd` or `exact` for example), 
-`cmp_cost` chooses the algorithm to compute the compatibility cost (at the moment we have implemented `LAP` and `LCI`, see below for more details),`--penalty` is the penalty value (to use the correct compatibility matrix),
+`cmp_cost` chooses the algorithm to compute the compatibility cost (at the moment we have implemented `LAP` and `LCI`, see below for more details), `--penalty` is the penalty value (to use the correct compatibility matrix),
 the `_step`, `_grid_points` are inherited from the region matrix (should be the same), `-verbosity` controls how much of what is happening is printed (to screen or log).
 
 You can get the full list of arguments options running 
@@ -190,10 +190,8 @@ python compatibility/comp_irregular.py -h
 This section will be updated upon publication.
 
 #### Linear Assignment Problem (LAP)
-to be finished
 
 #### Line Confidence Importance (LCI)
-to be finished
 
 ### 5. Running the solver to get the solution (slow, half an hour per puzzle)
 | :exclamation:  This section is not updated!  |
@@ -209,12 +207,12 @@ python solver/solver_irregular.py --dataset synthetic_irregular_pieces_from_real
 |-----------------------------------------|
 
 <details>
-<summary>See at your own risk!</details>
+<summary>See at your own risk!</summary>
+
 #### Evaluation
 ```bash
 python metrics/evaluate.py
 ```
-
 
 ## Full pipeline RePAIR
 
@@ -256,7 +254,7 @@ sh solve_puzzle.sh
 
 ***Problem with input and output data folders path?***
 
-Input and output (respectively `data_path = 'data'` and `output_dir = 'output'` in the config file) are defined without the full path. If you run the scripts via terminal from the root folder, you should be fine. If you run from subfolders or use special settings, you can set these two accordingly.
+Input and output path, respectively `data_path = 'data'` and `output_dir = 'output'` in the config file (`configs/folder_names.py`) are defined without the full path. If you run the scripts via terminal from the root folder, you should be fine. If you run from subfolders or use special settings, you can set these two accordingly.
 
 # 5) Relevant publications
 Hopefully soon.
