@@ -291,7 +291,7 @@ class PuzzleGenerator:
         w_max = 0
         dist_cm_max = 0
         padding = np.min(self.img.shape[:2]) // 30
-        for i in range(start_from, self.region_cnt+1):
+        for i in range(start_from, self.region_cnt):
             mask_i = self.region_mat == i
             if len(self.img.shape) > 2: 
                 image_i = self.img * np.repeat(mask_i, self.img.shape[2]).reshape(self.img.shape)

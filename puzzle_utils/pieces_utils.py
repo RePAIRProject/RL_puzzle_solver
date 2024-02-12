@@ -142,7 +142,7 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
     
     if shape == 'pattern' and patterns_map is not None:
         generator = PuzzleGenerator(image, puzzle_name)
-        generator.region_cnt = num_pieces
+        generator.region_cnt = num_pieces + 1
         generator.region_mat = patterns_map 
         generator.save_jpg_regions(output_path)
         pieces, patch_size = generator.get_pieces_from_puzzle_v2(start_from=1)

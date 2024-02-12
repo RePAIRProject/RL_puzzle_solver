@@ -366,8 +366,8 @@ def process_region_map(region_map, perc_min=0.01):
         elif uval > 0:
             print("region too small! check threshold")
 
-    plt.subplot(121); plt.imshow(region_map, vmin=0, vmax=255)
-    plt.subplot(122); plt.imshow(rmap, vmin=0, vmax=31)
-    plt.show()
-    pdb.set_trace()
+    # plt.subplot(121); plt.imshow(region_map, vmin=0, vmax=255)
+    # plt.subplot(122); plt.imshow(rmap, vmin=0, vmax=31)
+    # plt.show()
+    # pdb.set_trace()
     return rmap, rc-1
