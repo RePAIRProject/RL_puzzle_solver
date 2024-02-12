@@ -107,6 +107,7 @@ The output (everything we create) would be in the code folder + `output`.
 ### 1. Create pieces from images (fast, few seconds per image)
 | :exclamation:  This section is not updated!  |
 |-----------------------------------------|
+
 Let's run the piece creation! It cuts our images into a (variable) number of pieces. 
 We set the (maximum) number with the `-np` argument. It could lead to a smaller number of pieces, depending on the size of the image! This does not affect our algorithm, which does not strictly require a fixed number of pieces.
 
@@ -115,107 +116,33 @@ python datasets/create_pieces_from_images.py -i real_small_dataset -np 16
 ```
 
 The output of this would be saved in `~whatever_your_path~/RL_puzzle_solver/output/synthetic_irregular_pieces_from_real_small_dataset`
-<details>
-<summary>The output on the terminal should look something like: (Click to show)</summary>
 
-```bash
-######################################################################
-#   Settings:
-#  output : /home/lucap/code/RL_puzzle_solver/output
-#  images : real_small_dataset
-#  num_pieces : 16
-#  shape : irregular
-#  rescale : 1000
-#  input_images : /home/lucap/code/RL_puzzle_solver/data/real_small_dataset
-#  puzzle_folder : /home/lucap/code/RL_puzzle_solver/output/synthetic_irregular_pieces_from_real_small_dataset
-######################################################################
-
---------------------------------------------------
-image_00000_escher_day_and_night
-	- done with piece 00000
-	- done with piece 00001
-	- done with piece 00002
-	- done with piece 00003
-	- done with piece 00004
-	- done with piece 00005
-	- done with piece 00006
-	- done with piece 00007
-	- done with piece 00008
-	- done with piece 00009
-	- done with piece 00010
-	- done with piece 00011
-	- done with piece 00012
-	- done with piece 00013
-	- done with piece 00014
-Done with image_00000_escher_day_and_night: created 15 pieces.
-
-```
-And will continue with the next images..
-</details>
 
 ### 1b. Create pieces by drawing lines (so that you have exact extracted lines!)
+
 We have two options:
-##### Irregular shapes
+#### Irregular shapes
 ```bash
 python data_generator/synth_puzzle.py -nl 30 -sv -ni 1 -s irregular
 ```
-##### Using patterns
+#### Using patterns
 This requires patterns in a folder (which in the below command is assumed to be `data/patterns`)
 ```bash
 python data_generator/synth_puzzle.py -nl 30 -sv -ni 1 -s pattern -pf data/patterns --extr
 ```
 ##### Arguments
-`-nl` is the number of lines, `-sv` saves the lines visualization, `-ni` is the number of images, `-s` the shape, `-extr` extrapolates the fragments, `-pf` is the pattern folder.
-You can get the full list of argument options running <pre><code>python data_generator/synth_puzzle.py -h</pre></code> 
-<details>
-<summary>(Click to show an example)</summary>
-<pre><code>
-> python data_generator/synth_puzzle.py -h
-usage: synth_puzzle.py [-h] [-lt {segments,lines,polylines,mix}] [-nl NUM_LINES] [-ncol {1,3,5}] [-hh HEIGHT]
-                       [-ww WIDTH] [-th THICKNESS] [-ni NUM_IMAGES] [-o OUTPUT] [-s {regular,pattern,irregular}]
-                       [-pf PATTERNS_FOLDER] [-np NUM_PIECES] [-sv] [-noR] [-extr]
+Arguments are the same: `-nl` is the number of lines, `-sv` saves the lines visualization, `-ni` is the number of images, `-s` the shape, `-extr` extrapolates the fragments, `-pf` is the pattern folder.
 
-It generates synthetic puzzle by first drawing (colored) segments/lines on an image, then cutting it into pieces and
-saving pieces and the segments. Check the parameters for details about size, line_type, colors, number of pieces and
-so on.
+You can get the full list of arguments options running 
+```bash
+python data_generator/synth_puzzle.py -h
+```
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -lt {segments,lines,polylines,mix}, --line_type {segments,lines,polylines,mix}
-                        choose type of features
-  -nl NUM_LINES, --num_lines NUM_LINES
-                        number of lines drawn in the image
-  -ncol {1,3,5}, --num_colors {1,3,5}
-                        number of different colors
-  -hh HEIGHT, --height HEIGHT
-                        height of the images
-  -ww WIDTH, --width WIDTH
-                        width of the images
-  -th THICKNESS, --thickness THICKNESS
-                        thickness of the drawings
-  -ni NUM_IMAGES, --num_images NUM_IMAGES
-                        number of different version of images generated for each number of line
-  -o OUTPUT, --output OUTPUT
-                        output folder
-  -s {regular,pattern,irregular}, --shape {regular,pattern,irregular}
-                        shape of the pieces
-  -pf PATTERNS_FOLDER, --patterns_folder PATTERNS_FOLDER
-                        (used only if shape == pattern): the folder where the patterns are stored
-  -np NUM_PIECES, --num_pieces NUM_PIECES
-                        number of pieces in which each puzzle image is cut
-  -sv, --save_visualization
-                        Use it to create visualization
-  -noR, --do_not_rotate
-                        Use it to disable rotation!
-  -extr, --extrapolation
-                        Use it to create an extrapolated version of each fragment
-</code></pre>
-
-</details>
 
 ### 2. Detect lines (fast, few seconds per piece, so less than a minute per image)
 | :exclamation:  This section is not updated!  |
 |-----------------------------------------|
+
 The detection can be done with any edge detector. We sugget to use [DeepLSD](https://github.com/cvg/DeepLSD).
 From the detected lines, we extract and save the initial and end points plus their polar coordinates (we will use the angle).
 This script is actually launched from within the DeepLSD folder (for an easier usage of that) so it contains some hardcoded paths. 
@@ -240,53 +167,38 @@ The script will create and save the outcome inside the puzzle folder (under `reg
 
 **TIP:** if you remove the `--puzzle` argument, it will compute the regions for the whole dataset.
 
-<details>
-<summary>The output on the terminal should look something like: (Click to show)</summary>
-
+You can get the full list of arguments options running 
 ```bash
-Found 15 pieces:
-- piece_0000.png
-- piece_0001.png
-- piece_0002.png
-- piece_0003.png
-- piece_0004.png
-- piece_0005.png
-- piece_0006.png
-- piece_0007.png
-- piece_0008.png
-- piece_0009.png
-- piece_0010.png
-- piece_0011.png
-- piece_0012.png
-- piece_0013.png
-- piece_0014.png
-
-##################################################
-SETTINGS
-The puzzle (maybe rescaled) has size 603x1000 pixels
-Pieces are squared images of 268x268 pixels (p_hs=134)
-The region matrix has shape: [101, 101, 24, 15, 15]
-Using a grid on xy and 24 rotations on 15 pieces
-	xy_step: 5.37, rot_step: 15.0
-Canvas size: 537x537
-##################################################
-
-regions for pieces 14 and 14
-Done calculating
-##################################################
-Saving the matrix..
-Creating visualization
+python features/compute_both_regions_masks.py -h 
 ```
-</details>
 
-### 4. Compute compatibility (very slow, computed pairwise, few minutes per pair, so some hours per puzzle!)
+### 4. Compute compatibility (may take some time on irregular pieces)
 The compatibility can be compute using:
 ```bash
-python compatibility/comp_irregular.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_name --jobs N --save_visualization True --method deeplsd --penalty value
+python compatibility/comp_irregular.py --dataset dataset_name --puzzle image_name --det_method exact --cmp_cost LAP --xy_step 30 --xy_grid_points 7 --theta_step 90 --verbosity 1
 ```
-where `--jobs` can be used to run in parallel the computations, `--method` tells the script where to find the extracted lines, `--penalty` is the penalty value (to use the correct compatibility matrix), `--save_visualization` writes a color-coded version of all the compatibility matrix and `puzzle` and `dataset` are the input data.
+Where `--dataset` selects the dataset, `--puzzle` the image/puzzle,  `--jobs` can be used to run in parallel the computations, `--det_method` is the method used to extract lines (`deeplsd` or `exact` for example), 
+`cmp_cost` chooses the algorithm to compute the compatibility cost (at the moment we have implemented `LAP` and `LCI`, see below for more details),`--penalty` is the penalty value (to use the correct compatibility matrix),
+the `_step`, `_grid_points` are inherited from the region matrix (should be the same), `-verbosity` controls how much of what is happening is printed (to screen or log).
+
+You can get the full list of arguments options running 
+```bash
+python compatibility/comp_irregular.py -h 
+```
+
+#### Compatibility Cost Algorithms
+This section will be updated upon publication.
+
+#### Linear Assignment Problem (LAP)
+to be finished
+
+#### Line Confidence Importance (LCI)
+to be finished
 
 ### 5. Running the solver to get the solution (slow, half an hour per puzzle)
+| :exclamation:  This section is not updated!  |
+|-----------------------------------------|
+
 At the moment we have some issues, still work in progress
 ```bash
 python solver/solver_irregular.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00005_wireframe_00190925 --method deeplsd --anchor 5 --pieces 0 --penalty 40
@@ -297,54 +209,7 @@ python solver/solver_irregular.py --dataset synthetic_irregular_pieces_from_real
 |-----------------------------------------|
 
 <details>
-<summary>(Click to show)</summary>
-
-For example, to prepare the data from images:
-```bash
-python preprocessing/preprocess_image_dataset.py -d dataset_name
-```
-
-Or to prepare the data from fragments
-```bash
-python preprocessing/preprocess_fragments.py -d dataset_name
-```
-
-To compute the regions pass the puzzle name (the name of the folder, `puzzle_1` or `puzzle_2` in the example folder structure above):
-```bash
-python features/compute_regions_masks.py --puzzle puzzle_name
-```
-
-Same for the compatibility:
-```bash
-python compatibility/shape_compatibility.py --urm --puzzle puzzle_name
-```
-Here, you can add `--urm` if you use the regions matrix (computed using the script) to speed up calculations. Otherwise, remove `--urm` to calculate fully the matrix (much slower).
-
-
-
-
-## Full pipeline (example)
-
-#### Create pieces
-```bash
-python preprocessing/preprocess_image_dataset.py -d manual_lines
-```
-
-#### Detect lines (using deepLSD)
-```bash
-python detect_lines_compatibility.py -rf /home/lucap/code/RL_puzzle_solver -d manual_lines
-```
-
-#### Compute compatibility
-```bash
-python compatibility/line_matching_NEW_segments.py --dataset manual_lines --puzzle lines1
-```
-
-#### Solver
-```bash
-python solver/solverRotPuzzArgs.py --dataset manual_lines --puzzle lines1
-```
-
+<summary>See at your own risk!</details>
 #### Evaluation
 ```bash
 python metrics/evaluate.py
@@ -399,5 +264,5 @@ Hopefully soon.
 # 6) Acknowledgements
 We use part of other open source software/tools:
 - [PuzzleSolving-tool](https://github.com/xmlyqing00/PuzzleSolving-tool) from [Yongqing Liang ](https://github.com/xmlyqing00) // We used a modified version included in this repo under `puzzle_utils/puzzle_gen` from [our fork of their framework](https://github.com/RePAIRProject/2DPuzzleSolving-tool)
-- [DeepLSD](https://github.com/cvg/DeepLSD) from [Computer Vision and Geometry Lab, ETH Zurich](https://github.com/cvg)
+- We recommend using [DeepLSD](https://github.com/cvg/DeepLSD) from [Computer Vision and Geometry Lab, ETH Zurich](https://github.com/cvg) for detecting lines on real images.
 
