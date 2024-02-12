@@ -266,7 +266,7 @@ class PuzzleGenerator:
             rgba[:, :, 3] = 255*(cur_reg)
             cv2.imwrite(os.path.join(extrap_folder, f'piece-{reg_val}_ex.png'), rgba_ex)
             cv2.imwrite(os.path.join(extrap_folder, f'piece-{reg_val}.png'), rgba)
-            print(os.path.join(extrap_folder, f'piece-{reg_val}.png'))
+            #print(os.path.join(extrap_folder, f'piece-{reg_val}.png'))
 
     def save_jpg_regions(self, folder_path):
         regions_path = os.path.join(folder_path, 'regions')
@@ -291,7 +291,7 @@ class PuzzleGenerator:
         w_max = 0
         dist_cm_max = 0
         padding = np.min(self.img.shape[:2]) // 30
-        for i in range(start_from, self.region_cnt):
+        for i in range(start_from, self.region_cnt+1):
             mask_i = self.region_mat == i
             if len(self.img.shape) > 2: 
                 image_i = self.img * np.repeat(mask_i, self.img.shape[2]).reshape(self.img.shape)

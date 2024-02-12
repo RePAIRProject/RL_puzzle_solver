@@ -348,7 +348,7 @@ def shape_pairwise_compatibility(piece_i, piece_j, x_j, y_j, theta_j, puzzle_cfg
 
     return comp_shape
 
-def process_region_map(region_map, perc_min=0.015):
+def process_region_map(region_map, perc_min=0.01):
     """
     It eliminates small regions and keep only the one who are "big" enough 
     """
@@ -363,4 +363,11 @@ def process_region_map(region_map, perc_min=0.015):
         if np.sum(region_map==uval) > min_pixels and uval > 0:
             rmap += (region_map==uval).astype(np.uint8) * rc
             rc += 1
-    return rmap, rc
+        elif uval > 0:
+            print("region too small! check threshold")
+
+    plt.subplot(121); plt.imshow(region_map, vmin=0, vmax=255)
+    plt.subplot(122); plt.imshow(rmap, vmin=0, vmax=31)
+    plt.show()
+    pdb.set_trace()
+    return rmap, rc-1

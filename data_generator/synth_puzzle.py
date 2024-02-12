@@ -130,6 +130,7 @@ def main(args):
         if args.shape == 'pattern':
             region_map = cv2.imread(os.path.join(args.patterns_folder, list_of_patterns_names[N]), 0)
             pattern_map, num_pieces = process_region_map(region_map)
+            print(f"found {num_pieces} pieces on {list_of_patterns_names[N]}")
         else:
             num_pieces = args.num_pieces
         ## make folders to save pieces and detected lines

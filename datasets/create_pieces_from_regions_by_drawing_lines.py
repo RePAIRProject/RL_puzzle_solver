@@ -113,6 +113,7 @@ def main(args):
 
         region_map = cv2.imread(os.path.join(args.input, region_map_rel_path), 0)
         rmap, num_regions = process_region_map(region_map)
+        print(f"found {num_regions} pieces on {region_map_rel_path}")
         
         h, w = rmap.shape
         ## create images with lines
