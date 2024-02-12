@@ -234,7 +234,7 @@ This highly depends on the shape of the (pairwise) compatbility matrix (the regi
 python features/compute_both_regions_masks.py --dataset dataset_name --puzzle image_00000 --method exact --xy_step 30 --xy_grid_points 7 --theta_step 90
 ```
 Where `--dataset` selects the dataset, `--puzzle` the image/puzzle, `--method` how the lines were extracted (usually `exact` or `deeplsd`), `-xy_step` is the distance between two possible candidate position on the `xy` plane, `--theta_step` the same in the rotation space (in degrees).
-The `--xy_grid_points` control the shape of the grid (which will be $N\timesN$)
+The `--xy_grid_points` control the shape of the grid (which, if you set it to $N$, will be $N \times N$)
 
 The script will create and save the outcome inside the puzzle folder (under `regions_matrix`).
 
