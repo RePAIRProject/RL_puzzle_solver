@@ -39,12 +39,20 @@ def main(args):
         # PARAMETERS
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
         cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
-        if os.path.exists(cmp_parameter_path):
-            print("never tested! remove this comment afterwars (line 53 of comp_irregular.py)")
-            with open(cmp_parameter_path, 'r') as cp:
-                ppars = json.load(cmp_parameter_path)
-        else:
-            ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
+        # if os.path.exists(cmp_parameter_path):
+        #     print("never tested! remove this comment afterwars (line 53 of comp_irregular.py)")
+        #     with open(cmp_parameter_path, 'r') as cp:
+        #         ppars = json.load(cp)
+        # else:
+        ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
+        # for ppk in ppars.keys():
+        #     if type(ppars[ppk])== np.uint8:
+        #         ppars[ppk] = int(ppars[ppk])
+        #     print(ppk, ":", type(ppars[ppk]))
+        # pdb.set_trace()
+        with open(cmp_parameter_path, 'w') as cpj:
+            json.dump(ppars, cpj, indent=3)
+        print("saved json compatibility file")
 
         # INCLUDE SHAPE
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_thickness=3)
@@ -170,9 +178,9 @@ def main(args):
         savemat(f'{filename}.mat', RM_D)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(RM_combo, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_combo_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", save_every=2, all_rotation=False)
-            save_vis(RM_lines, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_lines_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"overlap {puzzle}", save_every=2, all_rotation=False)
-            save_vis(RM_shapes, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_shapes_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"borders {puzzle}", save_every=2, all_rotation=False)
+            save_vis(RM_combo, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_combo_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", save_every=4, all_rotation=False)
+            save_vis(RM_lines, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_lines_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"overlap {puzzle}", save_every=4, all_rotation=False)
+            save_vis(RM_shapes, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_shapes_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"borders {puzzle}", save_every=4, all_rotation=False)
         print(f'Done with {puzzle}\n')
 
 if __name__ == '__main__':

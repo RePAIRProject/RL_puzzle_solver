@@ -50,7 +50,7 @@ def extract_from(lines_dict, use_colors=False):
     else:
         return angles, dists, p1s, p2s, []
 
-def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
+def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars, poly_l):
     # check if line crosses the polygon
     # z_p1 = [0,0],  z_l2 = z,
     # z_p2 = z,   z_l1 = [0,0],
@@ -60,17 +60,35 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
     piece_j_shape = poly_p.tolist() #shapely.polygons(poly_p)
     piece_j_rotate = rotate(piece_j_shape, theta_p, origin=[pars.p_hs, pars.p_hs])
     piece_j_trans = transform(piece_j_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_p)
+    debug = False
+    if theta_p != 0 and debug == True:
+        plt.plot(*(piece_j_shape.boundary.xy), linewidth=7, color='orange')
+        plt.plot(*(piece_j_trans.boundary.xy), linewidth=5, color='red')
+        
+        poly_lines = poly_l.tolist()
+        poly_lines_rot = rotate(poly_lines, theta_l, origin=[pars.p_hs, pars.p_hs])
+        poly_lines_tra = transform(poly_lines_rot, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
 
-    for (candidate_xy_start, candidate_xy_end) in zip(s1, s2):
+        plt.plot(*(poly_lines_tra.boundary.xy), linewidth=7, color='green')
+        plt.plot(*(poly_lines.boundary.xy), linewidth=7, color='orange')
 
-        candidate_line_shapely0 = shapely.LineString((candidate_xy_start, candidate_xy_end))
+    for (p1, p2) in zip(s1, s2):
+
+        # p1 = [candidate_xs[0], candidate_ys[0]]
+        # p2 = [candidate_xs[1], candidate_ys[1]]
+        # candidate_line_shapely0 = shapely.LineString((candidate_xy_start, candidate_xy_end))
+        candidate_line_shapely0 = shapely.LineString((p1, p2))
         candidate_line_rotate = rotate(candidate_line_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
         candidate_line_trans = transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
 
+        if theta_p != 0 and debug == True:
+            plt.plot(*(candidate_line_shapely0.xy), linewidth=7, color='orange')
+            plt.plot(*(candidate_line_trans.xy), linewidth=7, color='blue')
         # append to the useful lines
         useful_lines_s1.append(np.array(candidate_line_trans.coords)[0])
         useful_lines_s2.append(np.array(candidate_line_trans.coords)[-1])
 
+        
         # OLD VERSION: 
         # if shapely.is_empty(shapely.intersection(candidate_line_trans, piece_j_trans.buffer(pars.border_tolerance))):
         # issue: if the line is completely within the polygon, it returns True (as the geometry intersection exists)
@@ -80,7 +98,14 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
             intersections.append(False)
         else:
             intersections.append(True)
+            if theta_p != 0 and debug == True:
+                plt.plot(*(candidate_line_trans.xy), linewidth=3, color='yellow')
 
+    if theta_p != 0 and debug == True:
+        plt.axis('equal')
+        plt.title(f"polygon rot: {theta_p}, line_rot: {theta_l}")
+        plt.show()
+        pdb.set_trace()
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
 
 
@@ -102,7 +127,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                 if valid_point > 0:
                     #print([iy, ix, t])
                     # check if line1 crosses the polygon2                  
-                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0], 0, s11, s12, pars)
+                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0], 0, s11, s12, pars, poly1)
 
                     # return intersections                    
                     useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
@@ -111,7 +136,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                     useful_lines_s12 = useful_lines_s12[intersections1]
 
                     # check if line2 crosses the polygon1
-                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, s21, s22, pars)
+                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, s21, s22, pars, poly2)
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
 
                     useful_lines_color2 = color2[intersections2]
@@ -270,7 +295,6 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
 
                     tot_cost = cost_f1 + cost_f2
                     R_cost[iy, ix, t] = tot_cost
-
     rrr = np.max(R_cost)
     if verbosity > 2:
         print(f"max R value {rrr}")

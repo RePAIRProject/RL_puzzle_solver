@@ -1,5 +1,6 @@
 import os, json, pdb, argparse
 import shapely
+from shapely.affinity import rotate
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -152,9 +153,9 @@ def main(args):
             
         # this gives us the pieces
         if args.shape == 'pattern':
-            pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, patterns_map=pattern_map, save_extrapolated_regions=args.extrapolation)
+            pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, patterns_map=pattern_map, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation)
         else:
-            pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, save_extrapolated_regions=args.extrapolation)
+            pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation)
         
         for j, piece in enumerate(pieces):
             ## save patch
@@ -183,7 +184,7 @@ def main(args):
             b1s = []
             b2s = []
             cols = []
-
+            
             ## lines on the .json file
             for i in range(args.num_lines):
                 line = shapely.LineString([all_lines[i, 0:2], all_lines[i, 2:4]])
@@ -200,17 +201,30 @@ def main(args):
                     # else: # skip 
                     if len(intersection_lines) > 0: 
                         for int_line in intersection_lines:
-                            #print(int_line)
                             if len(list(zip(*int_line.xy))) > 1: # two intersections meaning it crosses
-                                pi1, pi2 = list(zip(*int_line.xy))
-                                p1 = np.array(np.round(pi1).astype(int))  ## CHECK !!!
-                                p2 = np.array(np.round(pi2).astype(int))  ## CHECK !!!
+                                # list(zip) re-order xs and ys
+                                # # xs, ys = list(zip(*int_line.xy))
+                                # .xy returns array of x and array of y values
+                                xs, ys = int_line.xy
+                                p1 = np.array(np.round([xs[0], ys[0]]).astype(int))  ## CHECK !!!
+                                p2 = np.array(np.round([xs[1], ys[1]]).astype(int))  ## CHECK !!!
                                 rho, theta = line_cart2pol(p1, p2)
                                 angles.append(theta)
                                 dists.append(rho)
                                 p1s.append(p1.tolist())
                                 p2s.append(p2.tolist())
                                 cols.append(col_line)
+                            # if len(list(zip(*int_line.xy))) > 1: # two intersections meaning it crosses
+                            #     xs, ys = list(zip(*int_line.xy))
+                            #     pdb.set_trace()
+                            #     p1 = np.array(np.round(pi1).astype(int))  ## CHECK !!!
+                            #     p2 = np.array(np.round(pi2).astype(int))  ## CHECK !!!
+                            #     rho, theta = line_cart2pol(p1, p2)
+                            #     angles.append(theta)
+                            #     dists.append(rho)
+                            #     p1s.append(p1.tolist())
+                            #     p2s.append(p2.tolist())
+                            #     cols.append(col_line)
 
             if args.save_visualization:
                 line_vis = os.path.join(lines_output_folder, 'visualization')
@@ -268,13 +282,39 @@ def main(args):
                 squared_angles.append(ang) # no rotation, but this will change as soon as we introduce rotation
                 squared_p1s.append((p1 + piece['shift2center'][::-1] + piece['shift2square'][::-1]).tolist())
                 squared_p2s.append((p2 + piece['shift2center'][::-1] + piece['shift2square'][::-1]).tolist())
+            if 'rotation' in piece.keys():
+                # piece['rotation'] is in degrees!
+                rot_origin = [piece['squared_image'].shape[0] // 2, piece['squared_image'].shape[1] // 2]
+                rotated_square_angles = []
+                rotated_squared_p1s = []
+                rotated_squared_p2s = []
+                for i in range(len(squared_angles)):
+                    p1 = squared_p1s[i]
+                    p2 = squared_p2s[i]
+                    ang = squared_angles[i]
+                    shp_line = shapely.LineString([p1, p2])
+                    # shapely uses negative angle (in degrees)
+                    shp_rotated_line = rotate(shp_line, -piece['rotation'], origin=rot_origin)
+                    xs, ys = shp_rotated_line.xy
+                    rotated_squared_p1s.append([xs[0], ys[0]])
+                    rotated_squared_p2s.append([xs[1], ys[1]])
+                    # this is in rad
+                    rotated_square_angles.append(ang + np.deg2rad(piece['rotation']))
+                # replace with rotated values!
+                squared_angles = rotated_square_angles
+                squared_p1s = rotated_squared_p1s
+                squared_p2s = rotated_squared_p2s
 
+            # plt.imshow(piece['squared_image'])
+            # plt.plot(*piece['squared_polygon'].boundary.xy)
+            # plt.show()
+            # pdb.set_trace()
             # dists, b1 and b2 are not used
             aligned_lines = {
-                'angles': squared_angles,
-                'dists': [],
-                'p1s': squared_p1s,
-                'p2s': squared_p2s,
+                'angles': squared_angles,   # polar coordinates
+                'dists': [],                # distance polar coordinates (not used)
+                'p1s': squared_p1s,         # cartesian coordinates
+                'p2s': squared_p2s,         # cartesian coordinates
                 'b1s': [],
                 'b2s': [],
                 'colors': cols

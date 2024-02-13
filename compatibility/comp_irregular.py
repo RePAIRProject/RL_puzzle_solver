@@ -11,7 +11,7 @@ import time
 # internal
 from configs import folder_names as fnames
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info
-from puzzle_utils.pieces_utils import calc_parameters_v2
+from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
 from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
 
@@ -66,13 +66,26 @@ def main(args):
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
         cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
         if os.path.exists(cmp_parameter_path):
-            print("never tested! remove this comment afterwars (line 53 of comp_irregular.py)")
+            ppars = CfgParameters()
             with open(cmp_parameter_path, 'r') as cp:
-                ppars = json.load(cmp_parameter_path)
+                ppars_dict = json.load(cp)
+            for ppk in ppars_dict.keys():
+                ppars[ppk] = ppars_dict[ppk]
         else:
+            print("\n" * 3)
+            print("/" * 70)
+            print("/\t***ERROR***\n/ compatibility_parameters.json not found!")
+            print("/" * 70)
+            print("\n" * 3)
             ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
+
         line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
+        line_matching_parameters_path = os.path.join(puzzle_root_folder, 'line_matching_parameters.json')
+        with open(line_matching_parameters_path, 'w') as lmpj:
+            json.dump(line_matching_parameters, lmpj, indent=3)
+        print("saved json line matching  file")
+
         print("-" * 50)
         print('\tLINE MATCHING PARAMETERS')
         for cfg_key in line_matching_parameters.keys():
@@ -85,8 +98,8 @@ def main(args):
         region_mask = region_mask_mat['RM']
         
         # parameters and grid
-        p = [ppars.p_hs, ppars.p_hs]  # center of piece [125,125] - ref.point for lines
-        m_size = ppars.xy_grid_points  # 101X101 grid
+        p = [ppars.p_hs, ppars.p_hs]    # center of piece [125,125] - ref.point for lines
+        m_size = ppars.xy_grid_points   # 101X101 grid
         m = np.zeros((m_size, m_size, 2))
         m2, m1 = np.meshgrid(np.linspace(-1, 1, m_size), np.linspace(-1, 1, m_size))
         m[:, :, 0] = m1
@@ -128,8 +141,10 @@ def main(args):
         else:
             for i in range(n):  # select fixed fragment
                 for j in range(n):
+                    if args.verbosity == 1:
+                        print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity, use_colors=args.use_colors)
-                    if i != j and args.DEBUG is True:
+                    if i != j and args.DEBUG is True and j == 2 and i == 0:
                         plt.subplot(321); plt.imshow(pieces[i]['img']); plt.title(f"piece {i}")
                         plt.subplot(322); plt.imshow(pieces[j]['img']); plt.title(f"piece {j}")
                         plt.subplot(323); plt.imshow(region_mask[:,:,0,i,j], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map")
@@ -172,9 +187,9 @@ def main(args):
                     "label": "label", 
                     "method":args.det_method, 
                     "cost":args.cmp_cost, 
-                    "xy_step": args.xy_step, 
-                    "xy_grid_points": args.xy_grid_points, 
-                    "theta_step": args.theta_step
+                    "xy_step": ppars.xy_step, 
+                    "xy_grid_points": ppars.xy_grid_points, 
+                    "theta_step": ppars.theta_step
                 }
         savemat(f'{filename}.mat', mdic)
         np.save(filename, R_line)
@@ -186,9 +201,9 @@ def main(args):
                         "label": "label", 
                         "method":args.det_method, 
                         "cost":args.cmp_cost, 
-                        "xy_step": args.xy_step, 
-                        "xy_grid_points": args.xy_grid_points, 
-                        "theta_step": args.theta_step
+                        "xy_step": ppars.xy_step, 
+                        "xy_grid_points": ppars.xy_grid_points, 
+                        "theta_step": ppars.theta_step
                     }
             savemat(f'{filename}.mat', mdic)
             np.save(filename, All_cost)
@@ -222,10 +237,10 @@ if __name__ == '__main__':
         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
-    parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
-    parser.add_argument('--xy_grid_points', type=int, default=7, 
-        help='the number of points in the grid (for each axis, total number will be the square of what is given)')
-    parser.add_argument('--theta_step', type=int, default=90, help='degrees of each rotation')
+    # parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
+    # parser.add_argument('--xy_grid_points', type=int, default=7, 
+    #     help='the number of points in the grid (for each axis, total number will be the square of what is given)')
+    # parser.add_argument('--theta_step', type=int, default=90, help='degrees of each rotation')
     parser.add_argument('--use_colors', type=bool, default=True, help='use colors of lines')
     parser.add_argument('--DEBUG', action='store_true', default=False, help='WARNING: will use debugger! It stops and show the matrices!')
 

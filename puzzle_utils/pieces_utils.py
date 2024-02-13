@@ -57,7 +57,7 @@ def calc_parameters_v2(parameters, xy_step=3, xy_grid_points=101, theta_step=45)
     ppars['xy_step'] = xy_step
     ppars['xy_grid_points'] = xy_grid_points
     ppars['theta_step'] = theta_step
-    ppars['theta_grid_points'] = np.round(360 / theta_step).astype(np.uint8)
+    ppars['theta_grid_points'] = int(np.round(360 / theta_step))
     ppars['pairwise_comp_range'] = xy_step * (xy_grid_points - 1)
     ppars['canvas_size'] = ppars.pairwise_comp_range + 2 * (ppars.p_hs + 1)
     ppars['comp_matrix_shape'] = [ppars.xy_grid_points, ppars.xy_grid_points, ppars.theta_grid_points]
@@ -151,15 +151,16 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
 
     if rotate_pieces == True:
         # plt.subplot(121)
-        # plt.imshow(pieces[7]['squared_image'])
-        # plt.plot(*(pieces[7]['squared_polygon'].boundary.xy))
+        # rand_num = 2
+        # plt.imshow(pieces[rand_num]['squared_image'])
+        # plt.plot(*(pieces[rand_num]['squared_polygon'].boundary.xy))
         rotated_pieces, rotation_info = randomly_rotate_pieces(pieces, chances_to_be_rotated=0.4, possible_rotation=4)
         save_rotation_info(rotation_info, output_path)
         # plt.subplot(122)
         # print(rotation_info)
-        # plt.title(f'rotation: {rotation_info["piece_0007"]} degrees')
-        # plt.plot(*(rotated_pieces[7]['squared_polygon'].boundary.xy))
-        # plt.imshow(rotated_pieces[7]['squared_image'])
+        # plt.title(f'rotation: {rotation_info[f"piece_{rand_num:04d}"]} degrees')
+        # plt.plot(*(rotated_pieces[rand_num]['squared_polygon'].boundary.xy))
+        # plt.imshow(rotated_pieces[rand_num]['squared_image'])
         # plt.show()
         # pdb.set_trace()
         return rotated_pieces, patch_size
@@ -212,6 +213,7 @@ def randomly_rotate_pieces(pieces, chances_to_be_rotated=0.3, possible_rotation=
             rot_info[f"piece_{j:04d}"] = float(random_rotation_deg)
             rotated_piece_dict = rotate_piece(pieces[j], random_rotation_deg)
             pieces[j] = rotated_piece_dict
+            pieces[j]['rotation'] = random_rotation_deg
             # plt.subplot(122)
             # plt.title(f'rotation: {random_rotation_deg} degrees (@randomly_rotate_pieces)')
             # plt.imshow(pieces[j]['centered_image'])
@@ -219,6 +221,7 @@ def randomly_rotate_pieces(pieces, chances_to_be_rotated=0.3, possible_rotation=
             # pdb.set_trace()
         else:
             rot_info[f"piece_{j:04d}"] = 0
+            pieces[j]['rotation'] = 0
         
     return pieces, rot_info
 

@@ -6,10 +6,11 @@ import argparse, os, json
 import matplotlib.pyplot as plt
 import numpy as np 
 from configs import folder_names as fnames
-from puzzle_utils.visualization import reconstruct_puzzle
-from puzzle_utils.pieces_utils import calc_parameters
+from puzzle_utils.visualization import reconstruct_puzzle_vis
+from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.shape_utils import prepare_pieces_v2
-import pdb 
+import pdb, os
+
 def main(args):
 
     if args.puzzle == '':  
@@ -29,18 +30,20 @@ def main(args):
             print("working on:", solution_folder)
             cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
             if os.path.exists(cmp_parameter_path):
-                print("never tested! remove this comment afterwars (line 21)")
+                ppars = CfgParameters()
                 with open(cmp_parameter_path, 'r') as cp:
-                    ppars = json.load(cmp_parameter_path)
+                    ppars_dict = json.load(cp)
+                for ppk in ppars_dict.keys():
+                    ppars[ppk] = ppars_dict[ppk]
             else:
                 pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, puzzle, verbose=True)
-                ppars = calc_parameters(img_parameters)
+                ppars = calc_parameters_v2(img_parameters)
             
             p_final_path = os.path.join(puzzle_root_folder, solution_folder, 'p_final.npy')
             p_final_voodoo_0darray = np.load(p_final_path, allow_pickle=True)
             p_final = p_final_voodoo_0darray.item()['p_final']
             pieces_folder = os.path.join(puzzle_root_folder, fnames.pieces_folder)
-            solution_drawing_pieces = reconstruct_puzzle(p_final, pieces_folder, ppars)
+            solution_drawing_pieces = reconstruct_puzzle_vis(p_final, pieces_folder, ppars)
             solution_drawing_pieces = np.clip(solution_drawing_pieces, 0, 1)
             rec_sol_path = os.path.join(puzzle_root_folder, solution_folder, 'sol_rec_from_p_final.jpg')
             plt.imsave(rec_sol_path, solution_drawing_pieces)

@@ -15,20 +15,25 @@ from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_sha
 import datetime
 import pdb 
 import time 
+import json 
 
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
-def initialization(R, anc):
+def initialization(R, anc, p_size=0):
     z0 = 0  # rotation for anchored patch
     # Initialize reconstruction plan
     no_grid_points = R.shape[0]
     no_patches = R.shape[3]
     no_rotations = R.shape[2]
 
-    Y = round(no_grid_points * 2 + 1) 
-    # Y = round(0.5 * (no_grid_points - 1) * (no_patches + 1) + 1)
-    X = Y
+    if p_size > 0:
+        Y = p_size 
+        X = Y 
+    else:
+        Y = round(no_grid_points * 2 + 1) 
+        # Y = round(0.5 * (no_grid_points - 1) * (no_patches + 1) + 1)
+        X = Y
     Z = no_rotations
 
     # initialize assignment matrix
@@ -61,6 +66,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1):
     all_anc = []
     Y, X, Z, noPatches = p.shape
 
+    # while not np.isclose(eps, 0)
     print("started solving..")
     while eps != 0 and iter < cfg.Tmax:
         if na_new > na:
@@ -186,10 +192,10 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, pieces, ppars, use_RGB=True):
             canvas_image += placed_piece['img']
 
     return canvas_image
-
+                    
 def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars):
     step = np.ceil(ppars.xy_step)
-    ang = 360 / Z
+    ang = ppars.theta_step # 360 / Z
     z_rot = np.arange(0, 360, ang)
     pos = fin_sol
     fin_im = np.zeros(((Y * step + (ppars.p_hs+1) * 2).astype(int), (X * step + (ppars.p_hs+1) * 2).astype(int), 3))
@@ -265,7 +271,22 @@ def main(args):
     print("-" * 50)
 
     pieces_dict, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
-    ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
+    puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, args.puzzle)
+    cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
+    if os.path.exists(cmp_parameter_path):
+        ppars = CfgParameters()
+        with open(cmp_parameter_path, 'r') as cp:
+            ppars_dict = json.load(cp)
+        for ppk in ppars_dict.keys():
+            ppars[ppk] = ppars_dict[ppk]
+    else:
+        print("\n" * 3)
+        print("/" * 70)
+        print("/\t***ERROR***\n/ compatibility_parameters.json not found!")
+        print("/" * 70)
+        print("\n" * 3)
+        ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
+    #ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
     if num_pieces < 1:
         output_root_folder = fnames.output_dir
@@ -285,7 +306,7 @@ def main(args):
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
-    print(pieces_files)
+    #print(pieces_files)
     pieces_excl = []
     # pieces_excl = np.array([3,4,7,8,11,15]);
     all_pieces = np.arange(len(pieces_files))
@@ -307,7 +328,7 @@ def main(args):
         anc = args.anchor
     print(f"Using anchor the piece with id: {anc}")
 
-    p_initial, init_pos, x0, y0, z0 = initialization(R, anc)  # (R, anc, anc_rot, nh, nw)
+    p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts)  # (R, anc, anc_rot, nh, nw)
     #print(p_initial.shape)
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity)
@@ -332,12 +353,10 @@ def main(args):
     fin_sol = all_sol[f-1]
     #pdb.set_trace()
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
-    fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
+    fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=True)
     # fin_im_v3 = reconstruct_puzzle_vis(fin_sol, pieces_folder, ppars, suffix='')
     # alternative method for reconstruction (with transparency on overlap becaus of b/w image)
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
-    final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
-    plt.imsave(final_solution_v2, fin_im_v2)
 
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')
@@ -347,6 +366,8 @@ def main(args):
     plt.tight_layout()
     plt.savefig(final_solution)
     plt.close()
+    final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
+    plt.imsave(final_solution_v2, fin_im_v2)
 
     f = len(all_anc)
     fin_sol = all_anc[f-1]
@@ -408,24 +429,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='........ ')  # add some description
     parser.add_argument('--dataset', type=str, default='synthetic_irregular_9_pieces_by_drawing_coloured_lines_peynrh', help='dataset folder')
     parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder')
-    # parser.add_argument('--type', type=str, default='irregular', help='puzzle type (regular or irregular)')
-    # parser.add_argument('--penalty', type=int, default=20, help='penalty value used')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation')  # LAP, LCI
     parser.add_argument('--pieces', type=int, default=0, help='number of pieces (per side)')
     parser.add_argument('--anchor', type=int, default=0, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=2, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
-    parser.add_argument('--few_rotations', type=int, default=1, help='uses only few rotations to make it faster')
+    parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
     parser.add_argument('--tfirst', type=int, default=1500, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
     parser.add_argument('--tnext', type=int, default=500, help='the step for multi-phase (each tnext reset)')
     parser.add_argument('--tmax', type=int, default=5000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.55, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
-    parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
-    parser.add_argument('--xy_grid_points', type=int, default=7, 
-        help='the number of points in the grid (for each axis, total number will be the square of what is given)')
-    parser.add_argument('--theta_step', type=int, default=90, help='degrees of each rotation')
-
+    parser.add_argument('--p_pts', type=int, default=0, help='the size of the p matrix (it will be p_pts x p_pts)')
     args = parser.parse_args()
 
     main(args)
