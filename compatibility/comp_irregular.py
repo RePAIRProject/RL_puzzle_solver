@@ -69,8 +69,11 @@ def main(args):
             ppars = CfgParameters()
             with open(cmp_parameter_path, 'r') as cp:
                 ppars_dict = json.load(cp)
+            print("-" * 50)
+            print('\COMPATIBILITY PARAMETERS')
             for ppk in ppars_dict.keys():
                 ppars[ppk] = ppars_dict[ppk]
+                print(f"{ppk}: {ppars[ppk]}")
         else:
             print("\n" * 3)
             print("/" * 70)
@@ -81,16 +84,15 @@ def main(args):
 
 
         line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
-        line_matching_parameters_path = os.path.join(puzzle_root_folder, 'line_matching_parameters.json')
-        with open(line_matching_parameters_path, 'w') as lmpj:
-            json.dump(line_matching_parameters, lmpj, indent=3)
-        print("saved json line matching  file")
-
         print("-" * 50)
         print('\tLINE MATCHING PARAMETERS')
         for cfg_key in line_matching_parameters.keys():
             print(f"{cfg_key}: {line_matching_parameters[cfg_key]}")
         print("-" * 50)
+        line_matching_parameters_path = os.path.join(puzzle_root_folder, 'line_matching_parameters.json')
+        with open(line_matching_parameters_path, 'w') as lmpj:
+            json.dump(line_matching_parameters, lmpj, indent=3)
+        print("saved json line matching  file")
 
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method)
 

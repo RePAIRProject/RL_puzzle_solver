@@ -149,13 +149,17 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         if save_extrapolated_regions is True:
             generator.save_extrapolated_regions(output_path)
 
+    # this is in shapely coordinates (x,y) and if we use in opencv/matplotlib we should invert order again
+    for piece in pieces:
+        piece['shift_global2square'] = piece['shift2center'][::-1] + piece['shift2square'][::-1]
+        piece['rotation'] = 0
     if rotate_pieces == True:
         # plt.subplot(121)
         # rand_num = 2
         # plt.imshow(pieces[rand_num]['squared_image'])
         # plt.plot(*(pieces[rand_num]['squared_polygon'].boundary.xy))
-        rotated_pieces, rotation_info = randomly_rotate_pieces(pieces, chances_to_be_rotated=0.4, possible_rotation=4)
-        save_rotation_info(rotation_info, output_path)
+        rotated_pieces, rotation_info_unused = randomly_rotate_pieces(pieces, chances_to_be_rotated=0.4, possible_rotation=4)
+        save_transformation_info(pieces, output_path)
         # plt.subplot(122)
         # print(rotation_info)
         # plt.title(f'rotation: {rotation_info[f"piece_{rand_num:04d}"]} degrees')
@@ -164,12 +168,23 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         # plt.show()
         # pdb.set_trace()
         return rotated_pieces, patch_size
+
+    save_transformation_info(pieces, output_path)
     # if we do not use rotation, we return the original pieces
     return pieces, patch_size
 
-def save_rotation_info(rotation_info, output_path):
-    with open(os.path.join(output_path, 'rotation_info.json'), 'w') as rij:
-        json.dump(rotation_info, rij, indent=3)
+def save_transformation_info(pieces, output_path):
+
+    transformation_dict = {}
+    for j in range(len(pieces)):
+        t = pieces[j]['shift_global2square'].tolist()
+        r = int(pieces[j]['rotation'])
+        transformation_dict[f"piece_{j:04d}"] = { 
+            "translation": t,
+            "rotation": r
+            }
+    with open(os.path.join(output_path, 'ground_truth.json'), 'w') as rij:
+        json.dump(transformation_dict, rij, indent=3)
 
 def rotate_piece(piece, rot_ang_deg):
     """
