@@ -92,7 +92,7 @@ def main(args):
         line_matching_parameters_path = os.path.join(puzzle_root_folder, 'line_matching_parameters.json')
         with open(line_matching_parameters_path, 'w') as lmpj:
             json.dump(line_matching_parameters, lmpj, indent=3)
-        print("saved json line matching  file")
+        print("saved json line matching file")
 
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method)
 
@@ -178,7 +178,11 @@ def main(args):
         # for jj in range(n):
         #     R_line[:, :, :, jj, jj] = -1
         print("-" * 50)
-        print(f"Compatibility for this puzzle took {(time.time()-time_start_puzzle):.02f} seconds")
+        time_in_seconds = time.time()-time_start_puzzle
+        if time_in_seconds > 100:
+            print(f"Compatibility for this puzzle took almost {(np.ceil(time_in_seconds / 60)):.0f} minutes")
+        else:
+            print(f"Compatibility for this puzzle took {time_in_seconds:.0f} seconds")
         print("-" * 50)
         # save output
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)

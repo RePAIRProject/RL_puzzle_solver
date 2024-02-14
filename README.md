@@ -262,6 +262,10 @@ sh solve_puzzle.sh
 
 Input and output path, respectively `data_path = 'data'` and `output_dir = 'output'` in the config file (`configs/folder_names.py`) are defined without the full path. If you run the scripts via terminal from the root folder, you should be fine. If you run from subfolders or use special settings, you can set these two accordingly.
 
+***Issues when importing `shapely`***
+
+If you get `ImportError: cannot import name 'transform' from 'shapely' (/home/lucap/miniconda3/lib/python3.9/site-packages/shapely/__init__.py)` then you probably have an old version of shapely. Updating it (I guess `pip install --update shapely` should be enough) usually solves the problem.
+
 # 5) Relevant publications
 Hopefully soon.
 

@@ -86,10 +86,13 @@ def main(args):
 
     
     if args.shape == 'pattern':
-        num_pieces_string = ''
+        folder_name = args.patterns_folder
+        if folder_name.find("/") > 0:
+            folder_name = folder_name.split("/")[-1]
+        descr_string = f"{folder_name}"
     else:
-        num_pieces_string = f'{args.num_pieces}_'
-    dataset_name = f"synthetic_{args.shape}_{num_pieces_string}pieces_by_drawing_coloured_lines_{randomword(6)}"
+        descr_string = f'{args.shape}_{args.num_pieces}'
+    dataset_name = f"synthetic_{descr_string}_pieces_by_drawing_coloured_lines_{randomword(6)}"
     data_folder = os.path.join(output_root_path, fnames.data_path, dataset_name)
     puzzle_folder = os.path.join(output_root_path, fnames.output_dir, dataset_name)
     parameter_path = os.path.join(puzzle_folder, 'parameters.json')

@@ -10,7 +10,7 @@ import configs.folder_names as fnames
 import argparse
 from compatibility.line_matching_NEW_segments import read_info
 #import configs.solver_cfg as cfg
-from puzzle_utils.pieces_utils import calc_parameters_v2
+from puzzle_utils.pieces_utils import calc_parameters_v2, crop_to_content
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, place_on_canvas
 import datetime
 import pdb 
@@ -264,13 +264,19 @@ def main(args):
     cfg['Tnext'] = args.tnext
     cfg['Tmax'] = args.tmax
     cfg['anc_fix_tresh'] = args.thresh
-    print('\tPARAMETERS')
+    cfg['p_matrix_shape'] = args.p_pts
+    print('\tSOLVER PARAMETERS')
     for cfg_key in cfg.keys():
         print(f"{cfg_key}: {cfg[cfg_key]}")
     print("-" * 50)
 
     pieces_dict, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
     puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, args.puzzle)
+    solver_patameters_path = os.path.join(puzzle_root_folder, 'solver_parameters.json')
+    with open(solver_patameters_path, 'w') as spj:
+        json.dump(cfg, spj, indent=3)
+    print("saved json solver parameters file")
+
     cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
     if os.path.exists(cmp_parameter_path):
         ppars = CfgParameters()
@@ -328,7 +334,11 @@ def main(args):
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity)
 
     print("-" * 50)
-    print(f"Solving this puzzle took {(time.time()-time_start_puzzle):.02f} seconds")
+    time_in_seconds = time.time()-time_start_puzzle
+    if time_in_seconds > 100:
+        print(f"Solving this puzzle took almost {(np.ceil(time_in_seconds / 60)):.0f} minutes")
+    else:
+        print(f"Solving this puzzle took {time_in_seconds:.0f} seconds")
     print("-" * 50)
 
     solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{method}_cost_{args.cmp_cost}_rot{args.few_rotations}')
@@ -347,7 +357,7 @@ def main(args):
     fin_sol = all_sol[f-1]
     #pdb.set_trace()
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
-    fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=True)
+    
     # fin_im_v3 = reconstruct_puzzle_vis(fin_sol, pieces_folder, ppars, suffix='')
     # alternative method for reconstruction (with transparency on overlap becaus of b/w image)
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
@@ -360,8 +370,13 @@ def main(args):
     plt.tight_layout()
     plt.savefig(final_solution)
     plt.close()
+
+    fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=True)
     final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
     plt.imsave(final_solution_v2, fin_im_v2)
+    fin_im_cropped = crop_to_content(fin_im_v2)
+    final_solution_v2_cropped = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap_cropped.png')
+    plt.imsave(final_solution_v2_cropped, fin_im_cropped)
 
     f = len(all_anc)
     fin_sol = all_anc[f-1]
