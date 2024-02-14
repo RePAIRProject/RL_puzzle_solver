@@ -373,6 +373,8 @@ def main(args):
 
     fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=True)
     final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
+    if np.max(fin_im_v2) > 1:
+        fin_im_v2 = np.clip(fin_im_v2, 0, 1)
     plt.imsave(final_solution_v2, fin_im_v2)
     fin_im_cropped = crop_to_content(fin_im_v2)
     final_solution_v2_cropped = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap_cropped.png')
