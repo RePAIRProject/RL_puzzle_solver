@@ -6,6 +6,8 @@ from puzzle_utils.puzzle_gen.generator import PuzzleGenerator
 from puzzle_utils.shape_utils import get_sd, get_mask, get_cm, shift_img
 import numpy as np
 from scipy.ndimage import rotate as rotate_img
+import math
+from scipy.spatial.distance import pdist
 
 import matplotlib.pyplot as plt
 
@@ -154,6 +156,15 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         piece['shift_global2square'] = piece['shift2center'][::-1] + piece['shift2square'][::-1]
         piece['rotation'] = 0
 
+    ### get optimal xy_grid from GT ###########
+    pos_mat = []
+    for j in range(len(pieces)):
+        t = pieces[j]['shift_global2square'].tolist()
+        pos_mat.append((t))
+    position_matrix = np.array(pos_mat)
+    save_grid_info(position_matrix, output_path)
+    ############################################
+
     if rotate_pieces == True:
         # plt.subplot(121)
         # rand_num = 2
@@ -172,6 +183,23 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
 
     # if we do not use rotation, we return the original pieces
     return pieces, patch_size
+
+def save_grid_info(position_matrix, output_path):
+
+    D = pdist(position_matrix, metric='euclidean')
+    D5 = (np.round(D / 5) * 5).astype(int)
+    xy_step = math.gcd(*D5)
+
+    xy_grid_points = (np.round(np.max(D) / xy_step) * 2 + 1).astype(int)
+    print(f"optimal xy_step = {xy_step} px.")
+    print(f"max distance = {xy_grid_points} px.")
+
+    xy_grid = {
+        "xy_step": int(xy_step),
+        "xy_grid_points": int(xy_grid_points)
+    }
+    with open(os.path.join(output_path, 'xy_grid.json'), 'w') as rij:
+        json.dump(xy_grid, rij, indent=2)
 
 def save_transformation_info(pieces, output_path):
 
