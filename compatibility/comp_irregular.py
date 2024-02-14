@@ -70,7 +70,7 @@ def main(args):
             with open(cmp_parameter_path, 'r') as cp:
                 ppars_dict = json.load(cp)
             print("-" * 50)
-            print('\COMPATIBILITY PARAMETERS')
+            print('\tCOMPATIBILITY PARAMETERS')
             for ppk in ppars_dict.keys():
                 ppars[ppk] = ppars_dict[ppk]
                 print(f"{ppk}: {ppars[ppk]}")

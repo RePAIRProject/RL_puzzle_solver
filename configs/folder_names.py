@@ -17,3 +17,7 @@ edge_maps_folder = 'edge_maps'
 masks_folder = 'masks'
 polygons_folder = 'polygons'
 
+# 
+ref_image = 'image_scaled'
+ground_truth = 'ground_truth'
+

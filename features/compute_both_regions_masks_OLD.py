@@ -142,20 +142,7 @@ def main(args):
             save_vis(RM_shapes, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_shapes_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"borders {puzzle}", all_rotation=False)
         print(f'Done with {puzzle}\n')
 
-if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Computing compatibility matrix')
-    parser.add_argument('--dataset', type=str, default='', help='dataset (name of the folders)')
-    parser.add_argument('--puzzle', type=str, default='', help='puzzle to work on - leave empty to generate for the whole dataset')
-    parser.add_argument('--method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
-    parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
-    parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
-    parser.add_argument('-np', '--num_pieces', type=int, default=0, help='number of pieces (per side) - use 0 (default value) for synthetic pieces')  # 8
-    parser.add_argument('--xy', type=int, default=101, help='xy size of the compatibility')
-    parser.add_argument('--theta', type=int, default=1, help='theta size of the compatibility')
-    parser.add_argument('--use_colors', type=bool, default=True, help='use colors of lines')
-    args = parser.parse_args()
-    main(args)
 
 
 # % MASKs of pairs of fragments

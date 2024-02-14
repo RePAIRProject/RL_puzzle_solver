@@ -153,13 +153,14 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
     for piece in pieces:
         piece['shift_global2square'] = piece['shift2center'][::-1] + piece['shift2square'][::-1]
         piece['rotation'] = 0
+
     if rotate_pieces == True:
         # plt.subplot(121)
         # rand_num = 2
         # plt.imshow(pieces[rand_num]['squared_image'])
         # plt.plot(*(pieces[rand_num]['squared_polygon'].boundary.xy))
         rotated_pieces, rotation_info_unused = randomly_rotate_pieces(pieces, chances_to_be_rotated=0.4, possible_rotation=4)
-        save_transformation_info(pieces, output_path)
+
         # plt.subplot(122)
         # print(rotation_info)
         # plt.title(f'rotation: {rotation_info[f"piece_{rand_num:04d}"]} degrees')
@@ -169,7 +170,6 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         # pdb.set_trace()
         return rotated_pieces, patch_size
 
-    save_transformation_info(pieces, output_path)
     # if we do not use rotation, we return the original pieces
     return pieces, patch_size
 
@@ -178,12 +178,12 @@ def save_transformation_info(pieces, output_path):
     transformation_dict = {}
     for j in range(len(pieces)):
         t = pieces[j]['shift_global2square'].tolist()
-        r = int(pieces[j]['rotation'])
+        r = -int(pieces[j]['rotation'])
         transformation_dict[f"piece_{j:04d}"] = { 
             "translation": t,
             "rotation": r
             }
-    with open(os.path.join(output_path, 'ground_truth.json'), 'w') as rij:
+    with open(output_path, 'w') as rij:
         json.dump(transformation_dict, rij, indent=3)
 
 def rotate_piece(piece, rot_ang_deg):
@@ -282,3 +282,35 @@ def read_pieces(fnames, puzzle_name):
         piece_d['id'] = piece_name[:9]
         pieces.append(piece_d)
     return pieces
+
+
+def place_at(piece, canvas, location):
+    
+    assert(np.max(location) < np.max(canvas.shape)), f"location ({location}) is out of the canvas ({canvas.shape})"
+    assert(np.min(location) >= 0), f"location ({location}) has negative values"
+    assert(piece.shape[0] == piece.shape[1]), "we were using squared fragments! the piece is not squared (shape {piece.shape}). What happened?"
+    p_hs = piece.shape[0] // 2
+    x0 = location[0] - p_hs 
+    x1 = location[0] + p_hs
+    y0 = location[1] - p_hs 
+    y1 = location[1] + p_hs
+    all_fine = True
+    if x0 < 0 or x1 > canvas.shape[0]:
+        print(f"error on the x axis (trying to place between {x0} and {x1}, with canvas going from 0 to {canvas.shape[0]})")
+        all_fine = False
+    if y0 < 0 or y1 > canvas.shape[1]:
+        print(f"error on the y axis (trying to place between {y0} and {y1}, with canvas going from 0 to {canvas.shape[1]})")
+        all_fine = False
+    if all_fine == True:
+        # this inverted because opencv use y,x
+        canvas[y0:y1, x0:x1, :] += piece
+    return canvas
+
+def crop_to_content(image, padding=1):
+
+    x0 = np.min(np.where(image > 0)[1]) - padding
+    x1 = np.max(np.where(image > 0)[1]) + padding
+    y0 = np.min(np.where(image > 0)[0]) - padding
+    y1 = np.max(np.where(image > 0)[0]) + padding
+
+    return image[y0:y1, x0:x1, :]

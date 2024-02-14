@@ -101,11 +101,11 @@ def create_random_coloured_image(line_type, num_lines, width, height, is_closed 
 
     all_lines = np.zeros((num_lines, 7))
     if num_colors == 1:
-        colors = [[0, 0, 0]]
+        colors = [[0, 0, 255]]
     elif num_colors == 3:
         colors = [[0, 255, 0], [255, 0, 0], [0, 0, 255]]
     elif num_colors == 5:
-        colors = [[0, 0, 0], [0, 255, 0], [255, 0, 0], [0, 0, 255], [0, 150, 150]]
+        colors = [[150, 0, 150], [0, 255, 0], [255, 0, 0], [0, 0, 255], [0, 150, 150]]
     else:
         print("\nWrong number of colors. Right now it can be one of: [1, 3, 5] only!\nUsing only one color\n")
         colors = [[0, 0, 0]]

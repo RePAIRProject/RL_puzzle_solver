@@ -202,6 +202,12 @@ At the moment we have some issues, still work in progress
 python solver/solver_irregular.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00005_wireframe_00190925 --method deeplsd --anchor 5 --pieces 0 --penalty 40
 ```
 
+### ! Script for full pipeline (given you have a puzzle in a dataset)
+```bash
+sh scripts/synth_puzzle_pipeline.sh synthetic_irregular_9_pieces_by_drawing_coloured_lines_jqdmhs image_00000 exact 10 31 90 LCI 1 24 5 600 300 1500 111
+```
+This may be very hard to read, but under the hood just runs the same command from step 3 to 5 passing the parameters (open the file for more info)
+
 
 | :exclamation:  These commands may be slightly outdated! Some things may change!  |
 |-----------------------------------------|

@@ -50,6 +50,9 @@ def extract_from(lines_dict, use_colors=False):
     else:
         return angles, dists, p1s, p2s, []
 
+"""
+THIS IS JUST IF WE NEED TO DEBUG IT!
+###
 def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars, poly_l):
     # check if line crosses the polygon
     # z_p1 = [0,0],  z_l2 = z,
@@ -107,6 +110,32 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars, pol
         plt.show()
         pdb.set_trace()
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
+"""
+
+def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
+    # check if line crosses the polygon
+    # z_p1 = [0,0],  z_l2 = z,
+    # z_p2 = z,   z_l1 = [0,0],
+    intersections = []
+    useful_lines_s1 = []
+    useful_lines_s2 = []
+    piece_j_shape = poly_p.tolist() #shapely.polygons(poly_p)
+    piece_j_rotate = rotate(piece_j_shape, theta_p, origin=[pars.p_hs, pars.p_hs])
+    piece_j_trans = transform(piece_j_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_p)
+
+    for (p1, p2) in zip(s1, s2):
+        candidate_line_shapely0 = shapely.LineString((p1, p2))
+        candidate_line_rotate = rotate(candidate_line_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
+        candidate_line_trans = transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
+        # append to the useful lines
+        useful_lines_s1.append(np.array(candidate_line_trans.coords)[0])
+        useful_lines_s2.append(np.array(candidate_line_trans.coords)[-1])
+        if shapely.is_empty(shapely.intersection(candidate_line_trans, piece_j_trans.boundary.buffer(pars.border_tolerance))):
+            intersections.append(False)
+        else:
+            intersections.append(True)
+
+    return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
 
 
 def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, lmp, mask_ij, pars, verbosity=1):
@@ -127,7 +156,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                 if valid_point > 0:
                     #print([iy, ix, t])
                     # check if line1 crosses the polygon2                  
-                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0], 0, s11, s12, pars, poly1)
+                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0], 0, s11, s12, pars)
 
                     # return intersections                    
                     useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
@@ -136,7 +165,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                     useful_lines_s12 = useful_lines_s12[intersections1]
 
                     # check if line2 crosses the polygon1
-                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, s21, s22, pars, poly2)
+                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, s21, s22, pars)
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
 
                     useful_lines_color2 = color2[intersections2]

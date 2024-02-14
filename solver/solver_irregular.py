@@ -247,7 +247,6 @@ def main(args):
     dataset_name = args.dataset
     puzzle_name = args.puzzle
     method = args.det_method
-    num_pieces = args.pieces
 
     print()
     print("-" * 50)
@@ -288,20 +287,15 @@ def main(args):
         ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
     #ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
-    if num_pieces < 1:
-        output_root_folder = fnames.output_dir
-    else:
-        output_root_folder = f"{fnames.output_dir}_{num_pieces}x{num_pieces}"
-
     if args.cmp_cost =='LAP':
-        # mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name,fnames.cm_output_name, f'CM_lines_{method}.mat'))
-        mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
+        # mat = loadmat(os.path.join(puzzle_root_folder,fnames.cm_output_name, f'CM_lines_{method}.mat'))
+        mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
     else:
-        mat = loadmat(os.path.join(output_root_folder, dataset_name, puzzle_name, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
-    pieces_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.pieces_folder}")
+        mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
+    pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.pieces_folder}")
 
-    only_lines_pieces_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.lines_output_name}", method, 'lines_only')
-    detect_output = os.path.join(output_root_folder, dataset_name, puzzle_name, f"{fnames.lines_output_name}", method)
+    only_lines_pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.lines_output_name}", method, 'lines_only')
+    detect_output = os.path.join(puzzle_root_folder, f"{fnames.lines_output_name}", method)
     R = mat['R_line']
 
     pieces_files = os.listdir(pieces_folder)
@@ -337,7 +331,7 @@ def main(args):
     print(f"Solving this puzzle took {(time.time()-time_start_puzzle):.02f} seconds")
     print("-" * 50)
 
-    solution_folder = os.path.join(output_root_folder, dataset_name, puzzle_name, f'{fnames.solution_folder_name}_anchor{anc}_{method}_cost_{args.cmp_cost}_rot{args.few_rotations}')
+    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{method}_cost_{args.cmp_cost}_rot{args.few_rotations}')
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
 
@@ -431,7 +425,6 @@ if __name__ == '__main__':
     parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation')  # LAP, LCI
-    parser.add_argument('--pieces', type=int, default=0, help='number of pieces (per side)')
     parser.add_argument('--anchor', type=int, default=0, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=2, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')

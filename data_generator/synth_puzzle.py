@@ -4,10 +4,11 @@ from shapely.affinity import rotate
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from configs import folder_names as fnames
 # import helper functions
 from puzzle_utils.dataset_gen import generate_random_point, create_random_coloured_image
 from puzzle_utils.lines_ops import line_cart2pol
-from puzzle_utils.pieces_utils import cut_into_pieces
+from puzzle_utils.pieces_utils import cut_into_pieces, save_transformation_info
 from puzzle_utils.shape_utils import process_region_map
 import random, string
 
@@ -89,8 +90,8 @@ def main(args):
     else:
         num_pieces_string = f'{args.num_pieces}_'
     dataset_name = f"synthetic_{args.shape}_{num_pieces_string}pieces_by_drawing_coloured_lines_{randomword(6)}"
-    data_folder = os.path.join(output_root_path, 'data', dataset_name)
-    puzzle_folder = os.path.join(output_root_path, 'output', dataset_name)
+    data_folder = os.path.join(output_root_path, fnames.data_path, dataset_name)
+    puzzle_folder = os.path.join(output_root_path, fnames.output_dir, dataset_name)
     parameter_path = os.path.join(puzzle_folder, 'parameters.json')
     os.makedirs(data_folder, exist_ok=True)
     os.makedirs(puzzle_folder, exist_ok=True)
@@ -139,16 +140,16 @@ def main(args):
         puzzle_name = f'image_{N:05d}'
         print(puzzle_name)
         single_image_folder = os.path.join(puzzle_folder, f'image_{N:05d}')
-        scaled_image_folder = os.path.join(single_image_folder, 'image_scaled')
+        scaled_image_folder = os.path.join(single_image_folder, fnames.ref_image)
         os.makedirs(scaled_image_folder, exist_ok=True)
         cv2.imwrite(os.path.join(scaled_image_folder, f"output_image_{N:05d}.png"), img)
-        pieces_single_folder = os.path.join(single_image_folder, 'pieces')
+        pieces_single_folder = os.path.join(single_image_folder, fnames.pieces_folder)
         os.makedirs(pieces_single_folder, exist_ok=True)
-        masks_single_folder = os.path.join(single_image_folder, 'masks')
+        masks_single_folder = os.path.join(single_image_folder, fnames.masks_folder)
         os.makedirs(masks_single_folder, exist_ok=True)
-        poly_single_folder = os.path.join(single_image_folder, 'polygons')
+        poly_single_folder = os.path.join(single_image_folder, fnames.polygons_folder)
         os.makedirs(poly_single_folder, exist_ok=True)
-        lines_output_folder = os.path.join(single_image_folder, 'lines_detection', 'exact')
+        lines_output_folder = os.path.join(single_image_folder, fnames.lines_output_name, 'exact')
         os.makedirs(lines_output_folder, exist_ok=True)
             
         # this gives us the pieces
@@ -157,6 +158,9 @@ def main(args):
         else:
             pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation)
         
+        ground_truth_path = os.path.join(single_image_folder, f"{fnames.ground_truth}.json")
+        save_transformation_info(pieces, ground_truth_path)
+
         for j, piece in enumerate(pieces):
             ## save patch
             cv2.imwrite(os.path.join(pieces_single_folder, f"piece_{j:04d}.png"), piece['squared_image'])
