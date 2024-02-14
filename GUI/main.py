@@ -8,8 +8,8 @@ from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.core.window import Window
-from kivy.uix. behaviors import DragBehavior
-
+from kivy.uix.behaviors import DragBehavior
+from kivy.uix.scatter import Scatter
 
 import json
 
@@ -21,10 +21,12 @@ image_numbers = []
 file_names = []
 scores = []
 Window.clearcolor = (0, 0, 0)
+
+
 # Window.fullscreen = 'auto'
 
 
-Window.borderless = True
+# Window.borderless = True
 # Window.background_color = (1, 1, 1)
 
 
@@ -57,10 +59,10 @@ def json_reader(file):
         scores.append(score)
 
 
-def image_reader(image_number):
+def image_reader(image_number, score):
     source = "Images/top10/" + file_names[image_number]
-    image = MovableImage(click_label)
-    image.source = source
+    image = MovableImage(source, click_label, score, image_number)
+    # image.source = source
     return image
 
 
@@ -80,13 +82,23 @@ class Image(Image):
 click_label = Label()
 
 
+class MainLayout(GridLayout):
+    def __init__(self):
+        super().__init__()
+
+    # def on_touch_down(self, touch):
+    #     # print('Released split1_bottom bar')
+    #     print('Y value = %d' % touch.y)
+    #     print('X value = %d' % touch.x)
+    #     # self.label.text = str(self.image_number + 1)
+
+
 class GUIApp(App):
     def build(self):
-
-        main_layout = GridLayout()
+        main_layout = MainLayout()
         main_layout.cols = 1
         main_layout.rows = 2
-        
+
         # main_layout.size_hint = (1, 1)
         main_layout.minimum_height = 1
 
@@ -105,20 +117,13 @@ class GUIApp(App):
 
         # grid_layout.add_widget(click_label)
         for i in range(len(image_numbers)):
-            inside_layout = GridLayout()
-            inside_layout.cols = 1
-            inside_layout.rows = 2
             score_label = Label()
             buttons.append(score_label)
             score_label.text = str(scores[i])
 
-            image = image_reader(i)
-            image.image_number = i
+            image = image_reader(i, scores[i])
 
-            inside_layout.add_widget(image)
-            inside_layout.add_widget(score_label)
-
-            grid_layout.add_widget(inside_layout)
+            grid_layout.add_widget(image.get_grid())
 
         # for i in range(10):
         #     button = Button()
