@@ -104,8 +104,8 @@ def main(args):
                         #     border_dilation=int(ppars.borders_regions_width_outside*ppars.xy_step), 
                         #     border_erosion=int(ppars.borders_regions_width_inside*ppars.xy_step))
                         around_borders_trm = get_borders_around(thresholded_regions_map.astype(np.uint8), 
-                            border_dilation=int(ppars.borders_regions_width_outside*ppars.xy_grid_points), 
-                            border_erosion=int(ppars.borders_regions_width_inside*ppars.xy_grid_points))
+                            border_dilation=int(ppars.borders_regions_width_outside*ppars.xy_step),
+                            border_erosion=int(ppars.borders_regions_width_inside*ppars.xy_step))
                         thresholded_regions_map += 2*(around_borders_trm > 0)
                         thresholded_regions_map = np.clip(thresholded_regions_map, -1, 1)
                         binary_overlap_lines = (overlap_lines > ppars.threshold_overlap_lines).astype(np.int32)
