@@ -120,7 +120,7 @@ class GestureHistoryManager(GridLayout):
 
     def add_recognizer_result(self, result, *l):
         '''The result object is a ProgressTracker with additional
-        data; in main.py it is tagged with the original GestureContainer
+        data; in User_Interface.py it is tagged with the original GestureContainer
         that was analyzed (._gesture_obj)'''
 
         # Create a GestureVisualizer that draws the gesture on canvas

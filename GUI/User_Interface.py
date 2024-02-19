@@ -10,6 +10,8 @@ from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.uix.behaviors import DragBehavior
 from kivy.uix.scatter import Scatter
+from select_anchor_RePAIR import get_backend_path
+from select_anchor_RePAIR import select_anchor
 
 import json
 
@@ -59,8 +61,10 @@ def json_reader(file):
         scores.append(score)
 
 
+# backEnd_path = "Images/RePAIR_plaque_2/top10/"
+
 def image_reader(image_number, score):
-    source = "Images/top10/" + file_names[image_number]
+    source = backEnd_path + "top10/" + file_names[image_number]
     image = MovableImage(source, click_label, score, image_number)
     # image.source = source
     return image
@@ -138,6 +142,10 @@ class GUIApp(App):
 
 
 if __name__ == '__main__':
-    path = "Images/top10/top_10_fragments.json"
+    sorted_image_scores = select_anchor()
+    print(sorted_image_scores)
+    # path = backEnd_path + "top_10_fragments.json"
+    backEnd_path = get_backend_path()
+    path = "top_10_fragments.json"
     json_reader(path)
     GUIApp().run()

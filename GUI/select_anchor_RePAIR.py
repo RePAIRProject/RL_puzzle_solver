@@ -128,6 +128,7 @@ def detect_perpendicular_lines(img, fg_mask, band_width, existing_lines, min_lin
         perpendicular_lines = 1
     return perpendicular_lines
 
+
 def are_lines_close(rho1, theta1, rho2, theta2, existing_lines, min_distance):
     for (rho, theta) in existing_lines:
         distance = np.abs(rho - rho1) + np.abs(theta - theta1) + np.abs(rho - rho2) + np.abs(theta - theta2)
@@ -194,8 +195,10 @@ def display_detected_key_fragments(sorted_image_scores, image_scores, images_wit
     plt.tight_layout()
     plt.show()
 
-def main(args):
 
+def select_anchor():
+
+    args = get_args()
     plt.close('all')
     band_width = 100  # Adjust the width of the band as needed
     nmb_frag = 10
@@ -240,7 +243,6 @@ def main(args):
         elif (check_color == 1 and check_corner == 0):
             final_score = color_variation_count
 
-
         print(f'Number of non-zero bins in color histogram: {color_variation_count}')
         print(f'Number of perpendicular lines: {perpendicular_lines_count}')
         print(f'Final Score: {final_score}')
@@ -248,35 +250,17 @@ def main(args):
         # Append image name and score to the list
         image_scores.append((img_name, final_score))
 
-
-        ##-----------------------------------------------------------------------------------------------------------##
-        ## FOLLOWING CODE IS FOR VISUALIZING THE BOUNDARY BAND OF THE FRAGMENT, WHERE COLOR VARIATION WAS COMPUTED FROM
-        # Find contours of the foreground mask
-        contours, _ = cv2.findContours(fg_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        # Create an empty mask for the border
-        border_mask = np.zeros_like(fg_img)
-
-        # Draw the border inside the fragment region
-        for contour in contours:
-            cv2.drawContours(border_mask, [contour], 0, 255, thickness=band_width)
-
-        # Apply the border mask to the original image
-        img_with_border = cv2.bitwise_and(rgb_image, rgb_image, mask=border_mask)
-
-        # Append image with border to the list
-        images_with_borders.append(img_with_border)
-        ##-----------------------------------------------------------------------------------------------------------##
+        # commented and added to a method for later use
+        # init_visualization(band_width, fg_img, images_with_borders, rgb_image)
 
         # Sort image scores based on color variation count
     sorted_image_scores = sorted(image_scores, key=lambda x: x[1], reverse=True)
-
 
     # Select the top 10 fragments
     top_10_fragments = sorted_image_scores[:10]
 
     # Display user interface and get selected fragments
-    #selected_fragments = create_user_interface(top_10_fragments, images_with_borders, imgs_names)
+    # selected_fragments = create_user_interface(top_10_fragments, images_with_borders, imgs_names)
 
 
     #******** OMID, you can close this part and use the sorted scores directly **********************#
@@ -297,18 +281,46 @@ def main(args):
 
     # Display user interface and get selected fragments
     #selected_fragments = create_user_interface(image_scores, images_with_borders, imgs_names)
-
+    return sorted_image_scores
 
     ##-----------------------------------------------------------------------------------------------------------##
     ## DISPLAY THE DETECTED KEY FRAGMENTS
-    display_detected_key_fragments(sorted_image_scores, image_scores, images_with_borders, images_folder, imgs_names, nmb_frag)
+    # display_detected_key_fragments(sorted_image_scores, image_scores, images_with_borders, images_folder, imgs_names, nmb_frag)
 
 
-if __name__ == '__main__':
+def init_visualization(band_width, fg_img, images_with_borders, rgb_image):
+    ##-----------------------------------------------------------------------------------------------------------##
+    ## FOLLOWING CODE IS FOR VISUALIZING THE BOUNDARY BAND OF THE FRAGMENT, WHERE COLOR VARIATION WAS COMPUTED FROM
+    # Find contours of the foreground mask
+    contours, _ = cv2.findContours(fg_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Create an empty mask for the border
+    border_mask = np.zeros_like(fg_img)
+    # Draw the border inside the fragment region
+    for contour in contours:
+        cv2.drawContours(border_mask, [contour], 0, 255, thickness=band_width)
+    # Apply the border mask to the original image
+    img_with_border = cv2.bitwise_and(rgb_image, rgb_image, mask=border_mask)
+    # Append image with border to the list
+    images_with_borders.append(img_with_border)
+    ##-----------------------------------------------------------------------------------------------------------##
 
+
+backEnd_path = "Images/RePAIR_plaque_2/"
+
+
+def get_backend_path():
+    return backEnd_path
+
+
+def get_args():
     parser = argparse.ArgumentParser(description='Select anchor / key fragment')
-    parser.add_argument('-d', '--dataset', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/RGBA_merged', help='data folder')
-    parser.add_argument('-f', '--fg_mask', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/FG_merged', help='data folder')
-
-    args = parser.parse_args()
-    main(args)
+    # parser.add_argument('-d', '--dataset', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/RGBA_merged', help='data folder')
+    parser.add_argument('-d', '--dataset', type=str,
+                        default=backEnd_path + 'RGBA_merged',
+                        help='data folder')
+    # parser.add_argument('-f', '--fg_mask', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/FG_merged', help='data folder')
+    parser.add_argument('-f', '--fg_mask', type=str,
+                        default=backEnd_path + 'FG_merged',
+                        help='data folder')
+    answer = parser.parse_args()
+    return answer

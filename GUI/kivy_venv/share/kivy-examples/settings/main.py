@@ -84,7 +84,7 @@ class MyApp(App):
         """
         Respond to changes in the configuration.
         """
-        Logger.info("main.py: App.on_config_change: {0}, {1}, {2}, {3}".format(
+        Logger.info("User_Interface.py: App.on_config_change: {0}, {1}, {2}, {3}".format(
             config, section, key, value))
 
         if section == "My Label":
@@ -97,7 +97,7 @@ class MyApp(App):
         """
         The settings panel has been closed.
         """
-        Logger.info("main.py: App.close_settings: {0}".format(settings))
+        Logger.info("User_Interface.py: App.close_settings: {0}".format(settings))
         super(MyApp, self).close_settings(settings)
 
 
@@ -111,11 +111,11 @@ class MySettingsWithTabbedPanel(SettingsWithTabbedPanel):
     change the behavior or appearance of an existing Settings class.
     """
     def on_close(self):
-        Logger.info("main.py: MySettingsWithTabbedPanel.on_close")
+        Logger.info("User_Interface.py: MySettingsWithTabbedPanel.on_close")
 
     def on_config_change(self, config, section, key, value):
         Logger.info(
-            "main.py: MySettingsWithTabbedPanel.on_config_change: "
+            "User_Interface.py: MySettingsWithTabbedPanel.on_config_change: "
             "{0}, {1}, {2}, {3}".format(config, section, key, value))
 
 
