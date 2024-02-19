@@ -124,41 +124,51 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
     piece_j_trans = transform(piece_j_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_p)
 
     for (p1, p2) in zip(s1, s2):
+        
         candidate_line_shapely0 = shapely.LineString((p1, p2))
         candidate_line_rotate = rotate(candidate_line_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
         candidate_line_trans = transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
+        
         # append to the useful lines
-        useful_lines_s1.append(np.array(candidate_line_trans.coords)[0])
-        useful_lines_s2.append(np.array(candidate_line_trans.coords)[-1])
+        ps1 = np.array(candidate_line_trans.coords)[0]
+        ps2 = np.array(candidate_line_trans.coords)[-1]
+        useful_lines_s1.append(ps1)
+        useful_lines_s2.append(ps2)
 
-        dist_centers = distance.euclidean(z_p,z_l)
-        candidate_poly_l_shapely0 =poly_l.tolist()
-        candidate_poly_l_rotate = rotate(candidate_poly_l_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
-        candidate_poly_l_trans = transform(candidate_poly_l_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
-
-
-        candidate_line_extrap = getExtrapoledLine(candidate_line_trans, dist_centers, candidate_poly_l_trans, pars.border_tolerance)
-
-        plt.plot(*piece_j_trans.boundary.xy)
-        plt.plot(*candidate_poly_l_trans.boundary.xy)
-        plt.plot(*candidate_line_trans.xy, linewidth=5, color="red")
-        plt.plot(*candidate_line_extrap.xy, linewidth=2, color="blue")
-        plt.show()
-
-        if shapely.is_empty(shapely.intersection(candidate_line_extrap, piece_j_trans.boundary)):
+        if np.isclose(distance.euclidean(ps1, ps2), 0):
             intersections.append(False)
+            print("point/line")
         else:
-            intersections.append(True)
+            dist_centers = distance.euclidean(z_p,z_l)
+            candidate_poly_l_shapely0 = poly_l.tolist()
+            candidate_poly_l_rotate = rotate(candidate_poly_l_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
+            candidate_poly_l_trans = transform(candidate_poly_l_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
+
+
+            candidate_line_extrap = getExtrapoledLine(candidate_line_trans, dist_centers, candidate_poly_l_trans, pars.border_tolerance)
+
+            # plt.plot(*piece_j_trans.boundary.xy)
+            # plt.plot(*candidate_poly_l_trans.boundary.xy)
+            # plt.plot(*candidate_line_trans.xy, linewidth=5, color="red")
+            # plt.plot(*candidate_line_extrap.xy, linewidth=2, color="blue")
+            # plt.show()
+
+            if shapely.is_empty(shapely.intersection(candidate_line_extrap, piece_j_trans.boundary)):
+                intersections.append(False)
+            else:
+                intersections.append(True)
 
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
 
 def getExtrapoledLine(line, dist, poly, border_tolerance):
 
     'Creates a line extrapoled in p1->p2 direction'
-    p1 = [line.xy[0][0], line.xy[1][0]]
-    p2 = [line.xy[0][1], line.xy[1][1]]
+    p1 = line.coords[0]
+    p2 = line.coords[1]
 
     line_importance = distance.euclidean(p1, p2)
+    if np.isclose(line_importance, 0):
+        pdb.set_trace()
     dist_ratio = dist / line_importance
     if line_importance < border_tolerance*2:
         dist_ratio*=0.1
@@ -192,7 +202,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                 z = z_id[iy, ix]            # ??? [iy,ix] ??? strange...
                 valid_point = mask_ij[iy, ix, t]
                 if valid_point > 0:
-                    #print([iy, ix, t])
+                    # print([iy, ix, t])
                     # check if line1 crosses the polygon2                  
                     intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0],  0, poly1, s11, s12, pars)
 

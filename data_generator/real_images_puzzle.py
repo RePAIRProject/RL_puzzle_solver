@@ -175,5 +175,8 @@ if __name__ == '__main__':
     parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces the images')
     parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['regular', 'irregular'])
     parser.add_argument('-r', '--rescale', type=int, default=300, help='rescale the largest of the two axis to this number (default 1000) to avoid large puzzles.')
+    parser.add_argument('-sv', "--save_visualization", help="Use it to create visualization", action="store_true")
+    parser.add_argument('-noR', "--do_not_rotate", help="Use it to disable rotation!", action="store_true")
+    parser.add_argument('-extr', "--extrapolation", help="Use it to create an extrapolated version of each fragment", action="store_true")
     args = parser.parse_args()
     main(args)
