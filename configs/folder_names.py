@@ -1,6 +1,6 @@
 ### FOLDERS
 data_path = 'data'
-output_dir = 'output'
+output_dir = '../output'
 cm_output_name = 'compatibility_matrix'
 rm_output_name = 'regions_matrix'
 segm_output_name = 'motif_segmentation'
