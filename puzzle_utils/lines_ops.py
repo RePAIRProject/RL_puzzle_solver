@@ -21,7 +21,12 @@ class CfgParameters(dict):
 def calc_line_matching_parameters(parameters, cmp_cost='new'):
     lm_pars = CfgParameters()
     lm_pars['thr_coef'] = 0.08
-    lm_pars['max_dist'] = 0.70*parameters.xy_step ## changed *0.7
+    #lm_pars['max_dist'] = 0.70*parameters.xy_step ## changed *0.7
+    if (parameters.xy_step)>6:
+        lm_pars['max_dist'] = 6   ## changed *0.7*parameters.xy_step
+    else:
+        lm_pars['max_dist'] = 0.70*(parameters.xy_step)
+
     lm_pars['badmatch_penalty'] = lm_pars['max_dist'] * 5 / 3 # parameters.piece_size / 3 #?
     lm_pars['mismatch_penalty'] = lm_pars['max_dist'] * 4 / 3 # parameters.piece_size / 4 #?
     lm_pars['rmax'] = lm_pars['max_dist'] * 7 / 6
