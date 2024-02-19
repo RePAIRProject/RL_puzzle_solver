@@ -112,7 +112,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars, pol
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
 """
 
-def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
+def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, pars):
     # check if line crosses the polygon
     # z_p1 = [0,0],  z_l2 = z,
     # z_p2 = z,   z_l1 = [0,0],
@@ -130,12 +130,50 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars):
         # append to the useful lines
         useful_lines_s1.append(np.array(candidate_line_trans.coords)[0])
         useful_lines_s2.append(np.array(candidate_line_trans.coords)[-1])
-        if shapely.is_empty(shapely.intersection(candidate_line_trans, piece_j_trans.boundary.buffer(pars.border_tolerance))):
+
+        dist_centers = distance.euclidean(z_p,z_l)
+        candidate_poly_l_shapely0 =poly_l.tolist()
+        candidate_poly_l_rotate = rotate(candidate_poly_l_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
+        candidate_poly_l_trans = transform(candidate_poly_l_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
+
+
+        candidate_line_extrap = getExtrapoledLine(candidate_line_trans, dist_centers, candidate_poly_l_trans, pars.border_tolerance)
+
+        plt.plot(*piece_j_trans.boundary.xy)
+        plt.plot(*candidate_poly_l_trans.boundary.xy)
+        plt.plot(*candidate_line_trans.xy, linewidth=5, color="red")
+        plt.plot(*candidate_line_extrap.xy, linewidth=2, color="blue")
+        plt.show()
+
+        if shapely.is_empty(shapely.intersection(candidate_line_extrap, piece_j_trans.boundary)):
             intersections.append(False)
         else:
             intersections.append(True)
 
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
+
+def getExtrapoledLine(line, dist, poly, border_tolerance):
+
+    'Creates a line extrapoled in p1->p2 direction'
+    p1 = [line.xy[0][0], line.xy[1][0]]
+    p2 = [line.xy[0][1], line.xy[1][1]]
+
+    line_importance = distance.euclidean(p1, p2)
+    dist_ratio = dist / line_importance
+    if line_importance < border_tolerance*2:
+        dist_ratio*=0.1
+
+    if not shapely.is_empty(shapely.intersection(shapely.Point(p1), poly.boundary.buffer(border_tolerance))):
+        a = (p2[0]+dist_ratio*(p1[0]-p2[0]), p2[1]+dist_ratio*(p1[1]-p2[1]))
+    else:
+        a = p1
+
+    if not shapely.is_empty(shapely.intersection(shapely.Point(p2), poly.boundary.buffer(border_tolerance))):
+        b = (p1[0]+dist_ratio*(p2[0]-p1[0]), p1[1]+dist_ratio*(p2[1]-p1[1]))
+    else:
+        b = p2
+
+    return shapely.LineString([a, b])
 
 
 def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, lmp, mask_ij, pars, verbosity=1):
@@ -156,7 +194,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                 if valid_point > 0:
                     #print([iy, ix, t])
                     # check if line1 crosses the polygon2                  
-                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0], 0, s11, s12, pars)
+                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0],  0, poly1, s11, s12, pars)
 
                     # return intersections                    
                     useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
@@ -165,7 +203,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                     useful_lines_s12 = useful_lines_s12[intersections1]
 
                     # check if line2 crosses the polygon1
-                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, s21, s22, pars)
+                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, poly2, s21, s22, pars)
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
 
                     useful_lines_color2 = color2[intersections2]
@@ -249,7 +287,7 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                 if valid_point > 0:
                     # check if line1 crosses the polygon2
                     intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2,
-                                                                                                [0, 0], 0, s11, s12,
+                                                                                                [0, 0], 0, poly1, s11, s12,
                                                                                                 pars)
                     # return intersections
                     useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
@@ -259,7 +297,7 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
 
                     # check if line2 crosses the polygon1
                     intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1,
-                                                                                                z[::-1], -theta, s21,
+                                                                                                z[::-1], -theta, poly2, s21,
                                                                                                 s22, pars)
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad  # the rotation!
                     useful_lines_color2 = color2[intersections2]
@@ -323,7 +361,10 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                             print(f"cost for pieces {cost_f1} and {cost_f2} in {[iy, ix, t]}")
 
                     tot_cost = cost_f1 + cost_f2
+                    #ind = np.argpartition(line_importance_f2, -n_lines_f1)[-:]
+                    #tot_cost=tot_cost/(np.sum(line_importance_f1)+np_sum(np.kmax)
                     R_cost[iy, ix, t] = tot_cost
+
     rrr = np.max(R_cost)
     if verbosity > 2:
         print(f"max R value {rrr}")
