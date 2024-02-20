@@ -174,7 +174,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
             # plt.plot(*candidate_line_extrap.xy, linewidth=2, color="blue")
             # plt.show()
 
-            if shapely.is_empty(shapely.intersection(candidate_line_trans, piece_j_trans.boundary)):
+            if shapely.is_empty(shapely.intersection(candidate_line_extrap, piece_j_trans.boundary)):
                 intersections.append(False)
             else:
                 intersections.append(True)

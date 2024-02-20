@@ -204,9 +204,10 @@ def main(args):
 
 
         if args.cmp_cost == 'LCI':
+            print("WARNING: normalizing with maximum! check!")
             All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
         else:  # args.cmp_cost == 'LAP':
-            All_norm_cost = All_cost #np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
+            All_norm_cost = All_cost / np.max(All_cost) #np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
 
         only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
         R_line = All_norm_cost + only_negative_region  # insert negative regions to cost matrix
