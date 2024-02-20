@@ -243,9 +243,9 @@ def select_anchor():
         elif (check_color == 1 and check_corner == 0):
             final_score = color_variation_count
 
-        print(f'Number of non-zero bins in color histogram: {color_variation_count}')
-        print(f'Number of perpendicular lines: {perpendicular_lines_count}')
-        print(f'Final Score: {final_score}')
+        # print(f'Number of non-zero bins in color histogram: {color_variation_count}')
+        # print(f'Number of perpendicular lines: {perpendicular_lines_count}')
+        # print(f'Final Score: {final_score}')
 
         # Append image name and score to the list
         image_scores.append((img_name, final_score))

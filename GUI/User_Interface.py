@@ -10,10 +10,14 @@ from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.uix.behaviors import DragBehavior
 from kivy.uix.scatter import Scatter
+
+import Back_End
 from select_anchor_RePAIR import get_backend_path
 from select_anchor_RePAIR import select_anchor
 
 import json
+import threading
+import time
 
 from MoveableImage import MovableImage
 
@@ -141,11 +145,40 @@ class GUIApp(App):
         return main_layout
 
 
+sorted_image_scores = None
+
+test_thread_started = True
+
+
+test_thread_lock = threading.Lock()
+
+
+def test_thread():
+    while True:
+        test_thread_lock.acquire()
+        if not test_thread_started:
+            print("test_thread")
+            return
+        test_thread_lock.release()
+        print(Back_End.get_select_anchor_running())
+        if not Back_End.get_select_anchor_running():
+            return
+        time.sleep(1)
+    print("finished")
+
+
 if __name__ == '__main__':
-    sorted_image_scores = select_anchor()
-    print(sorted_image_scores)
+    Back_End.start_back_end()
+    test_thread = threading.Thread(target=test_thread, daemon=True)
+    test_thread_started = True
+    test_thread.start()
+    # sorted_image_scores = select_anchor()
+    # print(sorted_image_scores)
     # path = backEnd_path + "top_10_fragments.json"
     backEnd_path = get_backend_path()
     path = "top_10_fragments.json"
     json_reader(path)
+
     GUIApp().run()
+
+
