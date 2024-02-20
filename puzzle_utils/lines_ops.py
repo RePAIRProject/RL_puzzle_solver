@@ -401,8 +401,7 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                     if cost_f1 > 0 and cost_f2 > 0:
                         # if n_lines_f1 > 0 and n_lines_f2 > 0:
                         #     print(f"Gamma Matrix: {np.transpose(gamma_matrix)}")
-                        #     pdb.set_trace()
-    print(f"Dist Matrix: {np.transpose(dist_matrix)}")
+                        #     print(f"Dist Matrix: {np.transpose(dist_matrix)}")
                         #     print(f"Category Matrix: {np.transpose(cat_matrix)}")
                         #     print(f"Conf Matrix: {np.transpose(cont_confidence)}")
                         # print(f"cost {cost_f1 + cost_f2} // cost for pieces {cost_f1} and {cost_f2} in {[iy, ix, t]}")
