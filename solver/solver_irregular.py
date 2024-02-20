@@ -53,7 +53,7 @@ def initialization(R, anc, p_size=0):
     return p, init_pos, x0, y0, z0
 
 
-def RePairPuzz(R, p, na, cfg, verbosity=1):
+def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
     faze = 0
     new_anc = []
     na_new = na
@@ -86,7 +86,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1):
             T = cfg.Tfirst
         else:
             T = cfg.Tnext
-        p, payoff, eps, iter = solver_rot_puzzle(R, p, T, iter, 0, verbosity=verbosity)
+        p, payoff, eps, iter = solver_rot_puzzle(R, p, T, iter, 0, verbosity=verbosity, decimals=decimals)
 
         I = np.zeros((noPatches, 1))
         m = np.zeros((noPatches, 1))
@@ -126,7 +126,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1):
     return all_pay, all_sol, all_anc, p_final, eps, iter, na_new
 
 
-def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
+def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1, decimals=8):
     no_rotations = R.shape[2]
     no_patches = R.shape[3]
     payoff = np.zeros(T+1)
@@ -170,7 +170,7 @@ def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1):
                 print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}', end='\r')
             else:
                 print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}')
-        p = np.round(p_new, 18)
+        p = np.round(p_new, decimals)
     return p, payoff, eps, iter
 
 def reconstruct_puzzle_v2(solved_positions, Y, X, pieces, ppars, use_RGB=True):
@@ -331,7 +331,7 @@ def main(args):
     p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts)  # (R, anc, anc_rot, nh, nw)
     #print(p_initial.shape)
     na = 1
-    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity)
+    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity, decimals=args.decimals)
 
     print("-" * 50)
     time_in_seconds = time.time()-time_start_puzzle
@@ -456,6 +456,7 @@ if __name__ == '__main__':
     parser.add_argument('--tmax', type=int, default=5000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.55, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
     parser.add_argument('--p_pts', type=int, default=0, help='the size of the p matrix (it will be p_pts x p_pts)')
+    parser.add_argument('--decimals', type=int, default=8, help='decimal after comma when cutting payoff')
     args = parser.parse_args()
 
     main(args)

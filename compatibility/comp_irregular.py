@@ -146,28 +146,67 @@ def main(args):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
-                    if i != j and args.DEBUG is True and j == 2 and i == 0:
-                        plt.subplot(321); plt.imshow(pieces[i]['img']); plt.title(f"piece {i}")
-                        plt.subplot(322); plt.imshow(pieces[j]['img']); plt.title(f"piece {j}")
-                        plt.subplot(323); plt.imshow(region_mask[:,:,0,i,j], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map")
-                        plt.subplot(324); plt.imshow(ji_mat[:,:,0], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("cost")
-                        if args.cmp_cost == 'LCI':
-                            norm_cmp = ji_mat[:,:,0] / np.max(ji_mat[:,:,0]) #np.maximum(1 - ji_mat[:,:,0] / line_matching_parameters.rmax, 0)
-                            plt.subplot(325); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
-                            plt.subplot(326); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,0,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
-                        else:
-                            norm_cmp = np.maximum(1 - ji_mat[:,:,0] / line_matching_parameters.rmax, 0)
-                            plt.subplot(325); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
-                            plt.subplot(326); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,0,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
-                        plt.show()
-                        pdb.set_trace()
+
+                    # if i != j and args.DEBUG is True:
+                    #     rotation_idx = 0
+                    #     plt.suptitle(f"COST WITH {args.cmp_cost}", fontsize=45)
+                    #     plt.subplot(541); plt.imshow(pieces[i]['img']); plt.title(f"piece {i}")
+                    #     plt.subplot(542); plt.imshow(pieces[j]['img']); plt.title(f"piece {j}")
+                    #     plt.subplot(545); plt.imshow(region_mask[:,:,0,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 0")
+                    #     plt.subplot(546); plt.imshow(region_mask[:,:,1,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 1")
+                    #     plt.subplot(547); plt.imshow(region_mask[:,:,2,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 2")
+                    #     plt.subplot(548); plt.imshow(region_mask[:,:,3,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 3")
+                    #     # plt.subplot(546); plt.imshow(ji_mat[:,:,rotation_idx], cmap='RdYlGn'); plt.title("cost")
+                    #     # if args.cmp_cost == 'LCI':
+                    #     #     norm_cmp = ji_mat[:,:,0] / np.max(ji_mat[:,:,0]) #np.maximum(1 - ji_mat[:,:,0] / line_matching_parameters.rmax, 0)
+                    #     #     plt.subplot(547); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
+                    #     #     plt.subplot(548); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,rotation_idx,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
+                    #     # else:
+                    #     #     norm_cmp = np.maximum(1 - ji_mat[:,:,0] / line_matching_parameters.rmax, 0)
+                    #     #     plt.subplot(547); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
+                    #     #     plt.subplot(548); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,rotation_idx,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
+                        
+                    #     plt.subplot(549); plt.title("COST ROTATION 0")
+                    #     plt.imshow(ji_mat[:,:,0], cmap='RdYlGn'); 
+                    #     plt.subplot(5,4,10); plt.title("COST ROTATION 1")
+                    #     plt.imshow(ji_mat[:,:,1], cmap='RdYlGn'); 
+                    #     plt.subplot(5,4,11); plt.title("COST ROTATION 2")
+                    #     plt.imshow(ji_mat[:,:,2], cmap='RdYlGn'); 
+                    #     plt.subplot(5,4,12); plt.title("COST ROTATION 3")
+                    #     plt.imshow(ji_mat[:,:,3], cmap='RdYlGn'); 
+
+                    #     ji_mat[ji_mat > line_matching_parameters.badmatch_penalty] = line_matching_parameters.badmatch_penalty
+                    #     kmin_cut_val = np.sort(np.unique(ji_mat))[-5]
+                    #     plt.subplot(5,4,13); plt.title("COST ROTATION KMINCUT 0")
+                    #     plt.imshow(np.maximum(1 - ji_mat[:,:,0] / kmin_cut_val, 0), cmap='RdYlGn'); 
+                    #     plt.subplot(5,4,14); plt.title("COST ROTATION KMINCUT 1")
+                    #     plt.imshow(np.maximum(1 - ji_mat[:,:,1] / kmin_cut_val, 0), cmap='RdYlGn')
+                    #     plt.subplot(5,4,15); plt.title("COST ROTATION KMINCUT 2")
+                    #     plt.imshow(np.maximum(1 - ji_mat[:,:,2] / kmin_cut_val, 0), cmap='RdYlGn') 
+                    #     plt.subplot(5,4,16); plt.title("COST ROTATION KMINCUT 3")
+                    #     plt.imshow(np.maximum(1 - ji_mat[:,:,3] / kmin_cut_val, 0), cmap='RdYlGn')
+
+                    #     plt.subplot(5,4,17); plt.title("EXP ROTATION 0")
+                    #     plt.imshow(np.exp(-ji_mat[:,:,0]/76), cmap='RdYlGn'); 
+                    #     #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,0,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+                    #     plt.subplot(5,4,18); plt.title("EXP ROTATION 1")
+                    #     plt.imshow(np.exp(-ji_mat[:,:,1]/76), cmap='RdYlGn'); 
+                    #     #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,1,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+                    #     plt.subplot(5,4,19); plt.title("EXP ROTATION 2")
+                    #     plt.imshow(np.exp(-ji_mat[:,:,2]/76), cmap='RdYlGn'); 
+                    #     #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,2,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+                    #     plt.subplot(5,4,20); plt.title("EXP ROTATION 3")
+                    #     plt.imshow(np.exp(-ji_mat[:,:,3]/76), cmap='RdYlGn'); 
+                    #     #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,3,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+                    #     plt.show()
+                    #     pdb.set_trace()
                     All_cost[:, :, :, j, i] = ji_mat
 
 
         if args.cmp_cost == 'LCI':
             All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
         else:  # args.cmp_cost == 'LAP':
-            All_norm_cost = np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
+            All_norm_cost = All_cost #np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
 
         only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
         R_line = All_norm_cost + only_negative_region  # insert negative regions to cost matrix

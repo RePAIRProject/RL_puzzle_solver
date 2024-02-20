@@ -31,6 +31,7 @@ def calc_line_matching_parameters(parameters, cmp_cost='new'):
     lm_pars['mismatch_penalty'] = lm_pars['max_dist'] * 4 / 3 # parameters.piece_size / 4 #?
     lm_pars['rmax'] = lm_pars['max_dist'] * 7 / 6
     lm_pars['cmp_cost'] = cmp_cost
+    lm_pars['k'] = 5
     return lm_pars
 
 def draw_lines(lines_dict, img_shape, thickness=1, color=255):
@@ -38,6 +39,7 @@ def draw_lines(lines_dict, img_shape, thickness=1, color=255):
     lines_img = np.zeros(shape=img_shape[:2], dtype=np.uint8)
     if len(colors) > 0:
         j = 0
+        assert(len(colors)==len(p1s)), f"different numbers of colors ({len(colors)}) and lines ({len(p1s)}) in the .json file!"
     for p1, p2 in zip(p1s, p2s):
         if len(colors) > 0:
             color = colors[j]
@@ -172,7 +174,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
             # plt.plot(*candidate_line_extrap.xy, linewidth=2, color="blue")
             # plt.show()
 
-            if shapely.is_empty(shapely.intersection(candidate_line_extrap, piece_j_trans.boundary)):
+            if shapely.is_empty(shapely.intersection(candidate_line_trans, piece_j_trans.boundary)):
                 intersections.append(False)
             else:
                 intersections.append(True)
@@ -295,7 +297,12 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                 print(f"comp on x,y took {(time.time()-t_x):.02f} seconds")
         if verbosity > 2:
             print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
-    return R_cost
+    
+    R_cost[R_cost > lmp.badmatch_penalty] = lmp.badmatch_penalty
+    kmin_cut_val = np.sort(np.unique(R_cost))[-lmp.k]
+    norm_R_cost = np.maximum(1 - R_cost / kmin_cut_val, 0)
+    
+    return norm_R_cost
 
 
 # compute cost matrix NEW version
@@ -376,8 +383,8 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
 
                                 dist_matrix[i, j] = np.min([d1, d2, d3, d4])
 
-                        thr_gamma = 0.08  # lmp.thr_coef
-                        thr_dist = 3  # lmp.max_dist
+                        thr_gamma = lmp.thr_coef
+                        thr_dist = lmp.max_dist
                         cont_confidence = np.zeros((n_lines_f1, n_lines_f2)) - 1  # initially is NEGATIVE
                         cont_confidence[gamma_matrix < thr_gamma] = 1  # positive confidence to co-linear lines
                         cont_confidence[dist_matrix > thr_dist] = -1  # negative confidence to distant lines
@@ -390,8 +397,16 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                     cost_f1 = np.sum(cont_conf_f1 * line_importance_f1)
                     cost_f2 = np.sum(cont_conf_f2 * line_importance_f2)
 
-                      # sum of confident lines - sum of non-confident lines
+                    # sum of confident lines - sum of non-confident lines
                     if cost_f1 > 0 and cost_f2 > 0:
+                        # if n_lines_f1 > 0 and n_lines_f2 > 0:
+                        #     print(f"Gamma Matrix: {np.transpose(gamma_matrix)}")
+                        #     pdb.set_trace()
+    print(f"Dist Matrix: {np.transpose(dist_matrix)}")
+                        #     print(f"Category Matrix: {np.transpose(cat_matrix)}")
+                        #     print(f"Conf Matrix: {np.transpose(cont_confidence)}")
+                        # print(f"cost {cost_f1 + cost_f2} // cost for pieces {cost_f1} and {cost_f2} in {[iy, ix, t]}")
+                        # print("\n\n")
                         tot_cost = cost_f1 + cost_f2
                         if verbosity > 2:
                             print(f"cost for pieces {cost_f1} and {cost_f2} in {[iy, ix, t]}")
@@ -452,6 +467,8 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
             if verbosity > 1:
                 print(f"computed cost matrix for piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} candidate values) ")
             #print(R_cost)
+    
+        
     return R_cost
 
 # Convert polar coordinates to Cartesian coordinates and display the result

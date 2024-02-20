@@ -5,6 +5,7 @@ import pdb
 import matplotlib.pyplot as plt 
 import cv2
 import json, os 
+from PIL import Image 
 
 #from configs import repair_cfg as cfg
 from configs import folder_names as fnames
@@ -115,13 +116,22 @@ def main(args):
                         # we convert the matrix to resize the image without losing the values
                         thr_reg_map_shape_uint = (thresholded_regions_map+1).astype(np.uint8)
                         thr_reg_map_comp_range = thr_reg_map_shape_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
-                        resized_shape = cv2.resize(thr_reg_map_comp_range, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
-
+                        #resized_shape = cv2.resize(thr_reg_map_comp_range, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
+                        # plt.subplot(231); plt.imshow(thr_reg_map_comp_range)
+                        # plt.subplot(232); plt.imshow(resized_shape)
+                        resized_shape = np.array(Image.fromarray(thr_reg_map_comp_range).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
+                        # plt.subplot(233); plt.imshow(pil)
                         combo_uint = (combo+1).astype(np.uint8)
                         combo_comp_range = combo_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
-                        resized_combo = cv2.resize(combo_comp_range, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
-
-                        resized_lines = cv2.resize(binary_overlap_lines.astype(np.uint8), (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                        # resized_combo = cv2.resize(combo_comp_range, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                        # plt.subplot(234); plt.imshow(resized_combo)
+                        # plt.subplot(235); plt.imshow(resized_combo)
+                        resized_combo = np.array(Image.fromarray(combo_comp_range).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
+                        # plt.subplot(236); plt.imshow(pilcombo)
+                        # plt.show()
+                        # pdb.set_trace()
+                        # resized_lines = cv2.resize(binary_overlap_lines.astype(np.uint8), (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
+                        resized_lines = np.array(Image.fromarray(binary_overlap_lines).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
                         # These are the matrices
                         RM_combo[:,:,t,j,i] = (resized_combo.astype(np.int32) - 1)
                         RM_lines[:,:,t,j,i] = resized_lines
