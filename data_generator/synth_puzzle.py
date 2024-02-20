@@ -6,11 +6,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from configs import folder_names as fnames
 # import helper functions
-from puzzle_utils.dataset_gen import generate_random_point, create_random_coloured_image
+from puzzle_utils.dataset_gen import generate_random_point, create_random_coloured_image, randomword
 from puzzle_utils.lines_ops import line_cart2pol
 from puzzle_utils.pieces_utils import cut_into_pieces, save_transformation_info
 from puzzle_utils.shape_utils import process_region_map
-import random, string
+
 
 """
 This script generate new datasets for puzzle solving based on lines:
@@ -71,11 +71,6 @@ Example:
     ├── ..
     └── image_NNNNN/
 """
-
-
-def randomword(length):
-   letters = string.ascii_lowercase
-   return ''.join(random.choice(letters) for i in range(length))
 
 def main(args):
 
@@ -191,11 +186,13 @@ def main(args):
             b1s = []
             b2s = []
             cols = []
+            cats = []
             
             ## lines on the .json file
             for i in range(args.num_lines):
                 line = shapely.LineString([all_lines[i, 0:2], all_lines[i, 2:4]])
                 col_line = all_lines[i, 4:7].tolist()
+                cat = all_lines[i, 7]
                 intersect = shapely.intersection(line, piece['polygon'])  # points of intersection line with the piece
                 if not shapely.is_empty(intersect): # we have intersection, so the line is important for this piece
                     intersection_lines = []
@@ -221,6 +218,7 @@ def main(args):
                                 p1s.append(p1.tolist())
                                 p2s.append(p2.tolist())
                                 cols.append(col_line)
+                                cats.append(cat)
                             # if len(list(zip(*int_line.xy))) > 1: # two intersections meaning it crosses
                             #     xs, ys = list(zip(*int_line.xy))
                             #     pdb.set_trace()
@@ -274,7 +272,8 @@ def main(args):
                 'p2s': p2s,
                 'b1s': b1s,
                 'b2s': b2s,
-                'colors': cols
+                'colors': cols,
+                'categories': cats
             }
             orig_coords_folder = os.path.join(lines_output_folder, 'original_coords')
             os.makedirs(orig_coords_folder, exist_ok=True)
@@ -324,7 +323,8 @@ def main(args):
                 'p2s': squared_p2s,         # cartesian coordinates
                 'b1s': [],
                 'b2s': [],
-                'colors': cols
+                'colors': cols,
+                'categories': cats
             }
             with open(os.path.join(lines_output_folder, f"piece_{j:04d}.json"), 'w') as lj:
                 json.dump(aligned_lines, lj, indent=3)

@@ -137,7 +137,7 @@ def main(args):
             #pool = multiprocessing.Pool(args.jobs)
             #costs_list = zip(*pool.map(compute_cost_matrix_LAP, [(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n)]))
             #with parallel_backend('threading', n_jobs=args.jobs):
-            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity, use_colors=args.use_colors) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
+            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
             #costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
             All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n, norm_value=line_matching_parameters.rmax)
         else:
@@ -145,7 +145,7 @@ def main(args):
                 for j in range(n):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
-                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity, use_colors=args.use_colors)
+                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
                     if i != j and args.DEBUG is True and j == 2 and i == 0:
                         plt.subplot(321); plt.imshow(pieces[i]['img']); plt.title(f"piece {i}")
                         plt.subplot(322); plt.imshow(pieces[j]['img']); plt.title(f"piece {j}")
@@ -179,8 +179,13 @@ def main(args):
         #     R_line[:, :, :, jj, jj] = -1
         print("-" * 50)
         time_in_seconds = time.time()-time_start_puzzle
-        if time_in_seconds > 100:
-            print(f"Compatibility for this puzzle took almost {(np.ceil(time_in_seconds / 60)):.0f} minutes")
+        if time_in_seconds > 60:
+            time_in_minutes = (np.ceil(time_in_seconds / 60))
+            if time_in_minutes < 60:
+                print(f"Compatibility for this puzzle took almost {time_in_minutes:.0f} minutes")
+            else:
+                time_in_hours = (np.ceil(time_in_minutes / 60))
+                print(f"Compatibility for this puzzle took almost {time_in_hours:.0f} hours")
         else:
             print(f"Compatibility for this puzzle took {time_in_seconds:.0f} seconds")
         print("-" * 50)
@@ -247,7 +252,6 @@ if __name__ == '__main__':
     # parser.add_argument('--xy_grid_points', type=int, default=7, 
     #     help='the number of points in the grid (for each axis, total number will be the square of what is given)')
     # parser.add_argument('--theta_step', type=int, default=90, help='degrees of each rotation')
-    parser.add_argument('--use_colors', type=bool, default=True, help='use colors of lines')
     parser.add_argument('--DEBUG', action='store_true', default=False, help='WARNING: will use debugger! It stops and show the matrices!')
 
     args = parser.parse_args()

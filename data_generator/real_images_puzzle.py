@@ -4,9 +4,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 # import helper functions
-from puzzle_utils.dataset_gen import generate_random_point, create_random_image
+from configs import folder_names as fnames
+from puzzle_utils.dataset_gen import generate_random_point, create_random_image, randomword
 from puzzle_utils.lines_ops import line_cart2pol
-from puzzle_utils.pieces_utils import cut_into_pieces, rescale_image
+from puzzle_utils.pieces_utils import cut_into_pieces, rescale_image, save_transformation_info
 
 """
 This script generate new datasets for puzzle solving based on lines:
@@ -82,16 +83,18 @@ def main(args):
         input_images_path = args.images 
         data_name = input_images_path.split('/')[-1]
 
-    dataset_name = f"synthetic_{args.shape}_pieces_from_{data_name}"
+    dataset_name = f"synthetic_{args.shape}_pieces_from_{data_name}_{randomword(6)}"
     puzzle_folder = os.path.join(output_root_path, dataset_name)
     parameter_path = os.path.join(puzzle_folder, 'parameters.json')
     os.makedirs(puzzle_folder, exist_ok=True)
+    use_rotation = (not args.do_not_rotate)
 
     # save parameters
     parameters_dict = vars(args) # create dict from namespace
     parameters_dict['output'] = output_root_path
     parameters_dict['input_images'] = input_images_path
     parameters_dict['puzzle_folder'] = puzzle_folder
+    parameters_dict['use_rotation'] = use_rotation
     print()
     print("#" * 70)
     print("#   Settings:")
@@ -112,6 +115,14 @@ def main(args):
         if max(img.shape[:2]) > args.rescale:
             img = rescale_image(img, args.rescale)
 
+        # only for patterns
+        if args.shape == 'pattern':
+            region_map = cv2.imread(os.path.join(args.patterns_folder, list_of_patterns_names[N]), 0)
+            pattern_map, num_pieces = process_region_map(region_map)
+            print(f"found {num_pieces} pieces on {list_of_patterns_names[N]}")
+        else:
+            num_pieces = args.num_pieces
+
         ## make folders to save pieces and detected lines
         img_name = img_path[:-4]
         print("-" * 50)
@@ -130,7 +141,16 @@ def main(args):
         single_image_parameters_path = os.path.join(single_image_folder, f'parameters_{puzzle_name}.json')
 
         # this gives us the pieces
-        pieces, patch_size = cut_into_pieces(img, args.shape, args.num_pieces, single_image_folder, puzzle_name)
+        if args.shape == 'pattern':
+            pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, patterns_map=pattern_map, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation)
+        else:
+            pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation)
+ 
+        #pieces, patch_size = cut_into_pieces(img, args.shape, args.num_pieces, single_image_folder, puzzle_name)
+        
+        ground_truth_path = os.path.join(single_image_folder, f"{fnames.ground_truth}.json")
+        save_transformation_info(pieces, ground_truth_path)
+    
         # pieces is a list of dicts with several keys:
         # - pieces[i]['centered_image'] is the centered image 
         # - pieces[i]['centered_mask'] is the centered mask (as binary image)
@@ -169,13 +189,14 @@ def main(args):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='It creates `ni` images with `nl` of lines/segments')
+    parser = argparse.ArgumentParser(
+        description='It generates puzzles by cutting the images (into `--images` folder) into pieces. \
+            Check the parameters for details about size, line_type, colors, number of pieces and so on.')
     parser.add_argument('-o', '--output', type=str, default='', help='output folder')
     parser.add_argument('-i', '--images', type=str, default='', help='images folder (where to cut the pieces from)')
     parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces the images')
     parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['regular', 'irregular'])
     parser.add_argument('-r', '--rescale', type=int, default=300, help='rescale the largest of the two axis to this number (default 1000) to avoid large puzzles.')
-    parser.add_argument('-sv', "--save_visualization", help="Use it to create visualization", action="store_true")
     parser.add_argument('-noR', "--do_not_rotate", help="Use it to disable rotation!", action="store_true")
     parser.add_argument('-extr', "--extrapolation", help="Use it to create an extrapolated version of each fragment", action="store_true")
     args = parser.parse_args()

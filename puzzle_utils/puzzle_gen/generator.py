@@ -268,13 +268,16 @@ class PuzzleGenerator:
             cv2.imwrite(os.path.join(extrap_folder, f'piece-{reg_val}.png'), rgba)
             #print(os.path.join(extrap_folder, f'piece-{reg_val}.png'))
 
-    def save_jpg_regions(self, folder_path):
+    def save_jpg_regions(self, folder_path, skip_bg=False):
         regions_path = os.path.join(folder_path, 'regions')
         os.makedirs(regions_path, exist_ok=True)
         cv2.imwrite(os.path.join(regions_path, 'regions_uint8.png'), self.region_mat)
         # change to cmap='gray' for grayscale color coding
         plt.imsave(os.path.join(regions_path, 'regions_col_coded.jpg'), self.region_mat, cmap='jet')
-        puzzle_mask = (self.region_mat > 0).astype(np.uint8)
+        if skip_bg:
+            puzzle_mask = (self.region_mat > 0).astype(np.uint8)
+        else:
+            puzzle_mask = (self.region_mat + 1).astype(np.uint8)
         puzzle_mask = cv2.dilate(puzzle_mask, np.ones((5,5)))
         if len(self.img.shape) == 2:
             cut_puzzle_img = puzzle_mask * self.img
@@ -290,7 +293,7 @@ class PuzzleGenerator:
         h_max = 0
         w_max = 0
         dist_cm_max = 0
-        padding = np.min(self.img.shape[:2]) // 30
+        padding = 3 #np.min(self.img.shape[:2]) // 30
         for i in range(start_from, self.region_cnt):
             mask_i = self.region_mat == i
             if len(self.img.shape) > 2: 
@@ -312,6 +315,7 @@ class PuzzleGenerator:
                 h_max = h_i 
             if w_i > w_max:
                 w_max = w_i     
+
             ## centering
             centered_img = np.zeros_like(self.img)
             centered_mask = np.zeros_like(mask_i)
@@ -676,7 +680,7 @@ class PuzzleGenerator:
         self.rot_range = rot_range
         self.piece_n = piece_n
         self.w_n = math.floor(math.sqrt(piece_n / self.aspect_ratio))
-        self.h_n = math.floor(self.w_n * self.aspect_ratio)
+        self.h_n = self.w_n #math.floor(self.w_n * self.aspect_ratio)
         self.smooth_flag = smooth_flag
         self.alpha_channel = alpha_channel
         self.small_region_area_ratio = small_region_area_ratio

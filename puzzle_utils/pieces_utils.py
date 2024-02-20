@@ -129,27 +129,25 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         generator = PuzzleGenerator(image, puzzle_name)
         generator.run(num_pieces, offset_rate_h=0.2, offset_rate_w=0.2, small_region_area_ratio=0.25, rot_range=0,
             smooth_flag=True, alpha_channel=True, perc_missing_fragments=0, erosion=0, borders=False)
-        generator.save_jpg_regions(output_path)
-        pieces, patch_size = generator.get_pieces_from_puzzle_v2()
-        if save_extrapolated_regions is True:
-            frags, extr_frags = generator.get_extrapolated_regions()
-            extr_folder = os.path.join(output_path, 'extrapolated')
-            os.makedirs(extr_folder, exist_ok=True)
-            for j in range(len(frags)):
-                centered_fragment, _m, _s = center_fragment(frags[j])
-                cv2.imwrite(os.path.join(extr_folder, f"piece_{j:04d}.png"), centered_fragment)
-                centered_extr_fragment, _m, _s = center_fragment(extr_frags[j])
-                cv2.imwrite(os.path.join(extr_folder, f"piece_{j:04d}_ext.png"), centered_extr_fragment)
+        generator.save_jpg_regions(output_path, skip_bg=False)
+        pieces, patch_size = generator.get_pieces_from_puzzle_v2(start_from=0)
         
-    
     if shape == 'pattern' and patterns_map is not None:
         generator = PuzzleGenerator(image, puzzle_name)
         generator.region_cnt = num_pieces + 1
         generator.region_mat = patterns_map 
-        generator.save_jpg_regions(output_path)
+        generator.save_jpg_regions(output_path, skip_bg=True)
         pieces, patch_size = generator.get_pieces_from_puzzle_v2(start_from=1)
-        if save_extrapolated_regions is True:
-            generator.save_extrapolated_regions(output_path)
+
+    if (shape == 'irregular' or shape == 'pattern') and save_extrapolated_regions is True:
+        frags, extr_frags = generator.get_extrapolated_regions()
+        extr_folder = os.path.join(output_path, 'extrapolated')
+        os.makedirs(extr_folder, exist_ok=True)
+        for j in range(len(frags)):
+            centered_fragment, _m, _s = center_fragment(frags[j])
+            cv2.imwrite(os.path.join(extr_folder, f"piece_{j:04d}.png"), centered_fragment)
+            centered_extr_fragment, _m, _s = center_fragment(extr_frags[j])
+            cv2.imwrite(os.path.join(extr_folder, f"piece_{j:04d}_ext.png"), centered_extr_fragment)
 
     # this is in shapely coordinates (x,y) and if we use in opencv/matplotlib we should invert order again
     for piece in pieces:

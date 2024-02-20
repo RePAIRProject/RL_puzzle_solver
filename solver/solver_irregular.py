@@ -11,7 +11,7 @@ import argparse
 from compatibility.line_matching_NEW_segments import read_info
 #import configs.solver_cfg as cfg
 from puzzle_utils.pieces_utils import calc_parameters_v2, crop_to_content
-from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, place_on_canvas
+from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas
 import datetime
 import pdb 
 import time 
@@ -336,7 +336,12 @@ def main(args):
     print("-" * 50)
     time_in_seconds = time.time()-time_start_puzzle
     if time_in_seconds > 100:
-        print(f"Solving this puzzle took almost {(np.ceil(time_in_seconds / 60)):.0f} minutes")
+        time_in_minutes = (np.ceil(time_in_seconds / 60))
+        if time_in_minutes < 60:
+            print(f"Solving this puzzle took almost {time_in_minutes:.0f} minutes")
+        else:
+            time_in_hours = (np.ceil(time_in_minutes / 60))
+            print(f"Solving this puzzle took almost {time_in_hours:.0f} hours")
     else:
         print(f"Solving this puzzle took {time_in_seconds:.0f} seconds")
     print("-" * 50)
