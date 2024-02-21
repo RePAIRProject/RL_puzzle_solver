@@ -73,7 +73,7 @@ def calc_parameters_v2(parameters, xy_step=3, xy_grid_points=101, theta_step=45)
 
     return ppars
 
-def rescale_image(img, size):
+def rescale_image(img, size, lines=None ):
     """
     Rescale the image (while preserving proportions) so that the largest of the two axis 
     is equal to `size`
@@ -81,12 +81,25 @@ def rescale_image(img, size):
     if max(img.shape[:2]) < size:
         return img 
     if img.shape[0] > img.shape[1]:
-        other_axis_size = np.round((size / img.shape[0]) * img.shape[1]).astype(int)
+        rescaling_ratio = (size / img.shape[0])
+        other_axis_size = np.round(rescaling_ratio * img.shape[1]).astype(int)
         img = cv2.resize(img, (other_axis_size, size))  # opencv use these inverted :/
     else:
-        other_axis_size = np.round((size / img.shape[1]) * img.shape[0]).astype(int)
+        rescaling_ratio = (size / img.shape[1])
+        other_axis_size = np.round(rescaling_ratio * img.shape[0]).astype(int)
         img = cv2.resize(img, (size, other_axis_size))  # opencv use these inverted :/
+
+    if lines is not None:
+        rescaled_lines = rescale_lines(lines, rescaling_ratio)
+        return img, rescaled_lines
     return img 
+
+def rescale_lines(lines, ratio):
+    scaled_lines = []
+    for line in lines:
+        new_values = (np.array(line) * ratio).tolist()
+        scaled_lines.append(new_values)
+    return scaled_lines
 
 def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns_map=None, rotate_pieces=True, save_extrapolated_regions=False):
 
