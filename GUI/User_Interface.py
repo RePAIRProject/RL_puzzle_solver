@@ -71,6 +71,7 @@ def json_reader(file):
 # backEnd_path = "Images/RePAIR_plaque_2/top10/"
 
 def image_reader(image_number, score):
+
     source = backEnd_path + "top10/" + file_names[image_number]
     image = MovableImage(source, click_label, score, image_number)
     # image.source = source

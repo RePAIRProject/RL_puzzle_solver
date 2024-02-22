@@ -305,7 +305,7 @@ def init_visualization(band_width, fg_img, images_with_borders, rgb_image):
     ##-----------------------------------------------------------------------------------------------------------##
 
 
-backEnd_path = "Images/RePAIR_plaque_2/"
+backEnd_path = os.getcwd() + "/GUI/Images/RePAIR_plaque_2/"
 
 
 def get_backend_path():
