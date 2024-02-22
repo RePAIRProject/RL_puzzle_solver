@@ -1,7 +1,8 @@
 import os
 
 from kivy import Config
-from kivy.app import App
+from kivymd.app import MDApp
+
 from kivy.graphics import Rotate, PopMatrix, PushMatrix
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
@@ -12,7 +13,7 @@ from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.uix.behaviors import DragBehavior
 from kivy.uix.scatter import Scatter
-from os import getcwd
+from kivymd.uix.toolbar import MDTopAppBar
 
 import Back_End
 from select_anchor_RePAIR import get_backend_path
@@ -73,6 +74,7 @@ def json_reader(file):
 def image_reader(image_number, score):
 
     source = backEnd_path + "top10/" + file_names[image_number]
+    click_label.color = (1, 0, 1, 1)
     image = MovableImage(source, click_label, score, image_number)
     # image.source = source
     return image
@@ -105,11 +107,18 @@ class MainLayout(GridLayout):
     #     # self.label.text = str(self.image_number + 1)
 
 
-class GUIApp(App):
+class GUIApp(MDApp):
     def build(self):
         main_layout = MainLayout()
         main_layout.cols = 1
-        main_layout.rows = 2
+        main_layout.rows = 3
+
+        toolbar = MDTopAppBar()
+        print("am i passing")
+        main_layout.add_widget(toolbar)
+
+        run_button = Button(text="Run")
+        toolbar.add_widget(run_button)
 
         # main_layout.size_hint = (1, 1)
         main_layout.minimum_height = 1
