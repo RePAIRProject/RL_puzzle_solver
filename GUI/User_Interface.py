@@ -1,3 +1,5 @@
+import os
+
 from kivy import Config
 from kivy.app import App
 from kivy.graphics import Rotate, PopMatrix, PushMatrix
@@ -10,6 +12,7 @@ from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.uix.behaviors import DragBehavior
 from kivy.uix.scatter import Scatter
+from os import getcwd
 
 import Back_End
 from select_anchor_RePAIR import get_backend_path
@@ -175,8 +178,9 @@ if __name__ == '__main__':
     # sorted_image_scores = select_anchor()
     # print(sorted_image_scores)
     # path = backEnd_path + "top_10_fragments.json"
+    current_path = os.getcwd() + "/GUI/"
     backEnd_path = get_backend_path()
-    path = "top_10_fragments.json"
+    path = current_path + "top_10_fragments.json"
     json_reader(path)
 
     GUIApp().run()
