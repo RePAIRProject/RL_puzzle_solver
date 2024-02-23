@@ -158,7 +158,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
 
         if np.isclose(distance.euclidean(ps1, ps2), 0):
             intersections.append(False)
-            print("point/line")
+            # print("point/line")
         else:
             dist_centers = distance.euclidean(z_p,z_l)
             candidate_poly_l_shapely0 = poly_l.tolist()

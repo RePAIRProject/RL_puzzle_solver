@@ -133,6 +133,7 @@ def main(args):
             print(f"found {num_pieces} pieces on {list_of_patterns_names[N]}")
         else:
             num_pieces = args.num_pieces
+        
         ## make folders to save pieces and detected lines
         print("-" * 50)
         puzzle_name = f'image_{N:05d}'
@@ -158,25 +159,12 @@ def main(args):
         
         ground_truth_path = os.path.join(single_image_folder, f"{fnames.ground_truth}.json")
         save_transformation_info(pieces, ground_truth_path)
-
+        
         for j, piece in enumerate(pieces):
             ## save patch
             cv2.imwrite(os.path.join(pieces_single_folder, f"piece_{j:04d}.png"), piece['squared_image'])
             cv2.imwrite(os.path.join(masks_single_folder, f"piece_{j:04d}.png"), piece['squared_mask'] * 255)
             np.save(os.path.join(poly_single_folder, f"piece_{j:04d}"), piece['squared_polygon'])
-
-            num_pieces_dict[puzzle_name] = j+1
-            img_sizes_dict[puzzle_name] = img.shape
-
-            # parameters of the single image!
-            img_parameters = {}
-            img_parameters['piece_size'] = int(patch_size)
-            img_parameters['num_pieces'] = j+1
-            img_parameters['size'] = img.shape
-
-            single_image_parameters_path = os.path.join(single_image_folder, f'parameters_{puzzle_name}.json')
-            with open(single_image_parameters_path, 'w') as pp:
-                json.dump(img_parameters, pp, indent=2)
 
             ## we create the container for the lines
             angles = []
@@ -188,7 +176,7 @@ def main(args):
             cols = []
             cats = []
             
-            ## lines on the .json file
+            ## check lines and store them
             for i in range(args.num_lines):
                 line = shapely.LineString([all_lines[i, 0:2], all_lines[i, 2:4]])
                 col_line = all_lines[i, 4:7].tolist()
@@ -330,6 +318,18 @@ def main(args):
                 json.dump(aligned_lines, lj, indent=3)
             print(f'done with image_{N:05d}/piece_{j:04d}')
         
+        num_pieces_dict[puzzle_name] = j+1
+        img_sizes_dict[puzzle_name] = img.shape 
+
+        # parameters of the single image!
+        img_parameters = {}
+        img_parameters['piece_size'] = int(patch_size)
+        img_parameters['num_pieces'] = j+1
+        img_parameters['size'] = img.shape
+
+        single_image_parameters_path = os.path.join(single_image_folder, f'parameters_{puzzle_name}.json')
+        with open(single_image_parameters_path, 'w') as pp:
+            json.dump(img_parameters, pp, indent=2)
         print(f"Done with {puzzle_name}: created {j+1} pieces.")
     
     parameters_dict['num_pieces'] = num_pieces_dict
