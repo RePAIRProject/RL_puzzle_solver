@@ -299,7 +299,8 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
             print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
     
     R_cost[R_cost > lmp.badmatch_penalty] = lmp.badmatch_penalty
-    kmin_cut_val = np.sort(np.unique(R_cost))[-lmp.k]
+    len_unique = len(np.unique(R_cost))
+    kmin_cut_val = np.sort(np.unique(R_cost))[-min(len_unique,lmp.k)]
     norm_R_cost = np.maximum(1 - R_cost / kmin_cut_val, 0)
     
     return norm_R_cost
