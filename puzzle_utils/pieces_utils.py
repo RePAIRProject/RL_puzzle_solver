@@ -282,7 +282,7 @@ def randomly_rotate_pieces(pieces, chances_to_be_rotated=0.3, possible_rotation=
 def center_fragment(image):
     sd, mask = get_sd(image)
     cm = get_cm(mask)
-    center_pos = [np.round(image.shape[0]/2).astype(int), np.round(image.shape[1]/2).astype(int)]
+    center_pos = [np.round(image.shape[1]/2).astype(int), np.round(image.shape[0]/2).astype(int)]
     shift = np.round(np.array(cm) - center_pos).astype(int)
     centered_image = shift_img(image, -shift[0], -shift[1])    
     centered_mask = shift_img(mask, -shift[0], -shift[1])    

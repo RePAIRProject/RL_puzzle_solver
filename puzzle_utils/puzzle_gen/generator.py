@@ -58,7 +58,6 @@ class PuzzleGenerator:
         y_arr = y_arr[:len(x_arr)]
         x_arr.sort()
 
-        #pdb.set_trace()
         if self.smooth_flag:
             if len(x_arr) >= 4:
                 smooth_func = interpolate.interp1d(x_arr, y_arr, kind='cubic')
