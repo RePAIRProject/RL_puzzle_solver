@@ -112,7 +112,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
         #     print(f"fixed solution for a new piece (at iteration {iter}):")
         #     print(new_anc)
         f += 1
-        all_pay.append(payoff)
+        all_pay.append(payoff[2:])
         all_sol.append(fin_sol)
         all_anc.append(new_anc)
 
