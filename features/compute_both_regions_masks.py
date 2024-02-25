@@ -98,6 +98,12 @@ def main(args):
                         mask_j = cv2.resize(piece_j_on_canvas['lines_mask'], (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
                         #outside_borders_j = get_outside_borders(mask_j, bordpers_width=1)
                         overlap_lines = cv2.filter2D(piece_i_on_canvas['lines_mask'], -1, piece_j_on_canvas['lines_mask'])
+                        #plt.subplot(121)
+                        #plt.imshow(piece_i_on_canvas['lines_mask'])
+                        #plt.subplot(122)
+                        #plt.imshow(piece_i_on_canvas['img']*255)
+                        #plt.show()
+
                         overlap_shapes = cv2.filter2D(piece_i_on_canvas['mask'], -1, piece_j_on_canvas['mask'])
                         thresholded_regions_map = (overlap_shapes > ppars.threshold_overlap).astype(np.int32)
                         thresholded_regions_map *= -1

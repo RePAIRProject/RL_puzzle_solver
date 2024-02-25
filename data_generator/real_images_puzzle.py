@@ -8,6 +8,7 @@ from configs import folder_names as fnames
 from puzzle_utils.dataset_gen import generate_random_point, create_random_image, randomword
 from puzzle_utils.lines_ops import line_cart2pol
 from puzzle_utils.pieces_utils import cut_into_pieces, rescale_image, save_transformation_info
+from puzzle_utils.shape_utils import process_region_map
 
 """
 This script generate new datasets for puzzle solving based on lines:
@@ -117,9 +118,10 @@ def main(args):
 
         # only for patterns
         if args.shape == 'pattern':
-            region_map = cv2.imread(os.path.join(args.patterns_folder, list_of_patterns_names[N]), 0)
+            list_of_patterns_names = os.listdir(args.patterns_folder)
+            region_map = cv2.imread(os.path.join(args.patterns_folder, list_of_patterns_names[k]), 0)
             pattern_map, num_pieces = process_region_map(region_map)
-            print(f"found {num_pieces} pieces on {list_of_patterns_names[N]}")
+            print(f"found {num_pieces} pieces on {list_of_patterns_names[k]}")
         else:
             num_pieces = args.num_pieces
 
@@ -195,9 +197,10 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', type=str, default='', help='output folder')
     parser.add_argument('-i', '--images', type=str, default='', help='images folder (where to cut the pieces from)')
     parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces the images')
-    parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['regular', 'irregular'])
+    parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['square', 'pattern', 'irregular'])
     parser.add_argument('-r', '--rescale', type=int, default=300, help='rescale the largest of the two axis to this number (default 1000) to avoid large puzzles.')
     parser.add_argument('-noR', "--do_not_rotate", help="Use it to disable rotation!", action="store_true")
     parser.add_argument('-extr', "--extrapolation", help="Use it to create an extrapolated version of each fragment", action="store_true")
+    parser.add_argument('-pf', '--patterns_folder', type=str, default='', help='(used only if shape == pattern): the folder where the patterns are stored')
     args = parser.parse_args()
     main(args)

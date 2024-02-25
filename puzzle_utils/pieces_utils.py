@@ -66,9 +66,9 @@ def calc_parameters_v2(parameters, xy_step=3, xy_grid_points=101, theta_step=45)
 
     # region
     ppars['threshold_overlap'] = ppars.piece_size / 2
-    ppars['threshold_overlap_lines'] = ppars.piece_size / 4
-    ppars['borders_regions_width_outside'] = 2
-    ppars['borders_regions_width_inside'] = 2   # changed from 5 +++++++
+    ppars['threshold_overlap_lines'] = ppars.piece_size / 8
+    ppars['borders_regions_width_outside'] = 3
+    ppars['borders_regions_width_inside'] = 2  # changed from 5 +++++++
     ppars['border_tolerance'] = ppars.piece_size // 30
 
     return ppars
@@ -282,7 +282,7 @@ def randomly_rotate_pieces(pieces, chances_to_be_rotated=0.3, possible_rotation=
 def center_fragment(image):
     sd, mask = get_sd(image)
     cm = get_cm(mask)
-    center_pos = [np.round(image.shape[0]/2).astype(int), np.round(image.shape[1]/2).astype(int)]
+    center_pos = [np.round(image.shape[1]/2).astype(int), np.round(image.shape[0]/2).astype(int)]
     shift = np.round(np.array(cm) - center_pos).astype(int)
     centered_image = shift_img(image, -shift[0], -shift[1])    
     centered_mask = shift_img(mask, -shift[0], -shift[1])    

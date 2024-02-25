@@ -158,7 +158,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
 
         if np.isclose(distance.euclidean(ps1, ps2), 0):
             intersections.append(False)
-            print("point/line")
+            # print("point/line")
         else:
             dist_centers = distance.euclidean(z_p,z_l)
             candidate_poly_l_shapely0 = poly_l.tolist()
@@ -299,7 +299,8 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
             print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
     
     R_cost[R_cost > lmp.badmatch_penalty] = lmp.badmatch_penalty
-    kmin_cut_val = np.sort(np.unique(R_cost))[-lmp.k]
+    len_unique = len(np.unique(R_cost))
+    kmin_cut_val = np.sort(np.unique(R_cost))[-min(len_unique,lmp.k)]
     norm_R_cost = np.maximum(1 - R_cost / kmin_cut_val, 0)
     
     return norm_R_cost
