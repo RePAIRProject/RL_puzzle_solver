@@ -44,19 +44,36 @@ def main(args):
             with open(os.path.join(puzzle_folder, f"compatibility_parameters.json"), 'r') as gtj:
                 cmp_parameters = json.load(gtj)
             
-            canvas = np.zeros((cmp_parameters['canvas_size'], cmp_parameters['canvas_size'], 3))
+            canvas_size = np.round(np.sqrt(img_parameters['num_pieces']) * img_parameters['piece_size']).astype(int)
+            #canvas_size = cmp_parameters['canvas_size']
+            canvas = np.zeros((canvas_size, canvas_size, 3))
             center_canvas = np.asarray(canvas.shape[:2]) // 2
 
             
             for solution_folder in solution_folders:
+                print("-" * 50)
+                print(f"Evaluating: {solution_folder}")
                 solution_folder_full_path = os.path.join(dataset_folder, puzzle, solution_folder)
                 p_final_path = os.path.join(solution_folder_full_path, 'p_final.mat')
                 p_final = loadmat(p_final_path)['p_final']
                 anchor_id = np.squeeze(loadmat(p_final_path)['anchor']).item()
                 anc_position = np.squeeze(loadmat(p_final_path)['anc_position'])
-                shift_anc2canvas = anc_position[:2] - center_canvas
-                print(f"\nAnchor {anchor_id} in {anc_position}, (shift: {shift_anc2canvas})")
-
+                anc_position_xy = anc_position[:2] * cmp_parameters['xy_step']
+                shift_anc2canvas = anc_position_xy - center_canvas
+                anc_position_on_canvas = center_canvas
+                anc_rotation = anc_position[2] * cmp_parameters['theta_step']
+                print(f"\nAnchor {anchor_id} in {anc_position_on_canvas} on a canvas of {canvas.shape}\n")
+                print(f"anchor was: {anc_position_xy}")
+                print(f"aligning to canvas on xy --> shift_anc2canvas: {shift_anc2canvas}")
+                
+                gt_xy_anc = -1 * np.asarray(ground_truth[f"piece_{anchor_id:04d}"]['translation'][::-1])
+                gt_rotation_anc = -1 * ground_truth[f"piece_{anchor_id:04d}"]['rotation']
+                shift_rot_gt_anc2canvas = gt_rotation_anc - anc_rotation
+                print(f"GT xy anc was: {gt_xy_anc}")
+                shift_gt_anc2canvas = gt_xy_anc - center_canvas
+                print(f"aligning to canvas --> shift_gt_anc2canvas: {shift_gt_anc2canvas}")
+                print(f"aligning to canvas on rot --> shift_rot_gt_anc2canvas: {shift_rot_gt_anc2canvas}")
+                print()
                 num_pcs = img_parameters['num_pieces']
                 errors_xy = np.zeros(num_pcs)
                 errors_rot = np.zeros(num_pcs)
@@ -64,18 +81,19 @@ def main(args):
                 correct_rot = np.zeros(num_pcs)
                 for j in range(num_pcs):
                     # here we calculate shift between ground truth absolute and with respect to the anchor!
-                    gt_xy_orig = ground_truth[f"piece_{j:04d}"]['translation']
-                    gt_xy = anc_position[:2] - shift_anc2canvas
-                    gt_shift = gt_xy_orig - gt_xy
-                    gt_rot_orig = ground_truth[f"piece_{j:04d}"]['rotation']
-                    gt_rot = anc_position[2]
-                    gt_rot_shift = gt_rot_orig - gt_rot
+                    gt_xy = -1 * np.asarray(ground_truth[f"piece_{j:04d}"]['translation'][::-1])
+                    gt_xy_canvas = gt_xy - shift_gt_anc2canvas
+                    gt_rot_orig = -1 * ground_truth[f"piece_{j:04d}"]['rotation']
+                    gt_rot = shift_rot_gt_anc2canvas
+
                     # here the solution (from the solver)
                     solution_piece = np.unravel_index(np.argmax(p_final[:,:,:,j]), p_final[:,:,:,j].shape)
-                    est_xy = solution_piece[:2] - shift_anc2canvas
-                    est_rot = (solution_piece[:2] + gt_rot_shift) % cmp_parameters['theta_grid_points']
-                    error_xy = np.sqrt(np.sum(np.square(gt_xy - est_xy)))
-                    error_rot = np.sqrt(np.square(np.abs(gt_rot - solution_piece[2])))
+                    est_xy = np.asarray(solution_piece[:2]) * cmp_parameters['xy_step']
+                    est_xy_canvas = est_xy - shift_anc2canvas
+                    est_rot = solution_piece[2] * cmp_parameters['theta_step']
+
+                    error_xy = np.sqrt(np.sum(np.square(gt_xy_canvas - est_xy_canvas)))
+                    error_rot = np.sqrt(np.square(np.abs(gt_rot - est_rot)))
                     if np.isclose(error_xy, 0):
                         correct_xy[j] = 1
                     if np.isclose(error_rot, 0):
@@ -83,7 +101,15 @@ def main(args):
                     errors_xy[j] = error_xy
                     errors_rot[j] = error_rot
                     print("-" * 40)
-                    print(f"piece {j} is placed at ({est_xy}, {solution_piece[2]}), gt was at ({gt_xy}, {gt_rot})")
+                    print(f"piece {j}")
+                    print(">>> ESTIMATED  <<<")
+                    print(f"p: {solution_piece}\nest_xy: {est_xy}\nest_xy_canvas: {est_xy_canvas}")
+                    print(f"est_rot: {est_rot}")
+                    print(">>> GT         <<<")
+                    print(f"gt_xy: {gt_xy}\ngt_xy_canvas: {gt_xy_canvas}")
+                    print(f"gt_rot_orig: {gt_rot_orig}\ngt_rot: {gt_rot}")
+                    print(">>> EVALUATION <<<")
+                    print(f"piece {j} is placed at ({est_xy_canvas}, {solution_piece[2]}), gt was at ({gt_xy_canvas}, {gt_rot})")
                     print(f"error is: {error_xy} on xy, {error_rot} on rotation")
 
                 mean_xy_err = np.mean(errors_xy)
