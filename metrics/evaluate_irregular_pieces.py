@@ -43,6 +43,8 @@ def main(args):
                 img_parameters = json.load(gtj)
             with open(os.path.join(puzzle_folder, f"compatibility_parameters.json"), 'r') as gtj:
                 cmp_parameters = json.load(gtj)
+            with open(os.path.join(puzzle_folder, f"line_matching_parameters.json"), 'r') as gtj:
+                lmp_parameters = json.load(gtj)
             
             canvas_size = np.round(np.sqrt(img_parameters['num_pieces']) * img_parameters['piece_size']).astype(int)
             #canvas_size = cmp_parameters['canvas_size']
@@ -63,7 +65,7 @@ def main(args):
                 anc_position_on_canvas = center_canvas
                 anc_rotation = anc_position[2] * cmp_parameters['theta_step']
                 print(f"\nAnchor {anchor_id} in {anc_position_on_canvas} on a canvas of {canvas.shape}\n")
-                print(f"anchor was: {anc_position_xy}")
+                print(f"anchor was: {anc_position_xy} rotated of {anc_rotation}")
                 print(f"aligning to canvas on xy --> shift_anc2canvas: {shift_anc2canvas}")
                 
                 gt_xy_anc = -1 * np.asarray(ground_truth[f"piece_{anchor_id:04d}"]['translation'][::-1])
@@ -80,6 +82,7 @@ def main(args):
                 errors_rot = np.zeros(num_pcs)
                 correct_xy = np.zeros(num_pcs)
                 correct_rot = np.zeros(num_pcs)
+                correct = np.zeros(num_pcs)
                 for j in range(num_pcs):
                     gt_rot_orig = -1 * ground_truth[f"piece_{j:04d}"]['rotation']
                     gt_rot = gt_rot_orig + shift_rot_gt_anc2canvas
@@ -96,10 +99,12 @@ def main(args):
 
                     error_xy = np.sqrt(np.sum(np.square(gt_xy_canvas - est_xy_canvas)))
                     error_rot = np.sqrt(np.square(np.abs(gt_rot - est_rot)))
-                    if np.isclose(error_xy, 0):
+                    if error_xy < cmp_parameters['xy_step']: #np.isclose(error_xy, 0):
                         correct_xy[j] = 1
-                    if np.isclose(error_rot, 0):
+                    if error_rot < cmp_parameters['theta_step'] or np.isclose(error_rot, 360): #np.isclose(error_rot, 0):
                         correct_rot[j] = 1
+                    if correct_xy[j] == 1 and correct_rot[j] == 1:
+                        correct[j] = 1
                     errors_xy[j] = error_xy
                     errors_rot[j] = error_rot
                     print("-" * 40)
@@ -118,15 +123,18 @@ def main(args):
                 mean_rot_err = np.mean(errors_rot)
                 num_correct_pcs_xy = np.sum(correct_xy)
                 num_correct_pcs_rot = np.sum(correct_rot)
+                num_correct_pcs = np.sum(correct)
                 print("*" * 50)
                 print("CORRECT")
                 print(f"XY: {num_correct_pcs_xy}")
                 print(f"ROT: {num_correct_pcs_rot}")
+                print(f"Both: {num_correct_pcs}")
                 print("AVERAGE DISTANCE")
                 print(f"XY: {mean_xy_err:.3f}")
                 print(f"ROT: {mean_rot_err:.3f}")
 
                 evaluation_dict = {
+                    'correct': num_correct_pcs,
                     'correct_on_xy': num_correct_pcs_xy,
                     'correct_on_rot': num_correct_pcs_rot,
                     'average_dist_xy': mean_xy_err,
