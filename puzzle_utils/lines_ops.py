@@ -51,11 +51,6 @@ def draw_lines(lines_dict, img_shape, thickness=1, color=255, use_color=False):
                 color = colors[j]
                 j += 1
             lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(color), thickness=thickness)        
-
-    plt.imshow(lines_img)
-    plt.show()    
-    pdb.set_trace()
-
     #cv2.imwrite(os.path.join(lin_output, f"{pieces_names[k][:-4]}_l.jpg"), 255-lines_img)
     return lines_img 
 

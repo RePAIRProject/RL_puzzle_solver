@@ -71,9 +71,13 @@ def main(args):
                 shift_rot_gt_anc2canvas = gt_rotation_anc - anc_rotation
                 print(f"GT xy anc was: {gt_xy_anc}")
                 shift_gt_anc2canvas = gt_xy_anc - center_canvas
+                # if gt rot is not 0, we need to shift all the coordinates
                 print(f"aligning to canvas --> shift_gt_anc2canvas: {shift_gt_anc2canvas}")
                 print(f"aligning to canvas on rot --> shift_rot_gt_anc2canvas: {shift_rot_gt_anc2canvas}")
                 print()
+                
+
+
                 num_pcs = img_parameters['num_pieces']
                 errors_xy = np.zeros(num_pcs)
                 errors_rot = np.zeros(num_pcs)
