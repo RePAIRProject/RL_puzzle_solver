@@ -314,7 +314,7 @@ def main(args):
             full_detection_list.append(aligned_lines)
             # we do not write to disk yet
             # need to get cateogries
-        print(f"finished image {images_names[k]}, creating cateogires")
+        print(f"finished image {images_names[k]}, creating categories")
         fcl = np.asarray(full_colors_list)
         km = KMeans(args.num_categories)
         labels = km.fit_predict(fcl)

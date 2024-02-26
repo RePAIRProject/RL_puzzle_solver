@@ -245,15 +245,8 @@ class PuzzleGenerator:
             extr_pieces.append(rgba_ex)
         return pieces, extr_pieces
 
-    def save_extrapolated_regions(self, iter=1, folder=''):
+    def save_extrapolated_regions(self, extrap_folder=''):
         
-        if folder == '':
-            extrap_folder = os.path.join(self.puzzle_folder, str(iter), 'extrapolated')
-        else:
-            extrap_folder = folder
-        if not os.path.exists(extrap_folder):
-            os.mkdir(extrap_folder)
-        #pdb.set_trace()
         for reg_val in range(self.region_cnt): # in np.unique(self.region_mat):
             cur_reg = self.region_mat == reg_val
             dilation_kernel = np.random.rand(self.dilation_kernel_size, self.dilation_kernel_size)
@@ -263,8 +256,14 @@ class PuzzleGenerator:
             rgba_ex[:, :, 3] = 255*(dilated_reg)
             rgba = cv2.cvtColor(self.img, cv2.COLOR_RGB2RGBA)
             rgba[:, :, 3] = 255*(cur_reg)
-            cv2.imwrite(os.path.join(extrap_folder, f'piece-{reg_val}_ex.png'), rgba_ex)
-            cv2.imwrite(os.path.join(extrap_folder, f'piece-{reg_val}.png'), rgba)
+
+            rgba_ex_cropped, x0, x1, y0, y1 = crop_extrapolated(rgba_ex, padding=0, return_vals=True)
+            rgba_cropped = rgba[y0:y1, x0:x1, :]
+
+            cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v1_ex.png'), rgba_ex)
+            cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v1.png'), rgba)
+            cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v2_ex.png'), rgba_ex_cropped)
+            cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v2.png'), rgba_cropped)
             #print(os.path.join(extrap_folder, f'piece-{reg_val}.png'))
 
     def save_jpg_regions(self, folder_path, skip_bg=False):
@@ -708,3 +707,14 @@ class PuzzleGenerator:
             self.save_extrapolated_regions(exist_data_len)
         self.save_zip(exist_data_len)
         self.save_challenge_zip(exist_data_len)
+
+def crop_extrapolated(image, padding=1, return_vals=False):
+
+    x0 = np.min(np.where(image[:,:,3] > 0)[1]) - padding
+    x1 = np.max(np.where(image[:,:,3] > 0)[1]) + padding
+    y0 = np.min(np.where(image[:,:,3] > 0)[0]) - padding
+    y1 = np.max(np.where(image[:,:,3] > 0)[0]) + padding
+
+    if return_vals == True:
+        return image[y0:y1, x0:x1, :], x0, x1, y0, y1
+    return image[y0:y1, x0:x1, :]

@@ -156,11 +156,12 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         frags, extr_frags = generator.get_extrapolated_regions()
         extr_folder = os.path.join(output_path, 'extrapolated')
         os.makedirs(extr_folder, exist_ok=True)
+        generator.save_extrapolated_regions(extrap_folder=extr_folder)
         for j in range(len(frags)):
             centered_fragment, _m, _s = center_fragment(frags[j])
-            cv2.imwrite(os.path.join(extr_folder, f"piece_{j:04d}.png"), centered_fragment)
+            cv2.imwrite(os.path.join(extr_folder, f"cmass_piece_{j:04d}.png"), centered_fragment)
             centered_extr_fragment, _m, _s = center_fragment(extr_frags[j])
-            cv2.imwrite(os.path.join(extr_folder, f"piece_{j:04d}_ext.png"), centered_extr_fragment)
+            cv2.imwrite(os.path.join(extr_folder, f"cmass_piece_{j:04d}_ext.png"), centered_extr_fragment)
 
     # this is in shapely coordinates (x,y) and if we use in opencv/matplotlib we should invert order again
     for piece in pieces:
@@ -345,11 +346,13 @@ def place_at(piece, canvas, location):
         canvas[y0:y1, x0:x1, :] += piece
     return canvas
 
-def crop_to_content(image, padding=1):
+def crop_to_content(image, padding=1, return_vals=False):
 
     x0 = np.min(np.where(image > 0)[1]) - padding
     x1 = np.max(np.where(image > 0)[1]) + padding
     y0 = np.min(np.where(image > 0)[0]) - padding
     y1 = np.max(np.where(image > 0)[0]) + padding
 
+    if return_vals == True:
+        return image[y0:y1, x0:x1, :], x0, x1, y0, y1
     return image[y0:y1, x0:x1, :]
