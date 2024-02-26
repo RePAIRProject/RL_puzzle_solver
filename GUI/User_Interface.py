@@ -13,11 +13,11 @@ from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.uix.behaviors import DragBehavior
 from kivy.uix.scatter import Scatter
+from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.toolbar import MDTopAppBar
 
 import Back_End
 from select_anchor_RePAIR import get_backend_path
-from select_anchor_RePAIR import select_anchor
 
 import json
 import threading
@@ -30,7 +30,7 @@ from MoveableImage import MovableImage
 image_numbers = []
 file_names = []
 scores = []
-Window.clearcolor = (0, 0, 0)
+Window.clearcolor = (0, 0, 0, 0)
 
 
 # Window.fullscreen = 'auto'
@@ -109,16 +109,38 @@ class MainLayout(GridLayout):
 
 class GUIApp(MDApp):
     def build(self):
+        the_app = self
+        the_layout = MDBoxLayout(md_bg_color=(0, 0, 0, 1))
         main_layout = MainLayout()
         main_layout.cols = 1
         main_layout.rows = 3
 
         toolbar = MDTopAppBar()
-        print("am i passing")
+        toolbar.orientation = "horizontal"
+
         main_layout.add_widget(toolbar)
 
         run_button = Button(text="Run")
+        run_button.bind(on_press=start_select_anchor)
+
+        run_button.size_hint_x = 0.5
+
+        show_button = Button(text="Show")
+
+        show_button.size_hint_x = 0.5
+        # show_button.bind(on_press=self)
+
+        # toolbar_layout = GridLayout()
+        # toolbar_layout.cols = 1
+        # toolbar_layout.rows = 2
+        # toolbar_layout.add_widget(run_button)
+        # toolbar_layout.add_widget(show_button)
+        # toolbar.add_widget(toolbar_layout)
+
+        toolbar.left_action_items.append(["menu", lambda x: the_app.callback()])
+
         toolbar.add_widget(run_button)
+        toolbar.add_widget(show_button)
 
         # main_layout.size_hint = (1, 1)
         main_layout.minimum_height = 1
@@ -140,6 +162,7 @@ class GUIApp(MDApp):
         for i in range(len(image_numbers)):
             score_label = Label()
             buttons.append(score_label)
+            score_label.color = (1, 0, 0, 1)
             score_label.text = str(scores[i])
 
             image = image_reader(i, scores[i])
@@ -155,7 +178,14 @@ class GUIApp(MDApp):
         #     grid_layout.add_widget(button)
         # grid_layout.add_widget(button)
         # grid_layout.add_widget(widget)
-        return main_layout
+        the_layout.add_widget(main_layout)
+        return the_layout
+
+    def set_green(self):
+        print("im here")
+
+    def callback(self):
+        start_select_anchor(self)
 
 
 sorted_image_scores = None
@@ -166,25 +196,30 @@ test_thread_started = True
 test_thread_lock = threading.Lock()
 
 
-def test_thread():
+def test_thread(app):
     while True:
         test_thread_lock.acquire()
-        if not test_thread_started:
-            print("test_thread")
-            return
+        # if not test_thread_started:
+        #     print("test_thread")
+        #     return
         test_thread_lock.release()
         print(Back_End.get_select_anchor_running())
-        if not Back_End.get_select_anchor_running():
-            return
+        # if not Back_End.get_select_anchor_running():
+        #     return
+        if Back_End.get_select_anchor_running():
+            app.set_green()
+        elif Back_End.get_select_anchor_running():
+            app.set_green()
         time.sleep(1)
     print("finished")
 
 
-if __name__ == '__main__':
+def start_select_anchor(self):
     Back_End.start_back_end()
-    test_thread = threading.Thread(target=test_thread, daemon=True)
-    test_thread_started = True
-    test_thread.start()
+
+
+if __name__ == '__main__':
+
     # sorted_image_scores = select_anchor()
     # print(sorted_image_scores)
     # path = backEnd_path + "top_10_fragments.json"
@@ -193,6 +228,10 @@ if __name__ == '__main__':
     path = current_path + "top_10_fragments.json"
     json_reader(path)
 
-    GUIApp().run()
+    app = GUIApp().run()
+
+    test_thread = threading.Thread(target=test_thread(app), daemon=True)
+    test_thread_started = True
+    test_thread.start()
 
 
