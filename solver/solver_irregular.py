@@ -54,6 +54,8 @@ def initialization(R, anc, p_size=0):
 
 
 def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
+    R = np.maximum(R, -1)
+    R_new = R
     faze = 0
     new_anc = []
     na_new = na
@@ -82,11 +84,22 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
                     p[:, :, :, jj] = 0
                     p[y, x, :, :] = 0
                     p[y, x, z, jj] = 1
+
+                    ## NEW: Re-normalization of R after anchoring
+                    for jj_anc in range(noPatches):
+                        if new_anc[jj_anc, 0] != 0:
+                            R_new[:, :, : , jj_anc, jj] = 0
+
+        R_renorm = R_new / np.max(R_new)
+        R_new = np.where((R_new > 0), R_renorm, R_new)
+
         if faze == 0:
             T = cfg.Tfirst
         else:
             T = cfg.Tnext
-        p, payoff, eps, iter = solver_rot_puzzle(R, p, T, iter, 0, verbosity=verbosity, decimals=decimals)
+
+
+        p, payoff, eps, iter = solver_rot_puzzle(R_new, R, p, T, iter, 0, verbosity=verbosity, decimals=decimals)
 
         I = np.zeros((noPatches, 1))
         m = np.zeros((noPatches, 1))
@@ -104,7 +117,15 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
             print("ITERATION", iter)
             print("#" * 70)
             print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
-        a = (m > cfg.anc_fix_tresh).astype(int)
+
+        if na < (noPatches-2):
+            fix_tresh = cfg.anc_fix_tresh
+        elif na > (noPatches-2):
+            fix_tresh = 0.11   ## just fix last 2 pieces  !!!
+        else:
+            fix_tresh = 0.33   ## just fix last 2 pieces  !!!
+
+        a = (m > fix_tresh).astype(int)
         new_anc = np.array(fin_sol*a)
         na_new = np.sum(a)
         # if verbosity > 0:
@@ -126,7 +147,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
     return all_pay, all_sol, all_anc, p_final, eps, iter, na_new
 
 
-def solver_rot_puzzle(R, p, T, iter, visual, verbosity=1, decimals=8):
+def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
     no_rotations = R.shape[2]
     no_patches = R.shape[3]
     payoff = np.zeros(T+1)
@@ -390,7 +411,7 @@ def main(args):
     fin_im2 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
 
     final_solution_anchor = os.path.join(solution_folder, f'final_only_anchor_using_anchor{anc}.png')
-    plt.figure(figsize=(16,16))
+    plt.figure(figsize=(16, 16))
     plt.title("Final solution including ONLY solved pieces")
     plt.imshow((fin_im2 * 255).astype(np.uint8))
     plt.tight_layout()
@@ -447,7 +468,7 @@ if __name__ == '__main__':
     parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation')  # LAP, LCI
-    parser.add_argument('--anchor', type=int, default=0, help='anchor piece (index)')
+    parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=2, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
