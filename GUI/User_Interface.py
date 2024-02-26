@@ -1,6 +1,7 @@
 import os
 
 from kivy import Config
+from kivy.clock import Clock
 from kivymd.app import MDApp
 
 from kivy.graphics import Rotate, PopMatrix, PushMatrix
@@ -106,13 +107,22 @@ class MainLayout(GridLayout):
     #     print('X value = %d' % touch.x)
     #     # self.label.text = str(self.image_number + 1)
 
+    the_list = []
+
 
 class GUIApp(MDApp):
+    def __init__(self):
+        super().__init__()
+        toolbar = MDBoxLayout
+
+    the_list = []
+
     def build(self):
         the_app = self
         the_layout = MDBoxLayout(md_bg_color=(0, 0, 0, 1))
         main_layout = MainLayout()
         main_layout.cols = 1
+
         main_layout.rows = 3
 
         toolbar = MDTopAppBar()
@@ -179,10 +189,15 @@ class GUIApp(MDApp):
         # grid_layout.add_widget(button)
         # grid_layout.add_widget(widget)
         the_layout.add_widget(main_layout)
+        self.the_list.append(toolbar)
+        Clock.schedule_interval(self.checking_clock, 1)
         return the_layout
 
-    def set_green(self):
-        print("im here")
+    def checking_clock(self, *args, **kwargs):
+        self.the_list[0].md_bg_color = (1, 0, 0, 1)
+
+        if test_thread_started:
+            print("Test thread started")
 
     def callback(self):
         start_select_anchor(self)
@@ -196,7 +211,12 @@ test_thread_started = True
 test_thread_lock = threading.Lock()
 
 
-def test_thread(app):
+def start_select_anchor(self):
+    Back_End.start_back_end()
+
+
+def test_thread():
+    print("Test thread")
     while True:
         test_thread_lock.acquire()
         # if not test_thread_started:
@@ -207,19 +227,16 @@ def test_thread(app):
         # if not Back_End.get_select_anchor_running():
         #     return
         if Back_End.get_select_anchor_running():
-            app.set_green()
+            print(Back_End.get_select_anchor_running())
         elif Back_End.get_select_anchor_running():
-            app.set_green()
+            print(Back_End.get_select_anchor_running())
         time.sleep(1)
-    print("finished")
-
-
-def start_select_anchor(self):
-    Back_End.start_back_end()
 
 
 if __name__ == '__main__':
-
+    test_thread = threading.Thread(target=test_thread, daemon=True)
+    test_thread_started = True
+    test_thread.start()
     # sorted_image_scores = select_anchor()
     # print(sorted_image_scores)
     # path = backEnd_path + "top_10_fragments.json"
@@ -230,8 +247,6 @@ if __name__ == '__main__':
 
     app = GUIApp().run()
 
-    test_thread = threading.Thread(target=test_thread(app), daemon=True)
-    test_thread_started = True
-    test_thread.start()
+
 
 
