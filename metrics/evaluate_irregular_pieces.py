@@ -11,7 +11,7 @@ from solver.solverRotPuzzArgs import reconstruct_puzzle
 import cv2
 from metrics.metrics_utils import get_sol_from_p, get_visual_solution_from_p, simple_evaluation, \
     pixel_difference, neighbor_comparison, get_offset, get_true_solution_vector, \
-        get_pred_solution_vector, get_xy_position, simple_evaluation_vector
+        get_pred_solution_vector, get_xy_position, simple_evaluation_vector, include_rotation
 import json 
 
 def main(args):
@@ -75,21 +75,19 @@ def main(args):
                 print(f"aligning to canvas --> shift_gt_anc2canvas: {shift_gt_anc2canvas}")
                 print(f"aligning to canvas on rot --> shift_rot_gt_anc2canvas: {shift_rot_gt_anc2canvas}")
                 print()
-                
-
-
                 num_pcs = img_parameters['num_pieces']
                 errors_xy = np.zeros(num_pcs)
                 errors_rot = np.zeros(num_pcs)
                 correct_xy = np.zeros(num_pcs)
                 correct_rot = np.zeros(num_pcs)
                 for j in range(num_pcs):
+                    gt_rot_orig = -1 * ground_truth[f"piece_{j:04d}"]['rotation']
+                    gt_rot = gt_rot_orig + shift_rot_gt_anc2canvas
                     # here we calculate shift between ground truth absolute and with respect to the anchor!
                     gt_xy = -1 * np.asarray(ground_truth[f"piece_{j:04d}"]['translation'][::-1])
                     gt_xy_canvas = gt_xy - shift_gt_anc2canvas
-                    gt_rot_orig = -1 * ground_truth[f"piece_{j:04d}"]['rotation']
-                    gt_rot = shift_rot_gt_anc2canvas
-
+                    gt_xy_canvas_rot = include_rotation(gt_xy_canvas, shift_rot_gt_anc2canvas)
+                    
                     # here the solution (from the solver)
                     solution_piece = np.unravel_index(np.argmax(p_final[:,:,:,j]), p_final[:,:,:,j].shape)
                     est_xy = np.asarray(solution_piece[:2]) * cmp_parameters['xy_step']

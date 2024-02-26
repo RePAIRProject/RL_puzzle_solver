@@ -258,7 +258,7 @@ def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False)
             print(f'- {piece_name}')
         piece_full_path = os.path.join(data_folder, piece_name)
         piece_d = {}
-        img = plt.imread(piece_full_path)
+        img = cv2.imread(piece_full_path)
         piece_d['img'] = img
         mask_full_path = os.path.join(masks_folder, piece_name)
         piece_d['mask'] = plt.imread(mask_full_path)

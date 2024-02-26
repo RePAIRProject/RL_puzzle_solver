@@ -153,15 +153,15 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         pieces, patch_size = generator.get_pieces_from_puzzle_v2(start_from=1)
 
     if (shape == 'irregular' or shape == 'pattern') and save_extrapolated_regions is True:
-        frags, extr_frags = generator.get_extrapolated_regions()
+        generator.extrapolate_regions()
         extr_folder = os.path.join(output_path, 'extrapolated')
         os.makedirs(extr_folder, exist_ok=True)
         generator.save_extrapolated_regions(extrap_folder=extr_folder)
-        for j in range(len(frags)):
-            centered_fragment, _m, _s = center_fragment(frags[j])
-            cv2.imwrite(os.path.join(extr_folder, f"cmass_piece_{j:04d}.png"), centered_fragment)
-            centered_extr_fragment, _m, _s = center_fragment(extr_frags[j])
-            cv2.imwrite(os.path.join(extr_folder, f"cmass_piece_{j:04d}_ext.png"), centered_extr_fragment)
+        # for j in range(len(frags)):
+        #     centered_fragment, _m, _s = center_fragment(frags[j])
+        #     cv2.imwrite(os.path.join(extr_folder, f"cmass_piece_{j:04d}.png"), centered_fragment)
+        #     centered_extr_fragment, _m, _s = center_fragment(extr_frags[j])
+        #     cv2.imwrite(os.path.join(extr_folder, f"cmass_piece_{j:04d}_ext.png"), centered_extr_fragment)
 
     # this is in shapely coordinates (x,y) and if we use in opencv/matplotlib we should invert order again
     for piece in pieces:
