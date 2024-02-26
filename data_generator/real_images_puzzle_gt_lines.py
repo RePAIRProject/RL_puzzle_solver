@@ -10,7 +10,7 @@ from sklearn.cluster import KMeans
 # import helper functions
 from configs import folder_names as fnames
 from puzzle_utils.dataset_gen import generate_random_point, create_random_image, randomword
-from puzzle_utils.lines_ops import line_cart2pol
+from puzzle_utils.lines_ops import line_cart2pol, create_lines_only_image
 from puzzle_utils.pieces_utils import cut_into_pieces, rescale_image, save_transformation_info
 from puzzle_utils.shape_utils import process_region_map
 
@@ -122,6 +122,8 @@ def main(args):
         orig_lines = loadmat(os.path.join(input_lines_path, f"{img_path[:-4]}_line.mat"))['lines']
         if max(img.shape[:2]) > args.rescale:
             img, lines = rescale_image(img, args.rescale, orig_lines)
+        if args.use_only_lines:
+            img = create_lines_only_image(img, lines)
 
         # only for patterns
         if args.shape == 'pattern':
@@ -371,10 +373,12 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--lines', type=str, default='', help='lines folder (annotated lines)')
     parser.add_argument('-ncat', '--num_categories', type=int, default=5, help='number of different semantic categories')
     parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces the images')
-    parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['regular', 'irregular'])
+    parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['square', 'pattern', 'irregular'])
     parser.add_argument('-r', '--rescale', type=int, default=300, help='rescale the largest of the two axis to this number (default 1000) to avoid large puzzles.')
     parser.add_argument('-noR', "--do_not_rotate", help="Use it to disable rotation!", action="store_true")
     parser.add_argument('-extr', "--extrapolation", help="Use it to create an extrapolated version of each fragment", action="store_true")
     parser.add_argument('-sv', "--save_visualization", help="Use it to create visualization", action="store_true")
+    parser.add_argument('-ol', "--use_only_lines", help="Use it to disable rotation!", action="store_true")
+    parser.add_argument('-pf', '--patterns_folder', type=str, default='', help='(used only if shape == pattern): the folder where the patterns are stored')
     args = parser.parse_args()
     main(args)

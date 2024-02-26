@@ -34,6 +34,19 @@ def calc_line_matching_parameters(parameters, cmp_cost='new'):
     lm_pars['k'] = 5
     return lm_pars
 
+def create_lines_only_image(img, lines):
+
+    black = np.zeros_like(img) 
+    only_line_image = np.zeros_like(img)
+    for line in lines:
+        p1 = line[:2] 
+        p2 = line[2:4]
+        black = cv2.line(black, np.asarray([p1[0], p1[1]]).astype(int), np.asarray([p2[0], p2[1]]).astype(int), color=(1, 1, 1), thickness=1)
+    only_line_image = img * black
+    only_line_image += (255 - black)
+    # only_line_image = 255 - only_line_image
+    return only_line_image                   
+
 def draw_lines(lines_dict, img_shape, thickness=1, color=255, use_color=False):
     angles, dists, p1s, p2s, colors, cats = extract_from(lines_dict)
     if use_color == True:
