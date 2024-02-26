@@ -34,17 +34,28 @@ def calc_line_matching_parameters(parameters, cmp_cost='new'):
     lm_pars['k'] = 5
     return lm_pars
 
-def draw_lines(lines_dict, img_shape, thickness=1, color=255):
+def draw_lines(lines_dict, img_shape, thickness=1, color=255, use_color=False):
     angles, dists, p1s, p2s, colors, cats = extract_from(lines_dict)
-    lines_img = np.zeros(shape=img_shape[:2], dtype=np.uint8)
-    if len(colors) > 0:
-        j = 0
-        assert(len(colors)==len(p1s)), f"different numbers of colors ({len(colors)}) and lines ({len(p1s)}) in the .json file!"
-    for p1, p2 in zip(p1s, p2s):
+    if use_color == True:
+        print("WARNING: probably not working! Check the image creation")
+        lines_img = np.zeros(shape=img_shape, dtype=np.uint8)
         if len(colors) > 0:
-            color = colors[j]
-            j += 1
-        lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(color), thickness=thickness)        
+            j = 0
+            assert(len(colors)==len(p1s)), f"different numbers of colors ({len(colors)}) and lines ({len(p1s)}) in the .json file!"
+    lines_img = np.zeros(shape=img_shape[:2], dtype=np.uint8)
+    for p1, p2 in zip(p1s, p2s):
+        if use_color == False:
+            lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(1), thickness=thickness)        
+        else:
+            if len(colors) > 0:
+                color = colors[j]
+                j += 1
+            lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(color), thickness=thickness)        
+
+    plt.imshow(lines_img)
+    plt.show()    
+    pdb.set_trace()
+
     #cv2.imwrite(os.path.join(lin_output, f"{pieces_names[k][:-4]}_l.jpg"), 255-lines_img)
     return lines_img 
 
