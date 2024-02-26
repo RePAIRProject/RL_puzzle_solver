@@ -119,9 +119,9 @@ def main(args):
         img_parameters = {}
         ## create images with lines
         img = cv2.imread(os.path.join(input_images_path, img_path))
-        lines = loadmat(os.path.join(input_lines_path, f"{img_path[:-4]}_line.mat"))['lines']
+        orig_lines = loadmat(os.path.join(input_lines_path, f"{img_path[:-4]}_line.mat"))['lines']
         if max(img.shape[:2]) > args.rescale:
-            img, lines = rescale_image(img, args.rescale, lines)
+            img, lines = rescale_image(img, args.rescale, orig_lines)
 
         # only for patterns
         if args.shape == 'pattern':
@@ -185,8 +185,9 @@ def main(args):
             black = np.zeros_like(piece['image'])
             # get 'ground truth' images
             for i in range(len(lines)):
-                p1 = lines[i][:2]
-                p2 = lines[i][2:4]
+                p1 = lines[i][:2] #[::2]
+                p2 = lines[i][2:4] #[1::2]
+                
                 line = shapely.LineString([p1, p2])
                 # get RGB line color from the image 
                 
@@ -276,8 +277,9 @@ def main(args):
             squared_p2s = []
             for ang, p1, p2 in zip(angles, p1s, p2s):
                 squared_angles.append(ang) # no rotation, but this will change as soon as we introduce rotation
-                squared_p1s.append((p1 + piece['shift2center'][::-1] + piece['shift2square'][::-1]).tolist())
-                squared_p2s.append((p2 + piece['shift2center'][::-1] + piece['shift2square'][::-1]).tolist())
+                squared_p1s.append((p1 + piece['shift2center'][::-1] + piece['shift2square'][::1]).tolist())
+                squared_p2s.append((p2 + piece['shift2center'][::-1] + piece['shift2square'][::1]).tolist())
+                #!#shift2square was inverted
             if 'rotation' in piece.keys():
                 # piece['rotation'] is in degrees!
                 rot_origin = [piece['squared_image'].shape[0] // 2, piece['squared_image'].shape[1] // 2]
@@ -326,13 +328,14 @@ def main(args):
         line_counter = 0
         for k, det_dict in enumerate(full_detection_list):
             categories = []
+            lines_shape = np.zeros_like(pieces[k]['squared_image'])
             for r in range(len(det_dict['angles'])):
                 categories.append(int(labels[line_counter + r]))
             det_dict['categories'] = categories
             line_counter += r
             with open(os.path.join(lines_output_folder, f"piece_{k:04d}.json"), 'w') as lj:
                 json.dump(det_dict, lj, indent=3)
-            print(f'\t- done with piece {k:05d}')
+            print(f'\t done with piece {k:05d}')
 
         # INFO ABOUT IMAGE (puzzle)
         num_pieces_dict[puzzle_name] = j+1

@@ -230,41 +230,52 @@ class PuzzleGenerator:
         f.close()
         print('\tSave to %s & %d.txt' % (file_path, iter))
 
-    def get_extrapolated_regions(self, extr_pixels=10):
-        pieces = []
-        extr_pieces = []
+    def extrapolate_regions(self, extr_pixels=5, return_vals=False):
+        self.pieces = []
+        self.extr_pieces = []
         dilation_kernel = np.ones((extr_pixels * 2 + 1, extr_pixels * 2 + 1))
         for reg_val in range(self.region_cnt): # in np.unique(self.region_mat):
             cur_reg = self.region_mat == reg_val
             dilated_reg = cv2.dilate(cur_reg.astype(np.uint8), dilation_kernel, iterations=1)
+            plt.subplot(221);plt.imshow(cur_reg)
+            plt.subplot(222);plt.imshow(dilated_reg)
             rgba_ex = cv2.cvtColor(self.img, cv2.COLOR_RGB2RGBA)
             rgba_ex[:, :, 3] = 255*(dilated_reg)
             rgba = cv2.cvtColor(self.img, cv2.COLOR_RGB2RGBA)
             rgba[:, :, 3] = 255*(cur_reg)
-            pieces.append(rgba)
-            extr_pieces.append(rgba_ex)
-        return pieces, extr_pieces
+            self.pieces.append(rgba)
+            self.extr_pieces.append(rgba_ex)
+        if return_vals == True:
+            return pieces, extr_pieces
 
     def save_extrapolated_regions(self, extrap_folder=''):
         
-        for reg_val in range(self.region_cnt): # in np.unique(self.region_mat):
-            cur_reg = self.region_mat == reg_val
-            dilation_kernel = np.random.rand(self.dilation_kernel_size, self.dilation_kernel_size)
-            dilated_reg = cv2.dilate(cur_reg.astype(np.uint8), dilation_kernel, iterations=1)
-            #dilated_frag = self.img * np.dstack((dilated_reg,dilated_reg,dilated_reg))
-            rgba_ex = cv2.cvtColor(self.img, cv2.COLOR_RGB2RGBA)
-            rgba_ex[:, :, 3] = 255*(dilated_reg)
-            rgba = cv2.cvtColor(self.img, cv2.COLOR_RGB2RGBA)
-            rgba[:, :, 3] = 255*(cur_reg)
+        if self.extr_pieces is None:
+            extrapolate_regions(self, extr_pixels=5, return_vals=False)
+        for j in range(len(self.extr_pieces)):
+            rgba_ex_cropped, x0, x1, y0, y1 = crop_extrapolated(self.extr_pieces[j], padding=0, return_vals=True)
+            rgba_cropped = self.pieces[j][y0:y1, x0:x1, :]
+            path_for_matlab = f"{extrap_folder.split('/')[-3]}_{extrap_folder.split('/')[-2]}"
+            cv2.imwrite(os.path.join(extrap_folder, f'{path_for_matlab}_piece_p{j:04d}_v1_ext.png'), rgba_ex_cropped)
+            cv2.imwrite(os.path.join(extrap_folder, f'{path_for_matlab}_piece_p{j:04d}_v1.png'), rgba_cropped)
+        # for reg_val in range(self.region_cnt): # in np.unique(self.region_mat):
+        #     cur_reg = self.region_mat == reg_val
+        #     dilation_kernel = np.random.rand(self.dilation_kernel_size, self.dilation_kernel_size)
+        #     dilated_reg = cv2.dilate(cur_reg.astype(np.uint8), dilation_kernel, iterations=1)
+        #     #dilated_frag = self.img * np.dstack((dilated_reg,dilated_reg,dilated_reg))
+        #     rgba_ex = cv2.cvtColor(self.img, cv2.COLOR_RGB2RGBA)
+        #     rgba_ex[:, :, 3] = 255*(dilated_reg)
+        #     rgba = cv2.cvtColor(self.img, cv2.COLOR_RGB2RGBA)
+        #     rgba[:, :, 3] = 255*(cur_reg)
 
-            rgba_ex_cropped, x0, x1, y0, y1 = crop_extrapolated(rgba_ex, padding=0, return_vals=True)
-            rgba_cropped = rgba[y0:y1, x0:x1, :]
+        #     rgba_ex_cropped, x0, x1, y0, y1 = crop_extrapolated(rgba_ex, padding=0, return_vals=True)
+        #     rgba_cropped = rgba[y0:y1, x0:x1, :]
 
-            cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v1_ex.png'), rgba_ex)
-            cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v1.png'), rgba)
-            cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v2_ex.png'), rgba_ex_cropped)
-            cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v2.png'), rgba_cropped)
-            #print(os.path.join(extrap_folder, f'piece-{reg_val}.png'))
+        #     # cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v1_ex.png'), rgba_ex)
+        #     # cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v1.png'), rgba)
+        #     cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v2_ex.png'), rgba_ex_cropped)
+        #     cv2.imwrite(os.path.join(extrap_folder, f'series_p-{reg_val}_v2.png'), rgba_cropped)
+        #     #print(os.path.join(extrap_folder, f'piece-{reg_val}.png'))
 
     def save_jpg_regions(self, folder_path, skip_bg=False):
         regions_path = os.path.join(folder_path, 'regions')
@@ -677,7 +688,7 @@ class PuzzleGenerator:
 
         self.rot_range = rot_range
         self.piece_n = piece_n
-        self.w_n = math.floor(math.sqrt(piece_n / self.aspect_ratio))
+        self.w_n = math.floor(math.sqrt(piece_n)) # / self.aspect_ratio))
         self.h_n = self.w_n #math.floor(self.w_n * self.aspect_ratio)
         self.smooth_flag = smooth_flag
         self.alpha_channel = alpha_channel

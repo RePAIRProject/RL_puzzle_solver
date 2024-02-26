@@ -51,11 +51,6 @@ def draw_lines(lines_dict, img_shape, thickness=1, color=255, use_color=False):
                 color = colors[j]
                 j += 1
             lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(color), thickness=thickness)        
-
-    plt.imshow(lines_img)
-    plt.show()    
-    pdb.set_trace()
-
     #cv2.imwrite(os.path.join(lin_output, f"{pieces_names[k][:-4]}_l.jpg"), 255-lines_img)
     return lines_img 
 
@@ -364,10 +359,12 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                     line_importance_f1 = np.zeros(n_lines_f1)
                     for idx in range(n_lines_f1):
                         line_importance_f1[idx] = distance.euclidean(useful_lines_s11[idx], useful_lines_s12[idx])
+                    line_importance_f1 /= np.sum(line_importance_f1)
 
                     line_importance_f2 = np.zeros(n_lines_f2)
                     for idx in range(n_lines_f2):
                         line_importance_f2[idx] = distance.euclidean(useful_lines_s21[idx], useful_lines_s22[idx])
+                    line_importance_f2 /= np.sum(line_importance_f2)
 
                     ######################################
                     # 1. Gamma, Distance, Confidence
@@ -420,7 +417,7 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                         # print("\n\n")
                         tot_cost = cost_f1 + cost_f2
                         if verbosity > 2:
-                            print(f"cost for pieces {cost_f1} and {cost_f2} in {[iy, ix, t]}")
+                            print(f"cost {cost_f1 + cost_f2} // cost for pieces {cost_f1} and {cost_f2} in {[iy, ix, t]}")
 
                     tot_cost = cost_f1 + cost_f2
                     #ind = np.argpartition(line_importance_f2, -n_lines_f1)[-:]

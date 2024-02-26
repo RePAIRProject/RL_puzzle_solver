@@ -4,7 +4,7 @@ import cv2
 import numpy as np 
 import scipy
 
-def save_vis(cm, pieces, rot_step, path, title='', draw_figsize=(100, 100), all_rotation=False, save_every=6, img_format='jpg'):
+def save_vis(cm, pieces, rot_step, path, title='', draw_figsize=(100, 100), all_rotation=False, save_every=6, img_format='jpg', vmin=-1, vmax=1):
     
     rotation_range = np.arange(cm.shape[2])
     for rr in rotation_range:
@@ -22,12 +22,12 @@ def save_vis(cm, pieces, rot_step, path, title='', draw_figsize=(100, 100), all_
             fig.colorbar(mim)
             for x_plot in range(1, cm.shape[3]+1):
                 for y_plot in range(1, cm.shape[4]+1):
-                    axs[x_plot, y_plot].imshow(cm[:, :, rr, x_plot-1, y_plot-1], vmin=-1, vmax=1, cmap='RdYlGn')
+                    axs[x_plot, y_plot].imshow(cm[:, :, rr, x_plot-1, y_plot-1], vmin=vmin, vmax=vmax, cmap='RdYlGn')
                     axs[x_plot, y_plot].xaxis.set_visible(False)
                     axs[x_plot, y_plot].yaxis.set_visible(False)
             for a in range(1, cm.shape[3]+1):
                 axs[0, a].set_title(pieces[a-1]['id'], fontsize=32)
-                axs[0, a].imshow(cv2.cvtColor(pieces[a-1]['img'], cv2.COLOR_BGR2RGB), vmin=-1, vmax=1, cmap='RdYlGn')
+                axs[0, a].imshow(cv2.cvtColor(pieces[a-1]['img'], cv2.COLOR_BGR2RGB), vmin=vmin, vmax=vmax, cmap='RdYlGn')
                 axs[0, a].xaxis.set_visible(False)
                 axs[0, a].yaxis.set_visible(False)
                 if theta > 0:

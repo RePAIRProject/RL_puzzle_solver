@@ -4,6 +4,16 @@ import os
 import pdb 
 import cv2 
 
+def include_rotation(xy, rot):
+    new_xy = xy
+    if rot == 90 or rot == -270:
+        new_xy = [xy[0], -xy[1]]
+    if rot == 180:
+        new_xy = [-xy[0], -xy[1]]
+    if rot == -90 or rot == 270:
+        new_xy = [-xy[0], xy[1]]
+    return new_xy 
+    
 def get_sol_from_p(p_final):
     noPatches = p_final.shape[3]
     I = np.zeros((noPatches, 1))

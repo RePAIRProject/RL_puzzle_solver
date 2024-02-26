@@ -138,9 +138,10 @@ def main(args):
                         RM_shapes[:,:,t,j,i] = (resized_shape.astype(np.int32) - 1)
                         
                         if args.DEBUG is True:
+                            pdb.set_trace()
                             plt.suptitle(f"Piece {i} against piece {j} on rotation {t}")
-                            plt.subplot(631); plt.imshow(piece_i_on_canvas['img'] * 255); plt.title("Fixed in the center")
-                            plt.subplot(632); plt.imshow(piece_j_on_canvas['img'] * 255); plt.title("Moving around")
+                            plt.subplot(631); plt.imshow(piece_i_on_canvas['img']); plt.title("Fixed in the center")
+                            plt.subplot(632); plt.imshow(piece_j_on_canvas['img']); plt.title("Moving around")
                             coords = (center_pos + 3 * ppars.xy_step, center_pos - 1 * ppars.xy_step)
                             print(coords)
                             piece_j_correct = place_on_canvas(pieces[j], coords, ppars.canvas_size, 0)
@@ -153,8 +154,8 @@ def main(args):
                             plt.subplot(635); plt.imshow(thr_reg_map_comp_range); plt.title("Region Map Shapes (uint8)")
                             plt.subplot(636); plt.imshow(resized_shape); plt.title("Region Map Shapes (resized)")
                             # lines
-                            plt.subplot(637); plt.imshow(piece_i_on_canvas['lines_mask']); plt.title("Overlap Lines (values)")
-                            plt.subplot(638); plt.imshow(piece_j_on_canvas['lines_mask']); plt.title("Overlap Lines (mask)")
+                            plt.subplot(637); plt.imshow(piece_i_on_canvas['lines_mask']); plt.title(f"Lines Mask {i}")
+                            plt.subplot(638); plt.imshow(piece_j_on_canvas['lines_mask']); plt.title(f"Lines Mask {j}")
                             #plt.subplot(639); plt.imshow(resized_lines); plt.title("Overlap Lines (resized)")
                             # lines 
                             plt.subplot(6,3,10); plt.imshow(overlap_lines); plt.title("Overlap Lines (values)")
