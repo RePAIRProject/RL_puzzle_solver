@@ -202,7 +202,7 @@ class GUIApp(MDApp):
             if select_anchor_running:
                 self.widget_list[0].md_bg_color = (0.545098039, 0, 0, 1)  # Set Toolbar Red
                 self.widget_list[1].disabled = True
-                self.widget_list[2].disabled = True
+                self.widget_list[2].disabled = True  # commit
             else:
                 self.widget_list[0].md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
                 self.widget_list[1].disabled = True
