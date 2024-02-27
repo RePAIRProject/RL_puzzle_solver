@@ -96,6 +96,8 @@ class Image(Image):
 
 click_label = Label()
 
+communication_freq = 0.25  # in seconds
+
 
 class MainLayout(GridLayout):
     def __init__(self):
@@ -111,11 +113,7 @@ class MainLayout(GridLayout):
 
 
 class GUIApp(MDApp):
-    def __init__(self):
-        super().__init__()
-        toolbar = MDBoxLayout
-
-    the_list = []
+    widget_list = []
 
     def build(self):
         the_app = self
@@ -189,15 +187,35 @@ class GUIApp(MDApp):
         # grid_layout.add_widget(button)
         # grid_layout.add_widget(widget)
         the_layout.add_widget(main_layout)
-        self.the_list.append(toolbar)
-        Clock.schedule_interval(self.checking_clock, 1)
+        self.widget_list.append(toolbar)  # 0 toolbar
+        self.widget_list.append(run_button)  # 1 run_button
+        self.widget_list.append(show_button)  # 2 show_button
+        Clock.schedule_interval(self.checking_clock, communication_freq)  # Graphic Internal Thread to communicate
         return the_layout
 
+    global select_anchor_running
+
     def checking_clock(self, *args, **kwargs):
-        self.the_list[0].md_bg_color = (1, 0, 0, 1)
+
+        communicate_thread_lock.acquire()
+        if select_anchor_running is not None:
+            if select_anchor_running:
+                self.widget_list[0].md_bg_color = (0.545098039, 0, 0, 1)  # Set Toolbar Red
+                self.widget_list[1].disabled = True
+                self.widget_list[2].disabled = True
+            else:
+                self.widget_list[0].md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
+                self.widget_list[1].disabled = True
+                self.widget_list[2].disabled = False
+
+        else:
+            self.widget_list[0].md_bg_color = (0.678431373, 0.847058824, 0.901960784, 1)  # Set Toolbar Blue
+
+            self.widget_list[2].disabled = True
 
         if test_thread_started:
             print("Test thread started")
+        communicate_thread_lock.release()
 
     def callback(self):
         start_select_anchor(self)
@@ -208,33 +226,38 @@ sorted_image_scores = None
 test_thread_started = True
 
 
-test_thread_lock = threading.Lock()
+communicate_thread_lock = threading.Lock()
 
 
 def start_select_anchor(self):
     Back_End.start_back_end()
 
 
-def test_thread():
+select_anchor_running = None
+
+
+def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
+    global select_anchor_running
     print("Test thread")
     while True:
-        test_thread_lock.acquire()
+        communicate_thread_lock.acquire()
         # if not test_thread_started:
         #     print("test_thread")
         #     return
-        test_thread_lock.release()
-        print(Back_End.get_select_anchor_running())
+        # print(Back_End.get_select_anchor_running())
         # if not Back_End.get_select_anchor_running():
         #     return
-        if Back_End.get_select_anchor_running():
-            print(Back_End.get_select_anchor_running())
-        elif Back_End.get_select_anchor_running():
-            print(Back_End.get_select_anchor_running())
-        time.sleep(1)
+        select_anchor_running = Back_End.get_select_anchor_running()
+        communicate_thread_lock.release()
+        # if Back_End.get_select_anchor_running():
+        #     print(Back_End.get_select_anchor_running())
+        # elif Back_End.get_select_anchor_running():
+        #     print(Back_End.get_select_anchor_running())
+        time.sleep(communication_freq)  # Thread sleep timer
 
 
 if __name__ == '__main__':
-    test_thread = threading.Thread(target=test_thread, daemon=True)
+    test_thread = threading.Thread(target=communicate_thread, daemon=True)
     test_thread_started = True
     test_thread.start()
     # sorted_image_scores = select_anchor()
