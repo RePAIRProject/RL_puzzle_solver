@@ -206,7 +206,7 @@ class GUIApp(MDApp):
             else:
                 self.widget_list[0].md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
                 self.widget_list[1].disabled = True
-                self.widget_list[2].disabled = False
+                self.widget_list[2].disabled = False  # todo find sth else for this...
 
         else:
             self.widget_list[0].md_bg_color = (0.678431373, 0.847058824, 0.901960784, 1)  # Set Toolbar Blue
