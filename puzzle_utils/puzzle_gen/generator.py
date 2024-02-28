@@ -230,15 +230,13 @@ class PuzzleGenerator:
         f.close()
         print('\tSave to %s & %d.txt' % (file_path, iter))
 
-    def extrapolate_regions(self, extr_pixels=5, return_vals=False):
+    def extrapolate_regions(self, extr_pixels=5, return_vals=False, start_from=0):
         self.pieces = []
         self.extr_pieces = []
         dilation_kernel = np.ones((extr_pixels * 2 + 1, extr_pixels * 2 + 1))
-        for reg_val in range(self.region_cnt): # in np.unique(self.region_mat):
+        for reg_val in range(start_from, self.region_cnt): # in np.unique(self.region_mat):
             cur_reg = self.region_mat == reg_val
             dilated_reg = cv2.dilate(cur_reg.astype(np.uint8), dilation_kernel, iterations=1)
-            plt.subplot(221);plt.imshow(cur_reg)
-            plt.subplot(222);plt.imshow(dilated_reg)
             rgba_ex = cv2.cvtColor(self.img, cv2.COLOR_RGB2RGBA)
             rgba_ex[:, :, 3] = 255*(dilated_reg)
             rgba = cv2.cvtColor(self.img, cv2.COLOR_RGB2RGBA)
@@ -292,7 +290,12 @@ class PuzzleGenerator:
             cut_puzzle_img = puzzle_mask * self.img
             plt.imsave(os.path.join(regions_path, 'orig_image_cut.jpg'), cut_puzzle_img, cmap='gray')
         else:
-            cut_puzzle_img = np.dstack((puzzle_mask, puzzle_mask, puzzle_mask)) * self.img
+            if skip_bg == True:
+                puzzle_mask = (puzzle_mask > 0).astype(int)
+            else:
+                puzzle_mask = (puzzle_mask > -1).astype(int)
+            puzzle_mask3c = np.repeat(puzzle_mask, self.img.shape[2]).reshape(self.img.shape)
+            cut_puzzle_img = (puzzle_mask3c * self.img).astype(np.uint8)
             plt.imsave(os.path.join(regions_path, 'orig_image_cut.jpg'), cut_puzzle_img)
 
 

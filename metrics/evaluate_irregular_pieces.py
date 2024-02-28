@@ -83,21 +83,19 @@ def main(args):
                 correct = np.zeros(num_pcs)
                 for j in range(num_pcs):
                     gt_rot_piece = ground_truth[f"piece_{j:04d}"]['rotation']
-                    gt_rot_canvas = gt_rotation_anc + gt_rot_piece
                     # here we calculate shift between ground truth absolute and with respect to the anchor!
                     gt_xy = -1 * np.asarray(ground_truth[f"piece_{j:04d}"]['translation'][::-1])
-                    gt_align2canvas = include_rotation(shift_gt_anc2canvas, 0) #gt_rot_canvas) 
-                    gt_xy_canvas = gt_xy - gt_align2canvas
+                    gt_anc = gt_xy + gt_xy_anc
+                    gt_xy_canvas = gt_xy - shift_gt_anc2canvas
                     
                     # here the solution (from the solver)
                     solution_piece = np.unravel_index(np.argmax(p_final[:,:,:,j]), p_final[:,:,:,j].shape)
                     est_xy = np.asarray(solution_piece[:2]) * cmp_parameters['xy_step']
                     est_rot = solution_piece[2] * cmp_parameters['theta_step']
-                    est_align2canvas = include_rotation(shift_anc2canvas, est_rot)
-                    est_xy_canvas = est_xy - est_align2canvas
+                    est_xy_canvas = est_xy - shift_anc2canvas
 
                     error_xy = np.sqrt(np.sum(np.square(gt_xy_canvas - est_xy_canvas)))
-                    error_rot = np.sqrt(np.square(np.abs(gt_rot_canvas - est_rot)))
+                    error_rot = np.sqrt(np.square(np.abs(gt_rot_piece - est_rot)))
                     if error_xy < cmp_parameters['xy_step']: #np.isclose(error_xy, 0):
                         correct_xy[j] = 1
                     if error_rot < cmp_parameters['theta_step'] or np.isclose(error_rot, 360): #np.isclose(error_rot, 0):
@@ -109,13 +107,13 @@ def main(args):
                     print("-" * 40)
                     print(f"piece {j}")
                     print(">>> ESTIMATED  <<<")
-                    print(f"p: {solution_piece}\nest_xy: {est_xy}\nest_align2canvas: {est_align2canvas}\nest_xy_canvas: {est_xy_canvas}")
+                    print(f"p: {solution_piece}\nest_xy: {est_xy}\nest_xy_canvas: {est_xy_canvas}")
                     print(f"est_rot: {est_rot}")
                     print(">>> GT         <<<")
-                    print(f"gt_xy: {gt_xy}\ngt_align2canvas: {gt_align2canvas}\ngt_xy_canvas: {gt_xy_canvas}")
-                    print(f"gt_rot_piece: {gt_rot_piece}\ngt_rot: {gt_rot_canvas}")
+                    print(f"gt_xy: {gt_xy}\ngt_anc: {gt_anc}\ngt_xy_canvas: {gt_xy_canvas}")
+                    print(f"gt_rot_piece: {gt_rot_piece}")
                     print(">>> EVALUATION <<<")
-                    print(f"piece {j} is placed at ({est_xy_canvas}, {solution_piece[2]}), gt is at ({gt_xy_canvas}, {gt_rot_canvas})")
+                    print(f"piece {j} is placed at ({est_xy_canvas}, {solution_piece[2]}), gt is at ({gt_xy_canvas}, {gt_rot_piece})")
                     print(f"error is: {error_xy} on xy, {error_rot} on rotation")
 
                 mean_xy_err = np.mean(errors_xy)

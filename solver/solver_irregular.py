@@ -286,6 +286,7 @@ def main(args):
     cfg['Tmax'] = args.tmax
     cfg['anc_fix_tresh'] = args.thresh
     cfg['p_matrix_shape'] = args.p_pts
+    cfg['cmp_cost'] = args.cmp_cost
     print('\tSOLVER PARAMETERS')
     for cfg_key in cfg.keys():
         print(f"{cfg_key}: {cfg[cfg_key]}")

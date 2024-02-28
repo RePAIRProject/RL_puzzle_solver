@@ -78,8 +78,8 @@ def rescale_image(img, size, lines=None ):
     Rescale the image (while preserving proportions) so that the largest of the two axis 
     is equal to `size`
     """
-    if max(img.shape[:2]) < size:
-        return img 
+    # if max(img.shape[:2]) < size:
+    #     return img 
     if img.shape[0] > img.shape[1]:
         rescaling_ratio = (size / img.shape[0])
         other_axis_size = np.round(rescaling_ratio * img.shape[1]).astype(int)
@@ -91,7 +91,7 @@ def rescale_image(img, size, lines=None ):
 
     if lines is not None:
         rescaled_lines = rescale_lines(lines, rescaling_ratio)
-        return img, rescaled_lines
+        return img, np.asarray(rescaled_lines)
     return img 
 
 def rescale_lines(lines, ratio):
@@ -104,9 +104,7 @@ def rescale_lines(lines, ratio):
 def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns_map=None, rotate_pieces=True, save_extrapolated_regions=False):
 
     pieces = []
-    if shape == 'regular':
-        print("WARNING: NOT FULLY TESTED \nbetter to use create_dataset_TEST the old script for quick creation, or maybe debug this!")
-        print("we do squared pieces (rectangular not implemented yet)")
+    if shape == 'square':
         patch_size = image.shape[0] // num_pieces
         x0_all = np.arange(0, image.shape[0], patch_size, dtype=int)
         y0_all = np.arange(0, image.shape[1], patch_size, dtype=int)
@@ -119,13 +117,21 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
                 box = shapely.box(x0, y0, x1, y1)  # patche box (xmin, ymin, xmax, ymax)
                 ## create patch
                 patch = image[y0:y1 + 1, x0:x1 + 1]
-                centered_patch, centered_mask, shift2align = center_fragment(patch)
+                piece_in_full_image = np.zeros_like(image)
+                piece_in_full_image[y0:y1 + 1, x0:x1 + 1] = patch
+                mask_full_image = np.zeros((image.shape[:2]))
+                mask_full_image[y0:y1 + 1, x0:x1 + 1] = 1 #np.ones((patch[:2]))
+                centered_patch = patch
+                centered_mask = np.ones(patch.shape[:2])
+                shift2square = np.asarray([0, 0])
+                cm_patch = np.asarray([y0 + patch_size/2, x0 + patch_size/2])
+                shift2center_frag = np.asarray(image.shape[:2])/2 - cm_patch
                 center_of_mass = np.asarray([(x1-x0)/2, (y1-y0)/2])
                 piece_dict = {
-                    'mask': centered_mask,
+                    'mask': mask_full_image,
                     'centered_mask': centered_mask,
                     'squared_mask': centered_mask,
-                    'image': centered_patch,
+                    'image': piece_in_full_image,
                     'centered_image': centered_patch,
                     'squared_image': centered_patch,
                     'polygon': box,
@@ -134,8 +140,14 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
                     'center_of_mass': center_of_mass,
                     'height': patch_size,
                     'width': patch_size,
-                    'shift2center': shift2align
+                    'shift2square': shift2square,
+                    'shift2center': shift2center_frag
                 }
+                # print("box:", box)
+                # for kk in piece_dict.keys():
+                #     if not type(piece_dict[kk]) == np.ndarray:
+                #         print(f"{kk}: {piece_dict[kk]}")
+                # print(piece_dict['shift2center'])
                 pieces.append(piece_dict)
 
     if shape == 'irregular':
@@ -153,7 +165,10 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         pieces, patch_size = generator.get_pieces_from_puzzle_v2(start_from=1)
 
     if (shape == 'irregular' or shape == 'pattern') and save_extrapolated_regions is True:
-        generator.extrapolate_regions()
+        if shape == 'pattern':
+            generator.extrapolate_regions(start_from=1)
+        if shape == 'irregular':
+            generator.extrapolate_regions(start_from=0)
         extr_folder = os.path.join(output_path, 'extrapolated')
         os.makedirs(extr_folder, exist_ok=True)
         generator.save_extrapolated_regions(extrap_folder=extr_folder)
@@ -169,12 +184,12 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         piece['rotation'] = 0
 
     ### get optimal xy_grid from GT ###########
-    pos_mat = []
-    for j in range(len(pieces)):
-        t = pieces[j]['shift_global2square'].tolist()
-        pos_mat.append((t))
-    position_matrix = np.array(pos_mat)
-    save_grid_info(position_matrix, output_path)
+    # pos_mat = []
+    # for j in range(len(pieces)):
+    #     t = pieces[j]['shift_global2square'].tolist()
+    #     pos_mat.append((t))
+    # position_matrix = np.array(pos_mat)
+    # save_grid_info(position_matrix, output_path)
     ############################################
 
     if rotate_pieces == True:

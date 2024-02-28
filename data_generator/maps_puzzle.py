@@ -4,15 +4,13 @@ from shapely.affinity import rotate
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.io import loadmat
-from sklearn.cluster import KMeans
-
-# import helper functions
 from configs import folder_names as fnames
-from puzzle_utils.dataset_gen import generate_random_point, create_random_image, randomword
-from puzzle_utils.lines_ops import line_cart2pol, create_lines_only_image
-from puzzle_utils.pieces_utils import cut_into_pieces, rescale_image, save_transformation_info
+# import helper functions
+from puzzle_utils.dataset_gen import generate_random_point, create_random_coloured_image, randomword
+from puzzle_utils.lines_ops import line_cart2pol
+from puzzle_utils.pieces_utils import cut_into_pieces, save_transformation_info, rescale_image
 from puzzle_utils.shape_utils import process_region_map
+from puzzle_utils.dxf_maps import extract_image_from_dxf
 
 """
 This script generate new datasets for puzzle solving based on lines:
@@ -77,29 +75,34 @@ Example:
 def main(args):
 
     if args.output == '':
-        output_root_path = os.path.join(os.getcwd(), 'output')
+        output_root_path = os.path.join(os.getcwd())
     else:
         output_root_path = args.output
-    
-    if args.images.find('/') < 0:
-        input_images_path = os.path.join(os.getcwd(), 'data', args.images)
-        input_lines_path = os.path.join(os.getcwd(), 'data', args.lines)
-        data_name = args.images
-    else:
-        input_images_path = args.images 
-        input_lines_path = args.lines 
-        data_name = input_images_path.split('/')[-1]
 
-    dataset_name = f"real_puzzle_{args.shape}_pieces_from_{data_name}_{randomword(6)}"
-    puzzle_folder = os.path.join(output_root_path, dataset_name)
+    
+    if args.shape == 'pattern':
+        folder_path = args.patterns_folder
+        if folder_path.find("/") > 0:
+            folder_name = folder_path.split("/")[-1]
+        else:
+            folder_name = folder_path
+        descr_string = f"{folder_name}"
+    elif args.shape == 'square':
+        descr_string = f'{args.shape}_{args.num_pieces**2}'
+    else:
+        descr_string = f'{args.shape}_{args.num_pieces}'
+    dataset_name = f"maps_puzzle_{descr_string}_pieces_{randomword(6)}"
+    data_folder = os.path.join(output_root_path, fnames.data_path, dataset_name)
+    puzzle_folder = os.path.join(output_root_path, fnames.output_dir, dataset_name)
     parameter_path = os.path.join(puzzle_folder, 'parameters.json')
+    os.makedirs(data_folder, exist_ok=True)
     os.makedirs(puzzle_folder, exist_ok=True)
     use_rotation = (not args.do_not_rotate)
 
     # save parameters
     parameters_dict = vars(args) # create dict from namespace
     parameters_dict['output'] = output_root_path
-    parameters_dict['input_images'] = input_images_path
+    parameters_dict['data_folder'] = data_folder
     parameters_dict['puzzle_folder'] = puzzle_folder
     parameters_dict['use_rotation'] = use_rotation
     print()
@@ -110,69 +113,77 @@ def main(args):
     print("#" * 70)
     print()
     
-    images_names = os.listdir(input_images_path)
+        
     num_pieces_dict = {}
     img_sizes_dict = {}
 
-    for k, img_path in enumerate(images_names):
+    # we create one puzzle for each map
+    maps_rel_paths_list = os.listdir(args.input)
+    num_images_to_be_created = len(maps_rel_paths_list)
+    print(maps_rel_paths_list)
 
-        img_parameters = {}
+    if args.shape == 'pattern':
+        list_of_patterns_names = os.listdir(args.patterns_folder)
+        num_patterns = len(list_of_patterns_names)
+        if num_patterns == num_images_to_be_created:
+            print(f"We have {num_images_to_be_created} maps and {num_patterns} pattern, good match!")
+        elif num_patterns == 1:
+            list_of_patterns_names = list_of_patterns_names * num_images_to_be_created
+            print("Only one pattern, repeating it for all maps")
+        else:
+            print(f"wrong number of patterns ({num_patterns}): either provide 1 or the same number as the maps ({num_images_to_be_created}).")
+            pdb.set_trace()
+
+    for N in range(num_images_to_be_created):
+
         ## create images with lines
-        img = cv2.imread(os.path.join(input_images_path, img_path))
-        orig_lines = loadmat(os.path.join(input_lines_path, f"{img_path[:-4]}_line.mat"))['lines']
-        if max(img.shape[:2]) > args.rescale:
-            img, lines = rescale_image(img, args.rescale, orig_lines)
-        if args.use_only_lines:
-            img = create_lines_only_image(img, lines)
+        map_rel_path = maps_rel_paths_list[N]
+        img, all_lines, sem_categories = extract_image_from_dxf(os.path.join(args.input, map_rel_path))
+        if args.rescale > 0:
+            img, all_lines = rescale_image(img, args.rescale, all_lines)
+        ## save created image
+        cv2.imwrite(os.path.join(data_folder, f'image_{N:05d}.jpg'), img)
 
         # only for patterns
         if args.shape == 'pattern':
-            list_of_patterns_names = os.listdir(args.patterns_folder)
-            region_map = cv2.imread(os.path.join(args.patterns_folder, list_of_patterns_names[k]), 0)
+            region_map = cv2.imread(os.path.join(args.patterns_folder, list_of_patterns_names[N]), 0)
             pattern_map, num_pieces = process_region_map(region_map)
-            print(f"found {num_pieces} pieces on {list_of_patterns_names[k]}")
+            print(f"found {num_pieces} pieces on {list_of_patterns_names[N]}")
         else:
             num_pieces = args.num_pieces
-
+        
         ## make folders to save pieces and detected lines
-        img_name = img_path[:-4]
         print("-" * 50)
-        puzzle_name = f'image_{k:05d}_{img_name}'
+        puzzle_name = f'image_{N:05d}'
         print(puzzle_name)
-        single_image_folder = os.path.join(puzzle_folder, puzzle_name)
-        scaled_image_folder = os.path.join(single_image_folder, 'image_scaled')
+        single_image_folder = os.path.join(puzzle_folder, f'image_{N:05d}')
+        scaled_image_folder = os.path.join(single_image_folder, fnames.ref_image)
         os.makedirs(scaled_image_folder, exist_ok=True)
-        cv2.imwrite(os.path.join(scaled_image_folder, f"output_{img_name}.png"), img)
-        pieces_single_folder = os.path.join(single_image_folder, 'pieces')
+        cv2.imwrite(os.path.join(scaled_image_folder, f"output_image_{N:05d}.png"), img)
+        pieces_single_folder = os.path.join(single_image_folder, fnames.pieces_folder)
         os.makedirs(pieces_single_folder, exist_ok=True)
-        masks_single_folder = os.path.join(single_image_folder, 'masks')
+        masks_single_folder = os.path.join(single_image_folder, fnames.masks_folder)
         os.makedirs(masks_single_folder, exist_ok=True)
-        poly_single_folder = os.path.join(single_image_folder, 'polygons')
+        poly_single_folder = os.path.join(single_image_folder, fnames.polygons_folder)
         os.makedirs(poly_single_folder, exist_ok=True)
-        single_image_parameters_path = os.path.join(single_image_folder, f'parameters_{puzzle_name}.json')
         lines_output_folder = os.path.join(single_image_folder, fnames.lines_output_name, 'exact')
         os.makedirs(lines_output_folder, exist_ok=True)
-
+            
         # this gives us the pieces
         if args.shape == 'pattern':
             pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, patterns_map=pattern_map, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation)
         else:
             pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation)
-         
+        
         ground_truth_path = os.path.join(single_image_folder, f"{fnames.ground_truth}.json")
         save_transformation_info(pieces, ground_truth_path)
-    
-        # list of all colors
-        # this is needed for semantic categories
-        full_colors_list = []
-        full_detection_list = []
         
         for j, piece in enumerate(pieces):
             ## save patch
             cv2.imwrite(os.path.join(pieces_single_folder, f"piece_{j:04d}.png"), piece['squared_image'])
             cv2.imwrite(os.path.join(masks_single_folder, f"piece_{j:04d}.png"), piece['squared_mask'] * 255)
             np.save(os.path.join(poly_single_folder, f"piece_{j:04d}"), piece['squared_polygon'])
-            
+
             ## we create the container for the lines
             angles = []
             dists = []
@@ -182,20 +193,14 @@ def main(args):
             b2s = []
             cols = []
             cats = []
-
-            # this is used to check colors from images
-            black = np.zeros_like(piece['image'])
-            # get 'ground truth' images
-            for i in range(len(lines)):
-                p1 = lines[i][:2] #[::2]
-                p2 = lines[i][2:4] #[1::2]
-                
-                line = shapely.LineString([p1, p2])
-                # get RGB line color from the image 
-                
-                # check if the line is relevant to the piece
+            
+            ## check lines and store them
+            for i in range(len(all_lines)):
+                line = shapely.LineString([all_lines[i, 0:2], all_lines[i, 2:4]])
+                col_line = all_lines[i, 4:7].tolist()
+                cat = all_lines[i, 7]
                 intersect = shapely.intersection(line, piece['polygon'])  # points of intersection line with the piece
-                if not shapely.is_empty(intersect):
+                if not shapely.is_empty(intersect): # we have intersection, so the line is important for this piece
                     intersection_lines = []
                     # Assume 'multiline' is your MultiLineString object
                     if isinstance(intersect, shapely.geometry.MultiLineString):
@@ -203,6 +208,7 @@ def main(args):
                         intersection_lines = intersect.geoms
                     elif isinstance(intersect, shapely.geometry.LineString):
                         intersection_lines = [intersect]
+                    # else: # skip 
                     if len(intersection_lines) > 0: 
                         for int_line in intersection_lines:
                             if len(list(zip(*int_line.xy))) > 1: # two intersections meaning it crosses
@@ -217,13 +223,20 @@ def main(args):
                                 dists.append(rho)
                                 p1s.append(p1.tolist())
                                 p2s.append(p2.tolist())
-                                black[:,:,:] = 0
-                                line_shape = cv2.line(black, np.asarray([p1[0], p1[1]]).astype(int), np.asarray([p2[0], p2[1]]).astype(int), color=(1, 1, 1), thickness=1)
-                                rgbs = np.asarray([piece['image'][:,:,s][(line_shape[:,:,s]>0)] for s in range(3)])
-                                color_line = np.mean(rgbs, axis=1)
-                                full_colors_list.append(color_line)
-                                cols.append(color_line.tolist())
-                                #cats.append(cat)
+                                cols.append(col_line)
+                                cats.append(cat)
+                            # if len(list(zip(*int_line.xy))) > 1: # two intersections meaning it crosses
+                            #     xs, ys = list(zip(*int_line.xy))
+                            #     pdb.set_trace()
+                            #     p1 = np.array(np.round(pi1).astype(int))  ## CHECK !!!
+                            #     p2 = np.array(np.round(pi2).astype(int))  ## CHECK !!!
+                            #     rho, theta = line_cart2pol(p1, p2)
+                            #     angles.append(theta)
+                            #     dists.append(rho)
+                            #     p1s.append(p1.tolist())
+                            #     p2s.append(p2.tolist())
+                            #     cols.append(col_line)
+
             if args.save_visualization:
                 line_vis = os.path.join(lines_output_folder, 'visualization')
                 lines_only = os.path.join(lines_output_folder, 'lines_only')
@@ -244,7 +257,7 @@ def main(args):
                     # save one black&white image of the lines
                     #pdb.set_trace()
                     for p1, p2 in zip(p1s, p2s):
-                        lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=color_line, thickness=1)        
+                        lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=col_line, thickness=1)        
                     #cv2.imwrite(os.path.join(lines_only, f"piece_{j:04d}_l.jpg"), 255-lines_img)
                     binary_01_mask = (255 - lines_img) / 255
                     lines_only_transparent[:,:,:3] = binary_01_mask
@@ -266,7 +279,7 @@ def main(args):
                 'b1s': b1s,
                 'b2s': b2s,
                 'colors': cols,
-                #'categories': cats
+                'categories': cats
             }
             orig_coords_folder = os.path.join(lines_output_folder, 'original_coords')
             os.makedirs(orig_coords_folder, exist_ok=True)
@@ -279,9 +292,8 @@ def main(args):
             squared_p2s = []
             for ang, p1, p2 in zip(angles, p1s, p2s):
                 squared_angles.append(ang) # no rotation, but this will change as soon as we introduce rotation
-                squared_p1s.append((p1 + piece['shift2center'][::-1] + piece['shift2square'][::1]).tolist())
-                squared_p2s.append((p2 + piece['shift2center'][::-1] + piece['shift2square'][::1]).tolist())
-                #!#shift2square was inverted
+                squared_p1s.append((p1 + piece['shift2center'][::-1] + piece['shift2square'][::-1]).tolist())
+                squared_p2s.append((p2 + piece['shift2center'][::-1] + piece['shift2square'][::-1]).tolist())
             if 'rotation' in piece.keys():
                 # piece['rotation'] is in degrees!
                 rot_origin = [piece['squared_image'].shape[0] // 2, piece['squared_image'].shape[1] // 2]
@@ -305,6 +317,11 @@ def main(args):
                 squared_p1s = rotated_squared_p1s
                 squared_p2s = rotated_squared_p2s
 
+            # plt.imshow(piece['squared_image'])
+            # plt.plot(*piece['squared_polygon'].boundary.xy)
+            # plt.show()
+            # pdb.set_trace()
+            # dists, b1 and b2 are not used
             aligned_lines = {
                 'angles': squared_angles,   # polar coordinates
                 'dists': [],                # distance polar coordinates (not used)
@@ -315,70 +332,43 @@ def main(args):
                 'colors': cols,
                 'categories': cats
             }
-            full_detection_list.append(aligned_lines)
-            # we do not write to disk yet
-            # need to get cateogries
-        print(f"finished image {images_names[k]}, creating categories")
-        fcl = np.asarray(full_colors_list)
-        km = KMeans(args.num_categories)
-        labels = km.fit_predict(fcl)
-        len_detected_lines = 0 
-        for det_dict in full_detection_list:
-            len_detected_lines += len(det_dict['angles'])
-        print(f"We have {len(labels)} labels and {len_detected_lines} detections!")
-        assert len(labels) == len_detected_lines, "they do not match!"
-        line_counter = 0
-        for k, det_dict in enumerate(full_detection_list):
-            categories = []
-            lines_shape = np.zeros_like(pieces[k]['squared_image'])
-            for r in range(len(det_dict['angles'])):
-                categories.append(int(labels[line_counter + r]))
-            det_dict['categories'] = categories
-            line_counter += r
-            with open(os.path.join(lines_output_folder, f"piece_{k:04d}.json"), 'w') as lj:
-                json.dump(det_dict, lj, indent=3)
-            print(f'\t done with piece {k:05d}')
-
-        # INFO ABOUT IMAGE (puzzle)
-        num_pieces_dict[puzzle_name] = j+1
-        img_sizes_dict[puzzle_name] = img.shape              
+            with open(os.path.join(lines_output_folder, f"piece_{j:04d}.json"), 'w') as lj:
+                json.dump(aligned_lines, lj, indent=3)
+            print(f'done with image_{N:05d}/piece_{j:04d}')
         
-
         num_pieces_dict[puzzle_name] = j+1
-        img_sizes_dict[puzzle_name] = img.shape
+        img_sizes_dict[puzzle_name] = img.shape 
 
         # parameters of the single image!
+        img_parameters = {}
         img_parameters['piece_size'] = int(patch_size)
         img_parameters['num_pieces'] = j+1
         img_parameters['size'] = img.shape
 
+        single_image_parameters_path = os.path.join(single_image_folder, f'parameters_{puzzle_name}.json')
         with open(single_image_parameters_path, 'w') as pp:
             json.dump(img_parameters, pp, indent=2)
-        
         print(f"Done with {puzzle_name}: created {j+1} pieces.")
-
-    # parameters for the whole dataset
+    
     parameters_dict['num_pieces'] = num_pieces_dict
     parameters_dict['img_sizes'] = img_sizes_dict
     with open(parameter_path, 'w') as pp:
-        json.dump(parameters_dict, pp, indent=2)
+        json.dump(parameter_path, pp, indent=2)
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
-        description='It generates puzzles by cutting the images (into `--images` folder) into pieces. \
-            Check the parameters for details about size, line_type, colors, number of pieces and so on.')
+        description='It generates puzzle from .dxf maps')
+    # folders
+    parser.add_argument('-i', '--input', type=str, default='', help='input folder with the maps')
     parser.add_argument('-o', '--output', type=str, default='', help='output folder')
-    parser.add_argument('-i', '--images', type=str, default='', help='images folder (where to cut the pieces from)')
-    parser.add_argument('-l', '--lines', type=str, default='', help='lines folder (annotated lines)')
-    parser.add_argument('-ncat', '--num_categories', type=int, default=5, help='number of different semantic categories')
-    parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces the images')
+    # cutting pieces 
     parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['square', 'pattern', 'irregular'])
+    parser.add_argument('-pf', '--patterns_folder', type=str, default='', help='(used only if shape == pattern): the folder where the patterns are stored')
     parser.add_argument('-r', '--rescale', type=int, default=300, help='rescale the largest of the two axis to this number (default 1000) to avoid large puzzles.')
+    parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces in which each puzzle image is cut')
+    parser.add_argument('-sv', "--save_visualization", help="Use it to create visualization", action="store_true")
     parser.add_argument('-noR', "--do_not_rotate", help="Use it to disable rotation!", action="store_true")
     parser.add_argument('-extr', "--extrapolation", help="Use it to create an extrapolated version of each fragment", action="store_true")
-    parser.add_argument('-sv', "--save_visualization", help="Use it to create visualization", action="store_true")
-    parser.add_argument('-ol', "--use_only_lines", help="Use it to disable rotation!", action="store_true")
-    parser.add_argument('-pf', '--patterns_folder', type=str, default='', help='(used only if shape == pattern): the folder where the patterns are stored')
     args = parser.parse_args()
     main(args)
