@@ -71,10 +71,12 @@ def json_reader(file):
 
 
 # backEnd_path = "Images/RePAIR_plaque_2/top10/"
+backend_path = ""
+
 
 def image_reader(image_number, score):
 
-    source = backEnd_path + "top10/" + file_names[image_number]
+    source = backend_path + "top10/" + file_names[image_number]
     click_label.color = (1, 0, 1, 1)
     image = MovableImage(source, click_label, score, image_number)
     # image.source = source
@@ -134,6 +136,7 @@ class GUIApp(MDApp):
         run_button.size_hint_x = 0.5
 
         show_button = Button(text="Show")
+        show_button.bind(on_press=self.show_images)
 
         show_button.size_hint_x = 0.5
         # show_button.bind(on_press=self)
@@ -167,15 +170,17 @@ class GUIApp(MDApp):
         # widget.add_widget(grid_layout)
 
         # grid_layout.add_widget(click_label)
-        for i in range(len(image_numbers)):
-            score_label = Label()
-            buttons.append(score_label)
-            score_label.color = (1, 0, 0, 1)
-            score_label.text = str(scores[i])
 
-            image = image_reader(i, scores[i])
 
-            grid_layout.add_widget(image.get_grid())
+        # for i in range(len(image_numbers)):
+        #     score_label = Label()
+        #     buttons.append(score_label)
+        #     score_label.color = (1, 0, 0, 1)
+        #     score_label.text = str(scores[i])
+        #
+        #     image = image_reader(i, scores[i])
+        #
+        #     grid_layout.add_widget(image.get_grid())
 
         # for i in range(10):
         #     button = Button()
@@ -190,35 +195,79 @@ class GUIApp(MDApp):
         self.widget_list.append(toolbar)  # 0 toolbar
         self.widget_list.append(run_button)  # 1 run_button
         self.widget_list.append(show_button)  # 2 show_button
+        self.widget_list.append(grid_layout)  # 3 image_view
         Clock.schedule_interval(self.checking_clock, communication_freq)  # Graphic Internal Thread to communicate
         return the_layout
 
     global select_anchor_running
+    global toolbar_color
+    toolbar_bg = 0
+    global backend_path
+
+    def show_images(self, *args, **kwargs):
+        global backend_path
+        current_path = os.getcwd() + "/GUI/"
+        backend_path = get_backend_path()
+        path = current_path + "top_10_fragments.json"
+        json_reader(path)
+
+        for i in range(len(image_numbers)):
+            score_label = Label()
+            buttons.append(score_label)
+            score_label.color = (1, 0, 0, 1)
+            score_label.text = str(scores[i])
+
+            image = image_reader(i, scores[i])
+
+            self.widget_list[3].add_widget(image.get_grid())
+        print("show")
 
     def checking_clock(self, *args, **kwargs):
 
         communicate_thread_lock.acquire()
-        if select_anchor_running is not None:
-            if select_anchor_running:
-                self.widget_list[0].md_bg_color = (0.545098039, 0, 0, 1)  # Set Toolbar Red
-                self.widget_list[1].disabled = True
-                self.widget_list[2].disabled = True  # commit
-            else:
-                self.widget_list[0].md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
-                self.widget_list[1].disabled = True
-                self.widget_list[2].disabled = False  # todo find sth else for this...
-
-        else:
-            self.widget_list[0].md_bg_color = (0.678431373, 0.847058824, 0.901960784, 1)  # Set Toolbar Blue
-
-            self.widget_list[2].disabled = True
-
-        if test_thread_started:
-            print("Test thread started")
+        self.toolbar_changes(toolbar_color)
+        # if select_anchor_running is not None:
+        #     if select_anchor_running:
+        #         self.widget_list[0].md_bg_color = (0.545098039, 0, 0, 1)  # Set Toolbar Red
+        #         self.widget_list[1].disabled = True
+        #         self.widget_list[2].disabled = True  # commit
+        #     else:
+        #         self.widget_list[0].md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
+        #         self.widget_list[1].disabled = True
+        #         self.widget_list[2].disabled = False  # todo find sth else for this...
+        #
+        # else:
+        #     self.widget_list[0].md_bg_color = (0.678431373, 0.847058824, 0.901960784, 1)  # Set Toolbar Blue
+        #
+        #     self.widget_list[2].disabled = True
+        #
+        # if test_thread_started:
+        #     print("Test thread started")
         communicate_thread_lock.release()
 
+    def toolbar_changes(self, color):
+        match color:
+            case 0:
+                if self.toolbar_bg != 0:
+                    self.widget_list[0].md_bg_color = (0.678431373, 0.847058824, 0.901960784, 1)  # Set Toolbar Blue
+                    self.widget_list[2].disabled = True
+                    self.toolbar_bg = 0
+            case -1:
+                if self.toolbar_bg != -1:
+                    self.widget_list[0].md_bg_color = (0.545098039, 0, 0, 1)  # Set Toolbar Red
+                    self.widget_list[1].disabled = True
+                    self.widget_list[2].disabled = True
+                    self.toolbar_bg = -1
+            case 1:
+                if self.toolbar_bg != 1:
+                    self.widget_list[0].md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
+                    self.widget_list[1].disabled = True
+                    self.widget_list[2].disabled = False  # todo find sth else for this...
+                    self.toolbar_bg = 1
+
     def callback(self):
-        start_select_anchor(self)
+        # start_select_anchor(self)
+        return
 
 
 sorted_image_scores = None
@@ -235,10 +284,13 @@ def start_select_anchor(self):
 
 select_anchor_running = None
 
+toolbar_color = 0  # 0 for light blue, -1 for red, 1 for green
+
 
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
     global select_anchor_running
     print("Test thread")
+    global toolbar_color
     while True:
         communicate_thread_lock.acquire()
         # if not test_thread_started:
@@ -248,6 +300,13 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         # if not Back_End.get_select_anchor_running():
         #     return
         select_anchor_running = Back_End.get_select_anchor_running()
+        if select_anchor_running is not None:
+            if select_anchor_running:
+                toolbar_color = -1
+            else:
+                toolbar_color = 1
+        else:
+            toolbar_color = 0
         communicate_thread_lock.release()
         # if Back_End.get_select_anchor_running():
         #     print(Back_End.get_select_anchor_running())
@@ -263,10 +322,10 @@ if __name__ == '__main__':
     # sorted_image_scores = select_anchor()
     # print(sorted_image_scores)
     # path = backEnd_path + "top_10_fragments.json"
-    current_path = os.getcwd() + "/GUI/"
-    backEnd_path = get_backend_path()
-    path = current_path + "top_10_fragments.json"
-    json_reader(path)
+    # current_path = os.getcwd() + "/GUI/"
+    # backEnd_path = get_backend_path()
+    # path = current_path + "top_10_fragments.json"
+    # json_reader(path)
 
     app = GUIApp().run()
 

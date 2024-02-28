@@ -305,22 +305,22 @@ def init_visualization(band_width, fg_img, images_with_borders, rgb_image):
     ##-----------------------------------------------------------------------------------------------------------##
 
 
-backEnd_path = os.getcwd() + "/GUI/Images/RePAIR_plaque_2/"
+backend_path = os.getcwd() + "/GUI/Images/RePAIR_plaque_2/"
 
 
 def get_backend_path():
-    return backEnd_path
+    return backend_path
 
 
 def get_args():
     parser = argparse.ArgumentParser(description='Select anchor / key fragment')
     # parser.add_argument('-d', '--dataset', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/RGBA_merged', help='data folder')
     parser.add_argument('-d', '--dataset', type=str,
-                        default=backEnd_path + 'RGBA_merged',
+                        default=backend_path + 'RGBA_merged',
                         help='data folder')
     # parser.add_argument('-f', '--fg_mask', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/FG_merged', help='data folder')
     parser.add_argument('-f', '--fg_mask', type=str,
-                        default=backEnd_path + 'FG_merged',
+                        default=backend_path + 'FG_merged',
                         help='data folder')
     answer = parser.parse_args()
     return answer
