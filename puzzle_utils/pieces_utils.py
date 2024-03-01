@@ -1,6 +1,7 @@
 import os, pdb, json
 import cv2 
 import shapely 
+from shapely import transform
 from shapely.affinity import rotate as rotate_poly
 from puzzle_utils.puzzle_gen.generator import PuzzleGenerator
 from puzzle_utils.shape_utils import get_sd, get_mask, get_cm, shift_img
@@ -115,21 +116,24 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
             for ix in range(num_pieces):
                 x0 = x0_all[ix]
                 y0 = y0_all[iy]
-                x1 = x0 + patch_size - 1
-                y1 = y0 + patch_size - 1
+                x1 = x0 + patch_size
+                y1 = y0 + patch_size
                 box = shapely.box(x0, y0, x1, y1)  # patche box (xmin, ymin, xmax, ymax)
                 ## create patch
-                patch = image[y0:y1 + 1, x0:x1 + 1]
+                patch = image[y0:y1, x0:x1]
                 piece_in_full_image = np.zeros_like(image)
-                piece_in_full_image[y0:y1 + 1, x0:x1 + 1] = patch
+                piece_in_full_image[y0:y1, x0:x1] = patch
                 mask_full_image = np.zeros((image.shape[:2]))
-                mask_full_image[y0:y1 + 1, x0:x1 + 1] = 1 #np.ones((patch[:2]))
+                mask_full_image[y0:y1, x0:x1] = 1 #np.ones((patch[:2]))
                 centered_patch = patch
                 centered_mask = np.ones(patch.shape[:2])
                 shift2square = np.asarray([0, 0])
-                cm_patch = np.asarray([y0 + patch_size/2, x0 + patch_size/2])
-                shift2center_frag = np.asarray(image.shape[:2])/2 - cm_patch
+                # cm_image = np.asarray(image.shape[:2])/2
+                # cm_patch = np.asarray([y0 + patch_size/2, x0 + patch_size/2])
+                shift2center_frag = np.asarray([-x0, -y0])
                 center_of_mass = np.asarray([(x1-x0)/2, (y1-y0)/2])
+                squared_polygon = transform(box, lambda x: x + shift2center_frag)
+                # add here the shifted version 
                 piece_dict = {
                     'mask': mask_full_image,
                     'centered_mask': centered_mask,
@@ -138,8 +142,8 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
                     'centered_image': centered_patch,
                     'squared_image': centered_patch,
                     'polygon': box,
-                    'centered_polygon': box,
-                    'squared_polygon': box,
+                    'centered_polygon': squared_polygon,
+                    'squared_polygon': squared_polygon,
                     'center_of_mass': center_of_mass,
                     'height': patch_size,
                     'width': patch_size,

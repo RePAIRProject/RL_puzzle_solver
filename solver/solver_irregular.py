@@ -203,7 +203,10 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, pieces, ppars, use_RGB=True):
     for i, piece in enumerate(pieces):
         target_pos = solved_positions[i,:2] * ppars.xy_step
         target_rot = solved_positions[i, 2] * ppars.theta_step ## ERR !!! - recalculate theta step in the case of few rotations
-        placed_piece = place_on_canvas(piece, target_pos, canvas_image.shape[0], target_rot)
+        if (target_pos < ppars.p_hs).any() or (target_pos > canvas_image.shape).any() or (canvas_image.shape[0] - target_pos > ppars.p_hs).any():
+            print("poorly placed piece, ignoring")
+        else:
+            placed_piece = place_on_canvas(piece, target_pos, canvas_image.shape[0], target_rot)
         if use_RGB:
             if len(placed_piece['img'].shape) > 2:
                 canvas_image += placed_piece['img']
@@ -217,7 +220,10 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, pieces, ppars, use_RGB=True):
 def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars):
     step = np.ceil(ppars.xy_step)
     ang = ppars.theta_step # 360 / Z
-    z_rot = np.arange(0, 360, ang)
+    if ang == 0:
+        z_rot = np.asarray([0])
+    else:
+        z_rot = np.arange(0, 360, ang)
     pos = fin_sol
     fin_im = np.zeros(((Y * step + (ppars.p_hs+1) * 2).astype(int), (X * step + (ppars.p_hs+1) * 2).astype(int), 3))
 

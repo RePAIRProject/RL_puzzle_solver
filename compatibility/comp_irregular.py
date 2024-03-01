@@ -82,7 +82,6 @@ def main(args):
             print("\n" * 3)
             ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
-
         line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
         print("-" * 50)
         print('\tLINE MATCHING PARAMETERS')

@@ -266,11 +266,12 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                     n_lines_f2 = useful_lines_alfa2.shape[0]
 
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
-                        tot_cost = lmp.max_dist * 2                     # accept with some cost
+                        #tot_cost = lmp.max_dist * 2  
+                        tot_cost = lmp.badmatch_penalty / 2                   # accept with some cost
 
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
-                        tot_cost = lmp.mismatch_penalty * n_lines
+                        tot_cost = lmp.mismatch_penalty / 2 * n_lines
 
                     else:
                         # Compute cost_matrix, LAP, penalty, normalize
@@ -319,7 +320,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
     
     R_cost[R_cost > lmp.badmatch_penalty] = lmp.badmatch_penalty
     len_unique = len(np.unique(R_cost))
-    kmin_cut_val = np.sort(np.unique(R_cost))[-min(len_unique,lmp.k)]
+    kmin_cut_val = np.sort(np.unique(R_cost))[::-1][-min(len_unique,lmp.k)]
     norm_R_cost = np.maximum(1 - R_cost / kmin_cut_val, 0)
     
     return norm_R_cost

@@ -332,6 +332,26 @@ def main(args):
                 'colors': cols,
                 'categories': cats
             }
+            if args.save_visualization:
+                sq_lines_only = os.path.join(lines_output_folder, 'squared_lines')
+                os.makedirs(sq_lines_only, exist_ok=True)
+                len_lines = len(squared_angles)
+                sq_lines_img = np.zeros(shape=piece['squared_image'].shape, dtype=np.uint8)
+                sq_lines_only_transparent = np.zeros((sq_lines_img.shape[0], sq_lines_img.shape[1], 4))
+                sq_lines_only_transparent[:,:,3] = piece['squared_mask']
+                if len_lines > 0:
+                    plt.figure()
+                    plt.title(f'extracted {len_lines} segments')
+                    plt.imshow(piece['squared_image'])
+                    for p1, p2 in zip(p1s, p2s):
+                        plt.plot((p1[0], p2[0]), (p1[1], p2[1]), color='red', linewidth=1)        
+                    plt.savefig(os.path.join(sq_lines_only, f"piece_{j:04d}.jpg"))
+                    plt.close()
+                else:
+                    plt.title('no lines')
+                    plt.imshow(piece['squared_image'])    
+                    plt.savefig(os.path.join(sq_lines_only, f"piece_{j:04d}.jpg"))
+                    plt.close()
             with open(os.path.join(lines_output_folder, f"piece_{j:04d}.json"), 'w') as lj:
                 json.dump(aligned_lines, lj, indent=3)
             print(f'done with image_{N:05d}/piece_{j:04d}')
