@@ -91,7 +91,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
                             R_new[:, :, : , jj_anc, jj] = 0
 
         R_renorm = R_new / np.max(R_new)
-        R_new = np.where((R_new > 0), R_renorm, R_new)
+        R_new = np.where((R_new > 0), R_renorm*1.5, R_new)
 
         if faze == 0:
             T = cfg.Tfirst
