@@ -109,7 +109,10 @@ def main(args):
         z_rad = ppars.pairwise_comp_range // 2
         z_id = m * z_rad
         ang = ppars.theta_step
-        rot = np.arange(0, 360 - ang + 1, ang)
+        if ang == 0:
+            rot = [0]
+        else:
+            rot = np.arange(0, 360 - ang + 1, ang)
         cmp_parameters = (p, z_id, m, rot, line_matching_parameters)
         n = len(pieces)
 

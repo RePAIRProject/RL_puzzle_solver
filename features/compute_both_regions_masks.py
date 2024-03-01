@@ -100,13 +100,13 @@ def main(args):
                         overlap_lines = cv2.filter2D(piece_i_on_canvas['lines_mask'], -1, piece_j_on_canvas['lines_mask'])
                         overlap_shapes = cv2.filter2D(piece_i_on_canvas['mask'], -1, piece_j_on_canvas['mask'])
                         thresholded_regions_map = (overlap_shapes > ppars.threshold_overlap).astype(np.int32)
-                        thresholded_regions_map *= -1
                         # around_borders_trm = get_borders_around(thresholded_regions_map.astype(np.uint8), 
                         #     border_dilation=int(ppars.borders_regions_width_outside*ppars.xy_step), 
                         #     border_erosion=int(ppars.borders_regions_width_inside*ppars.xy_step))
                         around_borders_trm = get_borders_around(thresholded_regions_map.astype(np.uint8), 
                             border_dilation=int(ppars.borders_regions_width_outside*ppars.xy_step),
                             border_erosion=int(ppars.borders_regions_width_inside*ppars.xy_step))
+                        thresholded_regions_map *= -1
                         thresholded_regions_map += 2*(around_borders_trm > 0)
                         thresholded_regions_map = np.clip(thresholded_regions_map, -1, 1)
                         binary_overlap_lines = (overlap_lines > ppars.threshold_overlap_lines).astype(np.int32)
@@ -144,8 +144,8 @@ def main(args):
                             plt.subplot(632); plt.imshow(piece_j_on_canvas['img']); plt.title("Moving around")
                             coords = (center_pos + 3 * ppars.xy_step, center_pos - 1 * ppars.xy_step)
                             print(coords)
-                            piece_j_correct = place_on_canvas(pieces[j], coords, ppars.canvas_size, 0)
-                            plt.subplot(633); plt.imshow(piece_i_on_canvas['img'] + piece_j_correct['img'])
+                            #piece_j_correct = place_on_canvas(pieces[j], coords, ppars.canvas_size, 0)
+                            #plt.subplot(633); plt.imshow(piece_i_on_canvas['img'] + piece_j_correct['img'])
                             # plt.subplot(333); plt.imshow(around_borders_trm); plt.title("Borders")
                             # shapes
                             plt.subplot(634); plt.imshow(overlap_shapes); plt.title("Overlap Shapes")
