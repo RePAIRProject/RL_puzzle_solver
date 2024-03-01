@@ -5,22 +5,8 @@ Solving puzzle using Relaxation Labeling
 |-----------------------------------------|
 
 # 1) Description
-The repository contains the code for computing features, the compatibility matrices and the solver.
+The repository contains the code for computing the compatibility matrices and the solver to reassemble the pieces.
 
-## Preparing Data (`preprocessing` folder)
-Initially, we assume you have the input data for some puzzle (one image or the fragments).
-The `preprocess.py` script creates the `data` subfolder for a certain puzzle. Once you have that, you can start computing stuff (computed stuff will go into the `output` folder).
-
-## Compute Features (`features` folder)
-You can use `compute_region_masks.py` to precompute candidate regions where the compatibility will be calculated, or `segment_with_yolov8.py` to create the segmentation masks or `lines_detection.py` to extract lines from the segmentation masks obtained. 
-
-## File Naming Conventions
-The folder structure is described below and the name are written down in the `folder_names.py` file in the `configs` folder. 
-sThe idea behind this is that given only a puzzle name, you can access via the config parameters the folders and read/write files using always the same convention.
-
-## Parameters in the config files
-Parameters are usually located in the `configs` folder. 
-There are two main config files: `puzzle_from_fragments_cfg` and `puzzle_from_image_cfg` whose names should be self-explanatory. Inside the config we have the parameters for the size of the images and for the method to extract features.
 
 ## Folder Structure
 The data is structured following this idea (where `data` has the input files and `output` all the files created by the code):
@@ -28,8 +14,6 @@ The data is structured following this idea (where `data` has the input files and
 .
 ├── configs/        # configuration
 │   ├── folder_names.py     # folders
-│   └── various_cfg.py      # parameters (for line_matching, for solver, ecc..)
-├── preprocessing/          # preparing the puzzle
 ├── features/               # extracting features for the compatibility
 ├── compatibility/          # calculating the comp. matrices
 ├── solver/                 # rl-based solver
@@ -74,6 +58,7 @@ argparse
 We use slightly less but still most likely to be needed:
 ```
 scipy
+skfmm
 scikit-learn
 scikit-image
 opencv-python-contrib
@@ -95,6 +80,11 @@ The steps needed are:
 - Compute compatibility matrix
 - Launch the solver to reach the puzzle solution
 - Evaluate results
+
+
+| :exclamation:  This section is not updated!  |
+|-----------------------------------------|
+
 
 ## Full pipeline from a dataset (folder with images)
 
