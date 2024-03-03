@@ -48,7 +48,7 @@ def main(args):
                         neig_j.append(k-1)
                         neighbours_matrix[j-1, k-1] = 1
 
-            neighbours_nums[j] = neig_j
+            neighbours_nums[j-1] = neig_j
             neighbours_names[f"piece_{(j-1):04d}"] = [f"piece_{p:04d}" for p in neig_j]
         
         print("Neighbours as names")
