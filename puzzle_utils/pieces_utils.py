@@ -59,7 +59,10 @@ def calc_parameters_v2(parameters, xy_step=3, xy_grid_points=101, theta_step=45)
     ppars['xy_step'] = xy_step
     ppars['xy_grid_points'] = xy_grid_points
     ppars['theta_step'] = theta_step
-    ppars['theta_grid_points'] = int(np.round(360 / theta_step))
+    if theta_step == 0:
+        ppars['theta_grid_points'] = 1
+    else:
+        ppars['theta_grid_points'] = int(np.round(360 / theta_step))
     ppars['pairwise_comp_range'] = xy_step * (xy_grid_points - 1)
     ppars['canvas_size'] = ppars.pairwise_comp_range + 2 * (ppars.p_hs + 1)
     ppars['comp_matrix_shape'] = [ppars.xy_grid_points, ppars.xy_grid_points, ppars.theta_grid_points]
