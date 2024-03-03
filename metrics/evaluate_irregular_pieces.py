@@ -4,7 +4,6 @@ import pdb
 import numpy as np 
 import argparse 
 import matplotlib.pyplot as plt 
-from configs import unified_cfg as cfg
 from configs import folder_names as fnames
 import os 
 from solver.solverRotPuzzArgs import reconstruct_puzzle
@@ -60,28 +59,56 @@ def main(args):
                 p_final = loadmat(p_final_path)['p_final']
                 anchor_id = np.squeeze(loadmat(p_final_path)['anchor']).item()
                 anc_position = np.squeeze(loadmat(p_final_path)['anc_position'])
+
+                # ground truth 
+                # we saved them as negative (both translation and rotation)
+                gt_xy_anc = -1 * np.asarray(ground_truth[f"piece_{anchor_id:04d}"]['translation'][::-1])
+                gt_rotation_anc = -1 * ground_truth[f"piece_{anchor_id:04d}"]['rotation']
+                print(f"GT xy anc is: {gt_xy_anc}")
+                print(f"GT rot anc is: {gt_rotation_anc}")
+                # we place the ancor in the center of the canvas
+                shift_gt_anc2canvas = gt_xy_anc - center_canvas
+                # if gt rot is not 0, we need to shift all the coordinates
+                print(f"aligning to canvas --> shift_gt_anc2canvas: {shift_gt_anc2canvas}")
+                print()
+
+                # now we can get the position of the anchor                 
                 anc_position_xy = anc_position[:2] * cmp_parameters['xy_step']
+                # and the shift to get it to the center of the canvas
                 shift_anc2canvas = anc_position_xy - center_canvas
                 anc_position_on_canvas = center_canvas
                 print(f"\nAnchor {anchor_id} in {anc_position_on_canvas} on a canvas of {canvas.shape}\n")
                 print(f"anchor was: {anc_position_xy} rotated of {0}")
                 print(f"aligning to canvas on xy --> shift_anc2canvas: {shift_anc2canvas}")
                 
-                gt_xy_anc = -1 * np.asarray(ground_truth[f"piece_{anchor_id:04d}"]['translation'][::-1])
-                gt_rotation_anc = ground_truth[f"piece_{anchor_id:04d}"]['rotation']
-                print(f"GT xy anc is: {gt_xy_anc}")
-                print(f"GT rot anc is: {gt_rotation_anc}")
-                shift_gt_anc2canvas = gt_xy_anc - center_canvas
-                # if gt rot is not 0, we need to shift all the coordinates
-                print(f"aligning to canvas --> shift_gt_anc2canvas: {shift_gt_anc2canvas}")
-                print()
+                # rotation
+                # we need to have the rotation delta between the ground truth and the anchor
+                # everything will be solved as the "original" image, meaning:
+                #  the anchor is selected with a certain rotation (usually 0), but in the GT it has another rotation
+                #  we rotate all the estimated to align the image to the original one!
+                anc_rotation = anc_position[2] * cmp_parameters['theta_step']
+                rot_diff = gt_rotation_anc - anc_rotation
+
+                ######
+                # NOW:
+                # - we have the anchor gt in the center of the canvas (and the shift to align the other pieces)
+                # - we have the anchor of estimation in the cneter (and its shift)
+                # - we have the rotation delta, which means, all the estimated (trans and rot) needs to be rotated by that
+                #
+                # therefore we need to:
+                # - for each gt piece, apply 2 shifts: 1 to align to anchor gt and 1 to align to center canvas
+                # - for each est piece, transform its position by rotating him and its shift to align to the center of canvas!
+                #       rotating the shift means changing the xy coords (example 180 deg invert them xy = - xy)
+                ######              
                 num_pcs = img_parameters['num_pieces']
                 errors_xy = np.zeros(num_pcs)
                 errors_rot = np.zeros(num_pcs)
                 correct_xy = np.zeros(num_pcs)
                 correct_rot = np.zeros(num_pcs)
                 correct = np.zeros(num_pcs)
+
                 for j in range(num_pcs):
+
                     gt_rot_piece = ground_truth[f"piece_{j:04d}"]['rotation']
                     # here we calculate shift between ground truth absolute and with respect to the anchor!
                     gt_xy = -1 * np.asarray(ground_truth[f"piece_{j:04d}"]['translation'][::-1])
@@ -92,10 +119,10 @@ def main(args):
                     solution_piece = np.unravel_index(np.argmax(p_final[:,:,:,j]), p_final[:,:,:,j].shape)
                     est_xy = np.asarray(solution_piece[:2]) * cmp_parameters['xy_step']
                     est_rot = solution_piece[2] * cmp_parameters['theta_step']
-                    est_xy_canvas = est_xy - shift_anc2canvas
+                    est_xy_canvas = est_xy - include_rotation(shift_anc2canvas, rot_diff)
 
                     error_xy = np.sqrt(np.sum(np.square(gt_xy_canvas - est_xy_canvas)))
-                    error_rot = np.sqrt(np.square(np.abs(gt_rot_piece - est_rot)))
+                    error_rot = np.sqrt(np.square(np.abs(gt_rot_piece - est_rot))) % 360
                     if error_xy < cmp_parameters['xy_step']: #np.isclose(error_xy, 0):
                         correct_xy[j] = 1
                     if error_rot < cmp_parameters['theta_step'] or np.isclose(error_rot, 360): #np.isclose(error_rot, 0):
@@ -123,9 +150,9 @@ def main(args):
                 num_correct_pcs = np.sum(correct)
                 print("*" * 50)
                 print("CORRECT")
-                print(f"XY: {num_correct_pcs_xy}")
-                print(f"ROT: {num_correct_pcs_rot}")
-                print(f"Both: {num_correct_pcs}")
+                print(f"XY: {num_correct_pcs_xy} / {num_pcs} : {num_correct_pcs_xy/num_pcs:.02f}")
+                print(f"ROT: {num_correct_pcs_rot} / {num_pcs} : {num_correct_pcs_rot/num_pcs:.02f}")
+                print(f"Both: {num_correct_pcs}  / {num_pcs} : {num_correct_pcs/num_pcs:.02f}")
                 print("AVERAGE DISTANCE")
                 print(f"XY: {mean_xy_err:.3f}")
                 print(f"ROT: {mean_rot_err:.3f}")
