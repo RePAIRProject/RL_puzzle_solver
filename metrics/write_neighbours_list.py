@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pdb 
 from configs import folder_names as fnames
 import cv2
+
 def main(args):
 
     dataset_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset)
