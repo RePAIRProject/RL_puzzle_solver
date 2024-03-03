@@ -131,8 +131,9 @@ def main(args):
                 print(fin_sol_px)
 
                 print(">>> EVALUATION <<<")
-                errors_xy = np.sum((gt_rot[:, 0:2] == fin_sol[:, 0:2]), axis=1)==2
-                errors_px = np.sum((gt_rot_px[:, 0:2]-fin_sol_px[:, 0:2]) <= (2*cmp_parameters['xy_step']), axis=1) == 2
+                k_tol = 2     # tolerance shift 2 steps or more?
+                errors_xy = np.sum((gt_rot[:, 0:2]-fin_sol[:, 0:2]) <= k_tol, axis=1) == 2
+                errors_px = np.sum((gt_rot_px[:, 0:2]-fin_sol_px[:, 0:2]) <= (k_tol*cmp_parameters['xy_step']), axis=1) == 2
                 errors_rot = (gt_rot[:,2] == fin_sol[:,2])
 
                 Dir_accur_xy = np.round(np.mean(errors_xy),2)
