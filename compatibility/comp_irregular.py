@@ -215,6 +215,14 @@ def main(args):
             print("WARNING: normalized over each piece!")
             #pdb.set_trace()
             #All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
+        elif args.cmp_cost == 'LAP3':
+            min_vals = []
+            for j in range(All_cost.shape[3]):
+                for i in range(All_cost.shape[4]):
+                    min_val = np.min(All_cost[:, :, :, j, i])
+                    min_vals.append(min_vals)
+            kmin_cut_val = np.max(min_vals) + 1
+            All_norm_cost = np.maximum(1 - All_cost/ kmin_cut_val, 0)
         else:  # args.cmp_cost == 'LAP':
             #All_norm_cost = np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
             All_norm_cost = All_cost # / np.max(All_cost) #
