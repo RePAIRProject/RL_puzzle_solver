@@ -18,14 +18,18 @@ theta_step=0
 det_method='exact'
 cmp_cost_1='LAP'
 cmp_cost_2='LCI'
-verbosity=2
-jobs=24
+verbosity=1
+jobs=2
 
 p_pts=15      #old#  125   151    175
 anchor=-1
-tfirst=2000    #  1500  3000   5000
-tnext=500      #  500   750    1000
-tmax=9000      #  9000  15000  20000  
+tfirst1=1000    #  1500  3000   5000
+tnext1=400      #  500   750    1000
+tmax1=3000      #  9000  15000  20000  
+
+tfirst2=2000    #  1500  3000   5000
+tnext2=500      #  500   750    1000
+tmax2=9000      #  9000  15000  20000  
 
 
 #!/bin/bash/
@@ -72,7 +76,8 @@ python compatibility/comp_irregular.py --dataset $dataset --puzzle $puzzle --det
 echo "-----------------------------------------------"
 echo "SOLVER"
 echo "python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor $anchor --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts"
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor $anchor --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor $anchor --tfirst $tfirst1 --tnext $tnext1 --tmax $tmax1 --p_pts $p_pts
+python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor $anchor --tfirst $tfirst2 --tnext $tnext2 --tmax $tmax2 --p_pts $p_pts
 
 #python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_2 --anchor $anchor --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
 
