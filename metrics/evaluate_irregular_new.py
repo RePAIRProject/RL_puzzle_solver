@@ -109,8 +109,8 @@ def main(args):
                         gt_rot[:, 0] = -gt_yxz[:, 1]  # y_new = -x
                         gt_rot[:, 1] = gt_yxz[:, 0]   # x_new = +y
                     elif anc_rot == 180 or anc_rot == -180:
-                        gt_rot[:, 0] = -gt_yxz[:, 1]  # y_new = -x
-                        gt_rot[:, 1] = -gt_yxz[:, 0]  # x_new = -y
+                        gt_rot[:, 0] = -gt_yxz[:, 0]  # y_new = -x
+                        gt_rot[:, 1] = -gt_yxz[:, 1]  # x_new = -y
                 gt_rot[:, 2] = gt_yxz[:, 2]
                 print(f"  ")
                 print(f"GT shifted and rotated in YX :")
