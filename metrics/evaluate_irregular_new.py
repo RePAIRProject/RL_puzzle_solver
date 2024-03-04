@@ -48,6 +48,8 @@ def main(args):
                 solution_folder_full_path = os.path.join(dataset_folder, puzzle, solution_folder)
                 p_final_path = os.path.join(solution_folder_full_path, 'p_final.mat')
                 p_final = loadmat(p_final_path)['p_final']
+                no_rotations = p_final.shape[2]
+                theta_step = 360/no_rotations
                 anchor_id = np.squeeze(loadmat(p_final_path)['anchor']).item()
                 anc_position = np.squeeze(loadmat(p_final_path)['anc_position'])
 
@@ -68,7 +70,7 @@ def main(args):
                 # Final solution in PX coordinate (anchor is in ref.point = [0,0,0])
                 fin_sol_px = np.zeros([num_pcs, 3])
                 fin_sol_px[:, 0:2] = fin_sol[:, 0:2] * cmp_parameters['xy_step']
-                fin_sol_px[:, 2] = fin_sol[:, 2] * cmp_parameters['theta_step']
+                fin_sol_px[:, 2] = fin_sol[:, 2] * theta_step
 
                 # print(f"  ")
                 # print(f"Fin Solution in YX :")
@@ -93,7 +95,7 @@ def main(args):
                 # 2. Translate to yxz space
                 gt_yxz = np.zeros([num_pcs, 3])
                 gt_yxz[:, 0:2] = np.round(gt_shift[:, 0:2]/cmp_parameters['xy_step'])
-                gt_yxz[:, 2] = gt_shift[:, 2]/cmp_parameters['theta_step']
+                gt_yxz[:, 2] = gt_shift[:, 2]/theta_step
                 #print(f"GT non rotated in YX :")
                 #print(gt_yxz)
 
@@ -123,7 +125,7 @@ def main(args):
                 print(f"--------------------------")
                 gt_rot_px = np.zeros([num_pcs, 3])
                 gt_rot_px[:, 0:2] = gt_rot[:, 0:2]*cmp_parameters['xy_step']
-                gt_rot_px[:, 2] = gt_rot[:, 2]*cmp_parameters['theta_step']
+                gt_rot_px[:, 2] = gt_rot[:, 2]*theta_step
                 print(f"GT shifted and rotated in PX :")
                 print(gt_rot_px)
 
