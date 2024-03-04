@@ -1,5 +1,5 @@
 import numpy as np
-from solver.solverRotPuzz import reconstruct_puzzle
+from solver.solver_irregular import reconstruct_puzzle
 import os 
 import pdb 
 import cv2 
