@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=real_lines_irr9pcs
+#SBATCH --job-name=square_maps
 #SBATCH --ntasks=1                 				        # Run on a single CPU
 #SBATCH --cpus-per-task=2
-#SBATCH --output=RL_logs/26_02/real_irr9pcs_%j.log			# Standard output and error log
+#SBATCH --output=RL_logs/square_03_03/square_maps_%j.log			# Standard output and error log
 
 # PYTHONPATH
 export PYTHONPATH=${PYTHONPATH}:/home/luca.palmieri/code/RL_puzzle_solver
