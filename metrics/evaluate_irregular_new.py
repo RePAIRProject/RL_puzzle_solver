@@ -157,7 +157,7 @@ def main(args):
                 }
                 # for kk in evaluation_dict.keys():
                 #      print(type(evaluation_dict[kk]), kk)
-                with open(os.path.join(solution_folder_full_path, 'evaluation.json'), 'w') as ej:
+                with open(os.path.join(solution_folder_full_path, 'evaluation_2.json'), 'w') as ej:
                     json.dump(evaluation_dict, ej, indent=3)
 
                 # check for p final
