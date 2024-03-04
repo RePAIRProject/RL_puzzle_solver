@@ -62,8 +62,6 @@ def main(args):
             
             for solution_folder in solution_folders:
 
-                
-
                 print("-" * 50)
                 print(f"Evaluating: {solution_folder}")
                 solution_folder_full_path = os.path.join(dataset_folder, puzzle, solution_folder)

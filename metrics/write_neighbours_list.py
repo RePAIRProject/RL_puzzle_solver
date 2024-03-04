@@ -23,13 +23,12 @@ def main(args):
         print("#" * 50)
         print(f"Now on {puzzle}")
         # check what we have
+
         puzzle_folder = os.path.join(dataset_folder, puzzle)
         with open(os.path.join(puzzle_folder, "ground_truth.json"), 'r') as gtj:
             ground_truth = json.load(gtj)
         with open(os.path.join(puzzle_folder, f"parameters_{puzzle}.json"), 'r') as gtj:
             img_parameters = json.load(gtj)
-        with open(os.path.join(puzzle_folder, f"compatibility_parameters.json"), 'r') as gtj:
-            cmp_parameters = json.load(gtj)
         regions_folder = os.path.join(puzzle_folder, 'regions')
         regions_mat = cv2.imread(os.path.join(regions_folder, 'regions_uint8.png'))
 
