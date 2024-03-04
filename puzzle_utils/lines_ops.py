@@ -267,11 +267,11 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
 
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
                         #tot_cost = lmp.max_dist * 2  
-                        tot_cost = lmp.badmatch_penalty / 2                   # accept with some cost
+                        tot_cost = lmp.badmatch_penalty / 3                   # accept with some cost
 
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
-                        tot_cost = lmp.mismatch_penalty / 2 * n_lines
+                        tot_cost = lmp.mismatch_penalty * n_lines
 
                     else:
                         # Compute cost_matrix, LAP, penalty, normalize
