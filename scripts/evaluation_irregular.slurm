@@ -22,11 +22,13 @@ echo "python metrics/write_neighbours_list.py --dataset $pattern_dataset_synth"
 python metrics/write_neighbours_list.py --dataset $pattern_dataset_synth
 echo "python metrics/evaluate_irregular_pieces.py --dataset $pattern_dataset_synth"
 python metrics/evaluate_irregular_pieces.py --dataset $pattern_dataset_synth
+python metrics/evaluate_irregular_new.py --dataset $pattern_dataset_synth
 
 echo "python metrics/write_neighbours_list.py --dataset $irregular_dataset_synth"
 python metrics/write_neighbours_list.py --dataset $irregular_dataset_synth
 echo "python metrics/evaluate_irregular_pieces.py --dataset $irregular_dataset_synth"
 python metrics/evaluate_irregular_pieces.py --dataset $irregular_dataset_synth 
+python metrics/evaluate_irregular_new.py --dataset $irregular_dataset_synth 
 
 echo "-----------------------------------------------"
 echo "REAL"
@@ -34,10 +36,12 @@ echo "python metrics/write_neighbours_list.py --dataset $pattern_dataset_real"
 python metrics/write_neighbours_list.py --dataset $pattern_dataset_real
 echo "python metrics/evaluate_irregular_pieces.py --dataset $pattern_dataset_real"
 python metrics/evaluate_irregular_pieces.py --dataset $pattern_dataset_real
+python metrics/evaluate_irregular_new.py --dataset $pattern_dataset_real
 
 echo "python metrics/write_neighbours_list.py --dataset $irregular_dataset_real"
 python metrics/write_neighbours_list.py --dataset $irregular_dataset_real
 echo "python metrics/evaluate_irregular_pieces.py --dataset $irregular_dataset_real"
 python metrics/evaluate_irregular_pieces.py --dataset $irregular_dataset_real 
+python metrics/evaluate_irregular_new.py --dataset $irregular_dataset_real 
 
 echo "FINISHED"
