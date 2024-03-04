@@ -205,7 +205,11 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, Z, pieces, ppars, use_RGB=True
         #target_rot = solved_positions[i, 2] * ppars.theta_step ## ERR !!! - recalculate theta step in the case of few rotations
         theta_step = 360/Z
         target_rot = solved_positions[i, 2] * theta_step
-        placed_piece = place_on_canvas(piece, target_pos, canvas_image.shape[0], target_rot)
+        if (target_pos < ppars.p_hs).any() or (target_pos > canvas_image.shape).any() or (canvas_image.shape[0] - target_pos > ppars.p_hs).any():
+            print("poorly placed piece, ignoring")
+        else:
+            placed_piece = place_on_canvas(piece, target_pos, canvas_image.shape[0], target_rot)
+
         if use_RGB:
             if len(placed_piece['img'].shape) > 2:
                 canvas_image += placed_piece['img']
