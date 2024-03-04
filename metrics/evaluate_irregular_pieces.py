@@ -6,7 +6,6 @@ import argparse
 import matplotlib.pyplot as plt 
 from configs import folder_names as fnames
 import os 
-from solver.solverRotPuzzArgs import reconstruct_puzzle
 import cv2
 from metrics.metrics_utils import get_sol_from_p, get_visual_solution_from_p, simple_evaluation, \
     pixel_difference, neighbor_comparison, get_offset, get_true_solution_vector, \
