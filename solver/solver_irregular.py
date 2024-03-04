@@ -194,19 +194,22 @@ def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
         p = np.round(p_new, decimals)
     return p, payoff, eps, iter
 
-def reconstruct_puzzle_v2(solved_positions, Y, X, pieces, ppars, use_RGB=True):
+def reconstruct_puzzle_v2(solved_positions, Y, X, Z, pieces, ppars, use_RGB=True):
 
     if use_RGB:
         canvas_image = np.zeros((np.round(Y * ppars.xy_step + ppars.p_hs).astype(int), np.round(X * ppars.xy_step + ppars.p_hs).astype(int), 3))
     else:
         canvas_image = np.zeros((np.round(Y * ppars.xy_step + ppars.p_hs).astype(int), np.round(X * ppars.xy_step + ppars.p_hs).astype(int)))
     for i, piece in enumerate(pieces):
-        target_pos = solved_positions[i,:2] * ppars.xy_step
-        target_rot = solved_positions[i, 2] * ppars.theta_step ## ERR !!! - recalculate theta step in the case of few rotations
+        target_pos = solved_positions[i,:2] * ppars.xy_step        
+        #target_rot = solved_positions[i, 2] * ppars.theta_step ## ERR !!! - recalculate theta step in the case of few rotations
+        theta_step = 360/Z
+        target_rot = solved_positions[i, 2] * theta_step
         if (target_pos < ppars.p_hs).any() or (target_pos > canvas_image.shape).any() or (canvas_image.shape[0] - target_pos > ppars.p_hs).any():
             print("poorly placed piece, ignoring")
         else:
             placed_piece = place_on_canvas(piece, target_pos, canvas_image.shape[0], target_rot)
+
         if use_RGB:
             if len(placed_piece['img'].shape) > 2:
                 canvas_image += placed_piece['img']
@@ -219,11 +222,9 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, pieces, ppars, use_RGB=True):
                     
 def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars):
     step = np.ceil(ppars.xy_step)
-    ang = ppars.theta_step # 360 / Z
-    if ang == 0:
-        z_rot = np.asarray([0])
-    else:
-        z_rot = np.arange(0, 360, ang)
+    #ang = ppars.theta_step # 360 / Z    
+    ang = 360 / Z
+    z_rot = np.arange(0, 360, ang)
     pos = fin_sol
     fin_im = np.zeros(((Y * step + (ppars.p_hs+1) * 2).astype(int), (X * step + (ppars.p_hs+1) * 2).astype(int), 3))
 
@@ -404,7 +405,7 @@ def main(args):
     plt.savefig(final_solution)
     plt.close()
 
-    fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=True)
+    fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, Z, pieces_dict, ppars, use_RGB=True)
     final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
     if np.max(fin_im_v2) > 1:
         fin_im_v2 = np.clip(fin_im_v2, 0, 1)
