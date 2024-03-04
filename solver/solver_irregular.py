@@ -210,13 +210,13 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, Z, pieces, ppars, use_RGB=True
         else:
             placed_piece = place_on_canvas(piece, target_pos, canvas_image.shape[0], target_rot)
 
-        if use_RGB:
-            if len(placed_piece['img'].shape) > 2:
-                canvas_image += placed_piece['img']
+            if use_RGB:
+                if len(placed_piece['img'].shape) > 2:
+                    canvas_image += placed_piece['img']
+                else:
+                    canvas_image += np.repeat(placed_piece['img'], 3).reshape(canvas_image.shape)
             else:
-                canvas_image += np.repeat(placed_piece['img'], 3).reshape(canvas_image.shape)
-        else:
-            canvas_image += placed_piece['img']
+                canvas_image += placed_piece['img']
 
     return canvas_image
                     
@@ -405,14 +405,14 @@ def main(args):
     plt.savefig(final_solution)
     plt.close()
 
-    fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, Z, pieces_dict, ppars, use_RGB=True)
-    final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
-    if np.max(fin_im_v2) > 1:
-        fin_im_v2 = np.clip(fin_im_v2, 0, 1)
-    plt.imsave(final_solution_v2, fin_im_v2)
-    fin_im_cropped = crop_to_content(fin_im_v2)
-    final_solution_v2_cropped = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap_cropped.png')
-    plt.imsave(final_solution_v2_cropped, fin_im_cropped)
+    # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, Z, pieces_dict, ppars, use_RGB=True)
+    # final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
+    # if np.max(fin_im_v2) > 1:
+    #     fin_im_v2 = np.clip(fin_im_v2, 0, 1)
+    # plt.imsave(final_solution_v2, fin_im_v2)
+    # fin_im_cropped = crop_to_content(fin_im_v2)
+    # final_solution_v2_cropped = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap_cropped.png')
+    # plt.imsave(final_solution_v2_cropped, fin_im_cropped)
 
     f = len(all_anc)
     fin_sol = all_anc[f-1]

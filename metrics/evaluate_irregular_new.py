@@ -8,7 +8,7 @@ from configs import unified_cfg as cfg
 from configs import folder_names as fnames
 import os
 import json
-
+import cv2 
 
 def main(args):
     dataset_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset)
@@ -132,6 +132,8 @@ def main(args):
                 print(f"Fin Solution in PX :")
                 print(fin_sol_px)
 
+
+
                 print(">>> EVALUATION <<<")
                 k_tol = 2     # tolerance shift 2 steps or more?
                 errors_xy = np.sum(np.abs(gt_rot[:, 0:2]-fin_sol[:, 0:2]) <= k_tol, axis=1) == 2
@@ -162,6 +164,36 @@ def main(args):
                 with open(os.path.join(solution_folder_full_path, 'evaluation_2.json'), 'w') as ej:
                     json.dump(evaluation_dict, ej, indent=3)
 
+                # hs = cmp_parameters['p_hs']
+                # fin_drawing_px = np.zeros_like(np.asarray(fin_sol_px))
+                # fin_drawing_px += fin_sol_px
+                # fin_drawing_px[:,:2] -= np.min(fin_drawing_px)
+                # fin_drawing_px[:,:2] += hs 
+                # max_size = np.round(np.max(fin_drawing_px[:,:2]) + hs).astype(int)
+                # solution_img = np.zeros((max_size, max_size, 3))
+                # gt_img = np.zeros((max_size, max_size, 3))
+                # for h in range(num_pcs):
+                #     piece = plt.imread(os.path.join(puzzle_folder, 'pieces', f"piece_{h:04d}.png"))
+                #     mask = piece[:,:,2] > 0
+                #     eroded_mask = cv2.erode(mask.astype(np.uint8), np.ones((5,5)))
+                #     border_mask = mask - eroded_mask
+                #     bordered_piece = np.zeros_like(piece)
+                #     if h == anchor_id:
+                #         color = [0, 0, 1]
+                #     elif errors_px[h] == 1:
+                #         color = [0, 1, 0]
+                #     else:
+                #         color = [1, 0, 0]
+                #     for u in range(3):
+                #         bordered_piece[:,:,u] = piece[:,:,u] * eroded_mask + border_mask * color[u]
+                    
+                #     bordered_piece = scipy.ndimage.rotate(bordered_piece, gt_rot[u,2])
+                #     x, y = (fin_drawing_px[h, :2]).astype(int)
+                #     solution_img[y-hs:y+hs, x-hs:x+hs, :] += bordered_piece
+
+                # plt.imshow(solution_img)
+                # plt.show()
+                # pdb.set_trace()
                 # check for p final
                 # p_finals = [pfpath for pfpath in os.listdir(solution_folder_full_path) if "p_final" in pfpath]
                 # print(f"found {len(p_finals)} p final matrices")

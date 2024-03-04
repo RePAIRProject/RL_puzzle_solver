@@ -122,6 +122,8 @@ def main(args):
                 neighbours_nums = np.zeros(num_pcs)
 
                 est_pos = np.zeros((num_pcs, 3))
+                canvas_est_pos = np.zeros((num_pcs, 4))
+                canvas_gt_pos = np.zeros((num_pcs, 3))
                 for p in range(num_pcs):
                     est_pos[p, :] = np.unravel_index(np.argmax(p_final[:,:,:,p]), p_final[:,:,:,p].shape)
 
@@ -137,18 +139,25 @@ def main(args):
                     solution_piece = est_pos[j, :] #np.unravel_index(np.argmax(p_final[:,:,:,j]), p_final[:,:,:,j].shape)
                     est_xy = np.asarray(solution_piece[:2]) * cmp_parameters['xy_step']
                     est_rot = solution_piece[2] * cmp_parameters['theta_step']
-                    est_xy_canvas = est_xy - include_rotation(shift_anc2canvas, rot_diff)
+                    shift_piece2anc = est_pos[j, :2] - anc_position[:2]
+                    est_xy_canvas = est_xy - shift_anc2canvas - include_rotation(shift_piece2anc[::-1], rot_diff) * cmp_parameters['xy_step']
 
                     error_xy = np.sqrt(np.sum(np.square(gt_xy_canvas - est_xy_canvas)))
                     error_rot = np.sqrt(np.square(np.abs(gt_rot_piece - est_rot))) % 360
+                    piece_val = 0
                     if error_xy < cmp_parameters['xy_step']: #np.isclose(error_xy, 0):
                         correct_xy[j] = 1
                     if error_rot < cmp_parameters['theta_step'] or np.isclose(error_rot, 360): #np.isclose(error_rot, 0):
                         correct_rot[j] = 1
                     if correct_xy[j] == 1 and correct_rot[j] == 1:
                         direct_correct[j] = 1
+                        piece_val = 1
+                    if j == anchor_id:
+                        piece_val = 2
                     errors_xy[j] = error_xy
                     errors_rot[j] = error_rot
+                    canvas_est_pos[j] = [est_xy_canvas[0], est_xy_canvas[1], est_rot, piece_val]
+                    canvas_gt_pos[j] = [gt_xy_canvas[0], gt_xy_canvas[1], gt_rot_piece]
 
                     # neighbours 
                     neighs_j = neighbours['numbers'][f"{j:d}"]
@@ -175,6 +184,9 @@ def main(args):
                     
                     print("-" * 40)
                     print(f"piece {j}")
+                    print("RESULT")
+                    print(f"EST:\t[{est_xy_canvas[0]:.0f},{est_xy_canvas[1]:.0f},{est_rot:.0f}]")
+                    print(f"GT:\t[{gt_xy_canvas[0]:.0f},{gt_xy_canvas[1]:.0f},{gt_rot_piece:.0f}]")
                     print(">>> ESTIMATED  <<<")
                     print(f"p: {solution_piece}\nest_xy: {est_xy}\nest_xy_canvas: {est_xy_canvas}")
                     print(f"est_rot: {est_rot}")
@@ -192,6 +204,15 @@ def main(args):
                 num_correct_pcs_xy = np.sum(correct_xy)
                 num_correct_pcs_rot = np.sum(correct_rot)
                 num_correct_pcs = np.sum(direct_correct)
+                print("\n", puzzle, solution_folder)
+                print("\n")
+                print("\t\tEST\tvs\t\tGT")
+                for k in range(num_pcs):
+                    print(f"{k}:\t{canvas_est_pos[k,:3]}\tvs\t{canvas_gt_pos[k, :]}\t--> {canvas_est_pos[k,3]}")
+                print("\n")
+                print("EST:\n", canvas_est_pos)
+                print("\n")
+                print("GT:\n", canvas_gt_pos)
                 print("\n")
                 print("*" * 50)
                 print("CORRECT")
@@ -233,7 +254,30 @@ def main(args):
                 with open(os.path.join(solution_folder_full_path, 'evaluation.json'), 'w') as ej:
                     json.dump(evaluation_dict, ej, indent=3)
                 
+                hs = cmp_parameters['p_hs']
+                max_size = np.round(np.max(est_pos[:,:2]) + hs).astype(int)
+                solution_img = np.zeros((max_size, max_size, 3))
+                for h in range(num_pcs):
+                    piece = plt.imread(os.path.join(puzzle_folder, 'pieces', f"piece_{h:04d}.png"))
+                    mask = piece[:,:,2] > 0
+                    eroded_mask = cv2.erode(mask.astype(np.uint8), np.ones((5,5)))
+                    border_mask = mask - eroded_mask
+                    bordered_piece = np.zeros_like(piece)
+                    if h == anchor_id:
+                        color = [0, 0, 1]
+                    elif direct_correct[h] == 1:
+                        color = [0, 1, 0]
+                    else:
+                        color = [1, 0, 0]
+                    for u in range(3):
+                        bordered_piece[:,:,u] = piece[:,:,u] * eroded_mask + border_mask * color[u]
+                    x, y = np.round(canvas_est_pos[h,:2][::-1]).astype(int)
+                    if x > 0 and y > 0:
+                        solution_img[y-hs:y+hs, x-hs:x+hs, :] += bordered_piece
 
+                plt.imshow(solution_img)
+                plt.show()
+                pdb.set_trace()
                 tot_puz_names.append(puzzle)
                 tot_sol_names.append(solution_folder)
                 tot_correct.append(num_correct_pcs/num_pcs)
