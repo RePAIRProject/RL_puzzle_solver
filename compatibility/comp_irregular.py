@@ -220,9 +220,13 @@ def main(args):
             for j in range(All_cost.shape[3]):
                 for i in range(All_cost.shape[4]):
                     min_val = np.min(All_cost[:, :, :, j, i])
-                    min_vals.append(min_vals)
+                    min_vals.append(min_val)
             kmin_cut_val = np.max(min_vals) + 1
             All_norm_cost = np.maximum(1 - All_cost/ kmin_cut_val, 0)
+        elif args.cmp_cost == 'LAP2':
+            clipping_val = line_matching_parameters.max_dist + (line_matching_parameters.badmatch_penaly - line_matching_parameters.max_dist) / 3
+            All_cost = np.clip(All_cost, 0, clipping_val)
+            All_norm_cost = 1 - All_cost / clipping_val
         else:  # args.cmp_cost == 'LAP':
             #All_norm_cost = np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
             All_norm_cost = All_cost # / np.max(All_cost) #

@@ -27,8 +27,8 @@ def calc_line_matching_parameters(parameters, cmp_cost='new'):
     else:
         lm_pars['max_dist'] = 0.70*(parameters.xy_step)
 
-    lm_pars['badmatch_penalty'] = lm_pars['max_dist'] * 5 / 3 # parameters.piece_size / 3 #?
-    lm_pars['mismatch_penalty'] = lm_pars['max_dist'] * 4 / 3 # parameters.piece_size / 4 #?
+    lm_pars['badmatch_penalty'] = max(5, lm_pars['max_dist'] * 5 / 3) # parameters.piece_size / 3 #?
+    lm_pars['mismatch_penalty'] = max(4, lm_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
     lm_pars['rmax'] = lm_pars['max_dist'] * 7 / 6
     lm_pars['cmp_cost'] = cmp_cost
     lm_pars['k'] = 5
@@ -327,6 +327,108 @@ def compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, 
     return R_cost #norm_R_cost
 
 
+def compute_cost_matrix_LAP_v2(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, lmp, mask_ij, pars, verbosity=1):
+    """ 
+    LAP 2 returns a cost (lower is better)
+    Everything above "max_dist + (badmatch-max_dist) / 3" will be later cut
+    max_dist is the maximum we could accept if the "correct" match is very bad due to grid or noise
+    """ 
+    
+    max_val = lmp.max_dist + (lmp.badmatch_penalty-lmp.max_dist) / 3
+    perc_cost_of_empty_sides = 0.75
+
+    R_cost = np.ones((m.shape[1], m.shape[1], len(rot))) * max_val
+    #for t in range(1):
+    for t in range(len(rot)):
+        #theta = -rot[t] * np.pi / 180      # rotation of F2
+        t_rot = time.time()
+        theta = rot[t]
+        theta_rad = theta * np.pi / 180     # np.deg2rad(theta) ?
+        for ix in range(m.shape[1]):        # (z_id.shape[0]):
+            t_x = time.time()
+            for iy in range(m.shape[1]):    # (z_id.shape[0]):
+                t_y = time.time()
+                z = z_id[iy, ix]            # ??? [iy,ix] ??? strange...
+                valid_point = mask_ij[iy, ix, t]
+                if valid_point > 0:
+                    # print([iy, ix, t])
+                    # check if line1 crosses the polygon2                  
+                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0],  0, poly1, s11, s12, pars, extrapolate=False)
+
+                    # return intersections                    
+                    useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
+                    useful_lines_color1 = color1[intersections1]
+                    useful_lines_cat1 = cat1[intersections1]
+                    useful_lines_s11 = useful_lines_s11[intersections1]
+                    useful_lines_s12 = useful_lines_s12[intersections1]
+
+                    # check if line2 crosses the polygon1
+                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, poly2, s21, s22, pars, extrapolate=False)
+                    useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
+
+                    useful_lines_color2 = color2[intersections2]
+                    useful_lines_cat2 = cat2[intersections2]
+                    useful_lines_s21 = useful_lines_s21[intersections2]
+                    useful_lines_s22 = useful_lines_s22[intersections2]
+
+                    n_lines_f1 = useful_lines_alfa1.shape[0]
+                    n_lines_f2 = useful_lines_alfa2.shape[0]
+
+                    if n_lines_f1 == 0 and n_lines_f2 == 0:
+                        #tot_cost = lmp.max_dist * 2  
+                        tot_cost = lmp.max_dist * perc_cost_of_empty_sides            # accept with some cost
+
+                    elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
+                        n_lines = (np.max([n_lines_f1, n_lines_f2]))
+                        tot_cost = lmp.mismatch_penalty * n_lines
+
+                    else:
+                        # Compute cost_matrix, LAP, penalty, normalize
+                        dist_matrix0 = np.zeros((n_lines_f1, n_lines_f2))
+                        dist_matrix = np.zeros((n_lines_f1, n_lines_f2))
+                        gamma_matrix = np.zeros((n_lines_f1, n_lines_f2))
+                        color_matrix = np.zeros((n_lines_f1, n_lines_f2))
+                        cat_matrix = np.zeros((n_lines_f1, n_lines_f2))
+
+                        for i in range(n_lines_f1):
+                            for j in range(n_lines_f2):
+                                # new
+                                color_matrix[i, j] = np.all(useful_lines_color1[i, :] == useful_lines_color2[j, :])
+                                cat_matrix[i, j] = np.all(useful_lines_cat1[i] == useful_lines_cat2[j])
+                                gamma = useful_lines_alfa1[i] - useful_lines_alfa2[j]
+                                gamma_matrix[i, j] = np.abs(np.sin(gamma))
+
+                                d1 = distance.euclidean(useful_lines_s11[i], useful_lines_s21[j])
+                                d2 = distance.euclidean(useful_lines_s11[i], useful_lines_s22[j])
+                                d3 = distance.euclidean(useful_lines_s12[i], useful_lines_s21[j])
+                                d4 = distance.euclidean(useful_lines_s12[i], useful_lines_s22[j])
+
+                                dist_matrix[i, j] = np.min([d1, d2, d3, d4])
+
+                        dist_matrix[gamma_matrix > lmp.thr_coef] = lmp.badmatch_penalty
+                        dist_matrix[dist_matrix > lmp.max_dist] = lmp.badmatch_penalty
+                        dist_matrix[cat_matrix < 1] = lmp.badmatch_penalty  ## Check if works !!!
+
+                        # # LAP
+                        row_ind, col_ind = linear_sum_assignment(dist_matrix)
+                        tot_cost = dist_matrix[row_ind, col_ind].sum()
+                        #print([tot_cost])
+                        
+                        # # penalty
+                        penalty = np.abs(n_lines_f1 - n_lines_f2) * lmp.mismatch_penalty  # no matches penalty
+                        tot_cost = (tot_cost + penalty)
+                        tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
+                    
+                    R_cost[iy, ix, t] = tot_cost
+                if verbosity > 4:
+                    print(f"comp on y took {(time.time()-t_y):.02f} seconds")
+            if verbosity > 3:
+                print(f"comp on x,y took {(time.time()-t_x):.02f} seconds")
+        if verbosity > 2:
+            print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
+    
+    return R_cost
+
 def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, lmp, mask_ij, pars, verbosity=1):
     # lmp is the old cfg (with the parameters)
     R_cost = np.ones((m.shape[1], m.shape[1], len(rot))) * (lmp.badmatch_penalty + 1)
@@ -582,6 +684,9 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
                                                  mask_ij, ppars, verbosity=verbosity)
             elif line_matching_pars.cmp_cost == 'LCI':
                 R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
+                                                        mask_ij, ppars, verbosity=verbosity)
+            elif line_matching_pars.cmp_cost == 'LAP2':
+                R_cost = compute_cost_matrix_LAP_v2(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
                                                         mask_ij, ppars, verbosity=verbosity)
             elif line_matching_pars.cmp_cost == 'LAP3':
                 R_cost = compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,

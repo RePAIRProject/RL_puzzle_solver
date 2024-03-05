@@ -356,7 +356,7 @@ if __name__ == '__main__':
     parser.add_argument('-ni', '--num_images', type=int, default=10, help='number of different version of images generated for each number of line')
     parser.add_argument('-o', '--output', type=str, default='', help='output folder')
     # cutting pieces 
-    parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['regular', 'pattern', 'irregular'])
+    parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['square', 'pattern', 'irregular'])
     parser.add_argument('-pf', '--patterns_folder', type=str, default='', help='(used only if shape == pattern): the folder where the patterns are stored')
     parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces in which each puzzle image is cut')
     parser.add_argument('-sv', "--save_visualization", help="Use it to create visualization", action="store_true")

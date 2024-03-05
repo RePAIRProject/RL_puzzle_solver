@@ -28,13 +28,13 @@ class PuzzleGenerator:
         # name of the file without extension
         self.name = img_name
 
-        self.raw_regions = 'data/raw_regions/'
-        if not os.path.exists(self.raw_regions):
-            os.mkdir(self.raw_regions)
+        # self.raw_regions = 'data/raw_regions/'
+        # if not os.path.exists(self.raw_regions):
+        #     os.mkdir(self.raw_regions)
 
-        self.puzzle_folder = 'data/puzzles/'
-        if not os.path.exists(self.puzzle_folder):
-            os.mkdir(self.puzzle_folder)
+        # self.puzzle_folder = 'data/puzzles/'
+        # if not os.path.exists(self.puzzle_folder):
+        #     os.mkdir(self.puzzle_folder)
 
     def get_smooth_curve(self, x_len, x_pt_n, x_offset, y_offset, x_step):
 
