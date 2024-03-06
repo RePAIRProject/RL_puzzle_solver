@@ -375,7 +375,8 @@ def main(args):
         print(f"Solving this puzzle took {time_in_seconds:.0f} seconds")
     print("-" * 50)
 
-    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{method}_cost_{args.cmp_cost}_rot{args.few_rotations}')
+    num_rot = p_initial.shape[2]
+    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{method}_cost_{args.cmp_cost}_rot{num_rot}')
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
 
