@@ -106,7 +106,7 @@ def create_random_coloured_image(line_type, num_lines, width, height, is_closed 
 
     all_lines = np.zeros((num_lines, 8))
     if num_colors == 1:
-        colors = [[0, 0, 255]]
+        colors = [[0, 0, 0]]
     elif num_colors == 3:
         colors = [[0, 255, 0], [255, 0, 0], [0, 0, 255]]
     elif num_colors == 5:

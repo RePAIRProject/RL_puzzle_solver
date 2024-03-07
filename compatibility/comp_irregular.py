@@ -149,15 +149,16 @@ def main(args):
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
 
-                    if i != j and args.DEBUG is True:
+                    if i - j == -1 and args.DEBUG is True:
                         rotation_idx = 0
                         plt.suptitle(f"COST WITH {args.cmp_cost}", fontsize=45)
                         plt.subplot(541); plt.imshow(pieces[i]['img']); plt.title(f"piece {i}")
                         plt.subplot(542); plt.imshow(pieces[j]['img']); plt.title(f"piece {j}")
                         plt.subplot(545); plt.imshow(region_mask[:,:,0,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 0")
-                        plt.subplot(546); plt.imshow(region_mask[:,:,1,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 1")
-                        plt.subplot(547); plt.imshow(region_mask[:,:,2,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 2")
-                        plt.subplot(548); plt.imshow(region_mask[:,:,3,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 3")
+                        if region_mask.shape[2] > 1:
+                            plt.subplot(546); plt.imshow(region_mask[:,:,1,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 1")
+                            plt.subplot(547); plt.imshow(region_mask[:,:,2,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 2")
+                            plt.subplot(548); plt.imshow(region_mask[:,:,3,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 3")
                         # plt.subplot(546); plt.imshow(ji_mat[:,:,rotation_idx], cmap='RdYlGn'); plt.title("cost")
                         # if args.cmp_cost == 'LCI':
                         #     norm_cmp = ji_mat[:,:,0] / np.max(ji_mat[:,:,0]) #np.maximum(1 - ji_mat[:,:,0] / line_matching_parameters.rmax, 0)
@@ -170,39 +171,49 @@ def main(args):
                         
                         plt.subplot(549); plt.title("COST ROTATION 0")
                         plt.imshow(ji_mat[:,:,0], cmap='RdYlGn'); 
-                        plt.subplot(5,4,10); plt.title("COST ROTATION 1")
-                        plt.imshow(ji_mat[:,:,1], cmap='RdYlGn'); 
-                        plt.subplot(5,4,11); plt.title("COST ROTATION 2")
-                        plt.imshow(ji_mat[:,:,2], cmap='RdYlGn'); 
-                        plt.subplot(5,4,12); plt.title("COST ROTATION 3")
-                        plt.imshow(ji_mat[:,:,3], cmap='RdYlGn'); 
+                        if ji_mat.shape[2] > 1:
+                            plt.subplot(5,4,10); plt.title("COST ROTATION 1")
+                            plt.imshow(ji_mat[:,:,1], cmap='RdYlGn'); 
+                            plt.subplot(5,4,11); plt.title("COST ROTATION 2")
+                            plt.imshow(ji_mat[:,:,2], cmap='RdYlGn'); 
+                            plt.subplot(5,4,12); plt.title("COST ROTATION 3")
+                            plt.imshow(ji_mat[:,:,3], cmap='RdYlGn'); 
 
-                        ji_mat[ji_mat > line_matching_parameters.badmatch_penalty] = line_matching_parameters.badmatch_penalty
-                        ji_unique_values = np.unique(ji_mat)
-                        k = min(line_matching_parameters.k, len(ji_unique_values))
-                        kmin_cut_val = np.sort(ji_unique_values)[-k]
+                        
                         if args.cmp_cost == 'LAP':
+                            ji_mat[ji_mat > line_matching_parameters.badmatch_penalty] = line_matching_parameters.badmatch_penalty
+                            ji_unique_values = np.unique(ji_mat)
+                            k = min(line_matching_parameters.k, len(ji_unique_values))
+                            kmin_cut_val = np.sort(ji_unique_values)[-k]
                             plt.subplot(5,4,13); plt.title("COST ROTATION KMINCUT 0")
                             plt.imshow(np.maximum(1 - ji_mat[:,:,0] / kmin_cut_val, 0), cmap='RdYlGn'); 
-                            plt.subplot(5,4,14); plt.title("COST ROTATION KMINCUT 1")
-                            plt.imshow(np.maximum(1 - ji_mat[:,:,1] / kmin_cut_val, 0), cmap='RdYlGn')
-                            plt.subplot(5,4,15); plt.title("COST ROTATION KMINCUT 2")
-                            plt.imshow(np.maximum(1 - ji_mat[:,:,2] / kmin_cut_val, 0), cmap='RdYlGn') 
-                            plt.subplot(5,4,16); plt.title("COST ROTATION KMINCUT 3")
-                            plt.imshow(np.maximum(1 - ji_mat[:,:,3] / kmin_cut_val, 0), cmap='RdYlGn')
-
                             plt.subplot(5,4,17); plt.title("EXP ROTATION 0")
                             plt.imshow(np.exp(-ji_mat[:,:,0]/76), cmap='RdYlGn'); 
-                            #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,0,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
-                            plt.subplot(5,4,18); plt.title("EXP ROTATION 1")
-                            plt.imshow(np.exp(-ji_mat[:,:,1]/76), cmap='RdYlGn'); 
-                            #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,1,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
-                            plt.subplot(5,4,19); plt.title("EXP ROTATION 2")
-                            plt.imshow(np.exp(-ji_mat[:,:,2]/76), cmap='RdYlGn'); 
-                            #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,2,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
-                            plt.subplot(5,4,20); plt.title("EXP ROTATION 3")
-                            plt.imshow(np.exp(-ji_mat[:,:,3]/76), cmap='RdYlGn'); 
+                            if ji_mat.shape[2] > 1:
+                                plt.subplot(5,4,14); plt.title("COST ROTATION KMINCUT 1")
+                                plt.imshow(np.maximum(1 - ji_mat[:,:,1] / kmin_cut_val, 0), cmap='RdYlGn')
+                                plt.subplot(5,4,15); plt.title("COST ROTATION KMINCUT 2")
+                                plt.imshow(np.maximum(1 - ji_mat[:,:,2] / kmin_cut_val, 0), cmap='RdYlGn') 
+                                plt.subplot(5,4,16); plt.title("COST ROTATION KMINCUT 3")
+                                plt.imshow(np.maximum(1 - ji_mat[:,:,3] / kmin_cut_val, 0), cmap='RdYlGn')
+
+                                #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,0,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+                                plt.subplot(5,4,18); plt.title("EXP ROTATION 1")
+                                plt.imshow(np.exp(-ji_mat[:,:,1]/76), cmap='RdYlGn'); 
+                                #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,1,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+                                plt.subplot(5,4,19); plt.title("EXP ROTATION 2")
+                                plt.imshow(np.exp(-ji_mat[:,:,2]/76), cmap='RdYlGn'); 
+                                #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,2,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+                                plt.subplot(5,4,20); plt.title("EXP ROTATION 3")
+                                plt.imshow(np.exp(-ji_mat[:,:,3]/76), cmap='RdYlGn'); 
                             #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,3,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+                        if args.cmp_cost == 'LAP2':
+                            clipping_val = line_matching_parameters.max_dist + (line_matching_parameters.badmatch_penalty - line_matching_parameters.max_dist) / 3
+                            ji_mat = np.clip(ji_mat, 0, clipping_val)
+                            ji_mat_normalized = 1 - ji_mat / clipping_val
+                            plt.subplot(5,4,13); plt.title("compatibility normalized")
+                            plt.imshow(ji_mat_normalized, cmap='RdYlGn'); 
+                        
                         plt.show()
                         pdb.set_trace()
                     All_cost[:, :, :, j, i] = ji_mat
@@ -224,7 +235,7 @@ def main(args):
             kmin_cut_val = np.max(min_vals) + 1
             All_norm_cost = np.maximum(1 - All_cost/ kmin_cut_val, 0)
         elif args.cmp_cost == 'LAP2':
-            clipping_val = line_matching_parameters.max_dist + (line_matching_parameters.badmatch_penaly - line_matching_parameters.max_dist) / 3
+            clipping_val = line_matching_parameters.max_dist + (line_matching_parameters.badmatch_penalty - line_matching_parameters.max_dist) / 3
             All_cost = np.clip(All_cost, 0, clipping_val)
             All_norm_cost = 1 - All_cost / clipping_val
         else:  # args.cmp_cost == 'LAP':

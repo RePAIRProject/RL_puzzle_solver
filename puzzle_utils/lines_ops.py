@@ -20,18 +20,18 @@ class CfgParameters(dict):
 
 def calc_line_matching_parameters(parameters, cmp_cost='new'):
     lm_pars = CfgParameters()
-    lm_pars['thr_coef'] = 0.08
+    lm_pars['thr_coef'] = 0.10
     #lm_pars['max_dist'] = 0.70*parameters.xy_step ## changed *0.7
     if (parameters.xy_step)>6:
         lm_pars['max_dist'] = 6   ## changed *0.7*parameters.xy_step
     else:
         lm_pars['max_dist'] = 0.70*(parameters.xy_step)
 
-    lm_pars['badmatch_penalty'] = max(5, lm_pars['max_dist'] * 5 / 3) # parameters.piece_size / 3 #?
-    lm_pars['mismatch_penalty'] = max(4, lm_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
-    lm_pars['rmax'] = lm_pars['max_dist'] * 7 / 6
+    lm_pars['badmatch_penalty'] = 3 * max(5, lm_pars['max_dist'] * 5 / 3) # parameters.piece_size / 3 #?
+    lm_pars['mismatch_penalty'] = 3 * max(4, lm_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
+    lm_pars['rmax'] = .5 * lm_pars['max_dist'] * 7 / 6
     lm_pars['cmp_cost'] = cmp_cost
-    lm_pars['k'] = 5
+    lm_pars['k'] = 3
     return lm_pars
 
 def create_lines_only_image(img, lines):
@@ -193,6 +193,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
             # plt.plot(*candidate_line_trans.xy, linewidth=5, color="red")
             # plt.plot(*candidate_line_extrap.xy, linewidth=2, color="blue")
             # plt.show()
+            # pdb.set_trace()
 
             if shapely.is_empty(shapely.intersection(candidate_line_extrap, piece_j_trans.boundary)):
                 intersections.append(False)
@@ -444,6 +445,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                 t_y = time.time()
                 z = z_id[iy, ix]            # ??? [iy,ix] ??? strange...
                 valid_point = mask_ij[iy, ix, t]
+                print(iy, ix, t)
                 if valid_point > 0:
                     # print([iy, ix, t])
                     # check if line1 crosses the polygon2                  
@@ -507,12 +509,15 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                         row_ind, col_ind = linear_sum_assignment(dist_matrix)
                         tot_cost = dist_matrix[row_ind, col_ind].sum()
                         #print([tot_cost])
+                        print("#" * 50)
+                        print(dist_matrix)
                         
                         # # penalty
                         penalty = np.abs(n_lines_f1 - n_lines_f2) * lmp.mismatch_penalty  # no matches penalty
                         tot_cost = (tot_cost + penalty)
                         tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
-                    
+                        print(tot_cost)
+
                     R_cost[iy, ix, t] = tot_cost
                 if verbosity > 4:
                     print(f"comp on y took {(time.time()-t_y):.02f} seconds")
@@ -521,10 +526,12 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
         if verbosity > 2:
             print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
     
+    print(R_cost)
     R_cost[R_cost > lmp.badmatch_penalty] = lmp.badmatch_penalty
     len_unique = len(np.unique(R_cost))
     kmin_cut_val = np.sort(np.unique(R_cost))[::-1][-min(len_unique,lmp.k)]
     norm_R_cost = np.maximum(1 - R_cost / kmin_cut_val, 0)
+    print(norm_R_cost)
     
     return norm_R_cost
 

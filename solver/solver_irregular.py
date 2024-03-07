@@ -98,9 +98,9 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
         else:
             T = cfg.Tnext
 
-
+        #pdb.set_trace()
         p, payoff, eps, iter = solver_rot_puzzle(R_new, R, p, T, iter, 0, verbosity=verbosity, decimals=decimals)
-
+        
         I = np.zeros((noPatches, 1))
         m = np.zeros((noPatches, 1))
 
@@ -118,6 +118,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
             print("#" * 70)
             print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
 
+        #pdb.set_trace()
         if na < (noPatches-2):
             fix_tresh = cfg.anc_fix_tresh
         elif na > (noPatches-2):

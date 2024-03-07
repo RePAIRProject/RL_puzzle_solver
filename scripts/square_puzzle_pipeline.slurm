@@ -8,10 +8,10 @@
 # PYTHONPATH
 export PYTHONPATH=${PYTHONPATH}:/home/luca.palmieri/code/RL_puzzle_solver
 
-dataset='maps_puzzle_square_64_pieces_yzqmpg_01_03'
+dataset='synthetic_puzzle_square_3_pieces_by_drawing_coloured_lines_nqyvyd'
 puzzle=$1
 
-xy_step=32
+xy_step=300
 xy_grid_points=3   ##  91  81 71
 theta_step=0
 
@@ -77,7 +77,7 @@ echo "-----------------------------------------------"
 echo "SOLVER"
 echo "python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor $anchor --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts"
 python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor $anchor --tfirst $tfirst1 --tnext $tnext1 --tmax $tmax1 --p_pts $p_pts
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor $anchor --tfirst $tfirst2 --tnext $tnext2 --tmax $tmax2 --p_pts $p_pts
+#python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor $anchor --tfirst $tfirst2 --tnext $tnext2 --tmax $tmax2 --p_pts $p_pts
 
 #python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_2 --anchor $anchor --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
 
