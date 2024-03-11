@@ -128,11 +128,18 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
                 centered_patch = patch
                 centered_mask = np.ones(patch.shape[:2])
                 shift2square = np.asarray([0, 0])
-                # cm_image = np.asarray(image.shape[:2])/2
-                # cm_patch = np.asarray([y0 + patch_size/2, x0 + patch_size/2])
-                shift2center_frag = np.asarray([-x0, -y0])
+                cm_image = np.asarray(image.shape[:2])/2
+                cm_patch = np.asarray([y0 + patch_size/2, x0 + patch_size/2])
+                cm_square = np.asarray([patch_size/2, patch_size/2])
+                shift2center_full_image = cm_image - cm_patch
+                shift2center_piece = cm_patch - cm_square
+                #shift2center_frag = np.asarray([-x0, -y0])
                 center_of_mass = np.asarray([(x1-x0)/2, (y1-y0)/2])
-                squared_polygon = transform(box, lambda x: x + shift2center_frag)
+                box_centered_at_origin = transform(box, lambda x: x - cm_patch)
+                box_centered_at_image_center = transform(box, lambda x: x - shift2center_full_image)
+                # we use ::-1 because we are in the shapely coordinates, while the image-based operations
+                # are in the opencv coordinates!
+                box_centered_at_squared_piece = transform(box, lambda x: x - shift2center_piece[::-1])
                 # add here the shifted version 
                 piece_dict = {
                     'mask': mask_full_image,
@@ -142,19 +149,21 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
                     'centered_image': centered_patch,
                     'squared_image': centered_patch,
                     'polygon': box,
-                    'centered_polygon': squared_polygon,
-                    'squared_polygon': squared_polygon,
+                    'centered_polygon': box_centered_at_squared_piece,
+                    'squared_polygon': box_centered_at_squared_piece,
                     'center_of_mass': center_of_mass,
                     'height': patch_size,
                     'width': patch_size,
                     'shift2square': shift2square,
-                    'shift2center': shift2center_frag
+                    'shift2center': -shift2center_piece # wht -1 ?
+                    # this is the convention established with irregular pieces, sorry!
                 }
                 # print("box:", box)
                 # for kk in piece_dict.keys():
                 #     if not type(piece_dict[kk]) == np.ndarray:
                 #         print(f"{kk}: {piece_dict[kk]}")
                 # print(piece_dict['shift2center'])
+                
                 pieces.append(piece_dict)
 
     if shape == 'irregular':
@@ -171,6 +180,20 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         generator.save_jpg_regions(output_path, skip_bg=True)
         pieces, patch_size = generator.get_pieces_from_puzzle_v2(start_from=1)
 
+    # for piece in pieces:
+    #     plt.subplot(131); plt.title("IMAGE")
+    #     plt.imshow(piece['image']); plt.plot(*piece['polygon'].boundary.xy)
+    #     plt.subplot(132); plt.title("SQUARED IMAGE")
+    #     plt.imshow(piece['squared_image']); plt.plot(*piece['squared_polygon'].boundary.xy)
+    #     plt.subplot(133); plt.title("CENTERED IMAGE")
+    #     plt.imshow(piece['centered_image']); plt.plot(*piece['centered_polygon'].boundary.xy)
+    #     print("squared_polygon:", describe(piece['squared_polygon']))
+    #     print("centered_polygon:", describe(piece['centered_polygon']))
+    #     print("polygon:", describe(piece['polygon']))
+    #     print('shift2square:', piece['shift2square'])
+    #     print('shift2center:', piece['shift2center'])
+    #     plt.show()
+    #     pdb.set_trace()
     if (shape == 'irregular' or shape == 'pattern') and save_extrapolated_regions is True:
         if shape == 'pattern':
             generator.extrapolate_regions(start_from=1)
@@ -217,6 +240,13 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
 
     # if we do not use rotation, we return the original pieces
     return pieces, patch_size
+
+def describe(polygon):
+    xmin = np.min(polygon.boundary.xy[0])
+    ymin = np.min(polygon.boundary.xy[1])
+    xmax = np.max(polygon.boundary.xy[0])
+    ymax = np.max(polygon.boundary.xy[1])
+    return f"Polygon Boundaries: min({xmin}, {xmax}), max({ymin}, {ymax})"
 
 def save_grid_info(position_matrix, output_path):
 
