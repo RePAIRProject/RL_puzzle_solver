@@ -148,7 +148,7 @@ def main(args):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
-                    pdb.set_trace()
+                    # pdb.set_trace()
                     if i - j == -1 and args.DEBUG is True:
                         rotation_idx = 0
                         plt.suptitle(f"COST WITH {args.cmp_cost}", fontsize=45)
