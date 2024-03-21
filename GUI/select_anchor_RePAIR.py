@@ -281,7 +281,7 @@ def select_anchor():
 
     # Display user interface and get selected fragments
     #selected_fragments = create_user_interface(image_scores, images_with_borders, imgs_names)
-    return sorted_image_scores
+    return top_10_fragments
 
     ##-----------------------------------------------------------------------------------------------------------##
     ## DISPLAY THE DETECTED KEY FRAGMENTS

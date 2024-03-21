@@ -130,27 +130,32 @@ class GUIApp(MDApp):
 
         main_layout.add_widget(toolbar)
 
-        run_button = Button(text="Run")
-        run_button.bind(on_press=start_select_anchor)
-
-        run_button.size_hint_x = 0.5
+        anchor_button = Button(text="Select Anchor")
+        anchor_button.bind(on_press=start_select_anchor)
+        anchor_button.size_hint_x = 0.5
 
         show_button = Button(text="Show")
         show_button.bind(on_press=self.show_images)
-
         show_button.size_hint_x = 0.5
+
+        neighbour_button = Button(text="Neighbour")
+        neighbour_button.bind(on_press=start_select_neighbour)
+        neighbour_button.size_hint_x = 0.5
+
+
         # show_button.bind(on_press=self)
 
         # toolbar_layout = GridLayout()
         # toolbar_layout.cols = 1
         # toolbar_layout.rows = 2
-        # toolbar_layout.add_widget(run_button)
+        # toolbar_layout.add_widget(anchor_button)
         # toolbar_layout.add_widget(show_button)
         # toolbar.add_widget(toolbar_layout)
 
         toolbar.left_action_items.append(["menu", lambda x: the_app.callback()])
 
-        toolbar.add_widget(run_button)
+        toolbar.add_widget(neighbour_button)
+        toolbar.add_widget(anchor_button)
         toolbar.add_widget(show_button)
 
         # main_layout.size_hint = (1, 1)
@@ -193,9 +198,10 @@ class GUIApp(MDApp):
         # grid_layout.add_widget(widget)
         the_layout.add_widget(main_layout)
         self.widget_list.append(toolbar)  # 0 toolbar
-        self.widget_list.append(run_button)  # 1 run_button
+        self.widget_list.append(anchor_button)  # 1 anchor_button
         self.widget_list.append(show_button)  # 2 show_button
         self.widget_list.append(grid_layout)  # 3 image_view
+        self.widget_list.append(neighbour_button)  # 4 neighbour_button
         Clock.schedule_interval(self.checking_clock, communication_freq)  # Graphic Internal Thread to communicate
         return the_layout
 
@@ -279,7 +285,11 @@ communicate_thread_lock = threading.Lock()
 
 
 def start_select_anchor(self):
-    Back_End.start_back_end()
+    Back_End.start_anchor_thread()
+
+
+def start_select_neighbour(self):
+    Back_End.start_neighbour_thread()
 
 
 select_anchor_running = None
