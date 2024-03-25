@@ -1,8 +1,10 @@
 import numpy as np
-from solver.solver_irregular import reconstruct_puzzle
+#from solver.solver_irregular import reconstruct_puzzle
 import os 
 import pdb 
 import cv2 
+from PIL import Image
+from scipy.ndimage import rotate
 
 def include_rotation(xy, rot):
     new_xy = xy
@@ -35,7 +37,7 @@ def get_offset(anchor_idx, anchor_pos, num_pieces):
     offset_start = anchor_pos[:2] - anchor_pos_in_puzzle
     return offset_start
 
-def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start, num_pieces_side, crop=True):
+def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start, num_pieces_side, ppars, crop=True):
     
     # reconstruct visual solution
     Y, X, Z, _ = p_final.shape
@@ -45,12 +47,40 @@ def get_visual_solution_from_p(p_final, pieces_folder, piece_size, offset_start,
     all_pieces = np.arange(len(pieces_files))
     pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
     sol = get_sol_from_p(p_final=p_final)
-    solution_img = reconstruct_puzzle(sol, Y, X, pieces, pieces_files, pieces_folder)
+    solution_img = reconstruct_puzzle(sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
     start_point = (offset_start)*piece_size
     end_point = start_point + (num_pieces_side)*piece_size
     if crop is True:
         solution_img = solution_img[start_point[1]:end_point[1], start_point[0]:end_point[0]]
     return solution_img
+
+def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars):
+    step = np.ceil(ppars['xy_step'])
+    #ang = ppars.theta_step # 360 / Z    
+    ang = 360 / Z
+    z_rot = np.arange(0, 360, ang)
+    pos = fin_sol
+    p_hs = ppars['piece_size'] // 2
+    fin_im = np.zeros(((Y * step + (p_hs+1) * 2).astype(int), (X * step + (p_hs+1) * 2).astype(int), 3))
+
+    for i in range(len(pieces)):
+        image = pieces_files[pieces[i]]  # read image 1
+        im_file = os.path.join(pieces_folder, image)
+
+        Im0 = Image.open(im_file).convert('RGBA')
+        Im = np.array(Im0) / 255.0
+        Im1 = Image.open(im_file).convert('RGBA').split()
+        alfa = np.array(Im1[3]) / 255.0
+        Im = np.multiply(Im, alfa[:, :, np.newaxis])
+        Im = Im[:, :, 0:3]
+
+        cc = p_hs
+        ids = (pos[i, :2] * step + cc).astype(int)
+        if pos.shape[1] == 3:
+            rot = z_rot[pos[i, 2]]
+            Im = rotate(Im, rot, reshape=False, mode='constant')
+        fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :] = Im+fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :]
+    return fin_im
 
 def get_best_anchor(im_ref, evaluation, num_pieces, piece_size, best='min'):
     
@@ -217,7 +247,13 @@ def pixel_difference(proposed_solution, gt_img, measure='rmse'):
     if measure == 'rmse':
         pdiff = np.sqrt(np.mean(np.square(gt_img - proposed_solution)))
     elif measure == 'mse':
-        pdiff = np.mean(np.square(gt_img - proposed_solution))
+        #pdb.set_trace()
+        prop_sol_area = proposed_solution > 0
+        pixel_prop_sol = np.sum(prop_sol_area)
+        diff_img = (gt_img - proposed_solution)
+        diff_in_prop_sol_area = np.sum((diff_img * prop_sol_area) > 0)
+        pdiff = diff_in_prop_sol_area / pixel_prop_sol
+        #pdiff = np.mean(np.square(gt_img - proposed_solution))
     elif measure == 'mae':
         pdiff = np.mean(np.abs(gt_img - proposed_solution))
     else:
