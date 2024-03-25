@@ -13,7 +13,8 @@ import json
 from puzzle_utils.lines_ops import draw_lines
 
 def get_polygon(binary_image):
-    contours, _ = cv2.findContours(binary_image.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    binary_image = cv2.dilate(binary_image.astype(np.uint8), np.ones((2,2)), iterations=1)
+    contours, _ = cv2.findContours(binary_image.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contour_points = contours[0]
     shapely_points = [(point[0][0], point[0][1]) for point in contour_points]  # Shapely expects points in the format (x, y)
     if len(shapely_points) < 4:
@@ -223,6 +224,119 @@ def get_borders(piece, width=5):
     eroded_mask = cv2.erode(mask, kernel)
     borders = mask - eroded_mask
     return borders   
+
+def approximate(xy_pt, step, offset):
+    app_pt = np.zeros((2))
+    for j in range(2):
+        if (xy_pt[j]-offset[j]) % step == 0:
+            app_pt[j] = np.round(xy_pt[j]).astype(int)
+        else:
+            nnn = np.round(xy_pt[j] / step)
+            app_pt[j] = (nnn * step).astype(int)
+    return app_pt
+
+def divide_segment(start, end, seg_len):
+    subsegments = []
+    #pdb.set_trace()
+    if start[0] == end[0]:
+        num_steps = np.abs(start[1] - end[1]) // seg_len + 1
+        int_steps = np.linspace(start[1], end[1], num_steps.astype(int))
+        for k in range(len(int_steps)-1):# in int_steps:
+            sta_pt = np.asarray([start[0], int_steps[k]])
+            end_pt = np.asarray([start[0], int_steps[k+1]])
+            mid_pt = (sta_pt + end_pt) / 2
+            subsegments.append({
+                'start':sta_pt.tolist(), 
+                'end':end_pt.tolist(),
+                'middle':mid_pt.tolist()
+            })
+    elif start[1] == end[1]:
+        num_steps = np.abs(start[0] - end[0]) // seg_len + 1
+        int_steps = np.linspace(start[0], end[0], num_steps.astype(int))
+        for k in range(len(int_steps)-1):# in int_steps:
+            sta_pt = np.asarray([int_steps[k], start[1]])
+            end_pt = np.asarray([int_steps[k+1], start[1]])
+            mid_pt = (sta_pt + end_pt) / 2
+            subsegments.append({
+                'start':sta_pt.tolist(), 
+                'end':end_pt.tolist(),
+                'middle':mid_pt.tolist()
+            })
+    else:
+        print("wrong!")
+    return subsegments
+
+def divide_boundaries_in_segments(poly, seg_len):
+
+    xs, ys = poly.boundary.xy
+    # outlier detecxtion by guglielmo
+    offset = [xs[0] % seg_len, ys[0] % seg_len]
+    segments = []
+    for i in range(len(xs)-1):
+        start = approximate([xs[i], ys[i]], seg_len, offset)
+        end = approximate([xs[i+1], ys[i+1]], seg_len, offset)
+        if np.abs(end[0] - start[0]) > seg_len or np.abs(end[1] - start[1]) > seg_len:
+            subsegments = divide_segment(start, end, seg_len)
+            for subseg in subsegments:
+                #print(subseg)
+                segments.append(subseg)
+        else:
+            middle_pt = (start + end) / 2
+            subseg = {
+                'start':start.tolist(), 
+                'end':end.tolist(),
+                'middle':middle_pt.tolist()
+            }
+            #print(subseg)
+            segments.append(subseg)
+    return segments
+
+def add_colors(image, borders_segments, thickness):
+    
+    colorful_borders_segments = []
+    for bs in borders_segments:
+        stt = np.asarray(bs['start']).astype(int)
+        end = np.asarray(bs['end']).astype(int)
+        #print(stt, end)
+        #pdb.set_trace()
+        if np.isclose(stt[0], end[0]):
+            if end[1] - stt[1] < 0:
+                st = end[1]
+                en = stt[1]
+            else:
+                st = stt[1]
+                en = end[1]
+            bottom_part = image[st:en, stt[0]-thickness:end[0]]
+            # horizontal
+            if np.sum(bottom_part) > 100:
+                # good one
+                colors = bottom_part
+            else:
+                colors = image[st:en, stt[0]:thickness+end[0]]
+        else:
+            if end[0] - stt[0] < 0:
+                st = end[0]
+                en = stt[0]
+            else:
+                st = stt[0]
+                en = end[0]
+            left_part = image[stt[1]-thickness:end[1], st:en]
+            # vertical   
+            if np.sum(left_part) > 100:
+                colors = left_part
+            else:
+                colors = image[stt[1]:thickness+end[1], st:en] 
+        bs['colors'] = colors
+        bs['mean_border_colors'] = np.mean(colors[:, 0, :], axis=0)
+        colorful_borders_segments.append(bs)
+    return colorful_borders_segments
+
+def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, boundary_thickness=2):
+    for piece in pieces:
+        borders_segments = divide_boundaries_in_segments(piece['polygon'].tolist(), seg_len=boundary_seg_len)
+        borders_segments = add_colors(piece['img'], borders_segments, boundary_thickness)
+        piece['borders_segments'] = borders_segments
+    return pieces
 
 def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1):
 
