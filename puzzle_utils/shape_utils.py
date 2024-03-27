@@ -293,11 +293,13 @@ def divide_boundaries_in_segments(poly, seg_len):
 
 def add_colors(image, borders_segments, thickness):
     
+    
     colorful_borders_segments = []
     for bs in borders_segments:
+        plt.subplot(131); plt.imshow(image)
         stt = np.asarray(bs['start']).astype(int)
         end = np.asarray(bs['end']).astype(int)
-        #print(stt, end)
+        #print("start", stt, "end", end)
         #pdb.set_trace()
         if np.isclose(stt[0], end[0]):
             if end[1] - stt[1] < 0:
@@ -306,13 +308,21 @@ def add_colors(image, borders_segments, thickness):
             else:
                 st = stt[1]
                 en = end[1]
-            bottom_part = image[st:en, stt[0]-thickness:end[0]]
+            left_part = image[st:en, stt[0]-thickness:end[0]]
             # horizontal
-            if np.sum(bottom_part) > 100:
+            if np.sum(left_part) > 10:
                 # good one
-                colors = bottom_part
+                 #scipy.ndimage.rotate(, 90)
+                colors = scipy.ndimage.rotate(left_part, 180)
+                # plt.subplot(132); plt.imshow(left_part); plt.title(f"left part ({st},{stt[0]} to {en})")
+                # plt.subplot(133); plt.imshow(colors); plt.title("no rotation needed")
+                # plt.show()
             else:
-                colors = image[st:en, stt[0]:thickness+end[0]]
+                right_part = image[st:en, stt[0]:thickness+end[0]]
+                colors = right_part
+                # plt.subplot(132); plt.imshow(right_part); plt.title(f"right part ({st},{stt[0]} to {en})")
+                # plt.subplot(133); plt.imshow(colors); plt.title("rotated 180")
+                # plt.show()
         else:
             if end[0] - stt[0] < 0:
                 st = end[0]
@@ -320,12 +330,19 @@ def add_colors(image, borders_segments, thickness):
             else:
                 st = stt[0]
                 en = end[0]
-            left_part = image[stt[1]-thickness:end[1], st:en]
+            top_part = image[stt[1]-thickness:end[1], st:en]
             # vertical   
-            if np.sum(left_part) > 100:
-                colors = left_part
+            if np.sum(top_part) > 10:
+                colors = scipy.ndimage.rotate(top_part, -90)
+                # plt.subplot(132); plt.imshow(top_part); plt.title(f"top part ({st} to {en})")
+                # plt.subplot(133); plt.imshow(colors); plt.title("rotated -90")
+                # plt.show()
             else:
-                colors = image[stt[1]:thickness+end[1], st:en] 
+                bottom_part = image[stt[1]:thickness+end[1], st:en] 
+                colors = scipy.ndimage.rotate(bottom_part, 90)
+                # plt.subplot(132); plt.imshow(bottom_part); plt.title(f"bottom part ({st} to {en})")
+                # plt.subplot(133); plt.imshow(colors); plt.title("rotated 90")
+                # plt.show()
         bs['colors'] = colors
         bs['mean_border_colors'] = np.mean(colors[:, 0, :], axis=0)
         colorful_borders_segments.append(bs)
@@ -333,9 +350,11 @@ def add_colors(image, borders_segments, thickness):
 
 def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, boundary_thickness=2):
     for piece in pieces:
+        # same!
         borders_segments = divide_boundaries_in_segments(piece['polygon'].tolist(), seg_len=boundary_seg_len)
+        #borders_segments = piece['polygon'].tolist().segmentize(boundary_seg_len)
         borders_segments = add_colors(piece['img'], borders_segments, boundary_thickness)
-        piece['borders_segments'] = borders_segments
+        piece['boundary_seg'] = borders_segments
     return pieces
 
 def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1):
