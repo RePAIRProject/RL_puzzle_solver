@@ -27,9 +27,13 @@ class MovableLayout(RelativeLayout):
     #     # self.label.text = str(self.image_number + 1)
 
 
+score_label = None
+
+
 class MovableImage(DragBehavior, Image):
-    def __init__(self, source, label, score, image_number):
+    def __init__(self, source, label, score, image_number, has_score):
         super(MovableImage, self).__init__()
+        global score_label
         self.limit_image = self
         self.source = source
         self.drag_timeout = 10000000
@@ -55,14 +59,15 @@ class MovableImage(DragBehavior, Image):
         self.grid.cols = 1
         self.grid.rows = 2
 
-        score_label = Label()
-        score_label.text = str(self.score)
+        self.grid.add_widget(self)
+
+        if has_score:
+            score_label = Label()
+            score_label.text = str(self.score)
+            self.grid.add_widget(score_label)
 
         # self.movable_layout = MovableLayout()
         # self.movable_layout.add_widget(self)
-
-        self.grid.add_widget(self)
-        self.grid.add_widget(score_label)
 
         # self.scatter.add_widget(self)
         # self.bind(self.update_canvas)
@@ -75,6 +80,10 @@ class MovableImage(DragBehavior, Image):
     def get_grid(self):
         return self.grid
 
+    def remove_score(self):
+        global score_label
+        self.grid.remove(score_label)
+
     def get_scatter(self):
         return self.scatter
 
@@ -84,6 +93,9 @@ class MovableImage(DragBehavior, Image):
     # def on_touch_down(self, touch):
     #     if self.collide_point(*touch.pos):
     #         click_label.text = str(self.image_number + 1)
+
+    def add_score(self, *args, **kwargs):
+        self.grid.add_widget(self.score_label)
 
     def on_pos(self, *args):
         # print("here")

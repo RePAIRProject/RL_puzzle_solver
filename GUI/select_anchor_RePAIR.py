@@ -196,6 +196,32 @@ def display_detected_key_fragments(sorted_image_scores, image_scores, images_wit
     plt.show()
 
 
+def select_neighbour():
+    args = get_args()
+    images_folder = args.dataset
+    images_names = [img_name for img_name in os.listdir(images_folder)]
+    neighbour_fragments = []
+
+    for img_name in images_names:
+        if is_neighbour(img_name):
+            neighbour_fragments.append((img_name, 0))
+
+    # Select the top 10 fragments
+    return neighbour_fragments
+
+
+def is_neighbour(img_name):
+    if img_name == "gr28_RPf_00194_intact_mesh.png":
+        return True
+    elif img_name == "gr28_RPf_00200_intact_mesh.png":
+        return True
+    elif img_name == "gr28_RPf_00203_intact_mesh.png":
+        return True
+    elif img_name == "gr41_RPf_00334_intact_mesh.png":
+        return True
+    else:
+        return False
+
 def select_anchor():
 
     args = get_args()
@@ -209,12 +235,12 @@ def select_anchor():
     images_folder = args.dataset
     fg_folder = args.fg_mask
     existing_lines = []
-    imgs_names = [img_name for img_name in os.listdir(images_folder)]
+    images_names = [img_name for img_name in os.listdir(images_folder)]
 
     image_scores = []
     images_with_borders = []
 
-    for img_name in imgs_names:
+    for img_name in images_names:
 
         rgb_img_path = os.path.join(images_folder, img_name)
         rgb_image = cv2.imread(rgb_img_path)
