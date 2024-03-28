@@ -360,6 +360,10 @@ def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, 
         borders_segments = divide_boundaries_in_segments(piece['polygon'].tolist(), seg_len=boundary_seg_len)
         #borders_segments = piece['polygon'].tolist().segmentize(boundary_seg_len)
         borders_segments = add_colors(piece['img'], borders_segments, boundary_thickness)
+        coords = [bs['start'] for bs in borders_segments]
+        coords.append(borders_segments[-1]['end'])
+        segmented_poly = shapely.Polygon(coords)
+        piece['segmented_poly'] = segmented_poly
         piece['boundary_seg'] = borders_segments
     return pieces
 
