@@ -228,16 +228,19 @@ def get_borders(piece, width=5):
 def approximate(xy_pt, step, offset):
     app_pt = np.zeros((2))
     for j in range(2):
-        if (xy_pt[j]-offset[j]) % step == 0:
+        ptj = xy_pt[j]-offset[j]
+        if ptj % step == 0:
             app_pt[j] = np.round(xy_pt[j]).astype(int)
         else:
-            nnn = np.round(xy_pt[j] / step)
-            app_pt[j] = (nnn * step).astype(int)
+            nnn = np.round(ptj / step)
+            app_pt[j] = (nnn * step + offset[j]).astype(int)
     return app_pt
 
 def divide_segment(start, end, seg_len):
     subsegments = []
     #pdb.set_trace()
+    if start[0] == end[0] and start[1] == end[1]:
+        print("skip")
     if start[0] == end[0]:
         num_steps = np.abs(start[1] - end[1]) // seg_len + 1
         int_steps = np.linspace(start[1], end[1], num_steps.astype(int))
@@ -264,6 +267,8 @@ def divide_segment(start, end, seg_len):
             })
     else:
         print("wrong!")
+    # print("subsegments")
+    # for subs in subsegments: print(subs['start'], subs['end'])
     return subsegments
 
 def divide_boundaries_in_segments(poly, seg_len):
@@ -280,7 +285,9 @@ def divide_boundaries_in_segments(poly, seg_len):
             for subseg in subsegments:
                 #print(subseg)
                 segments.append(subseg)
-        else:
+        # elif end[0] == start[0] and end[1] == start[1]:
+        #     print("point, skip")
+        elif end[0] != start[0] or end[1] != start[1]:
             middle_pt = (start + end) / 2
             subseg = {
                 'start':start.tolist(), 
@@ -293,10 +300,9 @@ def divide_boundaries_in_segments(poly, seg_len):
 
 def add_colors(image, borders_segments, thickness):
     
-    
     colorful_borders_segments = []
     for bs in borders_segments:
-        plt.subplot(131); plt.imshow(image)
+        #plt.subplot(131); plt.imshow(image)
         stt = np.asarray(bs['start']).astype(int)
         end = np.asarray(bs['end']).astype(int)
         #print("start", stt, "end", end)
@@ -350,7 +356,7 @@ def add_colors(image, borders_segments, thickness):
 
 def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, boundary_thickness=2):
     for piece in pieces:
-        # same!
+        #pdb.set_trace()
         borders_segments = divide_boundaries_in_segments(piece['polygon'].tolist(), seg_len=boundary_seg_len)
         #borders_segments = piece['polygon'].tolist().segmentize(boundary_seg_len)
         borders_segments = add_colors(piece['img'], borders_segments, boundary_thickness)

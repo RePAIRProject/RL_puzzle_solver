@@ -96,7 +96,6 @@ def main(args):
 
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method)
         pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=30, boundary_thickness=2)
-        #pdb.set_trace()
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
         region_mask = region_mask_mat['RM']
         

@@ -111,7 +111,6 @@ def main(args):
     for k, img_path in enumerate(images_names):
 
         img_parameters = {}
-        ## create images with lines
         img = cv2.imread(os.path.join(input_images_path, img_path))
         if max(img.shape[:2]) > args.rescale:
             img = rescale_image(img, args.rescale)
