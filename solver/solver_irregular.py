@@ -330,8 +330,10 @@ def main(args):
         mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
     pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.pieces_folder}")
 
-    only_lines_pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.lines_output_name}", method, 'lines_only')
-    detect_output = os.path.join(puzzle_root_folder, f"{fnames.lines_output_name}", method)
+    ### HERE THE LINES WERE USED
+    #only_lines_pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.lines_output_name}", method, 'lines_only')
+    #detect_output = os.path.join(puzzle_root_folder, f"{fnames.lines_output_name}", method)
+    #pdb.set_trace()
     R = mat['R_line']
 
     pieces_files = os.listdir(pieces_folder)
@@ -352,8 +354,9 @@ def main(args):
         rot_incl = rot_incl.astype(int)
         R = R[:, :, rot_incl, :, :]
 
+    ## HERE THE LINES WERE USED
     if args.anchor < 0:
-        anc = select_anchor(detect_output)
+        anc = 1 #select_anchor(detect_output)
     else:
         anc = args.anchor
     print(f"Using anchor the piece with id: {anc}")

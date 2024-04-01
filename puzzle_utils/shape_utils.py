@@ -367,24 +367,26 @@ def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, 
         piece['boundary_seg'] = borders_segments
     return pieces
 
-def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1):
+def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1, line_based=True):
 
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle)
     polygons_folder = os.path.join(root_folder, fnames.polygons_folder)
-    lines_folder = os.path.join(root_folder, fnames.lines_output_name, method)
     polygons = os.listdir(polygons_folder)
-    lines_files = os.listdir(lines_folder)
-    lines = [line for line in lines_files if line.endswith('.json')]
-    assert len(polygons) == len(lines), f'Error: have {len(polygons)} polygons files and {len(lines)} lines files, they should have the same length!'
+    if line_based == True:
+        lines_folder = os.path.join(root_folder, fnames.lines_output_name, method)
+        lines_files = os.listdir(lines_folder)
+        lines = [line for line in lines_files if line.endswith('.json')]
+        assert len(polygons) == len(lines), f'Error: have {len(polygons)} polygons files and {len(lines)} lines files, they should have the same length!'
     for piece in pieces:
         piece_ID = piece['id']
         polygon_path = os.path.join(polygons_folder, f"{piece_ID}.npy")
         piece['polygon'] = np.load(polygon_path, allow_pickle=True)
-        lines_path = os.path.join(lines_folder, f"{piece_ID}.json")
-        with open(lines_path, 'r') as file:
-            piece['extracted_lines'] = json.load(file)
-        drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape, line_thickness, use_color=False)
-        piece['lines_mask'] = drawn_lines
+        if line_based == True:
+            lines_path = os.path.join(lines_folder, f"{piece_ID}.json")
+            with open(lines_path, 'r') as file:
+                piece['extracted_lines'] = json.load(file)
+            drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape, line_thickness, use_color=False)
+            piece['lines_mask'] = drawn_lines
     return pieces
 
 def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False):

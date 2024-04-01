@@ -96,7 +96,7 @@ def main(args):
             json.dump(line_matching_parameters, lmpj, indent=3)
         print("saved json line matching file")
 
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method)
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, line_based=False)
         pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=30,
                                           boundary_thickness=2)
 
