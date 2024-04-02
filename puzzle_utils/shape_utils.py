@@ -13,8 +13,9 @@ import json
 from puzzle_utils.lines_ops import draw_lines
 
 def get_polygon(binary_image):
-    binary_image = cv2.dilate(binary_image.astype(np.uint8), np.ones((2,2)), iterations=1)
-    contours, _ = cv2.findContours(binary_image.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    bin_img = binary_image.copy()
+    bin_img = cv2.dilate(bin_img.astype(np.uint8), np.ones((2,2)), iterations=1)
+    contours, _ = cv2.findContours(bin_img.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contour_points = contours[0]
     shapely_points = [(point[0][0], point[0][1]) for point in contour_points]  # Shapely expects points in the format (x, y)
     if len(shapely_points) < 4:
