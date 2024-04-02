@@ -205,7 +205,7 @@ class GUIApp(MDApp):
             current_image_list.append(image)
 
     @mainthread
-    def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener
+    def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener change
         if touch.is_mouse_scrolling:
             if touch.button == 'scrolldown':
                 print('up')
