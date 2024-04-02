@@ -96,8 +96,8 @@ def main(args):
             json.dump(line_matching_parameters, lmpj, indent=3)
         print("saved json line matching file")
 
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method)
-        pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=30,
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, line_based=False)
+        pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=50,
                                           boundary_thickness=2)
 
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
@@ -217,8 +217,8 @@ def main(args):
                         pdb.set_trace()
                     All_cost[:, :, :, j, i] = ji_mat
 
-            All_norm_cost = All_cost / np.max(All_cost)     # only for colors
-            All_norm_cost = np.where(All_norm_cost == -1, 0, All_norm_cost)   # only for colors
+            All_norm_cost = 1 - All_cost / np.max(All_cost)     # only for colors
+            All_norm_cost = np.where(All_norm_cost > 1, 0, All_norm_cost)   # only for colors
 
                 # # loop over j is finished
                 # max_i = np.max(All_cost[:, :, :, :, i])

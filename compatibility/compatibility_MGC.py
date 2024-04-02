@@ -56,14 +56,14 @@ def compute_cost_wrapper_for_Colors_compatibility(idx1, idx2, pieces, regions_ma
         R_cost = colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, border_colors1, border_colors2,
                                                             mask_ij, ppars, idx1, idx2, verbosity=1)
         print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
-        print('scores rotation 0')
-        print(np.round(R_cost[:, :, 0]).astype(int))
-        print('scores rotation 1')
-        print(np.round(R_cost[:,:,1]).astype(int))
-        print('scores rotation 2')
-        print(np.round(R_cost[:, :, 2]).astype(int))
-        print('scores rotation 3')
-        print(np.round(R_cost[:, :, 3]).astype(int))
+        # print('scores rotation 0')
+        # print(np.round(R_cost[:, :, 0]).astype(int))
+        # print('scores rotation 1')
+        # print(np.round(R_cost[:,:,1]).astype(int))
+        # print('scores rotation 2')
+        # print(np.round(R_cost[:, :, 2]).astype(int))
+        # print('scores rotation 3')
+        # print(np.round(R_cost[:, :, 3]).astype(int))
         # R_cost_Normilized =
 
         if verbosity > 1:
