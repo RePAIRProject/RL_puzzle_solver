@@ -11,11 +11,15 @@ from kivy.uix.widget import Widget
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
-from kivy.core.window import Window
 from kivy.uix.behaviors import DragBehavior
 from kivy.uix.scatter import Scatter
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.toolbar import MDTopAppBar
+
+from kivy.modules.inspector import Inspector
+from kivy.core.window import Window
+from kivy.properties import BooleanProperty, ObjectProperty
+from kivy.factory import Factory
 
 import Back_End
 from select_anchor_RePAIR import get_backend_path
@@ -61,9 +65,9 @@ class Image(Image):
         super().__init__()
         self.image_number = None
 
-    def on_touch_down(self, touch):
-        if self.collide_point(*touch.pos):
-            click_label.text = str(self.image_number + 1)
+    # def on_touch_down(self, touch):
+    #     if self.collide_point(*touch.pos):
+    #         click_label.text = str(self.image_number + 1)
 
 
 click_label = Label()
@@ -88,6 +92,7 @@ class GUIApp(MDApp):
     widget_list = []
 
     def build(self):
+
         # graphic_thread = threading.Thread(target=self.graphic_thread, daemon=True)
         # graphic_thread.start()
 
@@ -95,6 +100,8 @@ class GUIApp(MDApp):
         the_layout = MDBoxLayout(md_bg_color=(0, 0, 0, 1))
         main_layout = MainLayout()
         main_layout.cols = 1
+
+        Window.bind(on_motion=self.on_touch_move, on_key_down=self._on_keyboard_down)
 
         main_layout.rows = 3
 
@@ -196,6 +203,33 @@ class GUIApp(MDApp):
         for i in range(len(Back_End.image_numbers)):
             image = image_reader(i, scores[i], has_score)
             current_image_list.append(image)
+
+    @mainthread
+    def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener
+        if touch.is_mouse_scrolling:
+            if touch.button == 'scrolldown':
+                print('up')
+            elif touch.button == 'scrollup':  # they are inverse...
+                print('down')
+        print(touch.button)
+        # print("is_scrolling", touch.is_mouse_scrolling)
+        print("pos", touch.spos)
+
+    @mainthread
+    def _on_keyboard_down(self, instance, keyboard, keycode, text, modifiers):  # Keyboard Listener
+        if len(modifiers) > 0:
+            print("modifiers", modifiers)
+        print(keyboard)
+        if len(modifiers) > 0 and modifiers[0] == 'ctrl' and text == 'a':  # Ctrl+a
+            print("\nThe key", keycode, "have been pressed")
+            print(" - text is %r" % text)
+            print(" - modifiers are %r" % modifiers)
+
+    @mainthread
+    def mouse_pos(self, window, pos, *args, **kwargs):
+        # print("mouse_pos: ", pos)
+        # print(pos)
+        return True
 
     @mainthread
     def show_images(self, *args, **kwargs):
@@ -356,6 +390,7 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
 
 
 if __name__ == '__main__':
+    Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
     test_thread = threading.Thread(target=communicate_thread, daemon=True)
     test_thread_started = True
     test_thread.start()

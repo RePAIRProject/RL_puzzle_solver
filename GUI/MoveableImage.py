@@ -54,6 +54,13 @@ class MovableImage(DragBehavior, Image):
 
         self.bind()
         self.scatter = Scatter()
+        self.scatter.pos = (0, 0)
+        self.scatter.do_rotation = True
+        self.scatter.do_scale = False
+        self.scatter.do_translate = False
+        self.scatter.rotation = 90  # Degree
+
+        # self.scatter.add_widget(self)
 
         self.grid = GridLayout()
         self.grid.cols = 1
