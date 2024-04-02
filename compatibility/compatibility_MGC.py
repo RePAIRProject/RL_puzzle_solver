@@ -5,6 +5,7 @@ import os
 import configs.folder_names as fnames
 from PIL import Image
 import time
+import pdb
 
 import shapely
 from shapely import transform
@@ -52,7 +53,6 @@ def compute_cost_wrapper_for_Colors_compatibility(idx1, idx2, pieces, regions_ma
         #border_colors2 = np.random.rand(8, 32, 2, 3)
         border_colors1 = pieces[idx1]['boundary_seg']
         border_colors2 = pieces[idx2]['boundary_seg']
-
         R_cost = colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, border_colors1, border_colors2,
                                                             mask_ij, ppars, idx1, idx2, verbosity=1)
         print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
@@ -169,18 +169,20 @@ def colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, bo
                                         # border_i = []
                                         # border_j = []
                                         # border_i = border_i0
-                                        # border_j = border_j0
+                                        pdb.set_trace()# border_j = border_j0
                                         print('STOP !!!')
                                     print(border_i.shape[0])
                                     print(border_j.shape[0])
                                     print('STOP !!!')
 
-                                    plt.close()
+                                    #plt.close()
 
                                 border_i_inv = np.flip(border_i, (0, 1))
                                 mcg_score = MCG_for_irregular(border_i_inv, border_j)
                                 print(mcg_score)
+                                
                                 comp_scores_matrix[i, j] = mcg_score
+                    
 
                     # CORRECT ERROR OF 0 MATCHING SEGMETNS !!!!!!!
                     MGC_scores = np.mean(comp_scores_matrix[np.where(comp_scores_matrix >= 0)])  # sum of the scores of all matching borders (This is a Distance!!!)
