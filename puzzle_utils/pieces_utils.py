@@ -39,10 +39,10 @@ def calc_parameters(parameters, xy_grid_points=101, theta_grid_points=24):
     ppars['theta_step'] = (360 / ppars.comp_matrix_shape[2])
 
     # region
-    ppars['threshold_overlap'] = ppars.piece_size / 2
+    ppars['threshold_overlap'] = ppars.piece_size / 10
     ppars['threshold_overlap_lines'] = ppars.piece_size / 4
-    ppars['borders_regions_width_outside'] = 2
-    ppars['borders_regions_width_inside'] = 5
+    ppars['borders_regions_width_outside'] = 1
+    ppars['borders_regions_width_inside'] = 1
     ppars['border_tolerance'] = ppars.piece_size // 60
 
     return ppars
