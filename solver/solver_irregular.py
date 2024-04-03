@@ -86,12 +86,12 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
                     p[y, x, z, jj] = 1
 
                     ## NEW: Re-normalization of R after anchoring
-                    for jj_anc in range(noPatches):
-                        if new_anc[jj_anc, 0] != 0:
-                            R_new[:, :, : , jj_anc, jj] = 0
-
-        R_renorm = R_new / np.max(R_new)
-        R_new = np.where((R_new > 0), R_renorm*1.5, R_new)
+        #             for jj_anc in range(noPatches):
+        #                 if new_anc[jj_anc, 0] != 0:
+        #                     R_new[:, :, : , jj_anc, jj] = 0
+        #
+        # R_renorm = R_new / np.max(R_new)
+        # R_new = np.where((R_new > 0), R_renorm*1.5, R_new)
 
         if faze == 0:
             T = cfg.Tfirst
@@ -488,7 +488,7 @@ if __name__ == '__main__':
     parser.add_argument('--tfirst', type=int, default=1500, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
     parser.add_argument('--tnext', type=int, default=500, help='the step for multi-phase (each tnext reset)')
     parser.add_argument('--tmax', type=int, default=5000, help='the final number of iterations (it exits after tmax)')
-    parser.add_argument('--thresh', type=float, default=0.55, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
+    parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
     parser.add_argument('--p_pts', type=int, default=0, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=8, help='decimal after comma when cutting payoff')
     args = parser.parse_args()

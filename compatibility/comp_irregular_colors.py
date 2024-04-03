@@ -97,7 +97,7 @@ def main(args):
         print("saved json line matching file")
 
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, line_based=False)
-        pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=50,
+        pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=30,
                                           boundary_thickness=2)
 
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
@@ -217,40 +217,30 @@ def main(args):
                         pdb.set_trace()
                     All_cost[:, :, :, j, i] = ji_mat
 
-            All_norm_cost = 1 - All_cost / np.max(All_cost)     # only for colors
+            k = 3
+            All_cost_cut = np.zeros((All_cost.shape))
+            for i in range(n):
+                a_cost_i = All_cost[:, :, :, :, i]
+                a_ks = np.zeros((9, 9, n))
+                for x in range(a_cost_i.shape[0]):
+                    for y in range(a_cost_i.shape[1]):
+                        a_xy = a_cost_i[x, y, :, :]
+                        a_all = np.array(np.unique(a_xy))
+                        a = a_all[np.minimum(k, len(a_all) - 1)]
+                        a_xy = np.where(a_xy > a, -1, a_xy)
+                        a_cost_i[x, y, :, :] = a_xy
+                        a_ks[x, y, i] = a
+                print(a_ks[:, :, i])
+                All_cost_cut[:, :, :, :, i] = a_cost_i
+
+            norm_term = np.max(a_ks)/5
+            All_norm_cost = 1 - All_cost_cut / norm_term  # only for colors
             All_norm_cost = np.where(All_norm_cost > 1, 0, All_norm_cost)   # only for colors
-
-                # # loop over j is finished
-                # max_i = np.max(All_cost[:, :, :, :, i])
-                # print(f"For piece {i} the maximum value is {max_i}")
-                # All_cost[:, :, :, :, i] /= max_i
-
-        # if args.cmp_cost == 'LCI':
-        #     print("WARNING: normalized over each piece!")
-        #     #pdb.set_trace()
-        #     #All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
-        # elif args.cmp_cost == 'LAP3':
-        #     min_vals = []
-        #     for j in range(All_cost.shape[3]):
-        #         for i in range(All_cost.shape[4]):
-        #             if j!=i:
-        #                 min_val = np.min(All_cost[:, :, :, j, i])
-        #                 min_vals.append(min_val)
-        #     kmin_cut_val = np.max(min_vals)*1.05
-        #     All_cost = np.where(All_cost == -11, kmin_cut_val*0.95, All_cost)
-        #     All_norm_cost = np.maximum(1 - All_cost / kmin_cut_val, 0)
-        # else:  # args.cmp_cost == 'LAP':
-        #     #All_norm_cost = np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
-        #     All_norm_cost = All_cost # / np.max(All_cost) #
+            All_norm_cost = np.where(All_norm_cost < 0, 0, All_norm_cost)   # only for colors
 
         only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
         R_line = All_norm_cost + only_negative_region  # insert negative regions to cost matrix
 
-        # it should not be needed
-        # R_line = (All_norm_cost * region_mask) * 2
-        # R_line[R_line < 0] = -1
-        # for jj in range(n):
-        #     R_line[:, :, :, jj, jj] = -1
         print("-" * 50)
         time_in_seconds = time.time()-time_start_puzzle
         if time_in_seconds > 60:
@@ -312,8 +302,8 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
-    parser.add_argument('--dataset', type=str, default='synthetic_irregular_9_pieces_by_drawing_coloured_lines_peynrh', help='dataset folder')  # repair
-    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
+    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_puzzles_Elefant', help='dataset folder')  # repair
+    parser.add_argument('--puzzle', type=str, default='image_00000_pic_050', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')

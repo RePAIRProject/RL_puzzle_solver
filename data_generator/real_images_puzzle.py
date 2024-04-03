@@ -112,8 +112,9 @@ def main(args):
 
         img_parameters = {}
         img = cv2.imread(os.path.join(input_images_path, img_path))
-        if max(img.shape[:2]) > args.rescale:
-            img = rescale_image(img, args.rescale)
+        img = rescale_image(img, args.rescale)
+        #if max(img.shape[:2]) > args.rescale:
+        #    img = rescale_image(img, args.rescale)
 
         # only for patterns
         if args.shape == 'pattern':
@@ -196,7 +197,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', type=str, default='', help='output folder')
     parser.add_argument('-i', '--images', type=str, default='', help='images folder (where to cut the pieces from)')
     parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces the images')
-    parser.add_argument('-s', '--shape', type=str, default='irregular', help='shape of the pieces', choices=['square', 'pattern', 'irregular'])
+    parser.add_argument('-s', '--shape', type=str, default='pattern', help='shape of the pieces', choices=['square', 'pattern', 'irregular'])
     parser.add_argument('-r', '--rescale', type=int, default=300, help='rescale the largest of the two axis to this number (default 1000) to avoid large puzzles.')
     parser.add_argument('-noR', "--do_not_rotate", help="Use it to disable rotation!", action="store_true")
     parser.add_argument('-extr', "--extrapolation", help="Use it to create an extrapolated version of each fragment", action="store_true")
