@@ -206,6 +206,7 @@ class GUIApp(MDApp):
         file_names = Back_End.image_names
         for i in range(len(Back_End.image_numbers)):
             image = image_reader(i, scores[i], has_score)
+            image.fit_mode = "contain"
             current_image_list.append(image)
 
     @mainthread
@@ -215,9 +216,19 @@ class GUIApp(MDApp):
                 print('up')
             elif touch.button == 'scrollup':  # they are inverse...
                 print('down')
-        print(touch.button)
+        current_touch = (touch.spos[0] * Window.size[0], touch.spos[1] * Window.size[1])
         # print("is_scrolling", touch.is_mouse_scrolling)
-        print("pos", touch.spos)
+        # print(Window.size)
+        # print("x: " + str(Window.size[0] * touch.spos[0]))
+        # print("y: " + str(Window.size[1] * touch.spos[1]))
+        if touch.button == 'left':
+            for i in range(len(current_image_list)):
+                # print("image " + str(i) + ": " + "x: " + str(current_image_list[i].pos[0]/Window.size[0]) + "    y: " + str(current_image_list[i].pos[1]/Window.size[1]))
+                # print(current_image_list[i].texture_size)
+                if current_image_list[i].collide_point(current_touch[0], current_touch[1]):
+                    print(str(i) + ": yes yes")
+        # todo windows to widget mapping
+        # print("pos", touch.spos)
 
     @mainthread
     def _on_keyboard_down(self, instance, keyboard, keycode, text, modifiers):  # Keyboard Listener
@@ -403,6 +414,7 @@ def check_border(*args, **kwargs):
         coords.append(point)
     poly = Polygon(coords)
     print(poly.contains(Point(1000, 1000)))
+    # todo down-sampling
 
 
 def select_what_check():
@@ -415,8 +427,6 @@ def select_what_check():
         if is_in_list(img_name):
             neighbour_fragments = img_name
 
-    # Select the top 10 fragments
-    print(args.fg_mask + '/' + neighbour_fragments)
     neighbour_fragments = cv2.imread(args.fg_mask + '/' + neighbour_fragments, cv2.IMREAD_GRAYSCALE)
     return neighbour_fragments
 
