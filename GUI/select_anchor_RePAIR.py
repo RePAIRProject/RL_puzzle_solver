@@ -222,6 +222,7 @@ def is_neighbour(img_name):
     else:
         return False
 
+
 def select_anchor():
 
     args = get_args()

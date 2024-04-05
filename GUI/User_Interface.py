@@ -3,7 +3,9 @@ import os
 from kivy import Config
 from kivy.clock import Clock, mainthread
 from kivymd.app import MDApp
-
+import cv2
+import argparse
+import numpy as np
 from kivy.graphics import Rotate, PopMatrix, PushMatrix
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
@@ -15,6 +17,8 @@ from kivy.uix.behaviors import DragBehavior
 from kivy.uix.scatter import Scatter
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.toolbar import MDTopAppBar
+import matplotlib.path as mpltPath
+from shapely.geometry import Point, Polygon
 
 from kivy.modules.inspector import Inspector
 from kivy.core.window import Window
@@ -44,7 +48,7 @@ Window.clearcolor = (0, 0, 0, 0)
 # Window.background_color = (1, 1, 1)
 
 # backEnd_path = "Images/RePAIR_plaque_2/top10/"
-backend_path = ""
+backend_path = os.getcwd() + "/GUI/Images/RePAIR_plaque_2/"
 showed_image_list = []
 current_image_list = []
 
@@ -205,7 +209,7 @@ class GUIApp(MDApp):
             current_image_list.append(image)
 
     @mainthread
-    def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener change
+    def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener
         if touch.is_mouse_scrolling:
             if touch.button == 'scrolldown':
                 print('up')
@@ -389,7 +393,57 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         time.sleep(communication_freq)  # Thread sleep timer
 
 
+def check_border(*args, **kwargs):
+    blob = select_what_check()
+    contours, hier = cv2.findContours(blob, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    np.array(contours)
+    coords = []
+    for i in range(len(contours[0])):
+        point = Point(contours[0][i][0][0], contours[0][i][0][1])
+        coords.append(point)
+    poly = Polygon(coords)
+    print(poly.contains(Point(1000, 1000)))
+
+
+def select_what_check():
+    args = get_args()
+    images_folder = args.fg_mask
+    images_names = [img_name for img_name in os.listdir(images_folder)]
+    neighbour_fragments = None
+
+    for img_name in images_names:
+        if is_in_list(img_name):
+            neighbour_fragments = img_name
+
+    # Select the top 10 fragments
+    print(args.fg_mask + '/' + neighbour_fragments)
+    neighbour_fragments = cv2.imread(args.fg_mask + '/' + neighbour_fragments, cv2.IMREAD_GRAYSCALE)
+    return neighbour_fragments
+
+
+def is_in_list(img_name):
+    if img_name == "gr48_RPf_00401_intact_mesh.png":
+        return True
+    else:
+        return False
+
+
+def get_args():
+    parser = argparse.ArgumentParser(description='Select anchor / key fragment')
+    # parser.add_argument('-d', '--dataset', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/RGBA_merged', help='data folder')
+    parser.add_argument('-d', '--dataset', type=str,
+                        default=backend_path + 'RGBA_merged',
+                        help='data folder')
+    # parser.add_argument('-f', '--fg_mask', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/FG_merged', help='data folder')
+    parser.add_argument('-f', '--fg_mask', type=str,
+                        default=backend_path + 'FG_merged',
+                        help='data folder')
+    answer = parser.parse_args()
+    return answer
+
+
 if __name__ == '__main__':
+    check_border()
     Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
     test_thread = threading.Thread(target=communicate_thread, daemon=True)
     test_thread_started = True
