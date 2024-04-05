@@ -117,7 +117,7 @@ def colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, bo
                                 comp_scores_matrix[i, j] = MCG_for_irregular(border_i_inv, border_j)
 
                     MGC_scores = np.mean(comp_scores_matrix[np.where(comp_scores_matrix >= 0)])  # sum of the scores of all matching borders (This is a Distance!!!)
-                    # MGC_scores = np.nanmax(comp_scores_matrix[np.where(comp_scores_matrix >= 0)])   # TEST !!!
+                    #MGC_scores = np.nanmax(comp_scores_matrix[np.where(comp_scores_matrix >= 0)])   # TEST !!!
 
                     # print('score for all segments')
                     print(MGC_scores)

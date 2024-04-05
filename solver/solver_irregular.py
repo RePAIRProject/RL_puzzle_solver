@@ -1,8 +1,8 @@
 
 import numpy as np
 import cv2 as cv
-import matplotlib
-matplotlib.use('TkAgg')
+# import matplotlib
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from scipy.io import savemat, loadmat
 from scipy.ndimage import rotate
@@ -487,90 +487,13 @@ if __name__ == '__main__':
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=2, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
-    parser.add_argument('--tfirst', type=int, default=1000, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
-    parser.add_argument('--tnext', type=int, default=500, help='the step for multi-phase (each tnext reset)')
-    parser.add_argument('--tmax', type=int, default=5000, help='the final number of iterations (it exits after tmax)')
+    parser.add_argument('--tfirst', type=int, default=750, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
+    parser.add_argument('--tnext', type=int, default=250, help='the step for multi-phase (each tnext reset)')
+    parser.add_argument('--tmax', type=int, default=3000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
-    parser.add_argument('--p_pts', type=int, default=20, help='the size of the p matrix (it will be p_pts x p_pts)')
-    parser.add_argument('--decimals', type=int, default=8, help='decimal after comma when cutting payoff')
+    parser.add_argument('--p_pts', type=int, default=15, help='the size of the p matrix (it will be p_pts x p_pts)')
+    parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
     args = parser.parse_args()
 
     main(args)
 
-
-
-# def visualize_result(all_pay, all_sol, all_anc, init_pos, p_final, pieces, pieces_files, pieces_folder, ppars):
-#     Y, X, Z, _ = p_final.shape
-#     # init_im = reconstruct_toy9(init_pos, Y, X)
-#     # init_im = reconstruct_group28_9(init_pos, Y, X, Z, pieces)
-#     init_im = reconstruct_puzzle(init_pos, Y, X, pieces, pieces_files, pieces_folder, ppars)
-#
-#     faze = len(all_sol)
-#     col = 2
-#     row = faze
-#     t = 1
-#
-#     plt.figure()
-#     plt.subplot(col, row, t)
-#     plt.imshow((init_im * 255).astype(np.uint8))
-#
-#     for f in range(faze - 1):
-#         t += 1
-#         new_anc = all_anc[f]
-#         # faze_im = reconstruct_toy9(new_anc, Y, X)
-#         # faze_im = reconstruct_group28_9(new_anc, Y, X, Z, pieces)
-#         faze_im = reconstruct_puzzle(new_anc, Y, X, pieces, pieces_files, pieces_folder, ppars)
-#         plt.subplot(col, row, t)
-#         plt.imshow((faze_im * 255).astype(np.uint8))
-#
-#     for f in range(faze):
-#         t += 1
-#         fin_sol = all_sol[f]
-#         if fin_sol.size != 0:
-#             # faze_im = reconstruct_toy9(fin_sol, Y, X)
-#             # faze_im = reconstruct_group28_9(fin_sol, Y, X, Z, pieces)
-#             faze_im = reconstruct_puzzle(fin_sol, Y, X, pieces, pieces_files, pieces_folder, ppars)
-#             plt.subplot(col, row, t)
-#             plt.imshow((faze_im * 255).astype(np.uint8))
-#     plt.show()
-#
-#     plt.figure()
-#     plt.imshow((faze_im * 255).astype(np.uint8))
-#     plt.show()
-#
-#     f_pay = []
-#     for ff in range(faze):
-#         a = all_pay[ff]
-#         f_pay = np.append(f_pay, a)
-#     f_pay = np.array(f_pay)
-#     plt.figure()
-#     plt.plot(f_pay, 'r', linewidth=1)
-#     plt.show()
-
-# def reconstruct_group28_9(fin_sol, Y, X, n_rot, pieces):
-#     step = 38
-#     #pieces = [p for p in pieces if p not in pieces[pieces_excl]]
-#     ang = 360 / n_rot
-#     z_rot = np.arange(0, 360, ang)
-#     pos = fin_sol
-#     fin_im = np.zeros((Y * step + 1000, X * step + 1000, 3))
-#
-#     for i in range(pos.shape[0]):
-#         im_num = pieces[i]
-#         in_file = f'C:/Users/Marina/PycharmProjects/WP3-PuzzleSolving/Compatibility/data/repair/group_28/ready/RPf_00{im_num}.png'
-#         Im0 = Image.open(in_file).convert('RGBA')
-#         Im = np.array(Im0) / 255.0
-#         Im1 = Image.open(in_file).convert('RGBA').split()
-#         alfa = np.array(Im1[3]) / 255.0
-#         Im = np.multiply(Im, alfa[:, :, np.newaxis])
-#         Im = Im[:,:,0:3]
-#
-#         id = pos[i, :2] * step - step + 500
-#         if np.min(pos[i, :2]) > 0:
-#             if pos.shape[1] == 3:
-#                 rot = z_rot[pos[i, 2]]
-#                 Im = rotate(Im, rot, reshape=False, mode='constant')
-#
-#             fin_im[id[0] - 500:id[0] + 500, id[1] - 500:id[1] + 500, :] = Im + fin_im[id[0] - 500:id[0] + 500,
-#                                                                                id[1] - 500:id[1] + 500, :]
-#     return fin_im

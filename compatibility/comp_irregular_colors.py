@@ -154,9 +154,7 @@ def main(args):
                 for j in range(n):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
-
                     #ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
-
                     # FOR TEST ONLY ####
                     ji_mat = compute_cost_wrapper_for_Colors_compatibility(i, j, pieces, region_mask, cmp_parameters, ppars,
                                                   verbosity=args.verbosity)
@@ -219,12 +217,12 @@ def main(args):
                         pdb.set_trace()
                     All_cost[:, :, :, j, i] = ji_mat
 
-            k = 3
+            k = 4
             All_cost_cut = np.zeros((All_cost.shape))
+            a_ks = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
+            a_min = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
             for i in range(n):
                 a_cost_i = All_cost[:, :, :, :, i]
-                a_ks = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
-                a_min = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
                 for x in range(a_cost_i.shape[0]):
                     for y in range(a_cost_i.shape[1]):
                         a_xy = a_cost_i[x, y, :, :]
@@ -233,18 +231,27 @@ def main(args):
                         a_xy = np.where(a_xy > a, -1, a_xy)
                         a_cost_i[x, y, :, :] = a_xy
                         a_ks[x, y, i] = a
-                        if len(a_all)>1:
+                        if len(a_all) > 1:
                             a_min[x, y, i] = a_all[1]
                 print(a_ks[:, :, i])
                 All_cost_cut[:, :, :, :, i] = a_cost_i
 
-            norm_term = np.max(a_ks)/np.max(a_min)
-            All_norm_cost = 1 - All_cost_cut / norm_term  # only for colors
-            All_norm_cost = np.where(All_norm_cost > 1, 0, All_norm_cost)   # only for colors
-            All_norm_cost = np.where(All_norm_cost < 0, 0, All_norm_cost)   # only for colors
+            # norm_term = 100
+            # norm_term = np.max(a_min)/(3*k)
+            norm_term = np.max(a_ks)/(2*k)
 
-        only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
-        R_line = All_norm_cost + only_negative_region  # insert negative regions to cost matrix
+            All_norm_cost = 2 - All_cost_cut / norm_term  # only for colors
+
+            All_norm_cost = np.where(All_norm_cost > 2, 0, All_norm_cost)    # only for colors
+            #All_norm_cost = np.where(All_norm_cost < 0, 0, All_norm_cost)   # only for colors
+            All_norm_cost = np.where(All_norm_cost <= 0, -1, All_norm_cost)  ## NEW idea di Prof.Pelillo
+
+        #only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
+        #R_line = All_norm_cost + only_negative_region  # insert negative regions to cost matrix
+
+        # NEW OPTION with Negative compatibilities
+        only_zero_region = np.abs(region_mask)  #recover zero aria in region matrix
+        R_line = All_norm_cost * only_zero_region
 
         print("-" * 50)
         time_in_seconds = time.time()-time_start_puzzle
