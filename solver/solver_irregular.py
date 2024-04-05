@@ -1,6 +1,8 @@
 
 import numpy as np
 import cv2 as cv
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from scipy.io import savemat, loadmat
 from scipy.ndimage import rotate
@@ -321,9 +323,9 @@ def main(args):
         print("/" * 70)
         print("\n" * 3)
         ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
-    #ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
+    # ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
-    if args.cmp_cost =='LAP':
+    if args.cmp_cost == 'LAP':
         # mat = loadmat(os.path.join(puzzle_root_folder,fnames.cm_output_name, f'CM_lines_{method}.mat'))
         mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
     else:
@@ -338,7 +340,7 @@ def main(args):
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
-    #print(pieces_files)
+    # print(pieces_files)
     pieces_excl = []
     # pieces_excl = np.array([3,4,7,8,11,15]);
     all_pieces = np.arange(len(pieces_files))
@@ -354,15 +356,15 @@ def main(args):
         rot_incl = rot_incl.astype(int)
         R = R[:, :, rot_incl, :, :]
 
-    ## HERE THE LINES WERE USED
+    # HERE THE LINES WERE USED
     if args.anchor < 0:
-        anc = np.random.choice(len(all_pieces))  #select_anchor(detect_output)
+        anc = np.random.choice(len(all_pieces))  # select_anchor(detect_output)
     else:
         anc = args.anchor
     print(f"Using anchor the piece with id: {anc}")
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts)  # (R, anc, anc_rot, nh, nw)
-    #print(p_initial.shape)
+    # print(p_initial.shape)
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity, decimals=args.decimals)
 
@@ -384,21 +386,21 @@ def main(args):
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
 
-    #  SAVE THE MATRIX BEFORE ANY VISUALIZATION
+    # SAVE THE MATRIX BEFORE ANY VISUALIZATION
     filename = os.path.join(solution_folder, 'p_final')
     mdic = {"p_final": p_final, "label": "label", "anchor": anc, "anc_position": [x0, y0, z0]}
     savemat(f'{filename}.mat', mdic)
     np.save(filename, mdic)
 
-#   VISUALIZATION
+    # VISUALIZATION
     f = len(all_sol)
     Y, X, Z, _ = p_final.shape
     fin_sol = all_sol[f-1]
-    #pdb.set_trace()
+    # pdb.set_trace()
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
     
     # fin_im_v3 = reconstruct_puzzle_vis(fin_sol, pieces_folder, ppars, suffix='')
-    # alternative method for reconstruction (with transparency on overlap becaus of b/w image)
+    # alternative method for reconstruction (with transparency on overlap because of b/w image)
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
 
     os.makedirs(solution_folder, exist_ok=True)
@@ -452,7 +454,7 @@ def main(args):
             frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
             cur_sol = all_sol[ff]
             im_rec = reconstruct_puzzle(cur_sol, Y, X, Z, pieces, pieces_files, pieces_folder)
-            im_rec = np.clip(im_rec,0,1)
+            im_rec = np.clip(im_rec, 0, 1)
             plt.imsave(frame_path, im_rec)
 
         frames_folders = os.path.join(solution_folder, 'frames_anc')
@@ -462,7 +464,7 @@ def main(args):
             frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
             cur_sol = all_anc[ff]
             im_rec = reconstruct_puzzle(cur_sol, Y, X, Z, pieces, pieces_files, pieces_folder)
-            im_rec = np.clip(im_rec,0,1)
+            im_rec = np.clip(im_rec, 0, 1)
             plt.imsave(frame_path, im_rec)
     
     print("-" * 50)
@@ -477,19 +479,19 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='synthetic_irregular_9_pieces_by_drawing_coloured_lines_peynrh', help='dataset folder')
-    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder')
+    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='image_00000_1', help='puzzle folder')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
-    parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation')  # LAP, LCI
+    parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')  # LAP, LCI
     parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=2, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
-    parser.add_argument('--tfirst', type=int, default=1500, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
+    parser.add_argument('--tfirst', type=int, default=1000, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
     parser.add_argument('--tnext', type=int, default=500, help='the step for multi-phase (each tnext reset)')
     parser.add_argument('--tmax', type=int, default=5000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
-    parser.add_argument('--p_pts', type=int, default=0, help='the size of the p matrix (it will be p_pts x p_pts)')
+    parser.add_argument('--p_pts', type=int, default=20, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=8, help='decimal after comma when cutting payoff')
     args = parser.parse_args()
 
