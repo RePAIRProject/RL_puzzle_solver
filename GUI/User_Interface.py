@@ -54,9 +54,10 @@ current_image_list = []
 
 
 def image_reader(image_number, score, has_score):
-    source = backend_path + "RGBA_merged/" + file_names[image_number]
+    path = file_names[image_number]
+    source = backend_path + "RGBA_merged/" + path
     click_label.color = (1, 0, 1, 1)
-    image = MovableImage(source, click_label, score, image_number, has_score)
+    image = MovableImage(source, click_label, score, image_number, has_score, path)
     # image.source = source
     return image
 
@@ -207,6 +208,7 @@ class GUIApp(MDApp):
         for i in range(len(Back_End.image_numbers)):
             image = image_reader(i, scores[i], has_score)
             image.fit_mode = "contain"
+            image.get_norm_image_size()
             current_image_list.append(image)
 
     @mainthread
@@ -216,17 +218,20 @@ class GUIApp(MDApp):
                 print('up')
             elif touch.button == 'scrollup':  # they are inverse...
                 print('down')
-        current_touch = (touch.spos[0] * Window.size[0], touch.spos[1] * Window.size[1])
-        # print("is_scrolling", touch.is_mouse_scrolling)
-        # print(Window.size)
-        # print("x: " + str(Window.size[0] * touch.spos[0]))
-        # print("y: " + str(Window.size[1] * touch.spos[1]))
+        window_size = Window.size
+        mouse_pos = (window_size[0] * touch.spos[0], window_size[1] * touch.spos[1])
         if touch.button == 'left':
             for i in range(len(current_image_list)):
                 # print("image " + str(i) + ": " + "x: " + str(current_image_list[i].pos[0]/Window.size[0]) + "    y: " + str(current_image_list[i].pos[1]/Window.size[1]))
                 # print(current_image_list[i].texture_size)
-                if current_image_list[i].collide_point(current_touch[0], current_touch[1]):
+                # print(current_image_list[i].get_norm_image_size())
+                # print("Xratio: " + str(current_image_list[i].texture_size[0]/current_image_list[i].get_norm_image_size()[0]))
+                # print("Yratio: " + str(current_image_list[i].texture_size[1] / current_image_list[i].get_norm_image_size()[1]))
+                if current_image_list[i].collide_point(mouse_pos[0], mouse_pos[1]):
                     print(str(i) + ": yes yes")
+                    pixel = map_mouse_pos_pixel(current_image_list[i].pos, current_image_list[i].texture_size,
+                                                current_image_list[i].get_norm_image_size(), mouse_pos)
+                    check_border(pixel[0], pixel[1], current_image_list[i].get_path())
         # todo windows to widget mapping
         # print("pos", touch.spos)
 
@@ -404,38 +409,38 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         time.sleep(communication_freq)  # Thread sleep timer
 
 
-def check_border(*args, **kwargs):
-    blob = select_what_check()
+def check_border(pixel_x, pixel_y, path, *args, **kwargs):
+    blob = select_what_check(path)
     contours, hier = cv2.findContours(blob, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    np.array(contours)
+    # print(contours)
+    # try:
+        # np.array(contours)
     coords = []
     for i in range(len(contours[0])):
         point = Point(contours[0][i][0][0], contours[0][i][0][1])
         coords.append(point)
     poly = Polygon(coords)
-    print(poly.contains(Point(1000, 1000)))
+    print(poly.contains(Point(pixel_x, pixel_y)))
+    # except ValueError:
+    #     for contour in contours:
+    #         np.array(contour)
+    #     np.array(contours[0])
     # todo down-sampling
 
 
-def select_what_check():
+def select_what_check(path):
     args = get_args()
     images_folder = args.fg_mask
-    images_names = [img_name for img_name in os.listdir(images_folder)]
-    neighbour_fragments = None
 
-    for img_name in images_names:
-        if is_in_list(img_name):
-            neighbour_fragments = img_name
-
-    neighbour_fragments = cv2.imread(args.fg_mask + '/' + neighbour_fragments, cv2.IMREAD_GRAYSCALE)
+    neighbour_fragments = cv2.imread(args.fg_mask + '/' + path, cv2.IMREAD_GRAYSCALE)
     return neighbour_fragments
 
 
-def is_in_list(img_name):
-    if img_name == "gr48_RPf_00401_intact_mesh.png":
-        return True
-    else:
-        return False
+def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos):
+    ratio = (image_pixel[0]/image_size[0], image_pixel[1]/image_size[1])
+    relative_pos = (mouse_pos[0] - image_pos[0], mouse_pos[1] - image_pos[1])
+    reality_pixel = (relative_pos[0]*ratio[1], relative_pos[1]*ratio[1])
+    return reality_pixel
 
 
 def get_args():
@@ -453,7 +458,6 @@ def get_args():
 
 
 if __name__ == '__main__':
-    check_border()
     Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
     test_thread = threading.Thread(target=communicate_thread, daemon=True)
     test_thread_started = True

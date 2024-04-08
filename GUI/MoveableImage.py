@@ -28,12 +28,14 @@ class MovableLayout(RelativeLayout):
 
 
 score_label = None
+path = None
 
 
 class MovableImage(DragBehavior, Image):
-    def __init__(self, source, label, score, image_number, has_score):
+    def __init__(self, source, label, score, image_number, has_score, path):
         super(MovableImage, self).__init__()
         global score_label
+        self.path = path
         self.limit_image = self
         self.source = source
         self.drag_timeout = 10000000
@@ -86,6 +88,9 @@ class MovableImage(DragBehavior, Image):
 
     def get_grid(self):
         return self.grid
+
+    def get_path(self):
+        return self.path
 
     def remove_score(self):
         global score_label
