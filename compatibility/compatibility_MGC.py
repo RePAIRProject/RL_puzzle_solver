@@ -14,7 +14,7 @@ from matplotlib import pyplot as plt
 from sklearn.cluster import DBSCAN
 from matplotlib import cm
 
-def compute_cost_wrapper_for_Colors_compatibility(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, verbosity=1):
+def compute_cost_wrapper_for_Colors_compatibility(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, seg_len, verbosity=1):
 
     (p, z_id, m, rot, line_matching_pars) = cmp_parameters
 
@@ -38,14 +38,14 @@ def compute_cost_wrapper_for_Colors_compatibility(idx1, idx2, pieces, regions_ma
         border_colors2 = pieces[idx2]['boundary_seg']
 
         R_cost = colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, border_colors1, border_colors2,
-                                                            mask_ij, ppars, idx1, idx2, verbosity=1)
+                                                            mask_ij, ppars, idx1, idx2, seg_len, verbosity=1)
         print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
 
     return R_cost
 
 #### NEW
 ## pairwise compatibility measure between two pieces with and without rotation
-def colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, border_colors1, border_colors2, mask_ij, pars, idx1, idx2, verbosity=1):
+def colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, border_colors1, border_colors2, mask_ij, pars, idx1, idx2, seg_len, verbosity=1):
 
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))-1
     n_borders_i = len(border_colors1)
@@ -94,14 +94,14 @@ def colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, bo
                                 border_i = border_colors1[i]['colors']  # form down to up and to the right !!!
                                 border_j = border_colors2[j]['colors']  # for up to down and to the left  !!!
 
-                                if border_i.shape[0] != 30 or border_j.shape[0] != 30:
+                                if border_i.shape[0] != seg_len or border_j.shape[0] != seg_len:
                                     print('STOP - Wrong Length of border !!!')
                                     print(border_i.shape[0])
                                     print(border_j.shape[0])
-                                    if border_i.shape[0] > 30 or border_j.shape[0] > 30:
-                                        border_i = border_i[0:30, :, :]
-                                        border_j = border_j[0:30, :, :]
-                                    elif border_i.shape[0] < 30 or border_j.shape[0] < 30:
+                                    if border_i.shape[0] > seg_len or border_j.shape[0] > seg_len:
+                                        border_i = border_i[0:seg_len, :, :]
+                                        border_j = border_j[0:seg_len, :, :]
+                                    elif border_i.shape[0] < seg_len or border_j.shape[0] < seg_len:
                                         cut = np.minimum(border_i.shape[0], border_j.shape[0])
                                         border_i = border_i[0:cut, :, :]
                                         border_j = border_j[0:cut, :, :]

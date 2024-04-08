@@ -99,7 +99,8 @@ def main(args):
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, line_based=False)
         #pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=ppars.xy_step,
         #                                  boundary_thickness=2)
-        pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=30,
+        seg_len = 30
+        pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=seg_len,
                                           boundary_thickness=2)
 
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
@@ -156,7 +157,7 @@ def main(args):
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
                     #ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
                     # FOR TEST ONLY ####
-                    ji_mat = compute_cost_wrapper_for_Colors_compatibility(i, j, pieces, region_mask, cmp_parameters, ppars,
+                    ji_mat = compute_cost_wrapper_for_Colors_compatibility(i, j, pieces, region_mask, cmp_parameters, ppars, seg_len,
                                                   verbosity=args.verbosity)
 
                     if i != j and args.DEBUG is True:
