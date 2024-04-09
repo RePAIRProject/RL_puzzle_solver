@@ -26,7 +26,7 @@ def initialization(R, anc, p_size=0):
     no_grid_points = R.shape[0]
     no_patches = R.shape[3]
     no_rotations = R.shape[2]
-
+    
     if p_size > 0:
         Y = p_size 
         X = Y 

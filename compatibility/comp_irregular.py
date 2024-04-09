@@ -14,6 +14,7 @@ from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_sha
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
 from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
+from compatibility.utils import normalize_cost_matrix
 
 def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
     first_element = comp_as_list[0]
@@ -222,28 +223,27 @@ def main(args):
                 # print(f"For piece {i} the maximum value is {max_i}")
                 # All_cost[:, :, :, :, i] /= max_i
 
-        if args.cmp_cost == 'LCI':
-            print("WARNING: normalized over each piece!")
-            #pdb.set_trace()
-            #All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
-        elif args.cmp_cost == 'LAP3':
-            min_vals = []
-            for j in range(All_cost.shape[3]):
-                for i in range(All_cost.shape[4]):
-                    min_val = np.min(All_cost[:, :, :, j, i])
-                    min_vals.append(min_val)
-            kmin_cut_val = np.max(min_vals) + 1
-            All_norm_cost = np.maximum(1 - All_cost/ kmin_cut_val, 0)
-        elif args.cmp_cost == 'LAP2':
-            clipping_val = line_matching_parameters.max_dist + (line_matching_parameters.badmatch_penalty - line_matching_parameters.max_dist) / 3
-            All_cost = np.clip(All_cost, 0, clipping_val)
-            All_norm_cost = 1 - All_cost / clipping_val
-        else:  # args.cmp_cost == 'LAP':
-            #All_norm_cost = np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
-            All_norm_cost = All_cost # / np.max(All_cost) #
-
+        All_norm_cost = normalize_cost_matrix(All_cost, args.cmp_cost)
+        # plt.subplot(131)
+        # plt.imshow(CM[:,:,0,0,1])
+        CM = All_norm_cost
+        if args.negative_comp is True:
+            # These are good candidate values in the region mask, 
+            # meaning they are plausible solutions.
+            # But the compatibility is close to zero, so we can enforce
+            # these are "wrong" values, setting them to -1
+            candidate_values_mat = (region_mask > 0).astype(int)
+            no_comp_candidate_values = candidate_values_mat * (CM == 0)
+            CM += no_comp_candidate_values * (-1)
+            # plt.subplot(132)
+            # plt.imshow(CM[:,:,0,0,1])
+        # These are the region with overlap, so we set all of them to -1
         only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
-        R_line = All_norm_cost + only_negative_region  # insert negative regions to cost matrix
+        CM += only_negative_region  # insert negative regions to cost matrix
+        # plt.subplot(133)
+        # plt.imshow(CM[:,:,0,0,1])
+        # plt.show()
+        # pdb.set_trace()
 
         # it should not be needed
         # R_line = (All_norm_cost * region_mask) * 2
@@ -267,7 +267,7 @@ def main(args):
         os.makedirs(output_folder, exist_ok=True)
         filename = os.path.join(output_folder, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}')
         mdic = {
-                    "R_line": R_line, 
+                    "R_line": CM, 
                     "label": "label", 
                     "method":args.det_method, 
                     "cost":args.cmp_cost, 
@@ -276,7 +276,7 @@ def main(args):
                     "theta_step": ppars.theta_step
                 }
         savemat(f'{filename}.mat', mdic)
-        np.save(filename, R_line)
+        np.save(filename, CM)
 
         if args.save_everything is True:
             filename = os.path.join(output_folder, f'CM_all_cost_lines_{args.det_method}_cost_{args.cmp_cost}')
@@ -296,7 +296,7 @@ def main(args):
         os.makedirs(vis_folder, exist_ok=True)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(R_line, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_linesdet_{args.det_method}_cost_{args.cmp_cost}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=True)
+            save_vis(CM, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_linesdet_{args.det_method}_cost_{args.cmp_cost}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=True)
             if args.save_everything:
                 save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_linesdet_{args.det_method}_cost_{args.cmp_cost}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=True, vmin=-2, vmax=2)
         
@@ -321,6 +321,7 @@ if __name__ == '__main__':
         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
+    parser.add_argument('--negative_comp', type=bool, default=True, help='If True, set to -1 all values where the region matrix is positive but the compatbiility is close to zero!')   
     # parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
     # parser.add_argument('--xy_grid_points', type=int, default=7, 
     #     help='the number of points in the grid (for each axis, total number will be the square of what is given)')
