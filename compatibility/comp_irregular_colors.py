@@ -96,12 +96,14 @@ def main(args):
             json.dump(line_matching_parameters, lmpj, indent=3)
         print("saved json line matching file")
 
+        if args.border_len < 0:
+            seg_len = ppars.xy_step
+        else:
+            seg_len = args.border_len
+        print("Using border length of {seg_len} pixels")
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, line_based=False)
-        #pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=ppars.xy_step,
-        #                                  boundary_thickness=2)
-        seg_len = 30
         pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=seg_len,
-                                          boundary_thickness=2)
+                                         boundary_thickness=2)
 
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
         region_mask = region_mask_mat['RM']
@@ -218,7 +220,7 @@ def main(args):
                         pdb.set_trace()
                     All_cost[:, :, :, j, i] = ji_mat
 
-            k = 4
+            k = args.k
             All_cost_cut = np.zeros((All_cost.shape))
             a_ks = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
             a_min = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
@@ -325,6 +327,8 @@ if __name__ == '__main__':
         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
+    parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')   
+    parser.add_argument('-k', type=int, default=4, help='keep the best k values (for given gamma transformation) in the compatibility')   
     # parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
     # parser.add_argument('--xy_grid_points', type=int, default=7, 
     #     help='the number of points in the grid (for each axis, total number will be the square of what is given)')
