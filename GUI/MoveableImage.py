@@ -31,7 +31,7 @@ score_label = None
 path = None
 
 
-class MovableImage(DragBehavior, Image):
+class MovableImage(Image):
     def __init__(self, source, label, score, image_number, has_score, path):
         super(MovableImage, self).__init__()
         global score_label
@@ -41,18 +41,11 @@ class MovableImage(DragBehavior, Image):
         self.drag_timeout = 10000000
         self.drag_distance = 0
 
-        # self.size_hint = (.13, .13)
-        # self.keep_ratio = True
-        # self.allow_stretch = True
-
         self.image_number = image_number
         self.drag_rectangle = [self.x, self.y, self.width, self.height]
-        # self.rotate = Rotate(angle)
+
         self.label = label
         self.score = score
-        # self.canvas.before.add(PushMatrix())
-        # self.canvas.before.add(self.rotate)
-        # self.canvas.after.add(PopMatrix())
 
         self.bind()
         self.scatter = Scatter()
@@ -61,8 +54,6 @@ class MovableImage(DragBehavior, Image):
         self.scatter.do_scale = False
         self.scatter.do_translate = False
         self.scatter.rotation = 90  # Degree
-
-        # self.scatter.add_widget(self)
 
         self.grid = GridLayout()
         self.grid.cols = 1
@@ -74,17 +65,6 @@ class MovableImage(DragBehavior, Image):
             score_label = Label()
             score_label.text = str(self.score)
             self.grid.add_widget(score_label)
-
-        # self.movable_layout = MovableLayout()
-        # self.movable_layout.add_widget(self)
-
-        # self.scatter.add_widget(self)
-        # self.bind(self.update_canvas)
-
-    # label = Label()
-
-    # def set_label(self, label):
-    #     self.label = label
 
     def get_grid(self):
         return self.grid
@@ -102,35 +82,14 @@ class MovableImage(DragBehavior, Image):
     def update_canvas(self, *args):
         self.rotate.origin = self.center
 
-    # def on_touch_down(self, touch):
-    #     if self.collide_point(*touch.pos):
-    #         click_label.text = str(self.image_number + 1)
-
     def add_score(self, *args, **kwargs):
         self.grid.add_widget(self.score_label)
 
     def on_pos(self, *args):
-        # print("here")
+
         self.drag_rectangle = [self.x, self.y, self.width, self.height]
-        self.label.text = str(self.image_number + 1)
+        # self.label.text = str(self.image_number + 1)
         print("here" + str(self.image_number))
-        # click_label.text = str(self.image_number + 1)
-        # self.label = self.image_number + 1
-
-    # def on_touch_up(self, touch):
-    #     self.label.text = str(self.image_number + 1)
-    #     print("here" + str(self.image_number))
-
-    # def on_touch_up(self, *args):
-    #     print('Released split1_bottom bar')
-    #     print('Y value = %d' % self.y)
-    #     self.drag_rectangle = [self.x, self.y, self.width, self.height]
-    #     self.label.text = str(self.image_number + 1)
-
-    # def on_touch_move(self, touch):
-    #     if touch.grab_current is self:
-    #         self.inside_limit_image(touch)  # keep this MoveableImage within the limit_image
-    #     return super(MovableImage, self).on_touch_move(touch)
 
     def on_size(self, *args):
         self.drag_rectangle = [self.x, self.y, self.width, self.height]

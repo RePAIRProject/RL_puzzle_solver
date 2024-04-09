@@ -215,6 +215,7 @@ class GUIApp(MDApp):
 
     @mainthread
     def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener
+        global click_label
         if touch.is_mouse_scrolling:
             if touch.button == 'scrolldown':
                 print('up')
@@ -224,6 +225,7 @@ class GUIApp(MDApp):
         mouse_pos = (window_size[0] * touch.spos[0], window_size[1] * touch.spos[1])
         if touch.button == 'left':
             for i in range(len(current_image_list)):
+                relative_pos = (mouse_pos[0] - current_image_list[i].pos[0], mouse_pos[1] - current_image_list[i].pos[1])
                 # print("image " + str(i) + ": " + "x: " + str(current_image_list[i].pos[0]/Window.size[0]) + "    y: " + str(current_image_list[i].pos[1]/Window.size[1]))
                 # print(current_image_list[i].texture_size)
                 # print(current_image_list[i].get_norm_image_size())
@@ -232,11 +234,23 @@ class GUIApp(MDApp):
                 if current_image_list[i].collide_point(mouse_pos[0], mouse_pos[1]):
                     print(str(i) + ": yes yes")
                     print(current_image_list[i].size)
+                    if current_image_list[i].collide_point(*mouse_pos):
+                        if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
+                            # Store the offset between touch position and widget position
+                            touch.offset_x = mouse_pos[0] - current_image_list[i].x
+                            touch.offset_y = mouse_pos[1] - current_image_list[i].y
+                        current_image_list[i].x = mouse_pos[0] - touch.offset_x
+                        current_image_list[i].y = mouse_pos[1] - touch.offset_y
                     width_height = ((current_image_list[i].width - current_image_list[i].norm_image_size[0]) / 2,
                                     (current_image_list[i].height - current_image_list[i].norm_image_size[1]) / 2)
                     pixel = map_mouse_pos_pixel(current_image_list[i].pos, current_image_list[i].texture_size,
                                                 current_image_list[i].get_norm_image_size(), mouse_pos, width_height)
                     check_border(pixel, current_image_list[i].get_path())
+                    # current_image_list[i].pos = [touch.x-relative_pos[0], touch.y-relative_pos[1]]
+                    # todo fix drag behaviour from outside
+                    if touch.button == 'left':
+                        click_label.text = str(i + 1)
+                    # break
         # todo windows to widget mapping
         # print("pos", touch.spos)
 
