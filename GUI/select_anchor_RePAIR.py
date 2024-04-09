@@ -200,13 +200,14 @@ def select_neighbour():
     args = get_args()
     images_folder = args.dataset
     images_names = [img_name for img_name in os.listdir(images_folder)]
+    print(images_names)
     neighbour_fragments = []
 
     for img_name in images_names:
         if is_neighbour(img_name):
             neighbour_fragments.append((img_name, 0))
 
-    # Select the top 10 fragments
+    print(neighbour_fragments)
     return neighbour_fragments
 
 

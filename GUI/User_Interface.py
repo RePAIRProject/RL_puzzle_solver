@@ -19,6 +19,8 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.toolbar import MDTopAppBar
 import matplotlib.path as mpltPath
 from shapely.geometry import Point, Polygon
+from point_Inside import is_inside_sm
+
 
 from kivy.modules.inspector import Inspector
 from kivy.core.window import Window
@@ -207,8 +209,8 @@ class GUIApp(MDApp):
         file_names = Back_End.image_names
         for i in range(len(Back_End.image_numbers)):
             image = image_reader(i, scores[i], has_score)
-            image.fit_mode = "contain"
-            image.get_norm_image_size()
+            print(file_names[i])
+            # image.fit_mode = "contain"
             current_image_list.append(image)
 
     @mainthread
@@ -229,9 +231,12 @@ class GUIApp(MDApp):
                 # print("Yratio: " + str(current_image_list[i].texture_size[1] / current_image_list[i].get_norm_image_size()[1]))
                 if current_image_list[i].collide_point(mouse_pos[0], mouse_pos[1]):
                     print(str(i) + ": yes yes")
+                    print(current_image_list[i].size)
+                    width_height = ((current_image_list[i].width - current_image_list[i].norm_image_size[0]) / 2,
+                                    (current_image_list[i].height - current_image_list[i].norm_image_size[1]) / 2)
                     pixel = map_mouse_pos_pixel(current_image_list[i].pos, current_image_list[i].texture_size,
-                                                current_image_list[i].get_norm_image_size(), mouse_pos)
-                    check_border(pixel[0], pixel[1], current_image_list[i].get_path())
+                                                current_image_list[i].get_norm_image_size(), mouse_pos, width_height)
+                    check_border(pixel, current_image_list[i].get_path())
         # todo windows to widget mapping
         # print("pos", touch.spos)
 
@@ -265,6 +270,7 @@ class GUIApp(MDApp):
         for i in range(len(Back_End.image_numbers)):
             showed_image_list.append(current_image_list[i].get_grid())
             self.widget_list[3].add_widget(showed_image_list[i])
+            print("added")
 
     def clear_images(self, *args, **kwargs):
         global showed_image_list
@@ -291,7 +297,7 @@ class GUIApp(MDApp):
                 anchor_showed = True
         elif (Back_End.get_select_anchor_done()) & (len(current_image_list) == 0) & (Back_End.get_select_neighbour_done()) & (not neighbour_showed):
             self.set_images(0)
-            self.show_images()
+            self.show_images(self)
             neighbour_showed = True
             print("neighbour")
         # if select_anchor_running is not None:
@@ -409,22 +415,36 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         time.sleep(communication_freq)  # Thread sleep timer
 
 
-def check_border(pixel_x, pixel_y, path, *args, **kwargs):
-    blob = select_what_check(path)
-    contours, hier = cv2.findContours(blob, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # print(contours)
-    # try:
-        # np.array(contours)
-    coords = []
-    for i in range(len(contours[0])):
-        point = Point(contours[0][i][0][0], contours[0][i][0][1])
-        coords.append(point)
-    poly = Polygon(coords)
-    print(poly.contains(Point(pixel_x, pixel_y)))
-    # except ValueError:
-    #     for contour in contours:
-    #         np.array(contour)
-    #     np.array(contours[0])
+def check_border(pixel, path, *args, **kwargs):
+    pixel_x = pixel[0]
+    pixel_y = pixel[1]
+    image_bw = select_what_check(path)
+    contours, heir = cv2.findContours(image_bw, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+
+    polygon_list = []
+    is_contains = False
+    raytracing = False
+    for j in range(len(contours)):
+        coords = []
+        for i in range(len(contours[j])):
+            point = (contours[j][i][0][0], contours[j][i][0][1])
+            coords.append(point)
+        # array = np.array(list(map(float, coords)))
+        # print(array)
+        # path = mpltPath.Path(contours[j])
+        # inside2 = path.contains_points(Point(Point(pixel_x, pixel_y)))
+        poly = Polygon(coords)
+        polygon_list.append(poly)
+        point = [pixel_x, pixel_y]
+        raytracing = is_inside_sm(coords, point)
+        # if poly.contains(Point(pixel_x, pixel_y)):
+        #     is_contains = True
+        #     break
+        if raytracing:
+            is_contains = True
+            break
+    print(is_contains)
+
     # todo down-sampling
 
 
@@ -436,10 +456,17 @@ def select_what_check(path):
     return neighbour_fragments
 
 
-def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos):
+def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_height):
     ratio = (image_pixel[0]/image_size[0], image_pixel[1]/image_size[1])
-    relative_pos = (mouse_pos[0] - image_pos[0], mouse_pos[1] - image_pos[1])
-    reality_pixel = (relative_pos[0]*ratio[1], relative_pos[1]*ratio[1])
+
+    if mouse_pos[0] < 0 or mouse_pos[1] < 0:
+        print('clicked outside of image\n')
+
+    relative_pos = (mouse_pos[0] - image_pos[0] - width_height[0], mouse_pos[1] - image_pos[1] - width_height[1])
+    # relative_pos = (touch.x - image_pos[0] - width_height[0], touch.y - image_pos[1] - width_height[1])
+    print(relative_pos[0])
+    print(relative_pos[1])
+    reality_pixel = (relative_pos[0]*ratio[0], relative_pos[1]*ratio[1])
     return reality_pixel
 
 
