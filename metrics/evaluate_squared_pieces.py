@@ -3,7 +3,6 @@ import pdb
 import numpy as np 
 import argparse 
 import matplotlib.pyplot as plt 
-from configs import unified_cfg as cfg
 from configs import folder_names as fnames
 import os 
 from solver.solverRotPuzzArgs import reconstruct_puzzle
@@ -61,6 +60,7 @@ def main(args):
                 lmp_parameters = json.load(gtj)
 
             for solution_folder_anc in solutions_anchors_folders:
+                cost_name = solution_folder_anc.split('_')[-2] 
                 # read p matrix
                 solution_path = os.path.join(puzzle_folder, solution_folder_anc, 'p_final.mat')
                 solution_matrix = scipy.io.loadmat(solution_path)
@@ -96,7 +96,7 @@ def main(args):
                 measure = 'mse'
                 if np.min(squared_solution_img.shape[:2]) > 0:
                     MSError = pixel_difference(squared_solution_img, im_ref, measure=measure)
-                    solved_img_output_path = os.path.join(output_qualitative_folder, f'evaluated_solution_anchor{anchor_idx}_bbg.jpg')
+                    solved_img_output_path = os.path.join(output_qualitative_folder, f'evaluated_solution_anchor{anchor_idx}_bbg_{cost_name}.jpg')
                     plt.imsave(solved_img_output_path, np.clip(squared_solution_img, 0, 1))
                     squared_solution_img[squared_solution_img == 0] = 1
                     MSError_white = pixel_difference(squared_solution_img, im_ref, measure=measure)
@@ -113,7 +113,7 @@ def main(args):
                     'pixel_b': MSError,
                     'pixel_w': MSError_white
                 }
-                json_output_path = os.path.join(output_quantitative_folder, f'evaluation_anchor{anchor_idx}.json')
+                json_output_path = os.path.join(output_quantitative_folder, f'evaluation_anchor{anchor_idx}_{cost_name}.json')
                 with open(json_output_path, 'w') as jf: 
                     json.dump(eval_res, jf, indent=2)
 
@@ -125,7 +125,7 @@ def main(args):
                 print(f"Pixel-wise W({measure}): {MSError_white}\n")
 
                 if np.min(squared_solution_img.shape[:2]) > 0:
-                    solved_img_output_path = os.path.join(output_qualitative_folder, f'evaluated_solution_anchor{anchor_idx}_wbg.jpg')
+                    solved_img_output_path = os.path.join(output_qualitative_folder, f'evaluated_solution_anchor{anchor_idx}_wbg_{cost_name}.jpg')
                     plt.imsave(solved_img_output_path, np.clip(squared_solution_img, 0, 1))
                     #cv2.imwrite(solved_img_output_path, cv2.cvtColor((squared_solution_img*255).astype(np.uint8), cv2.COLOR_BAYER_BG2BGR))
 
@@ -145,21 +145,19 @@ def main(args):
                 if np.min(squared_solution_img.shape[:2]) > 0:
                     plt.subplot(224)
                     plt.title(f'showing the grid of pieces', fontsize=32)
-                
                     plt.imshow(squared_solution_img)
-
                     for j in range(1, num_pieces):
-                        plt.axline([0, j*cfg.piece_size], slope=0, color='blue')
-                        plt.axline([j*cfg.piece_size, 0], slope=np.inf, color='blue')
+                        plt.axline([0, j*cmp_parameters['piece_size']], slope=0, color='blue')
+                        plt.axline([j*cmp_parameters['piece_size'], 0], slope=np.inf, color='blue')
 
-                anc_center = (anc_xy_pos) * cfg.piece_size
-                box_anchor = np.asarray([[anc_center[1], anc_center[0]], [anc_center[1], anc_center[0]+cfg.piece_size], \
-                                [anc_center[1]+cfg.piece_size, anc_center[0]+cfg.piece_size], [anc_center[1]+cfg.piece_size, anc_center[0]], [anc_center[1], anc_center[0]]])
+                anc_center = (anc_xy_pos) * cmp_parameters['piece_size']
+                box_anchor = np.asarray([[anc_center[1], anc_center[0]], [anc_center[1], anc_center[0]+cmp_parameters['piece_size']], \
+                                [anc_center[1]+cmp_parameters['piece_size'], anc_center[0]+cmp_parameters['piece_size']], [anc_center[1]+cmp_parameters['piece_size'], anc_center[0]], [anc_center[1], anc_center[0]]])
                 plt.plot(box_anchor[:,1], box_anchor[:,0], color='green', linewidth=5)
                 if args.visualize is True:
                     plt.show()
                 else:
-                    outputpath = os.path.join(output_visualization_folder, f'visualization_solution_anchor{anchor_idx}.png')
+                    outputpath = os.path.join(output_visualization_folder, f'visualization_solution_anchor{anchor_idx}_{cost_name}.png')
                     plt.tight_layout()
                     plt.savefig(outputpath)
                 print(f'done with anchor {anchor_idx}')
