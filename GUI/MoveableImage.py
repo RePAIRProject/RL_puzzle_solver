@@ -93,3 +93,6 @@ class MovableImage(Image):
 
     def on_size(self, *args):
         self.drag_rectangle = [self.x, self.y, self.width, self.height]
+
+    def get_number(self):
+        return self.image_number
