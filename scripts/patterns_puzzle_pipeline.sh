@@ -12,11 +12,12 @@ dataset='maps_puzzle_patterns_10pcs_pieces_gkbvur_28_02_2024'
 puzzle=$1
 
 xy_step=30
-xy_grid_points=9   ##  91  81 71
+xy_grid_points=11   ##  91  81 71
 theta_step=90
 
 det_method='exact'
-cmp_cost_1='LAP-negTrue'
+cmp_cost='LAP'
+cmp_cost_solver='LAP-negTrue'
 #cmp_cost_2='LCI'
 verbosity=1
 jobs=0
@@ -59,25 +60,25 @@ echo ""
 #python data_generator/synth_puzzle.py -extr -s irregular -sv -np 9 -ni 10
 
 #echo "REGION MASKS"
-#python features/compute_both_regions_masks.py --dataset $dataset --puzzle $puzzle --method $det_method --xy_step $xy_step --xy_grid_points $xy_grid_points --theta_step $theta_step
+python features/compute_both_regions_masks.py --dataset $dataset --puzzle $puzzle --method $det_method --xy_step $xy_step --xy_grid_points $xy_grid_points --theta_step $theta_step
 
 #echo "COMPATIBILITY"
-#python compatibility/comp_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --verbosity $verbosity --jobs $jobs
+python compatibility/comp_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost --verbosity $verbosity --jobs $jobs
 #python compatibility/comp_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_2 --verbosity $verbosity --jobs $jobs
 
 #echo "SOLVER"
-# python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor $anchor --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 0 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 1 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 2 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 3 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 4 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 5 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 6 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 7 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 8 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
-python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 9 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
-#python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_2 --anchor $anchor --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_solver --anchor $anchor --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+# python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 0 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+# python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 1 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+# python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 2 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+# python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 3 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+# python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 4 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+# python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 5 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+# python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 6 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+# python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 7 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+# python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 8 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+# python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_1 --anchor 9 --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
+# #python solver/solver_irregular.py --dataset $dataset --puzzle $puzzle --det_method $det_method --cmp_cost $cmp_cost_2 --anchor $anchor --tfirst $tfirst --tnext $tnext --tmax $tmax --p_pts $p_pts
 
 
 echo "FINISHED"
