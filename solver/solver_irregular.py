@@ -10,7 +10,7 @@ from PIL import Image
 import os
 import configs.folder_names as fnames
 import argparse
-from compatibility.line_matching_NEW_segments import read_info
+#from compatibility.line_matching_NEW_segments import read_info
 #import configs.solver_cfg as cfg
 from puzzle_utils.pieces_utils import calc_parameters_v2, crop_to_content
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas
@@ -247,7 +247,13 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, pp
         if pos.shape[1] == 3:
             rot = z_rot[pos[i, 2]]
             Im = rotate(Im, rot, reshape=False, mode='constant')
-        fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :] = Im+fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :]
+        if ppars.p_hs*2 < ppars.piece_size:
+            fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
+                                                                                       ids[0] - cc:ids[0] + cc + 1,
+                                                                                       ids[1] - cc:ids[1] + cc + 1, :]
+        else:
+            fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :] = Im+fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :]
+
     return fin_im
 
 
@@ -302,7 +308,7 @@ def main(args):
         print(f"{cfg_key}: {cfg[cfg_key]}")
     print("-" * 50)
 
-    pieces_dict, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
+        #pieces_dict, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)  # commented for RePAIR test only !!!!
     puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, args.puzzle)
     solver_patameters_path = os.path.join(puzzle_root_folder, 'solver_parameters.json')
     with open(solver_patameters_path, 'w') as spj:
@@ -489,7 +495,7 @@ if __name__ == '__main__':
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
     parser.add_argument('--tfirst', type=int, default=750, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
     parser.add_argument('--tnext', type=int, default=250, help='the step for multi-phase (each tnext reset)')
-    parser.add_argument('--tmax', type=int, default=3000, help='the final number of iterations (it exits after tmax)')
+    parser.add_argument('--tmax', type=int, default=1000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
     parser.add_argument('--p_pts', type=int, default=15, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
