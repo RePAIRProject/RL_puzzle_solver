@@ -20,6 +20,10 @@ def main(args):
     else:
         puzzles = [args.puzzle]
 
+    puzzle_folder = os.path.join(dataset_folder, puzzle)
+    general_files = os.listdir(puzzle_folder)
+    # solution_folders = [sol_fld for sol_fld in general_files if "solution" in sol_fld]
+
     print(f"\nEvaluate solution for: {puzzles}\n")
     for puzzle in puzzles:
         with open(os.path.join(puzzle_folder, "ground_truth.json"), 'r') as gtj:
