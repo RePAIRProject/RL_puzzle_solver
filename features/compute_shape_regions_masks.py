@@ -80,6 +80,8 @@ def main(args):
         RM_combo = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         RM_lines = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         RM_shapes = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+        # ADD Masks regions in xyz
+        RM_masks = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces)))
         for i in range(len(pieces)):
             for j in range(len(pieces)):
                 print(f"regions for pieces {i:>2} and {j:>2}", end='\r')
@@ -130,6 +132,21 @@ def main(args):
                         # These are the matrices
                         RM_combo[:,:,t,j,i] = (resized_combo.astype(np.int32) - 1)
                         RM_shapes[:,:,t,j,i] = (resized_shape.astype(np.int32) - 1)
+
+                        # new part for saving RM_masks
+                        if i == 0:
+                            mask_j = piece_j_on_canvas['mask']
+                            masks_comp_range = mask_j[ppars.p_hs+1:-(ppars.p_hs+1),ppars.p_hs+1:-(ppars.p_hs+1)]
+                            resized_masks = np.array(Image.fromarray(masks_comp_range).resize(
+                                (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
+                            RM_masks[:, :, t, j] = (resized_masks.astype(np.int32))
+                        if i == 1 and j == 0:
+                            mask_j = piece_j_on_canvas['mask']
+                            masks_comp_range = mask_j[ppars.p_hs + 1:-(ppars.p_hs+1),
+                                               ppars.p_hs+1:-(ppars.p_hs+1)]
+                            resized_masks = np.array(Image.fromarray(masks_comp_range).resize(
+                                (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
+                            RM_masks[:, :, t, j] = (resized_masks.astype(np.int32))
                         
                         if args.DEBUG is True:
                             pdb.set_trace()
@@ -175,6 +192,7 @@ def main(args):
         RM_D['RM'] = RM_combo
         RM_D['RM_lines'] = RM_lines
         RM_D['RM_shapes'] = RM_shapes
+        RM_D['RM_masks'] = RM_masks
 
         filename = f'{output_folder}/RM_{puzzle}'
         savemat(f'{filename}.mat', RM_D)
