@@ -13,23 +13,18 @@ from kivy.uix.widget import Widget
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
-from kivy.uix.behaviors import DragBehavior
-from kivy.uix.scatter import Scatter
+
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.toolbar import MDTopAppBar
-import matplotlib.path as mpltPath
+
 from shapely.geometry import Point, Polygon
 from point_Inside import is_inside_sm
 
-from kivy.modules.inspector import Inspector
 from kivy.core.window import Window
-from kivy.properties import BooleanProperty, ObjectProperty
-from kivy.factory import Factory
 
 import Back_End
 from select_anchor_RePAIR import get_backend_path
 
-import json
 import threading
 import time
 
@@ -58,6 +53,8 @@ none_counter = 0
 def image_reader(image_number, score, has_score):
     path = file_names[image_number]
     source = backend_path + "RGBA_merged/" + path
+    print(str(image_number) + ": " + str(path))
+
     click_label.color = (1, 0, 1, 1)
     image = MovableImage(source, click_label, score, image_number, has_score, path)
     # image.source = source
@@ -214,7 +211,6 @@ class GUIApp(MDApp):
         file_names = Back_End.image_names
         for i in range(len(Back_End.image_numbers)):
             image = image_reader(i, scores[i], has_score)
-            print(file_names[i])
             # image.fit_mode = "contain"
             current_image_list.append(image)
 
@@ -237,13 +233,11 @@ class GUIApp(MDApp):
                     hold_left = False
             none_counter = 0
         else:
-            print(none_counter)
             if none_counter > 1:
                 none_counter = 0
                 hold_left = False
             else:
                 none_counter += 1  # weird input recognition from KIVY
-        print(hold_left)
         window_size = Window.size
         mouse_pos = (window_size[0] * touch.spos[0], window_size[1] * touch.spos[1])
 
@@ -262,10 +256,14 @@ class GUIApp(MDApp):
                                                             current_image_list[i].get_norm_image_size(), mouse_pos,
                                                             width_height)
 
-                                if check_border(pixel, current_image_list[i].get_path()):
+                                if current_image_list[i].check_mask(pixel):
                                     grabbed_image = current_image_list[i]
                                     checked_border = True
                                     break
+                                # if check_border(pixel, current_image_list[i].get_name()):
+                                #     grabbed_image = current_image_list[i]
+                                #     checked_border = True
+                                #     break
             else:
                 if not (grabbed_image is None) and checked_border:
                     if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
@@ -305,19 +303,14 @@ class GUIApp(MDApp):
 
     @mainthread
     def _on_keyboard_down(self, instance, keyboard, keycode, text, modifiers):  # Keyboard Listener
-        if len(modifiers) > 0:
-            print("modifiers", modifiers)
-        print(keyboard)
-        if len(modifiers) > 0 and modifiers[0] == 'ctrl' and text == 'a':  # Ctrl+a
-            print("\nThe key", keycode, "have been pressed")
-            print(" - text is %r" % text)
-            print(" - modifiers are %r" % modifiers)
-
-    @mainthread
-    def mouse_pos(self, window, pos, *args, **kwargs):
-        # print("mouse_pos: ", pos)
-        # print(pos)
-        return True
+        pass
+        # if len(modifiers) > 0:
+        #     print("modifiers", modifiers)
+        # print(keyboard)
+        # if len(modifiers) > 0 and modifiers[0] == 'ctrl' and text == 'a':  # Ctrl+a
+        #     print("\nThe key", keycode, "have been pressed")
+        #     print(" - text is %r" % text)
+        #     print(" - modifiers are %r" % modifiers)
 
     @mainthread
     def show_images(self, *args, **kwargs):
@@ -333,7 +326,6 @@ class GUIApp(MDApp):
         for i in range(len(Back_End.image_numbers)):
             showed_image_list.append(current_image_list[i].get_grid())
             self.widget_list[3].add_widget(showed_image_list[i])
-            print("added")
 
     def clear_images(self, *args, **kwargs):
         global showed_image_list
@@ -359,28 +351,10 @@ class GUIApp(MDApp):
                 self.show_images(self)
                 anchor_showed = True
         elif (Back_End.get_select_anchor_done()) & (len(current_image_list) == 0) & (
-        Back_End.get_select_neighbour_done()) & (not neighbour_showed):
+                Back_End.get_select_neighbour_done()) & (not neighbour_showed):
             self.set_images(0)
             self.show_images(self)
             neighbour_showed = True
-            print("neighbour")
-        # if select_anchor_running is not None:
-        #     if select_anchor_running:
-        #         self.widget_list[0].md_bg_color = (0.545098039, 0, 0, 1)  # Set Toolbar Red
-        #         self.widget_list[1].disabled = True
-        #         self.widget_list[2].disabled = True  # commit
-        #     else:
-        #         self.widget_list[0].md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
-        #         self.widget_list[1].disabled = True
-        #         self.widget_list[2].disabled = False  # todo find sth else for this...
-        #
-        # else:
-        #     self.widget_list[0].md_bg_color = (0.678431373, 0.847058824, 0.901960784, 1)  # Set Toolbar Blue
-        #
-        #     self.widget_list[2].disabled = True
-        #
-        # if test_thread_started:
-        #     print("Test thread started")
         communicate_thread_lock.release()
 
     def toolbar_changes(self, color):
@@ -479,68 +453,21 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         time.sleep(communication_freq)  # Thread sleep timer
 
 
-def check_border(pixel, path, *args, **kwargs):
-    pixel_x = pixel[0]
-    pixel_y = pixel[1]
-    image_bw = select_what_check(path)
-    contours, heir = cv2.findContours(image_bw, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-
-    polygon_list = []
-    is_contains = False
-    raytracing = False
-    for j in range(len(contours)):
-        coords = []
-        for i in range(len(contours[j])):
-            point = (contours[j][i][0][0], contours[j][i][0][1])
-            coords.append(point)
-        # array = np.array(list(map(float, coords)))
-        # print(array)
-        # path = mpltPath.Path(contours[j])
-        # inside2 = path.contains_points(Point(Point(pixel_x, pixel_y)))
-        poly = Polygon(coords)
-        polygon_list.append(poly)
-        point = [pixel_x, pixel_y]
-        raytracing = is_inside_sm(coords, point)
-        # if poly.contains(Point(pixel_x, pixel_y)):
-        #     is_contains = True
-        #     break
-        if raytracing:
-            is_contains = True
-            break
-    return is_contains
-
-    # todo down-sampling
-
-
-def select_what_check(path):
-    args = get_args()
-    images_folder = args.fg_mask
-
-    neighbour_fragments = cv2.imread(args.fg_mask + '/' + path, cv2.IMREAD_GRAYSCALE)
-    return neighbour_fragments
-
-
 def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_height):
     ratio = (image_pixel[0] / image_size[0], image_pixel[1] / image_size[1])
 
-    if mouse_pos[0] < 0 or mouse_pos[1] < 0:
-        print('clicked outside of image\n')
-
     relative_pos = (mouse_pos[0] - image_pos[0] - width_height[0], mouse_pos[1] - image_pos[1] - width_height[1])
-    # relative_pos = (touch.x - image_pos[0] - width_height[0], touch.y - image_pos[1] - width_height[1])
-    print(relative_pos[0])
-    print(relative_pos[1])
     reality_pixel = (relative_pos[0] * ratio[0], relative_pos[1] * ratio[1])
     return reality_pixel
 
 
 def get_args():
     parser = argparse.ArgumentParser(description='Select anchor / key fragment')
-    # parser.add_argument('-d', '--dataset', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/RGBA_merged', help='data folder')
+
     parser.add_argument('-d', '--dataset', type=str,
                         default=backend_path + 'RGBA_merged',
                         help='data folder')
-    # parser.add_argument('-f', '--fg_mask', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/FG_merged', help='data folder')
+
     parser.add_argument('-f', '--fg_mask', type=str,
                         default=backend_path + 'FG_merged',
                         help='data folder')
@@ -549,7 +476,7 @@ def get_args():
 
 
 if __name__ == '__main__':
-    Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
+    Config.set('input', 'mouse', 'mouse, multitouch_on_demand')
     test_thread = threading.Thread(target=communicate_thread, daemon=True)
     test_thread_started = True
     test_thread.start()
