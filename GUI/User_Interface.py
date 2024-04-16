@@ -48,15 +48,15 @@ backend_path = os.getcwd() + "/GUI/Images/RePAIR_plaque_2/"
 showed_image_list = []
 current_image_list = []
 none_counter = 0
+keyboard_input = 0
 
 
 def image_reader(image_number, score, has_score):
     path = file_names[image_number]
     source = backend_path + "RGBA_merged/" + path
-    print(str(image_number) + ": " + str(path))
 
     click_label.color = (1, 0, 1, 1)
-    image = MovableImage(source, click_label, score, image_number, has_score, path)
+    image = MovableImage(source, click_label, score, image_number, has_score, path, 0)
     # image.source = source
     return image
 
@@ -78,9 +78,11 @@ click_label = Label()
 image_is_set = False
 anchor_showed = False
 neighbour_showed = False
+initial_image_updates = False
 
 hold_left = False
 checked_border = False
+time_stamp = 0
 
 grabbed_image = None
 
@@ -110,7 +112,7 @@ class GUIApp(MDApp):
         main_layout = MainLayout()
         main_layout.cols = 1
 
-        Window.bind(on_motion=self.on_touch_move, on_key_down=self._on_keyboard_down)
+        Window.bind(on_motion=self.on_touch_move, on_key_down=self._on_keyboard_down, on_key_up=self.on_keyboard_up)
 
         main_layout.rows = 3
 
@@ -204,6 +206,7 @@ class GUIApp(MDApp):
         global backend_path
         global file_names
         global current_image_list
+        global initial_image_updates
         scores = Back_End.image_scores
         current_image_list = []
         # score_label.text = str(scores[i])
@@ -213,6 +216,7 @@ class GUIApp(MDApp):
             image = image_reader(i, scores[i], has_score)
             # image.fit_mode = "contain"
             current_image_list.append(image)
+        initial_image_updates = False
 
     @mainthread
     def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener
@@ -221,6 +225,17 @@ class GUIApp(MDApp):
         global hold_left
         global checked_border
         global none_counter
+        global keyboard_input
+
+        scrolling = 0
+
+        if keyboard_input == 305:
+            if touch.button == 'scrollup':  # scroll up is scrolling down :|
+                if grabbed_image is not None:
+                    grabbed_image.rotate(-1)
+            elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
+                if grabbed_image is not None:
+                    grabbed_image.rotate(1)
 
         if 'button' in touch.profile:  # may cause bug in different systems -_- /todo
             if not hasattr(touch, 'prev_mouse') or not (touch.prev_mouse == touch.button):
@@ -240,6 +255,9 @@ class GUIApp(MDApp):
                 none_counter += 1  # weird input recognition from KIVY
         window_size = Window.size
         mouse_pos = (window_size[0] * touch.spos[0], window_size[1] * touch.spos[1])
+
+        if touch.button == 'right':
+            grabbed_image = None
 
         if touch.button == 'left':
             if not hold_left:
@@ -264,14 +282,19 @@ class GUIApp(MDApp):
                                 #     grabbed_image = current_image_list[i]
                                 #     checked_border = True
                                 #     break
+                if not checked_border:
+                    grabbed_image = None
             else:
-                if not (grabbed_image is None) and checked_border:
+                if grabbed_image is not None and checked_border:
                     if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
                         # Store the offset between touch position and widget position
                         touch.offset_x = mouse_pos[0] - grabbed_image.x
                         touch.offset_y = mouse_pos[1] - grabbed_image.y
-                    grabbed_image.x = mouse_pos[0] - touch.offset_x
-                    grabbed_image.y = mouse_pos[1] - touch.offset_y
+                        # grabbed_image.translate(touch.offset_x, touch.offset_y)
+                    grabbed_image.translate(mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
+
+                    # grabbed_image.x = mouse_pos[0] - touch.offset_x
+                    # grabbed_image.y = mouse_pos[1] - touch.offset_y
                     click_label.text = str(grabbed_image.get_number() + 1)
 
             #     for i in range(len(current_image_list)):
@@ -302,19 +325,22 @@ class GUIApp(MDApp):
             #         click_label.text = str(grabbed_image.get_number + 1)
 
     @mainthread
-    def _on_keyboard_down(self, instance, keyboard, keycode, text, modifiers):  # Keyboard Listener
-        pass
-        # if len(modifiers) > 0:
-        #     print("modifiers", modifiers)
-        # print(keyboard)
-        # if len(modifiers) > 0 and modifiers[0] == 'ctrl' and text == 'a':  # Ctrl+a
-        #     print("\nThe key", keycode, "have been pressed")
-        #     print(" - text is %r" % text)
-        #     print(" - modifiers are %r" % modifiers)
+    def on_keyboard_up(self, instance, keyboard, keycode):  # Keyboard up Listener
+        global keyboard_input
+        if keyboard is not None:
+            if keyboard == 305:  # code for ctrl button on keyboard
+                keyboard_input = None  # might cause issue
+
+    @mainthread
+    def _on_keyboard_down(self, instance, keyboard, keycode, text, modifiers):  # Keyboard down Listener
+        global keyboard_input
+        keyboard_input = keyboard
 
     @mainthread
     def show_images(self, *args, **kwargs):
         global showed_image_list
+        global current_image_list
+        global time_stamp
         if len(showed_image_list) != 0:
             self.clear_images()
         # current_path = os.getcwd() + "/GUI/"
@@ -322,10 +348,11 @@ class GUIApp(MDApp):
         # path = current_path + "top_10_fragments.json"
         # json_reader(path)
         showed_image_list = []
-
+        time_stamp = time.time()
         for i in range(len(Back_End.image_numbers)):
             showed_image_list.append(current_image_list[i].get_grid())
             self.widget_list[3].add_widget(showed_image_list[i])
+            time_stamp = time.time()
 
     def clear_images(self, *args, **kwargs):
         global showed_image_list
@@ -337,6 +364,7 @@ class GUIApp(MDApp):
         global selected_pic
         global anchor_showed
         global neighbour_showed
+        global initial_image_updates
         communicate_thread_lock.acquire()
         self.toolbar_changes(toolbar_color)
         clicked = click_label.text
@@ -355,6 +383,10 @@ class GUIApp(MDApp):
             self.set_images(0)
             self.show_images(self)
             neighbour_showed = True
+        if (time.time() - time_stamp > 1) and not initial_image_updates:
+            for i in range(len(current_image_list)):
+                current_image_list[i].update_virtual_pos()
+            initial_image_updates = True
         communicate_thread_lock.release()
 
     def toolbar_changes(self, color):
@@ -420,12 +452,6 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
     global toolbar_color
     while True:
         communicate_thread_lock.acquire()
-        # if not test_thread_started:
-        #     print("test_thread")
-        #     return
-        # print(Back_End.get_select_anchor_running())
-        # if not Back_End.get_select_anchor_running():
-        #     return
 
         select_anchor_running = Back_End.get_select_anchor_running()
         select_neighbour_running = Back_End.get_select_neighbour_running()
@@ -446,10 +472,6 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         else:
             toolbar_color = 0
         communicate_thread_lock.release()
-        # if Back_End.get_select_anchor_running():
-        #     print(Back_End.get_select_anchor_running())
-        # elif Back_End.get_select_anchor_running():
-        #     print(Back_End.get_select_anchor_running())
         time.sleep(communication_freq)  # Thread sleep timer
 
 
@@ -481,7 +503,6 @@ if __name__ == '__main__':
     test_thread_started = True
     test_thread.start()
     # sorted_image_scores = select_anchor()
-    # print(sorted_image_scores)
     # path = backEnd_path + "top_10_fragments.json"
     # current_path = os.getcwd() + "/GUI/"
     # backEnd_path = get_backend_path()
