@@ -22,6 +22,8 @@ from point_Inside import is_inside_sm
 
 from kivy.core.window import Window
 
+import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
+
 import Back_End
 from select_anchor_RePAIR import get_backend_path
 
@@ -47,6 +49,9 @@ Window.clearcolor = (0, 0, 0, 0)
 backend_path = os.getcwd() + "/GUI/Images/RePAIR_plaque_2/"
 showed_image_list = []
 current_image_list = []
+
+fragments_list = {}  # dictionary to give to puzzle solver
+
 none_counter = 0
 keyboard_input = 0
 
@@ -382,6 +387,7 @@ class GUIApp(MDApp):
                 Back_End.get_select_neighbour_done()) & (not neighbour_showed):
             self.set_images(0)
             self.show_images(self)
+            set_neighbour_fragments()
             neighbour_showed = True
         if (time.time() - time_stamp > 1) and not initial_image_updates:
             for i in range(len(current_image_list)):
@@ -442,6 +448,9 @@ select_anchor_done = None
 select_neighbour_done = None
 
 toolbar_color = 0  # 0 for light blue, -1 for red, 1 for green
+
+def set_neighbour_fragments():
+    fragments_list['neighbours'] = '132312'  # image.ayd
 
 
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd

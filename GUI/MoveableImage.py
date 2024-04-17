@@ -57,10 +57,18 @@ class MovableImage(Image):
         self.vx = self.x
         self.vy = self.y
 
+        self.ayd = self.get_ayd(self)
+
         # self.bind(pos=self.binding)
 
         # self.update()
         # opencv binary pic
+
+    @staticmethod
+    def get_ayd(self, *args, **kwargs):
+        ayd = self.name[:-4]  # remove .png
+        print("id: ", ayd)
+        return ayd
 
     def update_virtual_pos(self, *args, **kwargs):
         self.vx = self.x
@@ -116,7 +124,7 @@ class MovableImage(Image):
         self.grid.remove(self.score_label)
 
     def rotate(self, delta_angle):
-        with self.canvas:
+        with self.canvas.before:
             PushMatrix()
             # self.canvas.before.add(PushMatrix())
             self.rot = Rotate(self.rot.origin, self.rot.angle)
