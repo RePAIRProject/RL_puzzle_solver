@@ -1,3 +1,5 @@
+from typing import Any
+
 import scipy
 from scipy.io import loadmat
 import pdb
@@ -9,24 +11,21 @@ from configs import folder_names as fnames
 import os
 import json
 import cv2
+import matplotlib.pyplot as plt
+from scipy.stats import multivariate_normal
 
 
 def main(args):
 # def initialization_from_GT(R, args.dataset, args.puzzle, args.anchor, args.p_pts):
 
     anchor_id = 5     # default
-    no_rotations = R.shape[2]
-    no_patches = R.shape[3]
-
-    theta_step = 360 / no_rotations
+    #no_rotations = R.shape[2]
+    no_rotations = 4
+    theta_step = 360/no_rotations
 
     dataset_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset)
     print(dataset_folder)
-    if args.puzzle == '':
-        puzzles = os.listdir(dataset_folder)
-        puzzles = [puz for puz in puzzles if os.path.isdir(os.path.join(dataset_folder, puz)) is True]
-    else:
-        puzzles = [args.puzzle]
+    puzzles = [args.puzzle]
 
     print(f"\nEvaluate solution for: {puzzles}\n")
 
@@ -42,9 +41,6 @@ def main(args):
             cmp_parameters = json.load(gtj)
 
         num_pcs = img_parameters['num_pieces']
-        if num_pcs != no_patches:
-            print('Error - number of patches is not coincide !!!')
-
         gt_coord = np.zeros([num_pcs, 3])
         for j in range(num_pcs):
             gt_coord[j, 2] = (+1) * ground_truth[f"piece_{j:04d}"]['rotation']
@@ -59,10 +55,14 @@ def main(args):
         # print(f"GT non rotated in px :")
         # print(gt_shift)
 
+        all_rot = gt_shift[:, 2]
+        all_rot = np.where(all_rot < 0, all_rot + 360, all_rot)
+        gt_shift[:, 2] = all_rot
+
         # 2. Translate to yxz space
         gt_yxz = np.zeros([num_pcs, 3])
         gt_yxz[:, 0:2] = np.round(gt_shift[:, 0:2] / cmp_parameters['xy_step'])
-        gt_yxz[:, 2] = gt_shift[:, 2] / theta_step
+        gt_yxz[:, 2] = gt_shift[:, 2] / cmp_parameters['theta_step']
         # print(f"GT non rotated in YX :")
         # print(gt_yxz)
 
@@ -85,56 +85,72 @@ def main(args):
         ##### NEW PART STARTS HERE !!!!!!
         # Shift ALL coord to the center of the Reconstruction plane !!!!
 
-        x0 = round(args.p_pts / 2)
-        y0 = round(args.p_pts / 2)
-        z0 = 0
-        anc_position = [y0, x0, z0]
+        # grid_size = 11
+        grid_size = args.p_pts
+        p = np.zeros((grid_size, grid_size, no_rotations, num_pcs))
+
+        center_grid = round(grid_size/2)
+        anc_position = [center_grid, center_grid, 0]
         probability_centers = np.zeros([num_pcs, 3])
-        probability_centers[:, 0:2] = gt_rot[:, 0:2] + anc_position
-        probability_centers[:, 2] = gt_rot[:, 2] + z0
+        probability_centers[:, 0:2] = gt_rot[:, 0:2] + anc_position[0:2]
+        probability_centers[:, 2] = gt_rot[:, 2]
 
-        for jj in range(noPatches):
-            y = new_anc[jj, 0]
-            x = new_anc[jj, 1]
-            z = new_anc[jj, 2]
-            p[:, :, :, jj] = 0
-            p[y, x, :, :] = 0
-            p[y, x, z, jj] = 1
+        # inputs for probability distribution
+        sigma_x = 1
+        sigma_y = 1
 
+        #sigma_z = 1
+        #yy, xx, zz = np.mgrid[0:grid_size:1, 0:grid_size:1, 0:no_rotations:1]
+        #pos = np.dstack((xx, yy, zz))
+        #cov3 = [[sigma_y, 0, 0], [0, sigma_x, 0], [0, 0, sigma_z]]
 
-        p = np.ones((args.p_pts, args.p_pts, no_rotations, num_pcs)) / (args.p_pts * args.p_pts)  # uniform
+        yy, xx = np.mgrid[0:grid_size:1, 0:grid_size:1]
+        pos = np.dstack((yy, xx))
+        cov2 = [[sigma_y, 0], [0, sigma_x]]
+
+        for j in range(num_pcs):
+            # mu3 = probability_centers[j, :]
+            mu2 = probability_centers[j, 0:2]
+            rv = multivariate_normal(mu2, cov2)
+            p_norm_j = rv.pdf(pos)
+
+            for t in range(no_rotations):
+                p[:, :, t, j] = p_norm_j
 
         print(f'  ')
         print(f"GT shifted and rotated in YX :")
-        print(gt_rot)
+
 
     print("#" * 50)
     print("FINISHED")
 
-def est_mult_gaus(X,mu,sigma):
-    p = np.ones((args.p_pts, args.p_pts) / (args.p_pts * args.p_pts)
-
-    m2, m1 = np.meshgrid(np.linspace(-1, 1, m_size), np.linspace(-1, 1, m_size))
-
-    Xs = np.arange(0, args.p_pts, 1)
-    Ys = np.arange(0, args.p_pts, 1)
-
-    sigma2 = np.diag(sigma)
-    X = (X-mu).T
-    p = 1/((2*np.pi)**(m/2)*np.linalg.det(sigma2)**(0.5))*np.exp(-0.5*np.sum(X.dot(np.linalg.pinv(sigma2))*X,axis=1))
-
-    return p
+# def est_mult_gaus(X,mu,sigma):
+#     p = np.ones((args.p_pts, args.p_pts) / (args.p_pts * args.p_pts)
+#     m_size =  0.5*(args.p_pts-1)
+#
+#     m2, m1 = np.meshgrid(np.linspace(-1, 1, m_size), np.linspace(-1, 1, m_size))
+#
+#
+#     Xs = np.arange(0, args.p_pts, 1)
+#     Ys = np.arange(0, args.p_pts, 1)
+#
+#     sigma2 = np.diag(sigma)
+#     X = (X-mu).T
+#     p = 1/((2*np.pi)**(m/2)*np.linalg.det(sigma2)**(0.5))*np.exp(-0.5*np.sum(X.dot(np.linalg.pinv(sigma2))*X,axis=1))
+#
+#     return p
 
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='........ ')  # add some discription
     parser.add_argument('-d', '--dataset', type=str,
-                        default='synthetic_irregular_9_pieces_by_drawing_coloured_lines_28_02_2024',
+                        default='patterns_for_boundary_seg',
                         help='dataset folder')
     parser.add_argument('--verbosity', type=int, default=1,
                         help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')  # repair_g28, aki-kuroda_night-2011, pablo_picasso_still_life
-    parser.add_argument('-p', '--puzzle', type=str, default='', help='puzzle folder')
+    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder')
+    parser.add_argument('--p_pts', type=int, default=15, help='the size of the p matrix (it will be p_pts x p_pts)')
     args = parser.parse_args()
 
     main(args)
