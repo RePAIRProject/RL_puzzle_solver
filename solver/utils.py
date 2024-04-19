@@ -17,7 +17,7 @@ def solve_puzzle(R, anchor, pieces_names, ppars, return_as='dict'):
     p_initial, init_pos, x0, y0, z0 = initialization(R, anchor) # we do not pass p_size so it chooses automatically
     num_anchors = 1
     cfg = default_cfg()
-    all_pay, all_sol, all_anc, p_final, eps, iter, num_anchors = RePairPuzz(R, p_initial, num_anchors, cfg, verbosity=args.verbosity, decimals=args.decimals)
+    all_pay, all_sol, all_anc, p_final, eps, iter, num_anchors = RePairPuzz(R, p_initial, num_anchors, cfg)
     fin_sol = all_sol[len(all_sol)-1]
     fin_sol[:,:2] = fin_sol[:,:2] * ppars['xy_step']
     fin_sol[:,2] = fin_sol[:,2] * ppars['theta_step']
