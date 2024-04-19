@@ -103,13 +103,29 @@ def initialization_from_gt(args):
 
     yy, xx = np.mgrid[0:grid_size:1, 0:grid_size:1]
     pos = np.dstack((yy, xx))
+    pos_all = np.reshape(pos, (grid_size * grid_size, -1))
+    pos3 = []
+    for t in range(no_rotations):
+        pos_t = np.ones([pos_all.shape[0], 3])*t
+        pos_t[:, 0:2] = pos_all
+        if t == 0:
+            pos3 = pos_t
+        else:
+            pos3 = np.concatenate((pos3, pos_t), axis=0)
+
+    cov3 = [[sigma_y, 0, 0], [0, sigma_x, 0], [0, 0, 1]]
     cov2 = [[sigma_y, 0], [0, sigma_x]]
 
     for j in range(num_pcs):
         # mu3 = probability_centers[j, :]
         mu2 = probability_centers[j, 0:2]
-        rv = multivariate_normal(mu2, cov2)
-        p_norm_j = rv.pdf(pos)
+        rv2 = multivariate_normal(mu2, cov2)
+        p_norm_j = rv2.pdf(pos)
+
+        mu3 = probability_centers[j, :]
+        rv2 = multivariate_normal(mu3, cov3)
+        p_norm3_j = rv2.pdf(pos3)
+        p_new = np.reshape(p_norm3_j, (4, grid_size, grid_size))
 
         for t in range(no_rotations):
             if probability_centers[j,2] == t:
@@ -557,7 +573,7 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne', help='dataset folder')
+    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne_10px', help='dataset folder')
     parser.add_argument('--puzzle', type=str, default='image_00000_1', help='puzzle folder')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation')  # LAP, LCI
@@ -572,7 +588,7 @@ if __name__ == '__main__':
     parser.add_argument('--p_pts', type=int, default=15, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=8, help='decimal after comma when cutting payoff')
     parser.add_argument('--anchor', type=int, default=1, help='anchor piece (index)')
-    parser.add_argument('--sigma', type=int, default=7, help='norm_dist_sigma same for x and y, mu=GT; z assume to have uniform_dist')
+    parser.add_argument('--sigma', type=int, default=1, help='norm_dist_sigma same for x and y, mu=GT; z assume to have uniform_dist')
 
     args = parser.parse_args()
 
