@@ -66,6 +66,9 @@ def assemble(fragments_list, return_solution_as='dict'):
     # THIS IS HARDCODED WE NEED TO CHANGE LATER
     mat = loadmat(os.path.join(puzzle_root, 'compatibility_matrix', f'CM_linesdet_manual_cost_LAP'))
     R = mat['R_line']
+    # R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
+    # R = R[:, :, :, :, pieces_to_include]
+    # if you want rotation which you shouldn't
     R = R[:, :, 0:2, pieces_to_include, :]  # re-arrange R-matrix
     R = R[:, :, 0:2, :, pieces_to_include]
 
