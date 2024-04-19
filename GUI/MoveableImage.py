@@ -64,9 +64,8 @@ class MovableImage(Image):
         # self.update()
         # opencv binary pic
 
-    @staticmethod
     def get_ayd(self, *args, **kwargs):
-        ayd = self.name[:-4]  # remove .png
+        ayd = self.name  # remove .png
         print("id: ", ayd)
         return ayd
 

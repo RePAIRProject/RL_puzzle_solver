@@ -1,5 +1,6 @@
 from threading import Thread, Event, Lock
 import select_anchor_RePAIR
+import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
 
 
 select_anchor_running = None
@@ -8,6 +9,7 @@ select_neighbour_running = None
 
 select_anchor_thread = Thread()
 select_neighbour_thread = Thread()
+pl_solver_thread = Thread()
 
 select_anchor_lock = Lock()
 select_neighbour_lock = Lock()
@@ -22,6 +24,10 @@ image_numbers = []
 select_anchor_done = False
 select_neighbour_done = False
 
+key_fragment = ""
+neighbour_ids = []
+input_dict = {}
+
 
 def select_anchor_thread_function():
     global anchor_images
@@ -33,6 +39,12 @@ def select_anchor_thread_function():
     extract_lists(anchor_images)
     set_select_anchor_running(False)
     set_select_anchor_done(True)
+
+
+def pl_solver_thread_function():
+    global input_dict
+    i = puzzle_solver.assemble(input_dict)
+    print("puzzle solver solution:", i)
 
 
 def select_neighbour_thread_function():
@@ -93,6 +105,18 @@ def start_neighbour_thread():
     global select_neighbour_thread
     select_neighbour_thread = Thread(target=select_neighbour_thread_function, daemon=True)
     select_neighbour_thread.start()
+
+
+def start_pl_solver_thread():
+    global pl_solver_thread
+    global input_dict
+    input_dict = {'anchor': key_fragment, 'neighbours': neighbour_ids, 'puzzle': "repair_g28"}
+
+    for i in range(len(neighbour_ids)):
+        print(i, neighbour_ids[i])
+
+    select_pl_solver = Thread(target=pl_solver_thread_function, daemon=True)
+    select_pl_solver.start()
 
 
 def get_select_anchor_running():

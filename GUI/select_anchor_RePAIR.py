@@ -220,6 +220,10 @@ def is_neighbour(img_name):
         return True
     elif img_name == "gr41_RPf_00334_intact_mesh.png":
         return True
+    elif img_name == "RPf_00196.png":
+        return True
+    elif img_name == "RPf_00198.png":
+        return True
     else:
         return False
 

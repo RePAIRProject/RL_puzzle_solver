@@ -49,11 +49,14 @@ Window.clearcolor = (0, 0, 0, 0)
 backend_path = os.getcwd() + "/GUI/Images/RePAIR_plaque_2/"
 showed_image_list = []
 current_image_list = []
+neighbour_ids = []
 
 fragments_list = {}  # dictionary to give to puzzle solver
 
 none_counter = 0
 keyboard_input = 0
+
+key_fragment_id = ""
 
 
 def image_reader(image_number, score, has_score):
@@ -138,6 +141,10 @@ class GUIApp(MDApp):
         neighbour_button.bind(on_press=start_select_neighbour)
         neighbour_button.size_hint_x = 0.5
 
+        pl_solver_button = Button(text="PL Solver")
+        pl_solver_button.bind(on_press=start_pl_solver)
+        pl_solver_button.size_hint_x = 0.5
+
         # show_button.bind(on_press=self)
 
         # toolbar_layout = GridLayout()
@@ -149,6 +156,7 @@ class GUIApp(MDApp):
 
         toolbar.left_action_items.append(["menu", lambda x: the_app.callback()])
 
+        toolbar.add_widget(pl_solver_button)
         toolbar.add_widget(neighbour_button)
         toolbar.add_widget(anchor_button)
         toolbar.add_widget(show_button)
@@ -231,6 +239,7 @@ class GUIApp(MDApp):
         global checked_border
         global none_counter
         global keyboard_input
+        global key_fragment_id
 
         scrolling = 0
 
@@ -300,6 +309,9 @@ class GUIApp(MDApp):
 
                     # grabbed_image.x = mouse_pos[0] - touch.offset_x
                     # grabbed_image.y = mouse_pos[1] - touch.offset_y
+                    if (not select_anchor_running) and (not select_neighbour_running) and (not select_neighbour_done):
+                        key_fragment_id = str(grabbed_image.get_ayd())
+                    print("Key Fragments: ", key_fragment_id)
                     click_label.text = str(grabbed_image.get_number() + 1)
 
             #     for i in range(len(current_image_list)):
@@ -436,9 +448,25 @@ def start_select_anchor(self):
 def start_select_neighbour(self):
     global current_image_list
     global image_is_set
+    global key_fragment_id
+
+    Back_End.key_fragment = key_fragment_id
     image_is_set = False
     current_image_list = []
     Back_End.start_neighbour_thread()
+
+
+def start_pl_solver(self):
+    global current_image_list
+    global image_is_set
+    global neighbour_ids
+
+    for i in range(0, len(current_image_list)):
+        neighbour_ids.append(current_image_list[i].get_ayd())
+    Back_End.neighbour_ids = neighbour_ids
+    image_is_set = False
+    current_image_list = []
+    Back_End.start_pl_solver_thread()
 
 
 select_anchor_running = None
