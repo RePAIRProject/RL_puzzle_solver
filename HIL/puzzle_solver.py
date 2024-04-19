@@ -1,5 +1,9 @@
-import os 
-import pdb 
+import json
+import os
+import pdb
+
+from scipy.io import loadmat
+from utils import solve_puzzle
 
 """
 This is the method which should be used from the HIL interface
@@ -27,7 +31,8 @@ def assemble(fragments_list, return_solution_as='dict'):
     if return_solution_as == "nparray":
         - solution: a numpy array (shape: [len(fragments_list), 3] ) with (x, y, theta) values  
     """
-    anchor = fragments_list['anchor']
+    anchor_piece = fragments_list['anchor']
+
     neighbours = fragments_list['neighbours']
     puzzle = fragments_list['puzzle']
 
@@ -43,12 +48,12 @@ def assemble(fragments_list, return_solution_as='dict'):
     pieces_names.sort()
     
     # get pieces as a list
-    anchor = 0 
+    anchor = 0
     neighbours_as_list = []
     pieces_to_include = []
     for k, p_name in enumerate(pieces_names):
         to_include = False
-        if p_name == anchor or anchor in p_name:
+        if p_name == anchor_piece or anchor_piece in p_name:
             anchor = k
             to_include = True
         if p_name in neighbours:
@@ -61,9 +66,13 @@ def assemble(fragments_list, return_solution_as='dict'):
     # THIS IS HARDCODED WE NEED TO CHANGE LATER
     mat = loadmat(os.path.join(puzzle_root, 'compatibility_matrix', f'CM_linesdet_manual_cost_LAP'))
     R = mat['R_line']
-    R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
-    R = R[:, :, :, :, pieces_to_include]
-    
+    R = R[:, :, 0:2, pieces_to_include, :]  # re-arrange R-matrix
+    R = R[:, :, 0:2, :, pieces_to_include]
+
+    anchor = pieces_to_include.index(anchor)
+
+    print("anchor", anchor)
+
     solution = solve_puzzle(R, anchor, pieces_names, ppars, return_as=return_solution_as)
 
     return solution

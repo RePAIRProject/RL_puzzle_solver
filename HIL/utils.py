@@ -7,18 +7,17 @@ class CfgParameters(dict):
 
 def default_cfg():
     cfg = CfgParameters()
-    cfg['Tfirst'] = 50
-    cfg['Tnext'] = 75
-    cfg['Tmax'] = 100
+    cfg['Tfirst'] = 1000
+    cfg['Tnext'] = 500
+    cfg['Tmax'] = 2000
     cfg['anc_fix_tresh'] = 0.55
-    return cfg
 
 def solve_puzzle(R, anchor, pieces_names, ppars, return_as='dict'):
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, anchor) # we do not pass p_size so it chooses automatically
     num_anchors = 1
     cfg = default_cfg()
-    all_pay, all_sol, all_anc, p_final, eps, iter, num_anchors = RePairPuzz(R, p_initial, num_anchors, cfg)
+    all_pay, all_sol, all_anc, p_final, eps, iter, num_anchors = RePairPuzz(R, p_initial, num_anchors, cfg, verbosity=args.verbosity, decimals=args.decimals)
     fin_sol = all_sol[len(all_sol)-1]
     fin_sol[:,:2] = fin_sol[:,:2] * ppars['xy_step']
     fin_sol[:,2] = fin_sol[:,2] * ppars['theta_step']
@@ -114,7 +113,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
             T = cfg.Tnext
 
         #pdb.set_trace()
-        p, payoff, eps, iter = solver_rot_puzzle(R_new, R, p, T, iter, 0, verbosity=3, decimals=decimals)
+        p, payoff, eps, iter = solver_rot_puzzle(R_new, R, p, T, iter, 0, verbosity=verbosity, decimals=decimals)
         
         I = np.zeros((noPatches, 1))
         m = np.zeros((noPatches, 1))
@@ -124,7 +123,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
             m[j, 0], I[j, 0] = np.max(pj_final), np.argmax(pj_final)
 
         I = I.astype(int)
-        i1, i2, i3 = np.unravel_index(I, p[:, :, :, 0].shape)
+        i1, i2, i3 = np.unravel_index(I, p[:, :, :, 1].shape)
 
         fin_sol = np.concatenate((i1, i2, i3), axis=1)
         if verbosity > 0:
