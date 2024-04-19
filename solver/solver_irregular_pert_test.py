@@ -112,7 +112,8 @@ def initialization_from_gt(args):
         p_norm_j = rv.pdf(pos)
 
         for t in range(no_rotations):
-            p[:, :, t, j] = p_norm_j/no_rotations
+            if probability_centers[j,2] == t:
+                p[:, :, t, j] = p_norm_j
 
     init_pos = np.zeros((num_pcs, 3)).astype(int)
     init_pos[anchor_id, :] = anc_position
@@ -177,7 +178,7 @@ def RePairPuzz(R, p_initial, na, cfg, verbosity=1, decimals=8):
         if na_new > na:
             na = na_new
             faze += 1
-            p = p_initial   ## Optional !!! - OR - not re-initialize
+            #p = p_initial   ## Optional !!! - OR - not re-initialize
             for jj in range(noPatches):
                 if new_anc[jj, 0] != 0:
                     y = new_anc[jj, 0]
@@ -436,9 +437,10 @@ def main(args):
     p_initial, init_pos, anc_position, probability_centers = initialization_from_gt(args)
 
     ##########################
-    image_from_gt = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
+    Y, X, Z, _ = p_initial.shape
+    image_from_gt = reconstruct_puzzle(probability_centers.astype(int), Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
     image_from_gt = np.clip(image_from_gt, 0, 1)
-    plt.imsave(--------, image_from_gt)
+    plt.imsave('gt_recostruct.png', image_from_gt)
     #################àà
 
     na = 1
@@ -555,22 +557,22 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_puzzles_Elefant', help='dataset folder')
-    parser.add_argument('--puzzle', type=str, default='image_00001_pic_030', help='puzzle folder')
+    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='image_00000_1', help='puzzle folder')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
-    parser.add_argument('--cmp_cost', type=str, default='LAP3', help='cost computation')  # LAP, LCI
+    parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation')  # LAP, LCI
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=2, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
 
-    parser.add_argument('--tfirst', type=int, default=1000, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
+    parser.add_argument('--tfirst', type=int, default=500, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
     parser.add_argument('--tnext', type=int, default=100, help='the step for multi-phase (each tnext reset)')
-    parser.add_argument('--tmax', type=int, default=1500, help='the final number of iterations (it exits after tmax)')
-    parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
+    parser.add_argument('--tmax', type=int, default=1800, help='the final number of iterations (it exits after tmax)')
+    parser.add_argument('--thresh', type=float, default=0.55, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
     parser.add_argument('--p_pts', type=int, default=15, help='the size of the p matrix (it will be p_pts x p_pts)')
-    parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
-    parser.add_argument('--anchor', type=int, default=5, help='anchor piece (index)')
-    parser.add_argument('--sigma', type=int, default=1, help='norm_dist_sigma same for x and y, mu=GT; z assume to have uniform_dist')
+    parser.add_argument('--decimals', type=int, default=8, help='decimal after comma when cutting payoff')
+    parser.add_argument('--anchor', type=int, default=1, help='anchor piece (index)')
+    parser.add_argument('--sigma', type=int, default=7, help='norm_dist_sigma same for x and y, mu=GT; z assume to have uniform_dist')
 
     args = parser.parse_args()
 
