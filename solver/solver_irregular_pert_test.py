@@ -433,11 +433,16 @@ def main(args):
 
     p_initial, init_pos, anc_position, probability_centers = initialization_from_gt(args)
 
+    num_rot = p_initial.shape[2]
+    solution_folder = os.path.join(puzzle_root_folder,
+                                   f'{fnames.solution_folder_name}_pert_test_rot{num_rot}')
+    os.makedirs(solution_folder, exist_ok=True)
     ##########################
     Y, X, Z, _ = p_initial.shape
     image_from_gt = reconstruct_puzzle(probability_centers.astype(int), Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
     image_from_gt = np.clip(image_from_gt, 0, 1)
-    plt.imsave('gt_recostruct.png', image_from_gt)
+    initial_solution = os.path.join(solution_folder, f'gt_recostruct{anc}.png')
+    plt.imsave(initial_solution, image_from_gt)
     #################àà
 
     na = 1
@@ -456,9 +461,7 @@ def main(args):
         print(f"Solving this puzzle took {time_in_seconds:.0f} seconds")
     print("-" * 50)
 
-    num_rot = p_initial.shape[2]
-    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_pert_test_rot{num_rot}')
-    os.makedirs(solution_folder, exist_ok=True)
+
     print("Done! Saving in", solution_folder)
 
     # SAVE THE MATRIX BEFORE ANY VISUALIZATION
@@ -518,7 +521,7 @@ def main(args):
 
     if args.save_frames is True:
         # intermediate steps
-        frames_folders = os.path.join(solution_folder, 'frames_all')
+        frames_folders = os.path.join(solution_folder, f'frames_all_sigma{args.sigma}')
         os.makedirs(frames_folders, exist_ok=True)
 
         for ff in range(f):
@@ -565,7 +568,7 @@ if __name__ == '__main__':
     parser.add_argument('--p_pts', type=int, default=15, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=8, help='decimal after comma when cutting payoff')
     parser.add_argument('--anchor', type=int, default=1, help='anchor piece (index)')
-    parser.add_argument('--sigma', type=int, default=1, help='norm_dist_sigma same for x and y, mu=GT; z assume to have uniform_dist')
+    parser.add_argument('--sigma', type=int, default=2, help='norm_dist_sigma same for x and y, mu=GT; z assume to have uniform_dist')
 
     args = parser.parse_args()
 
