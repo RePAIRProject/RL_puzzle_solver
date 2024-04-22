@@ -7,9 +7,9 @@ class CfgParameters(dict):
 
 def default_cfg():
     cfg = CfgParameters()
-    cfg['Tfirst'] = 50
-    cfg['Tnext'] = 75
-    cfg['Tmax'] = 100
+    cfg['Tfirst'] = 100
+    cfg['Tnext'] = 1000
+    cfg['Tmax'] = 2000
     cfg['anc_fix_tresh'] = 0.55
     return cfg
 
@@ -65,7 +65,6 @@ def initialization(R, anc, p_size=0):
     p[y0, x0, z0, anc] = 1
     init_pos[anc, :] = ([y0, x0, z0])
 
-    print("P:", p.shape)
     return p, init_pos, x0, y0, z0
 
 def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):

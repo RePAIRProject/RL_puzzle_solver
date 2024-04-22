@@ -36,6 +36,9 @@ def assemble(fragments_list, return_solution_as='dict'):
     neighbours = fragments_list['neighbours']
     puzzle = fragments_list['puzzle']
 
+    print("anchor_piece", anchor_piece)
+    print("neighbours", neighbours)
+
     puzzle_root = os.path.join(os.getcwd(), 'output', puzzle)
     pieces_folder = os.path.join(puzzle_root, 'pieces')
     cmp_parameter_path = os.path.join(puzzle_root, 'compatibility_parameters.json')
@@ -62,6 +65,7 @@ def assemble(fragments_list, return_solution_as='dict'):
         if to_include is True:
             pieces_to_include.append(k)
 
+    print("piece to include", pieces_to_include)
     # extract from R matrix
     # THIS IS HARDCODED WE NEED TO CHANGE LATER
     mat = loadmat(os.path.join(puzzle_root, 'compatibility_matrix', f'CM_linesdet_manual_cost_LAP'))
@@ -74,9 +78,14 @@ def assemble(fragments_list, return_solution_as='dict'):
 
     anchor = pieces_to_include.index(anchor)
 
-    print("anchor", anchor)
+    pieces_included = []
 
-    solution = solve_puzzle(R, anchor, pieces_names, ppars, return_as=return_solution_as)
+    for i in range(len(pieces_to_include)):
+        pieces_included.append(pieces_names[pieces_to_include[i]])
+
+    # print("piece names", pieces_included)
+
+    solution = solve_puzzle(R, anchor, pieces_included, ppars, return_as=return_solution_as)
 
     return solution
     
