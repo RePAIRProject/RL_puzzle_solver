@@ -556,7 +556,7 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         else:
             toolbar_color = 0
         communicate_thread_lock.release()
-        time.sleep(communication_freq)  # Thread sleep timer
+        time.sleep(communication_freq)  # Thread sleep timerfasd
 
 
 def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_height):
