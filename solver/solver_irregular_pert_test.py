@@ -457,12 +457,12 @@ def main(args):
     print("-" * 50)
 
     num_rot = p_initial.shape[2]
-    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{method}_cost_{args.cmp_cost}_rot{num_rot}')
+    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_pert_test_rot{num_rot}')
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
 
     # SAVE THE MATRIX BEFORE ANY VISUALIZATION
-    filename = os.path.join(solution_folder, 'p_final')
+    filename = os.path.join(solution_folder, f'p_final_sigma{args.sigma}')
     mdic = {"p_final": p_final, "label": "label", "anchor": anc, "anc_position": anc_position}
     savemat(f'{filename}.mat', mdic)
     np.save(filename, mdic)
@@ -475,7 +475,7 @@ def main(args):
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
 
     os.makedirs(solution_folder, exist_ok=True)
-    final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')
+    final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}_sigma{args.sigma}.png')
     plt.figure(figsize=(16, 16))
     plt.title("Final solution including all piece")
     plt.imshow((fin_im1 * 255).astype(np.uint8))
@@ -496,7 +496,7 @@ def main(args):
     fin_sol = all_anc[f-1]
     fin_im2 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
 
-    final_solution_anchor = os.path.join(solution_folder, f'final_only_anchor_using_anchor{anc}.png')
+    final_solution_anchor = os.path.join(solution_folder, f'final_only_anchor_using_anchor{anc}_sigma{args.sigma}.png')
     plt.figure(figsize=(16, 16))
     plt.title("Final solution including ONLY solved pieces")
     plt.imshow((fin_im2 * 255).astype(np.uint8))
@@ -504,7 +504,7 @@ def main(args):
     plt.savefig(final_solution_anchor)
     plt.close()
 
-    alc_path = os.path.join(solution_folder, 'alc_plot.png')
+    alc_path = os.path.join(solution_folder, f'alc_plot_sigma{args.sigma}.png')
     f = len(all_pay)
     f_pay = []
     for ff in range(f):
