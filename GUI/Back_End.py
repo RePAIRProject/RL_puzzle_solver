@@ -5,6 +5,7 @@ import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
 
 select_anchor_running = None
 select_neighbour_running = None
+pl_solver_running = None
 
 
 select_anchor_thread = Thread()
@@ -13,20 +14,23 @@ pl_solver_thread = Thread()
 
 select_anchor_lock = Lock()
 select_neighbour_lock = Lock()
+pl_solver_lock = Lock()
 
 anchor_images = []
 neighbour_images = []
 
 image_names = []
 image_scores = []
-image_numbers = []
+image_numbers = 0
 
 select_anchor_done = False
 select_neighbour_done = False
+pl_solver_done = False
 
 key_fragment = ""
 neighbour_ids = []
 input_dict = {}
+pl_solution = {}
 
 
 def select_anchor_thread_function():
@@ -43,8 +47,11 @@ def select_anchor_thread_function():
 
 def pl_solver_thread_function():
     global input_dict
-    i = puzzle_solver.assemble(input_dict)
-    print("puzzle solver solution:", i)
+    global pl_solution
+    set_pl_solver_running(True)
+    pl_solution = puzzle_solver.assemble(input_dict)
+    set_pl_solver_running(False)
+    set_pl_solver_done(True)
 
 
 def select_neighbour_thread_function():
@@ -65,13 +72,11 @@ def extract_lists(main_list):
     global image_numbers
     image_names = []
     image_scores = []
-    image_numbers = []
+    image_numbers = 0
     for i in range(len(main_list)):
         image_names.append(main_list[i][0])
         image_scores.append(main_list[i][1])
-        image_numbers.append(i)
-    for i in range(len(main_list)):
-        print(image_numbers[i], ':',  "Path:", image_names[i], "Score:",  image_scores[i])
+        image_numbers += 1
 
 
 def set_select_anchor_running(boolean):
@@ -88,11 +93,25 @@ def set_select_anchor_done(boolean):
     select_anchor_lock.release()
 
 
+def set_pl_solver_done(boolean):
+    global pl_solver_done
+    pl_solver_lock.acquire()
+    pl_solver_done = boolean
+    pl_solver_lock.release()
+
+
 def set_select_neighbour_running(boolean):
     global select_neighbour_running
     select_neighbour_lock.acquire()
     select_neighbour_running = boolean
     select_neighbour_lock.release()
+
+
+def set_pl_solver_running(boolean):
+    global pl_solver_running
+    pl_solver_lock.acquire()
+    pl_solver_running = boolean
+    pl_solver_lock.release()
 
 
 def start_anchor_thread():
@@ -111,9 +130,6 @@ def start_pl_solver_thread():
     global pl_solver_thread
     global input_dict
     input_dict = {'anchor': key_fragment, 'neighbours': neighbour_ids, 'puzzle': "repair_g28"}
-
-    for i in range(len(neighbour_ids)):
-        print(i, neighbour_ids[i])
 
     select_pl_solver = Thread(target=pl_solver_thread_function, daemon=True)
     select_pl_solver.start()
@@ -140,6 +156,20 @@ def get_select_neighbour_running():
     return answer
 
 
+def get_pl_solver_running():
+    pl_solver_lock.acquire()
+    answer = pl_solver_running
+    pl_solver_lock.release()
+    return answer
+
+
+def get_pl_solver_done():
+    pl_solver_lock.acquire()
+    answer = pl_solver_done
+    pl_solver_lock.release()
+    return answer
+
+
 def set_select_neighbour_done(boolean):
     global select_neighbour_done
     select_neighbour_lock.acquire()
@@ -154,6 +184,12 @@ def get_select_anchor_done():
     return answer
 
 
+def get_pl_solution():
+    return pl_solution
+
+
 def thread_shutdown():
     select_anchor_thread.join()
+    select_neighbour_thread.join()
+    pl_solver_thread.join()
     # toDo

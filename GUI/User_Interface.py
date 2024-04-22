@@ -51,7 +51,7 @@ showed_image_list = []
 current_image_list = []
 neighbour_ids = []
 
-fragments_list = {}  # dictionary to give to puzzle solver
+pl_solution = {}
 
 none_counter = 0
 keyboard_input = 0
@@ -61,6 +61,7 @@ key_fragment_id = ""
 
 def image_reader(image_number, score, has_score):
     path = file_names[image_number]
+    # print(file_names)
     source = backend_path + "RGBA_merged/" + path
 
     click_label.color = (1, 0, 1, 1)
@@ -86,13 +87,16 @@ click_label = Label()
 image_is_set = False
 anchor_showed = False
 neighbour_showed = False
+solution_applied = False
 initial_image_updates = False
+ratio = 1
 
 hold_left = False
 checked_border = False
 time_stamp = 0
 
 grabbed_image = None
+key_image = None
 
 communication_freq = 0.25  # in seconds
 graphic_freq = 0.25  # in seconds
@@ -220,12 +224,19 @@ class GUIApp(MDApp):
         global file_names
         global current_image_list
         global initial_image_updates
+        global key_image
+
         scores = Back_End.image_scores
         current_image_list = []
         # score_label.text = str(scores[i])
         backend_path = get_backend_path()
         file_names = Back_End.image_names
-        for i in range(len(Back_End.image_numbers)):
+        if has_score == 0 & (key_image is not None):
+            file_names.append(key_image.get_id())
+            Back_End.image_numbers += 1
+            scores.append(0)
+        for i in range(Back_End.image_numbers):
+            # print(i)
             image = image_reader(i, scores[i], has_score)
             # image.fit_mode = "contain"
             current_image_list.append(image)
@@ -240,6 +251,7 @@ class GUIApp(MDApp):
         global none_counter
         global keyboard_input
         global key_fragment_id
+        global key_image
 
         scrolling = 0
 
@@ -292,10 +304,6 @@ class GUIApp(MDApp):
                                     grabbed_image = current_image_list[i]
                                     checked_border = True
                                     break
-                                # if check_border(pixel, current_image_list[i].get_name()):
-                                #     grabbed_image = current_image_list[i]
-                                #     checked_border = True
-                                #     break
                 if not checked_border:
                     grabbed_image = None
             else:
@@ -310,8 +318,8 @@ class GUIApp(MDApp):
                     # grabbed_image.x = mouse_pos[0] - touch.offset_x
                     # grabbed_image.y = mouse_pos[1] - touch.offset_y
                     if (not select_anchor_running) and (not select_neighbour_running) and (not select_neighbour_done):
-                        key_fragment_id = str(grabbed_image.get_ayd())
-                    print("Key Fragments: ", key_fragment_id)
+                        key_fragment_id = str(grabbed_image.get_id())
+                        key_image = grabbed_image
                     click_label.text = str(grabbed_image.get_number() + 1)
 
             #     for i in range(len(current_image_list)):
@@ -366,7 +374,7 @@ class GUIApp(MDApp):
         # json_reader(path)
         showed_image_list = []
         time_stamp = time.time()
-        for i in range(len(Back_End.image_numbers)):
+        for i in range(len(current_image_list)):
             showed_image_list.append(current_image_list[i].get_grid())
             self.widget_list[3].add_widget(showed_image_list[i])
             time_stamp = time.time()
@@ -377,11 +385,41 @@ class GUIApp(MDApp):
             self.widget_list[3].remove_widget(showed_image_list[i])
         showed_image_list = []
 
+    @mainthread
+    def apply_solution(self):
+        global pl_solution
+        # for i in range(len(current_image_list)):
+        #     print(current_image_list[i].get_id())
+        # print("puzzle solver solution:", pl_solution)
+        # fragments = list(pl_solution.keys())
+        # for j in range(len(fragments)):
+        #     position = pl_solution[fragments[j]]
+        #     print("Puzzle solver", j, ":", fragments[j], "|   Value: ", position)
+        #     for k in range(len(position)):
+        #         print(position[k])
+        # current_image_list.update(position)
+        # Iterate over each image in current_image_list
+        for image in current_image_list:
+            image_id = image.get_id()
+            print(image_id)
+
+            # Check if the image ID exists in pl_solution
+            if image_id in pl_solution:
+                positions = pl_solution[image_id]
+                print("Positions for image", image_id, ":", positions)
+
+                # Update the image's position
+                image.update(positions, ratio)  # Assuming there's a method update_position for images
+            else:
+                print("No positions found for image", image_id)
+
     def checking_clock(self, *args, **kwargs):
         global selected_pic
         global anchor_showed
         global neighbour_showed
         global initial_image_updates
+        global solution_applied
+        global pl_solution
         communicate_thread_lock.acquire()
         self.toolbar_changes(toolbar_color)
         clicked = click_label.text
@@ -395,12 +433,16 @@ class GUIApp(MDApp):
                 self.set_images(1)
                 self.show_images(self)
                 anchor_showed = True
-        elif (Back_End.get_select_anchor_done()) & (len(current_image_list) == 0) & (
-                Back_End.get_select_neighbour_done()) & (not neighbour_showed):
+        elif ((Back_End.get_select_anchor_done()) & (len(current_image_list) == 0) &
+              (Back_End.get_select_neighbour_done()) & (not neighbour_showed)):
             self.set_images(0)
             self.show_images(self)
-            set_neighbour_fragments()
             neighbour_showed = True
+        elif ((Back_End.get_select_anchor_done()) & (Back_End.get_select_neighbour_done()) & neighbour_showed &
+              Back_End.get_pl_solver_done() & (not solution_applied)):
+            pl_solution = Back_End.get_pl_solution()
+            self.apply_solution()
+            solution_applied = True
         if (time.time() - time_stamp > 1) and not initial_image_updates:
             for i in range(len(current_image_list)):
                 current_image_list[i].update_virtual_pos()
@@ -462,38 +504,43 @@ def start_pl_solver(self):
     global neighbour_ids
 
     for i in range(0, len(current_image_list)):
-        neighbour_ids.append(current_image_list[i].get_ayd())
+        if not (current_image_list[i].get_id() == key_image.get_id()):
+            neighbour_ids.append(current_image_list[i].get_id())
     Back_End.neighbour_ids = neighbour_ids
-    image_is_set = False
-    current_image_list = []
+    # image_is_set = False
+    # current_image_list = []
     Back_End.start_pl_solver_thread()
 
 
 select_anchor_running = None
 select_neighbour_running = None
+pl_solver_running = None
 
 select_anchor_done = None
 select_neighbour_done = None
+pl_solver_done = None
 
 toolbar_color = 0  # 0 for light blue, -1 for red, 1 for green
-
-def set_neighbour_fragments():
-    fragments_list['neighbours'] = '132312'  # image.ayd
 
 
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
     global select_anchor_running
     global select_neighbour_running
+    global pl_solver_running
     global select_anchor_done
     global select_neighbour_done
+    global pl_solver_done
     global toolbar_color
     while True:
         communicate_thread_lock.acquire()
 
         select_anchor_running = Back_End.get_select_anchor_running()
         select_neighbour_running = Back_End.get_select_neighbour_running()
+        pl_solver_running = Back_End.get_pl_solver_running()
         select_neighbour_done = Back_End.get_select_neighbour_done()
         select_anchor_done = Back_End.get_select_anchor_done()
+        pl_solver_done = Back_End.get_pl_solver_done()
+
         if select_anchor_running is not None:
             if select_anchor_running:
                 toolbar_color = -1
@@ -513,6 +560,7 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
 
 
 def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_height):
+    global ratio
     ratio = (image_pixel[0] / image_size[0], image_pixel[1] / image_size[1])
 
     relative_pos = (mouse_pos[0] - image_pos[0] - width_height[0], mouse_pos[1] - image_pos[1] - width_height[1])

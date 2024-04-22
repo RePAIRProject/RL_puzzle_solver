@@ -200,14 +200,13 @@ def select_neighbour():
     args = get_args()
     images_folder = args.dataset
     images_names = [img_name for img_name in os.listdir(images_folder)]
-    print(images_names)
+
     neighbour_fragments = []
 
     for img_name in images_names:
         if is_neighbour(img_name):
             neighbour_fragments.append((img_name, 0))
 
-    print(neighbour_fragments)
     return neighbour_fragments
 
 
@@ -274,10 +273,6 @@ def select_anchor():
             final_score = perpendicular_lines_count
         elif (check_color == 1 and check_corner == 0):
             final_score = color_variation_count
-
-        # print(f'Number of non-zero bins in color histogram: {color_variation_count}')
-        # print(f'Number of perpendicular lines: {perpendicular_lines_count}')
-        # print(f'Final Score: {final_score}')
 
         # Append image name and score to the list
         image_scores.append((img_name, final_score))

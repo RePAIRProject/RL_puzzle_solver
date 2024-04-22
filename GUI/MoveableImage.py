@@ -57,23 +57,17 @@ class MovableImage(Image):
         self.vx = self.x
         self.vy = self.y
 
-        self.ayd = self.get_ayd(self)
-
         # self.bind(pos=self.binding)
 
         # self.update()
         # opencv binary pic
 
-    def get_ayd(self, *args, **kwargs):
-        ayd = self.name  # remove .png
-        print("id: ", ayd)
-        return ayd
+    def get_id(self, *args, **kwargs):
+        return self.name
 
     def update_virtual_pos(self, *args, **kwargs):
         self.vx = self.x
         self.vy = self.y
-        print(self.vx)
-        print(self.vy)
         # self.center = (self.x + self.width / 2, self.y + self.height)
 
     def check_mask(self, point):
@@ -120,7 +114,7 @@ class MovableImage(Image):
             self.grid.add_widget(self.score_label)
 
     def remove_score(self):
-        self.grid.remove(self.score_label)
+        self.grid.remove_widget(self.score_label)
 
     def rotate(self, delta_angle):
         with self.canvas.before:
@@ -133,19 +127,18 @@ class MovableImage(Image):
             # self.canvas.before.add(self.rot)
             self.angle = self.angle+delta_angle
             self.angle = self.normalize_angle(self.angle)
-            print(self.angle)
         with self.canvas.after:
             PopMatrix()
 
     def translate(self, x, y):
+        x = float(x)
+        y = float(y)
         # Calculate the displacement from the object's current center to the target position
         dx = x - self.x
         dy = y - self.y
 
         # Convert the rotation angle to radians
         angle_rad = math.radians(self.angle)
-
-        print(angle_rad)
 
         # Rotate the translation vector (dx, dy) based on the current rotation angle
         new_dx = dx * math.cos(angle_rad) - dy * math.sin(angle_rad)
@@ -165,8 +158,11 @@ class MovableImage(Image):
         # self.rot.origin = self.center
         # self.rot.origin = self.center
 
-        print("x", dx, "y", dy)
-        print("new_dx", new_dx, "new_dy")
+    def update(self, position, ratio, *args, **kwargs):
+        x = position[0] / 60
+        y = position[1] / 60
+        self.translate(x, y)
+
 
     @staticmethod
     def normalize_angle(angle):
