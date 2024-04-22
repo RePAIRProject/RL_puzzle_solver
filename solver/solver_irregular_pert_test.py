@@ -36,7 +36,6 @@ def initialization_from_gt(args):
 
     puzzle_folder = os.path.join(dataset_folder, puzzle)
     general_files = os.listdir(puzzle_folder)
-    # solution_folders = [sol_fld for sol_fld in general_files if "solution" in sol_fld]
     with open(os.path.join(puzzle_folder, "ground_truth.json"), 'r') as gtj:
         ground_truth = json.load(gtj)
     with open(os.path.join(puzzle_folder, f"parameters_{puzzle}.json"), 'r') as gtj:
@@ -60,8 +59,6 @@ def initialization_from_gt(args):
     gt_shift = np.zeros([num_pcs, 3])
     gt_shift[:, 0:2] = gt_coord[:, 0:2] - anc_coord
     gt_shift[:, 2] = gt_coord[:, 2] - anc_rot
-    # print(f"GT non rotated in px :")
-    # print(gt_shift)
 
     all_rot = gt_shift[:, 2]
     all_rot = np.where(all_rot < 0, all_rot + 360, all_rot)
@@ -71,8 +68,6 @@ def initialization_from_gt(args):
     gt_yxz = np.zeros([num_pcs, 3])
     gt_yxz[:, 0:2] = np.round(gt_shift[:, 0:2] / xy_step)
     gt_yxz[:, 2] = gt_shift[:, 2] / theta_step
-    # print(f"GT non rotated in YX :")
-    # print(gt_yxz)
 
     # 3. Rotate GT according anchor rotation - CHECK!!!
     gt_rot = np.zeros([num_pcs, 3])
@@ -94,6 +89,7 @@ def initialization_from_gt(args):
     # Shift ALL coord to the center of the Reconstruction plane !!!!
     grid_size = args.p_pts
     p = np.zeros((grid_size, grid_size, no_rotations, num_pcs))
+    p_zyx = np.zeros((grid_size, grid_size, no_rotations, num_pcs))
 
     center_grid = round(grid_size/2)
     anc_position = [center_grid, center_grid, 0]
@@ -103,33 +99,37 @@ def initialization_from_gt(args):
 
     yy, xx = np.mgrid[0:grid_size:1, 0:grid_size:1]
     pos = np.dstack((yy, xx))
+
     pos_all = np.reshape(pos, (grid_size * grid_size, -1))
     pos3 = []
     for t in range(no_rotations):
-        pos_t = np.ones([pos_all.shape[0], 3])*t
+        tt = t
+        if t == 3:  # must be changed !!! igf num_rotation > 4
+            tt = 1  # hardcoded rotation -90 = 270, anchor is always rotated 0
+        pos_t = np.ones([pos_all.shape[0], 3])*tt
         pos_t[:, 0:2] = pos_all
-        if t == 0:
+        if tt == 0:
             pos3 = pos_t
         else:
             pos3 = np.concatenate((pos3, pos_t), axis=0)
 
     cov3 = [[sigma_y, 0, 0], [0, sigma_x, 0], [0, 0, 1]]
-    cov2 = [[sigma_y, 0], [0, sigma_x]]
+    # cov2 = [[sigma_y, 0], [0, sigma_x]]
 
     for j in range(num_pcs):
-        # mu3 = probability_centers[j, :]
-        mu2 = probability_centers[j, 0:2]
-        rv2 = multivariate_normal(mu2, cov2)
-        p_norm_j = rv2.pdf(pos)
+        # mu2 = probability_centers[j, 0:2]
+        # rv2 = multivariate_normal(mu2, cov2)
+        # p_norm_j = rv2.pdf(pos)
+        # for t in range(no_rotations):
+        #     if probability_centers[j,2] == t:
+        #         p[:, :, t, j] = p_norm_j
 
         mu3 = probability_centers[j, :]
         rv2 = multivariate_normal(mu3, cov3)
         p_norm3_j = rv2.pdf(pos3)
-        p_new = np.reshape(p_norm3_j, (4, grid_size, grid_size))
-
-        for t in range(no_rotations):
-            if probability_centers[j,2] == t:
-                p[:, :, t, j] = p_norm_j
+        p_zyx_j = np.reshape(p_norm3_j, (4, grid_size, grid_size))
+        p_reshape_j = np.moveaxis(p_zyx_j, 0, -1)
+        p[:, :, :, j] = p_reshape_j
 
     init_pos = np.zeros((num_pcs, 3)).astype(int)
     init_pos[anchor_id, :] = anc_position
@@ -350,25 +350,6 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, pp
 
     return fin_im
 
-
-# def select_anchor(folder):
-#     pieces_files = os.listdir(folder)
-#     json_files = [piece_file for piece_file in pieces_files if piece_file[-4:] == 'json']
-#     json_files.sort()
-#     n = len(json_files)
-#
-#     num_lines = np.zeros(n)
-#     for f in range(n):
-#         im = json_files[f]
-#         beta, R, s1, s2, b1, b2 = read_info(folder, im)
-#         num_lines[f] = len(beta)
-#
-#     mean_num_lines = np.round(np.mean(num_lines))
-#     good_anchors = np.array(np.where(num_lines > mean_num_lines))
-#     new_anc = np.random.choice(good_anchors[0, :], 1)
-#     return new_anc[0]
-
-
 #  MAIN
 def main(args):
 
@@ -492,10 +473,6 @@ def main(args):
     fin_sol = all_sol[f-1]
     # pdb.set_trace()
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
-    
-    # fin_im_v3 = reconstruct_puzzle_vis(fin_sol, pieces_folder, ppars, suffix='')
-    # alternative method for reconstruction (with transparency on overlap because of b/w image)
-    # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
 
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')
