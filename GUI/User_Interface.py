@@ -32,76 +32,57 @@ import time
 
 from MoveableImage import MovableImage
 
-# class GUI(Widget):
-#     pass
-# image_numbers = []
-file_names = []
-# scores = []
 Window.clearcolor = (0, 0, 0, 0)
 
-# Window.fullscreen = 'auto'
-
-
-# Window.borderless = True
-# Window.background_color = (1, 1, 1)
-
-# backEnd_path = "Images/RePAIR_plaque_2/top10/"
 backend_path = os.getcwd() + "/GUI/Images/RePAIR_plaque_2/"
+
 showed_image_list = []
 current_image_list = []
 neighbour_ids = []
+buttons = []
+file_names = []
 
 pl_solution = {}
 
-none_counter = 0
-keyboard_input = 0
-
 key_fragment_id = ""
 
-
-def image_reader(image_number, score, has_score):
-    path = file_names[image_number]
-    # print(file_names)
-    source = backend_path + "RGBA_merged/" + path
-
-    click_label.color = (1, 0, 1, 1)
-    image = MovableImage(source, click_label, score, image_number, has_score, path, 0)
-    # image.source = source
-    return image
-
-
-buttons = []
-
-
-class Image(Image):
-    def __init__(self):
-        super().__init__()
-        self.image_number = None
-
-    # def on_touch_down(self, touch):
-    #     if self.collide_point(*touch.pos):
-    #         click_label.text = str(self.image_number + 1)
-
-
-click_label = Label()
 image_is_set = False
 anchor_showed = False
 neighbour_showed = False
 solution_applied = False
 initial_image_updates = False
-ratio = 1
-
 hold_left = False
 checked_border = False
-time_stamp = 0
+test_thread_started = True
+
+communicate_thread_lock = threading.Lock()
+click_label = Label()
 
 grabbed_image = None
 key_image = None
+sorted_image_scores = None
+
+select_anchor_running = None
+select_neighbour_running = None
+pl_solver_running = None
+
+select_anchor_done = None
+select_neighbour_done = None
+pl_solver_done = None
+
+selected_pic = 0
+
+ratio = 1
+time_stamp = 0
+none_counter = 0
+keyboard_input = 0
+key_offset_x = 0
+key_offset_y = 0
+
+toolbar_color = 0  # 0 for light blue, -1 for red, 1 for green
 
 communication_freq = 0.25  # in seconds
 graphic_freq = 0.25  # in seconds
-
-selected_pic = 0
 
 
 class MainLayout(GridLayout):
@@ -113,6 +94,10 @@ class MainLayout(GridLayout):
 
 class GUIApp(MDApp):
     widget_list = []
+    global select_anchor_running
+    global toolbar_color
+    toolbar_bg = 0
+    global backend_path
 
     def build(self):
 
@@ -124,7 +109,8 @@ class GUIApp(MDApp):
         main_layout = MainLayout()
         main_layout.cols = 1
 
-        Window.bind(on_motion=self.on_touch_move, on_key_down=self._on_keyboard_down, on_key_up=self.on_keyboard_up)
+        Window.bind(on_motion=self.on_touch_move, on_key_down=self._on_keyboard_down, on_key_up=self.on_keyboard_up,
+                    on_resize=self.on_resize)
 
         main_layout.rows = 3
 
@@ -213,11 +199,6 @@ class GUIApp(MDApp):
         Clock.schedule_interval(self.checking_clock, graphic_freq)  # Graphic Internal Thread to communicate
         return the_layout
 
-    global select_anchor_running
-    global toolbar_color
-    toolbar_bg = 0
-    global backend_path
-
     @mainthread
     def set_images(self, has_score, *args, **kwargs):
         global backend_path
@@ -288,20 +269,17 @@ class GUIApp(MDApp):
         if touch.button == 'left':
             if not hold_left:
                 checked_border = False
-                for i in range(len(current_image_list)):
+                for image in current_image_list:
                     if not hasattr(touch, 'dragging') or not touch.dragging:
-                        if current_image_list[i].collide_point(mouse_pos[0], mouse_pos[1]):
+                        if image.collide_point(mouse_pos[0], mouse_pos[1]):
                             if not checked_border:
-                                width_height = (
-                                    (current_image_list[i].width - current_image_list[i].norm_image_size[0]) / 2,
-                                    (current_image_list[i].height - current_image_list[i].norm_image_size[1]) / 2)
-                                pixel = map_mouse_pos_pixel(current_image_list[i].pos,
-                                                            current_image_list[i].texture_size,
-                                                            current_image_list[i].get_norm_image_size(), mouse_pos,
-                                                            width_height)
+                                width_height = ((image.width - image.norm_image_size[0]) / 2,
+                                                (image.height - image.norm_image_size[1]) / 2)
+                                pixel = map_mouse_pos_pixel(image.pos, image.texture_size, image.get_norm_image_size(),
+                                                            mouse_pos, width_height)
 
-                                if current_image_list[i].check_mask(pixel):
-                                    grabbed_image = current_image_list[i]
+                                if image.check_mask(pixel):
+                                    grabbed_image = image
                                     checked_border = True
                                     break
                 if not checked_border:
@@ -362,6 +340,53 @@ class GUIApp(MDApp):
         keyboard_input = keyboard
 
     @mainthread
+    def on_resize(self, *args):
+        if (select_anchor_done is not None) & (select_neighbour_done is not None) & (pl_solver_done is not None):
+            if select_anchor_done & select_neighbour_done & pl_solver_done:
+                global pl_solution
+                global key_fragment_id
+                global key_image
+                global key_offset_x
+                global key_offset_y
+                center_x = (Window.size[0] / 2 - key_image.norm_image_size[
+                    0])  # Calculate the center of the window in x-axis
+                center_y = (Window.size[1] / 2 - key_image.norm_image_size[
+                    1])  # Calculate the center of the window in y-axis
+
+                print("center_x", center_x, "center_y", center_y)
+
+                for image in current_image_list:
+                    image_id = image.get_id()
+
+                    # Check if the image ID exists in pl_solution
+                    if image_id in pl_solution:
+                        positions = pl_solution[image_id]
+
+                        # If the image is the key fragment, calculate its offset from the center
+                        if image_id == key_fragment_id:
+                            position = np.array([positions[1], -1 * positions[0]])  # fix the coordinates
+                            key_offset_x = center_x - position[0]
+                            key_offset_y = center_y - position[1]
+                            break
+
+                print("key_offset_x", key_offset_x, "key_offset_y", key_offset_y)
+
+                for image in current_image_list:
+                    image_id = image.get_id()
+
+                    if image_id in pl_solution:
+                        positions = pl_solution[image_id]
+
+                        position = np.array([positions[1], -1 * positions[0]])  # fix the coordinates
+
+                        new_positions = np.array([position[0] + key_offset_x, position[1] + key_offset_y])
+                        print("image_id", image_id, "positions", new_positions)
+
+                        r = np.array([image.texture_size[0] / image.norm_image_size[0],
+                                      image.texture_size[1] / image.norm_image_size[1]])
+                        image.update(new_positions, r)
+
+    @mainthread
     def show_images(self, *args, **kwargs):
         global showed_image_list
         global current_image_list
@@ -388,30 +413,45 @@ class GUIApp(MDApp):
     @mainthread
     def apply_solution(self):
         global pl_solution
-        # for i in range(len(current_image_list)):
-        #     print(current_image_list[i].get_id())
-        # print("puzzle solver solution:", pl_solution)
-        # fragments = list(pl_solution.keys())
-        # for j in range(len(fragments)):
-        #     position = pl_solution[fragments[j]]
-        #     print("Puzzle solver", j, ":", fragments[j], "|   Value: ", position)
-        #     for k in range(len(position)):
-        #         print(position[k])
-        # current_image_list.update(position)
-        # Iterate over each image in current_image_list
+        global key_fragment_id
+        global key_image
+        global key_offset_x
+        global key_offset_y
+        center_x = (Window.size[0]/2 - key_image.norm_image_size[0])  # Calculate the center of the window in x-axis
+        center_y = (Window.size[1]/2 - key_image.norm_image_size[1])  # Calculate the center of the window in y-axis
+
+        print("center_x", center_x, "center_y", center_y)
+
         for image in current_image_list:
             image_id = image.get_id()
-            print(image_id)
 
             # Check if the image ID exists in pl_solution
             if image_id in pl_solution:
                 positions = pl_solution[image_id]
-                print("Positions for image", image_id, ":", positions)
 
-                # Update the image's position
-                image.update(positions, ratio)  # Assuming there's a method update_position for images
-            else:
-                print("No positions found for image", image_id)
+                # If the image is the key fragment, calculate its offset from the center
+                if image_id == key_fragment_id:
+                    position = np.array([positions[1], -1 * positions[0]])  # fix the coordinates
+                    key_offset_x = center_x - position[0]
+                    key_offset_y = center_y - position[1]
+                    break
+
+        print("key_offset_x", key_offset_x, "key_offset_y", key_offset_y)
+
+        for image in current_image_list:
+            image_id = image.get_id()
+
+            if image_id in pl_solution:
+                positions = pl_solution[image_id]
+
+                position = np.array([positions[1], -1 * positions[0]])  # fix the coordinates
+
+                new_positions = np.array([position[0] + key_offset_x, position[1] + key_offset_y])
+                print("image_id", image_id, "positions", new_positions)
+
+                r = np.array([image.texture_size[0] / image.norm_image_size[0],
+                              image.texture_size[1] / image.norm_image_size[1]])
+                image.update(new_positions, r)
 
     def checking_clock(self, *args, **kwargs):
         global selected_pic
@@ -441,6 +481,7 @@ class GUIApp(MDApp):
         elif ((Back_End.get_select_anchor_done()) & (Back_End.get_select_neighbour_done()) & neighbour_showed &
               Back_End.get_pl_solver_done() & (not solution_applied)):
             pl_solution = Back_End.get_pl_solution()
+            print(pl_solution)
             self.apply_solution()
             solution_applied = True
         if (time.time() - time_stamp > 1) and not initial_image_updates:
@@ -474,13 +515,6 @@ class GUIApp(MDApp):
         return
 
 
-sorted_image_scores = None
-
-test_thread_started = True
-
-communicate_thread_lock = threading.Lock()
-
-
 def start_select_anchor(self):
     global image_is_set
     image_is_set = False
@@ -510,17 +544,6 @@ def start_pl_solver(self):
     # image_is_set = False
     # current_image_list = []
     Back_End.start_pl_solver_thread()
-
-
-select_anchor_running = None
-select_neighbour_running = None
-pl_solver_running = None
-
-select_anchor_done = None
-select_neighbour_done = None
-pl_solver_done = None
-
-toolbar_color = 0  # 0 for light blue, -1 for red, 1 for green
 
 
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
@@ -580,6 +603,23 @@ def get_args():
                         help='data folder')
     answer = parser.parse_args()
     return answer
+
+
+def image_reader(image_number, score, has_score):
+    path = file_names[image_number]
+    # print(file_names)
+    source = backend_path + "RGBA_merged/" + path
+
+    click_label.color = (1, 0, 1, 1)
+    image = MovableImage(source, click_label, score, image_number, has_score, path, 0)
+    # image.source = source
+    return image
+
+
+class Image(Image):
+    def __init__(self):
+        super().__init__()
+        self.image_number = None
 
 
 if __name__ == '__main__':

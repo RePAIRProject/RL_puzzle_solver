@@ -155,14 +155,20 @@ class MovableImage(Image):
         # Update the object's center position
         self.x += new_dx
         self.y += new_dy
+        self.update_virtual_pos()
         # self.rot.origin = self.center
         # self.rot.origin = self.center
 
     def update(self, position, ratio, *args, **kwargs):
-        x = position[0] / 60
-        y = position[1] / 60
+        x = position[0] / ratio[0]
+        y = position[1] / ratio[1]
+        # x = position[0]
+        # y = position[1]
         self.translate(x, y)
+        # self.rotate(90)
 
+    def pure_update(self):
+        self.translate(self.vx, self.vy)
 
     @staticmethod
     def normalize_angle(angle):
