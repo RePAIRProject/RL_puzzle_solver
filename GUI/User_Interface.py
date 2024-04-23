@@ -3,13 +3,9 @@ import os
 from kivy import Config
 from kivy.clock import Clock, mainthread
 from kivymd.app import MDApp
-import cv2
 import argparse
 import numpy as np
-from kivy.graphics import Rotate, PopMatrix, PushMatrix
-from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
-from kivy.uix.widget import Widget
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
@@ -17,12 +13,7 @@ from kivy.uix.label import Label
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.toolbar import MDTopAppBar
 
-from shapely.geometry import Point, Polygon
-from point_Inside import is_inside_sm
-
 from kivy.core.window import Window
-
-import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
 
 import Back_End
 from select_anchor_RePAIR import get_backend_path
@@ -573,12 +564,6 @@ def image_reader(image_number, score, has_score):
     image = MovableImage(source, click_label, score, image_number, has_score, path, 0)
     # image.source = source
     return image
-
-
-class Image(Image):
-    def __init__(self):
-        super().__init__()
-        self.image_number = None
 
 
 if __name__ == '__main__':
