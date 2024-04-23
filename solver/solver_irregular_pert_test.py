@@ -465,7 +465,7 @@ def main(args):
     print("Done! Saving in", solution_folder)
 
     # SAVE THE MATRIX BEFORE ANY VISUALIZATION
-    filename = os.path.join(solution_folder, f'p_final_sigma{args.sigma}')
+    filename = os.path.join(solution_folder, f'p_final_anchor{anc}_sigma{args.sigma}')
     mdic = {"p_final": p_final, "label": "label", "anchor": anc, "anc_position": anc_position}
     savemat(f'{filename}.mat', mdic)
     np.save(filename, mdic)
@@ -507,7 +507,7 @@ def main(args):
     plt.savefig(final_solution_anchor)
     plt.close()
 
-    alc_path = os.path.join(solution_folder, f'alc_plot_sigma{args.sigma}.png')
+    alc_path = os.path.join(solution_folder, f'alc_plot_anchor{anc}_sigma{args.sigma}.png')
     f = len(all_pay)
     f_pay = []
     for ff in range(f):
