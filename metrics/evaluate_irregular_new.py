@@ -136,10 +136,12 @@ def main(args):
 
                 print(">>> EVALUATION <<<")
                 k_tol = 2     # tolerance shift 2 steps or more?
+                errors_xyz = np.sum(np.abs(gt_rot - fin_sol) <= k_tol, axis=1) == 3  # accuracy position and rotation
                 errors_xy = np.sum(np.abs(gt_rot[:, 0:2]-fin_sol[:, 0:2]) <= k_tol, axis=1) == 2
                 errors_px = np.sum(np.abs(gt_rot_px[:, 0:2]-fin_sol_px[:, 0:2]) <= (k_tol*cmp_parameters['xy_step']), axis=1) == 2
                 errors_rot = (gt_rot[:,2] == fin_sol[:,2])
 
+                Dir_accur_xyz = np.round(np.mean(errors_xyz), 2)  # accuracy position and rotation
                 Dir_accur_xy = np.round(np.mean(errors_xy),2)
                 Dir_accur_px = np.round(np.mean(errors_px),2)
                 Dir_accur_rot = np.round(np.mean(errors_rot),2)
@@ -149,6 +151,7 @@ def main(args):
                 mean_rot_err =np.round(1 -Dir_accur_rot, 2)
 
                 evaluation_dict = {
+                    'correct_on_xyz': Dir_accur_xyz,   # accuracy position and rotation
                     'correct_in_PX_dist': Dir_accur_px,
                     'correct_on_rot': Dir_accur_rot,
                     'correct_on_xy': Dir_accur_xy,
