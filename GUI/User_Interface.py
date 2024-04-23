@@ -343,48 +343,7 @@ class GUIApp(MDApp):
     def on_resize(self, *args):
         if (select_anchor_done is not None) & (select_neighbour_done is not None) & (pl_solver_done is not None):
             if select_anchor_done & select_neighbour_done & pl_solver_done:
-                global pl_solution
-                global key_fragment_id
-                global key_image
-                global key_offset_x
-                global key_offset_y
-                center_x = (Window.size[0] / 2 - key_image.norm_image_size[
-                    0])  # Calculate the center of the window in x-axis
-                center_y = (Window.size[1] / 2 - key_image.norm_image_size[
-                    1])  # Calculate the center of the window in y-axis
-
-                print("center_x", center_x, "center_y", center_y)
-
-                for image in current_image_list:
-                    image_id = image.get_id()
-
-                    # Check if the image ID exists in pl_solution
-                    if image_id in pl_solution:
-                        positions = pl_solution[image_id]
-
-                        # If the image is the key fragment, calculate its offset from the center
-                        if image_id == key_fragment_id:
-                            position = np.array([positions[1], -1 * positions[0]])  # fix the coordinates
-                            key_offset_x = center_x - position[0]
-                            key_offset_y = center_y - position[1]
-                            break
-
-                print("key_offset_x", key_offset_x, "key_offset_y", key_offset_y)
-
-                for image in current_image_list:
-                    image_id = image.get_id()
-
-                    if image_id in pl_solution:
-                        positions = pl_solution[image_id]
-
-                        position = np.array([positions[1], -1 * positions[0]])  # fix the coordinates
-
-                        new_positions = np.array([position[0] + key_offset_x, position[1] + key_offset_y])
-                        print("image_id", image_id, "positions", new_positions)
-
-                        r = np.array([image.texture_size[0] / image.norm_image_size[0],
-                                      image.texture_size[1] / image.norm_image_size[1]])
-                        image.update(new_positions, r)
+                self.apply_solution()
 
     @mainthread
     def show_images(self, *args, **kwargs):
@@ -417,8 +376,8 @@ class GUIApp(MDApp):
         global key_image
         global key_offset_x
         global key_offset_y
-        center_x = (Window.size[0]/2 - key_image.norm_image_size[0])  # Calculate the center of the window in x-axis
-        center_y = (Window.size[1]/2 - key_image.norm_image_size[1])  # Calculate the center of the window in y-axis
+        center_x = (Window.size[0] / 2)  # Calculate the center of the window in x-axis
+        center_y = (Window.size[1] / 2)  # Calculate the center of the window in y-axis
 
         print("center_x", center_x, "center_y", center_y)
 

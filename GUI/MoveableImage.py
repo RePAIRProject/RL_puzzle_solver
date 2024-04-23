@@ -160,8 +160,8 @@ class MovableImage(Image):
         # self.rot.origin = self.center
 
     def update(self, position, ratio, *args, **kwargs):
-        x = position[0] / ratio[0]
-        y = position[1] / ratio[1]
+        x = position[0] / ratio[0] - self.width * 0.5 / ratio[1]
+        y = position[1] / ratio[1] - self.height * 0.5 / ratio[1]
         # x = position[0]
         # y = position[1]
         self.translate(x, y)
