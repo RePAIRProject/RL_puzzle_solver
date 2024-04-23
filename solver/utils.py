@@ -7,9 +7,9 @@ class CfgParameters(dict):
 
 def default_cfg():
     cfg = CfgParameters()
-    cfg['Tfirst'] = 100
-    cfg['Tnext'] = 1000
-    cfg['Tmax'] = 2000
+    cfg['Tfirst'] = 50
+    cfg['Tnext'] = 75
+    cfg['Tmax'] = 100
     cfg['anc_fix_tresh'] = 0.55
     return cfg
 
