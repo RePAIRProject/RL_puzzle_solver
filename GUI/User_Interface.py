@@ -22,6 +22,7 @@ import threading
 import time
 
 from MoveableImage import MovableImage
+from RotatingImage import RotatingImage
 
 Window.clearcolor = (0, 0, 0, 0)
 
@@ -262,15 +263,16 @@ class GUIApp(MDApp):
                 checked_border = False
                 for image in current_image_list:
                     if not hasattr(touch, 'dragging') or not touch.dragging:
-                        if image.collide_point(mouse_pos[0], mouse_pos[1]):
+                        if image.collides(mouse_pos[0], mouse_pos[1]):
                             if not checked_border:
                                 width_height = ((image.width - image.norm_image_size[0]) / 2,
                                                 (image.height - image.norm_image_size[1]) / 2)
-                                pixel = map_mouse_pos_pixel(image.pos, image.texture_size, image.get_norm_image_size(),
-                                                            mouse_pos, width_height)
+                                pixel = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
+                                                            image.get_norm_image_size(), mouse_pos, width_height)
 
                                 if image.check_mask(pixel):
                                     grabbed_image = image
+                                    grabbed_image.update_translate()
                                     checked_border = True
                                     break
                 if not checked_border:
@@ -279,10 +281,12 @@ class GUIApp(MDApp):
                 if grabbed_image is not None and checked_border:
                     if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
                         # Store the offset between touch position and widget position
-                        touch.offset_x = mouse_pos[0] - grabbed_image.x
-                        touch.offset_y = mouse_pos[1] - grabbed_image.y
+                        touch.offset_x = mouse_pos[0] - grabbed_image.get_real_pos()[0]
+                        touch.offset_y = mouse_pos[1] - grabbed_image.get_real_pos()[1]
                         # grabbed_image.translate(touch.offset_x, touch.offset_y)
                     grabbed_image.translate(mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
+
+                    # grabbed_image.refresh()
 
                     # grabbed_image.x = mouse_pos[0] - touch.offset_x
                     # grabbed_image.y = mouse_pos[1] - touch.offset_y
@@ -412,6 +416,9 @@ class GUIApp(MDApp):
         global pl_solution
         communicate_thread_lock.acquire()
         self.toolbar_changes(toolbar_color)
+        # for image in current_image_list:
+        #     image.refresh()
+            # image.set_center_point((300, 300))
         clicked = click_label.text
         if (clicked.isdigit()) & (selected_pic == 0):
             self.widget_list[4].disabled = False
@@ -431,7 +438,6 @@ class GUIApp(MDApp):
         elif ((Back_End.get_select_anchor_done()) & (Back_End.get_select_neighbour_done()) & neighbour_showed &
               Back_End.get_pl_solver_done() & (not solution_applied)):
             pl_solution = Back_End.get_pl_solution()
-            print(pl_solution)
             self.apply_solution()
             solution_applied = True
         if (time.time() - time_stamp > 1) and not initial_image_updates:
@@ -562,6 +568,9 @@ def image_reader(image_number, score, has_score):
 
     click_label.color = (1, 0, 1, 1)
     image = MovableImage(source, click_label, score, image_number, has_score, path, 0)
+    # image = RotatingImage(source, (300, 300))
+    # image = RotatingImage(source)
+
     # image.source = source
     return image
 

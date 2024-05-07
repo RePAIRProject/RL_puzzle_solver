@@ -50,12 +50,26 @@ class MovableImage(Image):
         self.rot.origin = self.center
 
         self.trans = Translate(0, 0)
+        self.trans_bank = (self.trans.x, self.trans.y)
 
         self.total_delta_x = 0
         self.total_delta_y = 0
 
         self.vx = self.x
         self.vy = self.y
+        self.vtop = self.top
+        self.vright = self.right
+
+        with self.canvas.before:
+            PushMatrix()
+            # self.canvas.before.add(PushMatrix())
+            self.trans = Translate(0, 0)
+            self.rot = Rotate(self.rot.origin, self.rot.angle)
+
+        with self.canvas.after:
+            PopMatrix()
+
+
 
         # self.bind(pos=self.binding)
 
@@ -68,6 +82,8 @@ class MovableImage(Image):
     def update_virtual_pos(self, *args, **kwargs):
         self.vx = self.x
         self.vy = self.y
+        self.vtop = self.top
+        self.vright = self.right
         # self.center = (self.x + self.width / 2, self.y + self.height)
 
     def check_mask(self, point):
@@ -117,47 +133,58 @@ class MovableImage(Image):
         self.grid.remove_widget(self.score_label)
 
     def rotate(self, delta_angle):
-        with self.canvas.before:
-            PushMatrix()
-            # self.canvas.before.add(PushMatrix())
-            self.rot = Rotate(self.rot.origin, self.rot.angle)
-            self.rot.origin = self.center
-            self.rot.angle = delta_angle
-            self.rot.axis = (0, 0, 1)
-            # self.canvas.before.add(self.rot)
-            self.angle = self.angle+delta_angle
-            self.angle = self.normalize_angle(self.angle)
-        with self.canvas.after:
-            PopMatrix()
+        self.rot.origin = self.center
+        self.rot.angle += delta_angle
+        self.rot.axis = (0, 0, 1)
+        # self.canvas.before.add(self.rot)
+        self.angle = self.angle + delta_angle
+        self.angle = self.normalize_angle(self.angle)
+        print(self.canvas.children)
 
     def translate(self, x, y):
-        x = float(x)
-        y = float(y)
-        # Calculate the displacement from the object's current center to the target position
-        dx = x - self.x
-        dy = y - self.y
+        # x = float(x)
+        # y = float(y)
+        # # Calculate the displacement from the object's current center to the target position
+        # dx = x - self.x
+        # dy = y - self.y
+        #
+        # # Convert the rotation angle to radians
+        # angle_rad = math.radians(self.angle)
+        #
+        # # Rotate the translation vector (dx, dy) based on the current rotation angle
+        # new_dx = dx * math.cos(angle_rad) - dy * math.sin(angle_rad)
+        # new_dy = dx * math.sin(angle_rad) + dy * math.cos(angle_rad)
+        #
+        # # # Scale the translation vector to compensate for the rotation
+        # # scale_factor = math.cos(angle_rad)
+        # # new_dx *= scale_factor
+        # # new_dy *= scale_factor
+        #
+        # new_dx = round(new_dx, 10)
+        # new_dy = round(new_dy, 10)
+        #
+        # # Update the object's center position
+        # self.x += new_dx
+        # self.y += new_dy
+        # self.update_virtual_pos()
+        # # self.rot.origin = self.center
+        # # self.rot.origin = self.center
+        self.trans.x = x - self.pos[0]
+        self.trans.y = y - self.pos[1]
+        self.trans_bank = (self.trans.x, self.trans.y)
+        print("pos", self.pos, "trans", self.trans.x, self.trans.y)
 
-        # Convert the rotation angle to radians
-        angle_rad = math.radians(self.angle)
+    def update_translate(self):
+        self.trans.x = self.trans_bank[0]
+        self.trans.y = self.trans_bank[1]
 
-        # Rotate the translation vector (dx, dy) based on the current rotation angle
-        new_dx = dx * math.cos(angle_rad) - dy * math.sin(angle_rad)
-        new_dy = dx * math.sin(angle_rad) + dy * math.cos(angle_rad)
+    def get_real_pos(self):
+        real_pos = (self.pos[0] + self.trans.x, self.pos[1] + self.trans.y)
+        return real_pos
 
-        # # Scale the translation vector to compensate for the rotation
-        # scale_factor = math.cos(angle_rad)
-        # new_dx *= scale_factor
-        # new_dy *= scale_factor
-
-        new_dx = round(new_dx, 10)
-        new_dy = round(new_dy, 10)
-
-        # Update the object's center position
-        self.x += new_dx
-        self.y += new_dy
-        self.update_virtual_pos()
-        # self.rot.origin = self.center
-        # self.rot.origin = self.center
+    def collides(self, x, y):
+        return self.collide_point(x - self.trans.x, y - self.trans.y)
+        # return self.x <= x <= self.right and self.y <= y - self.trans.y <= self.top
 
     def update(self, position, ratio, *args, **kwargs):
         x = position[0] / ratio[0] - self.width * 0.5 / ratio[1]
@@ -180,8 +207,9 @@ class MovableImage(Image):
         self.y = y
         # self.center = self.x + (self.width / 2, self.height / 2)
 
-    def move(self):
-        pass
+    def move(self, x, y, *args, **kwargs):
+        self.x = x
+        self.y = y
 
     def get_scatter(self):
         return self.scatter
