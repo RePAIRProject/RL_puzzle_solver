@@ -102,6 +102,7 @@ class MovableImage(Image):
 
     def extract_cv_image(self):
         image_bw = cv2.imread(self.path_bw, cv2.IMREAD_GRAYSCALE)
+        # cv2 image for pixel
         return image_bw
 
     def extract_border_polygons(self):
