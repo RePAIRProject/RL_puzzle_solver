@@ -104,8 +104,8 @@ def initialization_from_gt(args):
     pos3 = []
     for t in range(no_rotations):
         tt = t
-        if t == 3:  # must be changed !!! igf num_rotation > 4
-            tt = 1  # hardcoded rotation -90 = 270, anchor is always rotated 0
+        #if t == 3:  # must be changed !!! igf num_rotation > 4
+        #    tt = 1  # hardcoded rotation -90 = 270, anchor is always rotated 0
         pos_t = np.ones([pos_all.shape[0], 3])*tt
         pos_t[:, 0:2] = pos_all
         if tt == 0:
@@ -116,6 +116,7 @@ def initialization_from_gt(args):
     cov3 = [[sigma_y, 0, 0], [0, sigma_x, 0], [0, 0, 1]]
     # cov2 = [[sigma_y, 0], [0, sigma_x]]
 
+    pos_all = np.reshape(pos, (grid_size * grid_size, -1))
     for j in range(num_pcs):
         # mu2 = probability_centers[j, 0:2]
         # rv2 = multivariate_normal(mu2, cov2)
@@ -123,8 +124,22 @@ def initialization_from_gt(args):
         # for t in range(no_rotations):
         #     if probability_centers[j,2] == t:
         #         p[:, :, t, j] = p_norm_j
-
         mu3 = probability_centers[j, :]
+        pos3 = []
+        for t in range(no_rotations):
+            tt = t
+            if mu3[2] == 0 and t == 3:
+                tt = 1  # hardcoded rotation -90 = 270
+            if mu3[2] == 3 and t == 0:
+                tt = 2
+            pos_t = np.ones([pos_all.shape[0], 3]) * tt
+            pos_t[:, 0:2] = pos_all
+            if t == 0:
+                pos3 = pos_t
+            else:
+                pos3 = np.concatenate((pos3, pos_t), axis=0)
+            #pos3 = np.concatenate((pos3, pos_t), axis=0)
+
         rv2 = multivariate_normal(mu3, cov3)
         p_norm3_j = rv2.pdf(pos3)
         p_zyx_j = np.reshape(p_norm3_j, (4, grid_size, grid_size))
@@ -132,12 +147,13 @@ def initialization_from_gt(args):
         p[:, :, :, j] = p_reshape_j
 
     # "Flat" distribution - NEW
-    # quant = np.median(p)
+
+    #if args.quantile > 0:
     quant = np.max(p) * 0.5
     for j in range(num_pcs):
         p_temp_j = p[:, :, :, j]
         p_temp_j = np.where((p_temp_j < quant), 0, 1)
-        p_temp_j= p_temp_j/np.sum(p_temp_j)
+        p_temp_j = p_temp_j/np.sum(p_temp_j)
         p[:, :, :, j] = p_temp_j
 
     # place initial anchor
@@ -563,7 +579,7 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne', help='dataset folder')
+    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne_10px', help='dataset folder')
     parser.add_argument('--puzzle', type=str, default='image_00000_1', help='puzzle folder')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation')  # LAP, LCI
@@ -578,7 +594,8 @@ if __name__ == '__main__':
     parser.add_argument('--p_pts', type=int, default=15, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=8, help='decimal after comma when cutting payoff')
     parser.add_argument('--anchor', type=int, default=1, help='anchor piece (index)')
-    parser.add_argument('--sigma', type=int, default=2, help='norm_dist_sigma same for x and y, mu=GT; z assume to have uniform_dist')
+    parser.add_argument('--sigma', type=int, default=2, help='norm_dist_sigma same for x and y, mu=GT; sigma_z = 1 ')
+    parser.add_argument('--quantile', type=int, default=0.5, help='quantile level to transform norm. distribution into "flat" distribution')
 
     args = parser.parse_args()
 
