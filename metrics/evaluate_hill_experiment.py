@@ -27,7 +27,7 @@ def main(args):
         print(f"Now on {puzzle}")
         # check what we have
         puzzle_folder = os.path.join(dataset_folder, puzzle)
-        solution_folder = os.path.join(puzzle_folder, 'solution_pert_test_rot4')
+        solution_folder = os.path.join(puzzle_folder, 'solution_pert_FLAT_test_rot4')
         print(solution_folder)
 
         if os.path.exists(solution_folder):
@@ -182,7 +182,7 @@ def main(args):
                 #     json.dump(evaluation_dict, ej, indent=3)
 
             print(f"Done with image {solution_folder} of {puzzle}")
-            np.savetxt(os.path.join(puzzle_folder, f'evaluation_{puzzle}.csv'), res, delimiter=",")
+            np.savetxt(os.path.join(puzzle_folder, f'evaluation_FLAT_{puzzle}.csv'), res, delimiter=",")
         else:
             print("no solution found, skipping")
 
