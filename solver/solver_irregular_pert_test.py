@@ -131,6 +131,16 @@ def initialization_from_gt(args):
         p_reshape_j = np.moveaxis(p_zyx_j, 0, -1)
         p[:, :, :, j] = p_reshape_j
 
+    # "Flat" distribution - NEW
+    # quant = np.median(p)
+    quant = np.max(p) * 0.5
+    for j in range(num_pcs):
+        p_temp_j = p[:, :, :, j]
+        p_temp_j = np.where((p_temp_j < quant), 0, 1)
+        p_temp_j= p_temp_j/np.sum(p_temp_j)
+        p[:, :, :, j] = p_temp_j
+
+    # place initial anchor
     init_pos = np.zeros((num_pcs, 3)).astype(int)
     init_pos[anchor_id, :] = anc_position
 
@@ -553,7 +563,7 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne_10px', help='dataset folder')
+    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne', help='dataset folder')
     parser.add_argument('--puzzle', type=str, default='image_00000_1', help='puzzle folder')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation')  # LAP, LCI
