@@ -21,8 +21,9 @@ from select_anchor_RePAIR import get_backend_path
 import threading
 import time
 
+import PuzzlePiece
+
 from MoveableImage import MovableImage
-from RotatingImage import RotatingImage
 
 Window.clearcolor = (0, 0, 0, 0)
 
@@ -273,7 +274,8 @@ class GUIApp(MDApp):
                                 if image.check_mask(pixel):
                                     grabbed_image = image
                                     grabbed_image.update_translate()
-                                    checked_border = True
+                                    print("grabbed image: ", grabbed_image.texture_size, "here", grabbed_image.height)
+                                    checked_border = True  # /todo
                                     break
                 if not checked_border:
                     grabbed_image = None
@@ -540,7 +542,9 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
 
 def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_height):
     global ratio
+
     ratio = (image_pixel[0] / image_size[0], image_pixel[1] / image_size[1])
+    # ratio = (1.0, 1.0)
 
     relative_pos = (mouse_pos[0] - image_pos[0] - width_height[0], mouse_pos[1] - image_pos[1] - width_height[1])
     reality_pixel = (relative_pos[0] * ratio[0], relative_pos[1] * ratio[1])

@@ -11,6 +11,7 @@ from point_Inside import is_inside_sm
 from os import getcwd
 
 import cv2
+from PuzzlePiece import PuzzlePiece
 
 
 class MovableImage(Image):
@@ -37,6 +38,8 @@ class MovableImage(Image):
 
         self.grid.add_widget(self)
         self.has_score = has_score
+
+        self.puzzle_piece = PuzzlePiece(self.name)
 
         self.score_label = Label()
         self.backend_path = getcwd() + "/GUI/Images/RePAIR_plaque_2/"
@@ -88,7 +91,8 @@ class MovableImage(Image):
 
     def check_mask(self, point):
         try:
-            check = self.image_bw[int(point[0]), int(point[1])]
+            check = self.image_bw[-1 * int(point[1]), int(point[0])]
+            # The real image and the coordinate system of here are not really matching... /todo
             if check == 0:
                 return False
             return True
@@ -140,7 +144,7 @@ class MovableImage(Image):
         # self.canvas.before.add(self.rot)
         self.angle = self.angle + delta_angle
         self.angle = self.normalize_angle(self.angle)
-        print(self.canvas.children)
+        print(self.angle)
 
     def translate(self, x, y):
         # x = float(x)
