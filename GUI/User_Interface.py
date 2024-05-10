@@ -269,12 +269,14 @@ class GUIApp(MDApp):
                                 width_height = ((image.width - image.norm_image_size[0]) / 2,
                                                 (image.height - image.norm_image_size[1]) / 2)
                                 pixel = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
-                                                            image.get_norm_image_size(), mouse_pos, width_height)
+                                                            image.get_norm_image_size(), mouse_pos, width_height,
+                                                            (image.texture_size[0]/image.norm_image_size[0]),
+                                                            (image.texture_size[1]/image.norm_image_size[1]))
 
                                 if image.check_mask(pixel):
                                     grabbed_image = image
                                     grabbed_image.update_translate()
-                                    print("grabbed image: ", grabbed_image.texture_size, "here", grabbed_image.height)
+                                    print("grabbed image: ", grabbed_image.texture_size, "here", grabbed_image.norm_image_size)
                                     checked_border = True  # /todo
                                     break
                 if not checked_border:
@@ -540,10 +542,14 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         time.sleep(communication_freq)  # Thread sleep timerfasd
 
 
-def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_height):
+def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_height, ratio_x, ratio_y):
     global ratio
 
-    ratio = (image_pixel[0] / image_size[0], image_pixel[1] / image_size[1])
+    ratio = (ratio_x, ratio_y)
+    print(ratio)
+    #
+    # ratio = (image_pixel[0] / image_size[0], image_pixel[1] / image_size[1])
+    # print(ratio)
     # ratio = (1.0, 1.0)
 
     relative_pos = (mouse_pos[0] - image_pos[0] - width_height[0], mouse_pos[1] - image_pos[1] - width_height[1])
