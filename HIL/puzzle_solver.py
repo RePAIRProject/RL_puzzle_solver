@@ -73,8 +73,8 @@ def assemble(fragments_list, return_solution_as='dict'):
     # R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
     # R = R[:, :, :, :, pieces_to_include]
     # if you want rotation which you shouldn't
-    R = R[:, :, 0:2, pieces_to_include, :]  # re-arrange R-matrix
-    R = R[:, :, 0:2, :, pieces_to_include]
+    R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
+    R = R[:, :, :, :, pieces_to_include]  # 0:4 works best for group 28
 
     anchor = pieces_to_include.index(anchor)
 

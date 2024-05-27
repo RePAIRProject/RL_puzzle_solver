@@ -2,8 +2,10 @@ import numpy as np
 from scipy.ndimage import rotate
 import cv2 as cv 
 
+
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
+
 
 def default_cfg():
     cfg = CfgParameters()
@@ -12,6 +14,7 @@ def default_cfg():
     cfg['Tmax'] = 100
     cfg['anc_fix_tresh'] = 0.55
     return cfg
+
 
 def solve_puzzle(R, anchor, pieces_names, ppars, return_as='dict'):
 
@@ -35,6 +38,7 @@ def solve_puzzle(R, anchor, pieces_names, ppars, return_as='dict'):
     else:
         print(f"Return type {return_as} not implemented - returning as a list")
         return fin_sol
+
 
 def initialization(R, anc, p_size=0):
     z0 = 0  # rotation for anchored patch
@@ -66,6 +70,7 @@ def initialization(R, anc, p_size=0):
     init_pos[anc, :] = ([y0, x0, z0])
 
     return p, init_pos, x0, y0, z0
+
 
 def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
     R = np.maximum(R, -1)
@@ -160,12 +165,17 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
     p_final = p
     return all_pay, all_sol, all_anc, p_final, eps, iter, na_new
 
+
 def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
     no_rotations = R.shape[2]
+    # no_rotations = 4
+    print("No_Rotations", no_rotations)
     no_patches = R.shape[3]
     payoff = np.zeros(T+1)
     z_st = 360 / no_rotations
     z_rot = np.arange(0, 360 - z_st + 1, z_st)
+    # z_rot = np.arange(0., 4.)
+    print("z_rot", z_rot)
     t = 0
     eps = np.inf
     while t < T and eps > 0:
