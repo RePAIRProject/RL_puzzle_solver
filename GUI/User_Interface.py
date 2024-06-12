@@ -2,6 +2,8 @@ import os
 
 from kivy import Config
 from kivy.clock import Clock, mainthread
+from kivy.uix.scatter import Scatter
+from kivy.uix.scatterlayout import ScatterLayout
 from kivymd.app import MDApp
 import argparse
 import numpy as np
@@ -87,18 +89,18 @@ class MainLayout(GridLayout):
 
 class GUIApp(MDApp):
     widget_list = []
+    widget_dict = {}
     global select_anchor_running
     global toolbar_color
     toolbar_bg = 0
     global backend_path
+    grid_layout = GridLayout()
 
     def build(self):
 
-        # graphic_thread = threading.Thread(target=self.graphic_thread, daemon=True)
-        # graphic_thread.start()
-
         the_app = self
         the_layout = MDBoxLayout(md_bg_color=(0, 0, 0, 1))
+        # the_layout = Scatter()
         main_layout = MainLayout()
         main_layout.cols = 1
 
@@ -128,15 +130,6 @@ class GUIApp(MDApp):
         pl_solver_button.bind(on_press=start_pl_solver)
         pl_solver_button.size_hint_x = 0.5
 
-        # show_button.bind(on_press=self)
-
-        # toolbar_layout = GridLayout()
-        # toolbar_layout.cols = 1
-        # toolbar_layout.rows = 2
-        # toolbar_layout.add_widget(anchor_button)
-        # toolbar_layout.add_widget(show_button)
-        # toolbar.add_widget(toolbar_layout)
-
         toolbar.left_action_items.append(["menu", lambda x: the_app.callback()])
 
         toolbar.add_widget(pl_solver_button)
@@ -144,7 +137,6 @@ class GUIApp(MDApp):
         toolbar.add_widget(anchor_button)
         toolbar.add_widget(show_button)
 
-        # main_layout.size_hint = (1, 1)
         main_layout.minimum_height = 1
 
         click_label.text = "Click on the pictures"
@@ -156,31 +148,7 @@ class GUIApp(MDApp):
 
         main_layout.add_widget(grid_layout)
         main_layout.add_widget(click_label)
-        # grid_layout.col_force_default = 10000
-        # widget = Widget()
-        # widget.add_widget(grid_layout)
 
-        # grid_layout.add_widget(click_label)
-
-        # for i in range(len(image_numbers)):
-        #     score_label = Label()
-        #     buttons.append(score_label)
-        #     score_label.color = (1, 0, 0, 1)
-        #     score_label.text = str(scores[i])
-        #
-        #     image = image_reader(i, scores[i])
-        #
-        #     grid_layout.add_widget(image.get_grid())
-
-        # for i in range(10):
-        #     button = Button()
-        #     button.text = str(i + 1)
-        #     button.height = 1000
-        #     button.width = 1000
-        #
-        #     grid_layout.add_widget(button)
-        # grid_layout.add_widget(button)
-        # grid_layout.add_widget(widget)
         neighbour_button.disabled = True
         the_layout.add_widget(main_layout)
         self.widget_list.append(toolbar)  # 0 toolbar
@@ -188,6 +156,13 @@ class GUIApp(MDApp):
         self.widget_list.append(show_button)  # 2 show_button
         self.widget_list.append(grid_layout)  # 3 image_view
         self.widget_list.append(neighbour_button)  # 4 neighbour_button
+
+        self.widget_dict.update({'grid_layout': grid_layout})
+        self.widget_dict.update({'toolbar': toolbar})
+        self.widget_dict.update({'anchor_button': anchor_button})
+        self.widget_dict.update({'show_button': show_button})
+        self.widget_dict.update({'neighbour_button': neighbour_button})
+        self.widget_dict.update({'main_layout': main_layout})
 
         Clock.schedule_interval(self.checking_clock, graphic_freq)  # Graphic Internal Thread to communicate
         return the_layout
@@ -210,7 +185,7 @@ class GUIApp(MDApp):
             Back_End.image_numbers += 1
             scores.append(0)
         for i in range(Back_End.image_numbers):
-            # print(i)
+
             image = image_reader(i, scores[i], has_score)
             # image.fit_mode = "contain"
             current_image_list.append(image)
@@ -290,41 +265,24 @@ class GUIApp(MDApp):
                         # grabbed_image.translate(touch.offset_x, touch.offset_y)
                     grabbed_image.translate(mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
 
-                    # grabbed_image.refresh()
-
-                    # grabbed_image.x = mouse_pos[0] - touch.offset_x
-                    # grabbed_image.y = mouse_pos[1] - touch.offset_y
                     if (not select_anchor_running) and (not select_neighbour_running) and (not select_neighbour_done):
                         key_fragment_id = str(grabbed_image.get_id())
                         key_image = grabbed_image
                     click_label.text = str(grabbed_image.get_number() + 1)
+                else:
+                    grid_layout = self.widget_dict['grid_layout']
+                    if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
+                        # Store the initial touch position
+                        touch.offset_x = mouse_pos[0]
+                        touch.offset_y = mouse_pos[1]
 
-            #     for i in range(len(current_image_list)):
-            #         if not hasattr(touch, 'dragging') or not touch.dragging:
-            #             if current_image_list[i].collide_point(mouse_pos[0], mouse_pos[1]):
-            #                 grabbed_image = current_image_list[i]
-            #                 if not hasattr(touch, 'checked_border') or not touch.checked_border:
-            #                     width_height = ((grabbed_image.width - grabbed_image.norm_image_size[0]) / 2,
-            #                                     (grabbed_image.height - grabbed_image.norm_image_size[1]) / 2)
-            #                     pixel = map_mouse_pos_pixel(grabbed_image.pos, grabbed_image.texture_size,
-            #                                                 grabbed_image.get_norm_image_size(), mouse_pos, width_height)
-            #
-            #                     if check_border(pixel, grabbed_image.get_path()):
-            #                         touch.checked_border = True
-            #                     else:
-            #                         # Skip dragging if border check fails
-            #                         break
-            #         touch.dragging = True
-            #
-            #         if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
-            #             # Store the offset between touch position and widget position
-            #             touch.offset_x = mouse_pos[0] - grabbed_image.x
-            #             touch.offset_y = mouse_pos[1] - grabbed_image.y
-            # else:
-            #     if not (grabbed_image is None):
-            #         grabbed_image.x = mouse_pos[0] - touch.offset_x
-            #         grabbed_image.y = mouse_pos[1] - touch.offset_y
-            #         click_label.text = str(grabbed_image.get_number + 1)
+                    # Update the position of the layout based on the movement of the mouse
+                    grid_layout.pos = (grid_layout.pos[0] + (mouse_pos[0] - touch.offset_x),
+                                       grid_layout.pos[1] + (mouse_pos[1] - touch.offset_y))
+
+                    # Update the touch position for the next move event
+                    touch.offset_x = mouse_pos[0]
+                    touch.offset_y = mouse_pos[1]
 
     @mainthread
     def on_keyboard_up(self, instance, keyboard, keycode):  # Keyboard up Listener
@@ -351,10 +309,7 @@ class GUIApp(MDApp):
         global time_stamp
         if len(showed_image_list) != 0:
             self.clear_images()
-        # current_path = os.getcwd() + "/GUI/"
 
-        # path = current_path + "top_10_fragments.json"
-        # json_reader(path)
         showed_image_list = []
         time_stamp = time.time()
         for i in range(len(current_image_list)):
@@ -420,9 +375,7 @@ class GUIApp(MDApp):
         global pl_solution
         communicate_thread_lock.acquire()
         self.toolbar_changes(toolbar_color)
-        # for image in current_image_list:
-        #     image.refresh()
-            # image.set_center_point((300, 300))
+
         clicked = click_label.text
         if (clicked.isdigit()) & (selected_pic == 0):
             self.widget_list[4].disabled = False
@@ -547,10 +500,6 @@ def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_hei
 
     ratio = (ratio_x, ratio_y)
     print(ratio)
-    #
-    # ratio = (image_pixel[0] / image_size[0], image_pixel[1] / image_size[1])
-    # print(ratio)
-    # ratio = (1.0, 1.0)
 
     relative_pos = (mouse_pos[0] - image_pos[0] - width_height[0], mouse_pos[1] - image_pos[1] - width_height[1])
     reality_pixel = (relative_pos[0] * ratio[0], relative_pos[1] * ratio[1])
@@ -573,15 +522,12 @@ def get_args():
 
 def image_reader(image_number, score, has_score):
     path = file_names[image_number]
-    # print(file_names)
+
     source = backend_path + "RGBA_merged/" + path
 
     click_label.color = (1, 0, 1, 1)
     image = MovableImage(source, click_label, score, image_number, has_score, path, 0)
-    # image = RotatingImage(source, (300, 300))
-    # image = RotatingImage(source)
 
-    # image.source = source
     return image
 
 
@@ -590,11 +536,5 @@ if __name__ == '__main__':
     test_thread = threading.Thread(target=communicate_thread, daemon=True)
     test_thread_started = True
     test_thread.start()
-    # sorted_image_scores = select_anchor()
-    # path = backEnd_path + "top_10_fragments.json"
-    # current_path = os.getcwd() + "/GUI/"
-    # backEnd_path = get_backend_path()
-    # path = current_path + "top_10_fragments.json"
-    # json_reader(path)
 
     app = GUIApp().run()

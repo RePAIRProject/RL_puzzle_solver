@@ -286,7 +286,7 @@ def select_anchor():
     sorted_image_scores = sorted(image_scores, key=lambda x: x[1], reverse=True)
 
     # Select the top 10 fragments
-    top_10_fragments = sorted_image_scores[:3]
+    top_10_fragments = sorted_image_scores[:4]
 
     # Display user interface and get selected fragments
     # selected_fragments = create_user_interface(top_10_fragments, images_with_borders, imgs_names)

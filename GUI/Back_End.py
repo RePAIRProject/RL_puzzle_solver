@@ -193,3 +193,9 @@ def thread_shutdown():
     select_neighbour_thread.join()
     pl_solver_thread.join()
     # toDo
+
+
+def create_meta_fragment():
+
+    pass
+    # toDo
