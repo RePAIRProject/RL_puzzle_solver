@@ -95,6 +95,7 @@ class GUIApp(MDApp):
     toolbar_bg = 0
     global backend_path
     grid_layout = GridLayout()
+    is_grabbing_window = False
 
     def build(self):
 
@@ -203,7 +204,9 @@ class GUIApp(MDApp):
         global key_image
 
         scrolling = 0
-
+        print(keyboard_input)
+        if keyboard_input == 304:
+            self.is_grabbing_window = True
         if keyboard_input == 305:
             if touch.button == 'scrollup':  # scroll up is scrolling down :|
                 if grabbed_image is not None:
@@ -270,19 +273,22 @@ class GUIApp(MDApp):
                         key_image = grabbed_image
                     click_label.text = str(grabbed_image.get_number() + 1)
                 else:
-                    grid_layout = self.widget_dict['grid_layout']
-                    if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
-                        # Store the initial touch position
+                    if self.is_grabbing_window:  # left shift
+                        print("here")
+                        grid_layout = self.widget_dict['grid_layout']
+                        if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
+                            # Store the initial touch position
+                            touch.offset_x = mouse_pos[0]
+                            touch.offset_y = mouse_pos[1]
+
+                        # Update the position of the layout based on the movement of the mouse
+                        grid_layout.pos = (grid_layout.pos[0] + (mouse_pos[0] - touch.offset_x),
+                                           grid_layout.pos[1] + (mouse_pos[1] - touch.offset_y))
+
+                        # Update the touch position for the next move event
                         touch.offset_x = mouse_pos[0]
                         touch.offset_y = mouse_pos[1]
-
-                    # Update the position of the layout based on the movement of the mouse
-                    grid_layout.pos = (grid_layout.pos[0] + (mouse_pos[0] - touch.offset_x),
-                                       grid_layout.pos[1] + (mouse_pos[1] - touch.offset_y))
-
-                    # Update the touch position for the next move event
-                    touch.offset_x = mouse_pos[0]
-                    touch.offset_y = mouse_pos[1]
+                        self.is_grabbing_window = False
 
     @mainthread
     def on_keyboard_up(self, instance, keyboard, keycode):  # Keyboard up Listener
@@ -290,6 +296,8 @@ class GUIApp(MDApp):
         if keyboard is not None:
             if keyboard == 305:  # code for ctrl button on keyboard
                 keyboard_input = None  # might cause issue
+            if keyboard == 304:
+                keyboard_input = None
 
     @mainthread
     def _on_keyboard_down(self, instance, keyboard, keycode, text, modifiers):  # Keyboard down Listener
