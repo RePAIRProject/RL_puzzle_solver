@@ -80,7 +80,7 @@ communication_freq = 0.25  # in seconds
 graphic_freq = 0.25  # in seconds
 
 
-class MainLayout(GridLayout):
+class MainLayout(GridLayout):  # might need to change GridLayout to sth else to be fix some bugs (not as important)
     def __init__(self):
         super().__init__()
 
