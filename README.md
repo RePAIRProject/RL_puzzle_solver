@@ -1,4 +1,4 @@
-# RL Puzzle Solver (WIP)
+# RL Puzzle Solver 
 Solving puzzle using Relaxation Labeling
 
 # 1) Description
@@ -92,6 +92,11 @@ python data_generator/synth_puzzle.py -nl 30 -sv -ni 10 -s irregular
 This requires patterns in a folder (which in the below command is assumed to be `data/patterns`)
 ```bash
 python data_generator/synth_puzzle.py -nl 30 -sv -ni 1 -s pattern -pf data/patterns --extr
+```
+
+#### Generate the `maps` puzzles with extrapolation rescaled to $300\times300$
+```bash
+python data_generator/maps_puzzle.py -i maps_folder -sv -extr -s pattern -pf data/patterns_10pcs -r 300
 ```
 
 ##### Arguments
