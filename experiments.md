@@ -1,4 +1,4 @@
-| :exclamation:  This section is not updated!  |
+| :exclamation:  This section is not updated! There could be the need for some modifications/adjustments |
 |-----------------------------------------|
 
 

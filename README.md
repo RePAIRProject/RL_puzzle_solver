@@ -1,9 +1,6 @@
 # RL Puzzle Solver (WIP)
 Solving puzzle using Relaxation Labeling
 
-| :exclamation:  This repository is under active development! Some things may change!  |
-|-----------------------------------------|
-
 # 1) Description
 The repository contains the code for computing the compatibility matrices and the solver to reassemble the pieces.
 
@@ -21,7 +18,7 @@ The data is structured following this idea (where `data` has the input files and
 ├── metrics/                        # evaluating the solutions
 ├── preprocessing/                  # needed for special cases to prepare the images of the pieces
 ├── puzzle_utils/                   # under the hood core functions
-│   ├── puzzle_gen/                 # generating pieces from image (derived from [this])
+│   ├── puzzle_gen/                 # generating pieces from image (derived from puzzle solving tools (ref below))
 │   └── various_files.py            # containing functions for handling pieces and polygon,
 │                                   # creating maps, lines matching and more
 ├── scripts/                        # bash script to launch several execution (mostly on the server using slurm)
@@ -164,11 +161,27 @@ This approach is more specific to the lines, and it uses a positive-negative con
 ### 5. Running the solver to get the solution (slow, half an hour per puzzle)
 
 The solver takes as input the compatibility matrix and starts from there. 
-We c
+We tune the solver by selecting the `anchor` and the period `T`.  
 
-At the moment we have some issues, still work in progress
+The solver can be launched with
 ```bash
-python solver/solver_irregular.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00005_wireframe_00190925 --method deeplsd --anchor 5 --pieces 0 --penalty 40
+python solver/solver_irregular.py --dataset dname --puzzle image_00005 --anchor 5 --Tfirst 1000 --Tnext 500 --Tmax 3000
+```
+Where in this case we select the 5-th piece as an anchor and we run `Tfirst=1000` iterations before stopping, checking and fixing the other anchors. Then the process is repeated each `Tnext=500` iterations until reaching `Tmax=3000` and stopping.
+
+### 6. Evaluating the results
+
+Given you have ground truth (for synthetic case or when you have the solution), you can evaluate the reconstruction.
+The code changes if you are using irregular or squared pieces (we have different metrics).
+
+An example for squared pieces is:
+```bash
+python metrics/evaluate_squared_pieces.py -d maps_dataset -aa -p image_00003_barcelona_catalonia_es
+```
+In this case `-aa` means *evaluate for all anchors* (useful if you tried several anchors for evaluation)
+An example for irregular pieces is:   
+```bash
+python metrics/evaluate_irregular_new.py -d maps_pattern_or_irregular -p image_00001
 ```
 
 ### (Extra) Script for full pipeline (given you have a puzzle in a dataset)
@@ -178,118 +191,11 @@ sh scripts/synth_puzzle_pipeline.sh synthetic_irregular_9_pieces_by_drawing_colo
 This may be very hard to read, but under the hood just runs the same command from step 3 to 5 passing the parameters (open the file for more info)
 
 
+## Experiments
+
+We have much more code for experiments (specific ones) and old versions, it is (more or less) documented in [experiments.md](https://github.com/RePAIRProject/RL_puzzle_solver/blob/develop/experiments.md), use it if you are curious.
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-| :exclamation:  This section is not updated!  |
-|-----------------------------------------|
-
-
-## Full pipeline from a dataset (folder with images)
-
-Let's assume we have our dataset folder called `real_small_dataset`.
-The input folder should be in the code folder + `data`
-So full path could be: `~whatever_your_path~/RL_puzzle_solver/data/real_small_dataset`.
-
-The output (everything we create) would be in the code folder + `output`.
-
-### 1. Create pieces from images (fast, few seconds per image)
-| :exclamation:  This section is not updated!  |
-|-----------------------------------------|
-
-Let's run the piece creation! It cuts our images into a (variable) number of pieces. 
-We set the (maximum) number with the `-np` argument. It could lead to a smaller number of pieces, depending on the size of the image! This does not affect our algorithm, which does not strictly require a fixed number of pieces.
-
-```bash
-python datasets/create_pieces_from_images.py -i real_small_dataset -np 16 
-```
-
-
-
-
-
-
-### 2. Detect lines (fast, few seconds per piece, so less than a minute per image)
-| :exclamation:  This section is not updated!  |
-|-----------------------------------------|
-
-The detection can be done with any edge detector. We sugget to use [DeepLSD](https://github.com/cvg/DeepLSD).
-From the detected lines, we extract and save the initial and end points plus their polar coordinates (we will use the angle).
-This script is actually launched from within the DeepLSD folder (for an easier usage of that) so it contains some hardcoded paths. 
-You can define and change your own as needed.
-```bash 
-python detect_lines_irregular.py -rf ~whatever_your_path~/RL_puzzle_solver -d synthetic_irregular_pieces_from_real_small_dataset
-```
-The lines detected will be saved inside each folder of the database (there will be one `lines_detection` folder).
-It also saves a visualization (image with lines drawn in red over it) and one representation with all white images with black lines drawn on top (without the real image colors).
-
-
-
-
-
-
-
-
-| :exclamation:  These commands may be slightly outdated! Some things may change!  |
-|-----------------------------------------|
-
-<details>
-<summary>See at your own risk!</summary>
-
-#### Evaluation
-```bash
-python metrics/evaluate.py
-```
-
-## Full pipeline RePAIR
-
-#### Create pieces ???
-```bash
-python preprocessing/preprocess_fragments.py -d repair
-```
-
-#### Detect lines (using deepLSD)
-```bash
-python detect_lines_compatibility.py -rf /home/lucap/code/RL_puzzle_solver -d repair
-```
-
-#### Compute regions matrices
-```bash
-python features/compute_regions_masks.py --dataset repair --puzzle decor_1
-```
-
-#### Compute polygons
-```bash
-python dataset/create_polygons.py 
-```
-
-#### Compute compatibility
-```bash
-python compatibility/line_matching_RePAIR_poly_2910.py --dataset repair --puzzle decor_1
-```
-
-## SCRIPTS to do multiple steps at once
-
-
-#### Solve a puzzle (given pieces and detected lines)
-```bash
-sh solve_puzzle.sh
-```
-</details>
 
 # 4) Known Issues
 
