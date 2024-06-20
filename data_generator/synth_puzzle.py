@@ -123,7 +123,7 @@ def main(args):
 
     for N in range(num_images_to_be_created):
         ## create images with lines
-        img, all_lines = create_random_coloured_image(args.line_type, args.num_lines, args.height, args.width, thickness=2, num_colors=args.num_colors)
+        img, all_lines = create_random_coloured_image(args.line_type, args.num_lines, args.height, args.width, thickness=0, num_colors=args.num_colors)
 
         ## save created image
         cv2.imwrite(os.path.join(data_folder, f'image_{N:05d}.jpg'), img)

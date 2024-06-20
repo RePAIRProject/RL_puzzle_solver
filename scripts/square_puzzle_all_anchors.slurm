@@ -3,7 +3,7 @@
 #SBATCH --job-name=square_maps
 #SBATCH --ntasks=1                 				        # Run on a single CPU
 #SBATCH --cpus-per-task=2
-#SBATCH --output=RL_logs/square_03_03/square_maps_%j.log			# Standard output and error log
+#SBATCH --output=RL_logs/square_april/square_maps_%j.log			# Standard output and error log
 
 # PYTHONPATH
 export PYTHONPATH=${PYTHONPATH}:/home/luca.palmieri/code/RL_puzzle_solver
@@ -21,9 +21,9 @@ verbosity=1
 jobs=2
 
 p_pts=15      #old#  125   151    175
-tfirst=2000    #  1500  3000   5000
+tfirst=1500    #  1500  3000   5000
 tnext=500      #  500   750    1000
-tmax=6500      #  9000  15000  20000  
+tmax=5000      #  9000  15000  20000  
 
 
 #!/bin/bash/
