@@ -99,7 +99,7 @@ python data_generator/synth_puzzle.py -nl 30 -sv -ni 1 -s pattern -pf data/patte
 python data_generator/maps_puzzle.py -i maps_folder -sv -extr -s pattern -pf data/patterns_10pcs -r 300
 ```
 
-##### Arguments
+#### Arguments
 Arguments are the same: `-nl` is the number of lines, `-sv` saves the lines visualization, `-ni` is the number of images, `-s` the shape, `-extr` extrapolates the fragments, `-pf` is the pattern folder.
 
 You can get the full list of arguments options running 
@@ -108,6 +108,29 @@ python data_generator/synth_puzzle.py -h
 ```
 
 The output of this will be saved in `~whatever_your_path~/RL_puzzle_solver/output/synthetic_irregular_or_patterns+random_string`
+
+#### Puzzle Output 
+The output consists of one folder per image plus a `parameters.json` file.
+Each image folder contains:
+- `paramters_image_name.json`
+- `ground_truth.json`
+- `image_scaled` folder (with the image rescaled according to parameters)
+- `lines_detection` folder (`.json` file with lines parameters)
+- `masks` folder (with the binary masks for the pieces shape)
+- `pieces` folder (with the actual images)
+- `polygon` folder (with numpy-saved polygons (`shapely` format))
+- `regions` folder (with visualization of the cutting part, how pieces are created, color-coded pieces visualization)
+
+### 1b. Preprocess fragments (if you have only pieces, no full image)
+
+We prepared a script that takes as input fragments (they should be transparent-background images), extract the fragment, center it, creates a binary masks and create a polygon of its shape. While all of this information are needed, you may need to add the lines (detect or annotate them) to get all the files you need (see Puzzle Output section above) to run the line-based compatibility.
+
+Launch the preprocessing script with
+```bash
+python preprocessing/preprocess_fragments.py -d dataset_path -n dataset_name -is image_size
+```
+
+
 
 ### 2. Compatibility Matrix $R$
 
@@ -163,7 +186,7 @@ Given two pieces with features, it tries to find a correspondence/matching betwe
 ##### Line Confidence Importance (LCI)
 This approach is more specific to the lines, and it uses a positive-negative contribution strategy. Meaning for each line, it adds a positive contribution for each line which is "continued" on the other piece (the contribution is the multiplication between confidence of detection and importance of the feature) and a negative contribution for each line which is not "continued".
 
-### 5. Running the solver to get the solution (slow, half an hour per puzzle)
+### 5. Running the solver to get the solution
 
 The solver takes as input the compatibility matrix and starts from there. 
 We tune the solver by selecting the `anchor` and the period `T`.  
