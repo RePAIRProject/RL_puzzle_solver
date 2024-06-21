@@ -119,9 +119,13 @@ def main(args):
         # only for patterns
         if args.shape == 'pattern':
             list_of_patterns_names = os.listdir(args.patterns_folder)
-            region_map = cv2.imread(os.path.join(args.patterns_folder, list_of_patterns_names[k]), 0)
+            if len(list_of_patterns_names) == 1:
+                pattern_name = list_of_patterns_names[0]
+            else:
+                pattern_name = list_of_patterns_names[k]
+            region_map = cv2.imread(os.path.join(args.patterns_folder, pattern_name), 0)
             pattern_map, num_pieces = process_region_map(region_map)
-            print(f"found {num_pieces} pieces on {list_of_patterns_names[k]}")
+            print(f"found {num_pieces} pieces on {pattern_name}")
         else:
             num_pieces = args.num_pieces
 
