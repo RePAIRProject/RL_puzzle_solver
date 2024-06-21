@@ -13,7 +13,8 @@ from configs import folder_names as fnames
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
-from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
+from puzzle_utils.lines_ops import calc_line_matching_parameters
+from utils import compute_cost_wrapper
 
 def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
     first_element = comp_as_list[0]
@@ -93,7 +94,13 @@ def main(args):
             json.dump(line_matching_parameters, lmpj, indent=3)
         print("saved json line matching file")
 
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method)
+        calc_sdf = False
+        if args.cmp_type == 'shape':
+            calc_sdf = True
+        line_based = False
+        if args.cmp_type == 'lines':
+            line_based = True
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, line_based=line_based, sdf=calc_sdf)
 
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
         region_mask = region_mask_mat['RM']
@@ -139,7 +146,7 @@ def main(args):
             #pool = multiprocessing.Pool(args.jobs)
             #costs_list = zip(*pool.map(compute_cost_matrix_LAP, [(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n)]))
             #with parallel_backend('threading', n_jobs=args.jobs):
-            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
+            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars, compatibility_type=args.cmp_type, verbosity=args.verbosity) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
             #costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
             All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n, norm_value=line_matching_parameters.rmax)
         else:
@@ -147,7 +154,7 @@ def main(args):
                 for j in range(n):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
-                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
+                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, compatibility_type=args.cmp_type, verbosity=args.verbosity)
                     # pdb.set_trace()
                     if i - j == -1 and args.DEBUG is True:
                         rotation_idx = 0
@@ -321,6 +328,7 @@ if __name__ == '__main__':
         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
+    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo'])   
     # parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
     # parser.add_argument('--xy_grid_points', type=int, default=7, 
     #     help='the number of points in the grid (for each axis, total number will be the square of what is given)')

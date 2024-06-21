@@ -128,6 +128,14 @@ def get_sd(img, background=0):
     sd = skfmm.distance(phi, dx = 1)
     return sd, mask 
 
+def mask2sdf(mask, q=1):
+    phi = np.int64(mask[:, :])
+    phi = np.where(phi, 0, -1) + 0.5
+    sdf = skfmm.distance(phi, dx = 1)
+    if q > 1: #quantize (stepwise sdf)
+        sdf = (sdf // q) * q
+    return sdf
+
 def get_outside_borders(mask, borders_width=3):
     """
     Get the borders outside of the mask contour (borders_width) 
@@ -368,7 +376,7 @@ def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, 
         piece['boundary_seg'] = borders_segments
     return pieces
 
-def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1, line_based=True):
+def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1, line_based=True, sdf=False):
 
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle)
     polygons_folder = os.path.join(root_folder, fnames.polygons_folder)
@@ -388,6 +396,8 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
                 piece['extracted_lines'] = json.load(file)
             drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape, line_thickness, use_color=False)
             piece['lines_mask'] = drawn_lines
+        if sdf == True:
+            piece['sdf'] = mask2sdf(piece['mask'])
     return pieces
 
 def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False):
@@ -517,3 +527,28 @@ def process_region_map(region_map, perc_min=0.01):
     # plt.show()
     # pdb.set_trace()
     return rmap, rc-1
+
+def compute_SDF_cost_matrix(piece_i, piece_j, ids_to_score, cmp_parameters, ppars):
+    """ 
+    It computes SDF-based cost matrix between piece_i and piece_j
+    """
+    (p, grid, m, rot, line_matching_pars) = cmp_parameters    
+    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+    # TODO: move these to parameters?   improve?
+    min_axis_factor = 0.35      # magic number :( for ellipsoid 
+    sigma = 60
+    for x,y,t in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+        theta = rot[t]
+        center_pos = (len(grid) - 1 ) // 2
+        print("grid is not aligned! it should be shifted!")
+        print("grid", grid)
+        print("canvas", ppars.canvas_size)
+        x_c_pixel, y_c_pixel = grid[center_pos, center_pos]
+        x_j_pixel, y_j_pixel = grid[y, x]
+        piece_i_on_canvas = place_on_canvas(piece_i, (y_c_pixel, x_c_pixel), ppars.canvas_size, 0)
+        piece_j_on_canvas = place_on_canvas(piece_j, (y_j_pixel, x_j_pixel), ppars.canvas_size, theta)
+        min_axis = min_axis_factor * np.minimum(np.sqrt(np.sum(piece_i['mask'])), np.sqrt(np.sum(piece_j['mask']))) # MAGIC NUMBER :/
+        drawn_matching_region, mregion_mask = get_ellipsoid(piece_i_canvas['cm'], piece_j_canvas['cm'], min_axis, puzzle_cfg.canvas_size)
+        shape_score = compute_shape_score(piece_i_canvas, piece_j_canvas, mregion_mask, sigma=sigma)
+        R_cost[y,x,t] = shape_score
+    return R_cost
