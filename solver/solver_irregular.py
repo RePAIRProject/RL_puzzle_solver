@@ -4,6 +4,8 @@ import cv2 as cv
 # import matplotlib
 # matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import cv2
 from scipy.io import savemat, loadmat
 from scipy.ndimage import rotate
 from PIL import Image
@@ -223,14 +225,16 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, Z, pieces, ppars, use_RGB=True
 
     return canvas_image
                     
-def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars):
+def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars, show_borders=False):
     step = np.ceil(ppars.xy_step)
     #ang = ppars.theta_step # 360 / Z    
     ang = 360 / Z
     z_rot = np.arange(0, 360, ang)
     pos = fin_sol
     fin_im = np.zeros(((Y * step + (ppars.p_hs+1) * 2).astype(int), (X * step + (ppars.p_hs+1) * 2).astype(int), 3))
-
+    if show_borders == True:
+        # plt.ion()
+        borders_cmap = mpl.cm.get_cmap('jet').resampled(len(pieces))
     for i in range(len(pieces)):
         image = pieces_files[pieces[i]]  # read image 1
         im_file = os.path.join(pieces_folder, image)
@@ -247,13 +251,20 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, pp
         if pos.shape[1] == 3:
             rot = z_rot[pos[i, 2]]
             Im = rotate(Im, rot, reshape=False, mode='constant')
+            if show_borders == True:
+                mask = (Im > 0.0005).astype(np.uint8)
+                em = cv2.erode(mask, np.ones((5,5)))
+                bordered_im = Im * em + (mask-em) * borders_cmap(i)[:3]
+                Im = bordered_im
         if ppars.p_hs*2 < ppars.piece_size:
             fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
                                                                                        ids[0] - cc:ids[0] + cc + 1,
                                                                                        ids[1] - cc:ids[1] + cc + 1, :]
         else:
             fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :] = Im+fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :]
-
+        # if show_borders == True:
+        #     plt.imshow(fin_im)
+        #     breakpoint()
     return fin_im
 
 
@@ -410,12 +421,13 @@ def main(args):
     Y, X, Z, _ = p_final.shape
     fin_sol = all_sol[f-1]
     # pdb.set_trace()
-    fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
+    fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars, show_borders=False)
+    fin_im1_brd = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars, show_borders=True)
     
     # fin_im_v3 = reconstruct_puzzle_vis(fin_sol, pieces_folder, ppars, suffix='')
     # alternative method for reconstruction (with transparency on overlap because of b/w image)
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
-
+    # breakpoint()
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')
     plt.figure(figsize=(16, 16))
@@ -424,6 +436,7 @@ def main(args):
     plt.tight_layout()
     plt.savefig(final_solution)
     plt.close()
+    plt.imsave(f"{final_solution[:-4]}_bordered.png", np.clip(fin_im1_brd, 0, 1))
 
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, Z, pieces_dict, ppars, use_RGB=True)
     # final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
