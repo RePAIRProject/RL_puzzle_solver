@@ -532,23 +532,25 @@ def compute_SDF_cost_matrix(piece_i, piece_j, ids_to_score, cmp_parameters, ppar
     """ 
     It computes SDF-based cost matrix between piece_i and piece_j
     """
-    (p, grid, m, rot, line_matching_pars) = cmp_parameters    
+    (p, alignment_grid, m, rot, line_matching_pars) = cmp_parameters    
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+
+    # grid on the canvas
+    canv_cnt = ppars.canvas_size // 2
+    grid = alignment_grid + canv_cnt #alignment_grid has negative values
+
     # TODO: move these to parameters?   improve?
     min_axis_factor = 0.35      # magic number :( for ellipsoid 
     sigma = 60
     for x,y,t in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
         theta = rot[t]
         center_pos = (len(grid) - 1 ) // 2
-        print("grid is not aligned! it should be shifted!")
-        print("grid", grid)
-        print("canvas", ppars.canvas_size)
         x_c_pixel, y_c_pixel = grid[center_pos, center_pos]
         x_j_pixel, y_j_pixel = grid[y, x]
         piece_i_on_canvas = place_on_canvas(piece_i, (y_c_pixel, x_c_pixel), ppars.canvas_size, 0)
         piece_j_on_canvas = place_on_canvas(piece_j, (y_j_pixel, x_j_pixel), ppars.canvas_size, theta)
         min_axis = min_axis_factor * np.minimum(np.sqrt(np.sum(piece_i['mask'])), np.sqrt(np.sum(piece_j['mask']))) # MAGIC NUMBER :/
-        drawn_matching_region, mregion_mask = get_ellipsoid(piece_i_canvas['cm'], piece_j_canvas['cm'], min_axis, puzzle_cfg.canvas_size)
-        shape_score = compute_shape_score(piece_i_canvas, piece_j_canvas, mregion_mask, sigma=sigma)
+        drawn_matching_region, mregion_mask = get_ellipsoid(piece_i_on_canvas['cm'], piece_j_on_canvas['cm'], min_axis, ppars.canvas_size)
+        shape_score = compute_shape_score(piece_i_on_canvas, piece_j_on_canvas, mregion_mask, sigma=sigma)
         R_cost[y,x,t] = shape_score
     return R_cost

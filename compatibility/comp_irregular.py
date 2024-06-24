@@ -272,7 +272,13 @@ def main(args):
         # save output
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
-        filename = os.path.join(output_folder, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}')
+        if args.cmp_type == 'lines':
+            cmp_name = f"linesdet_{args.det_method}_cost_{args.cmp_cost}"
+        elif args.cmp_type == 'shape':
+            cmp_name = "shape"
+        else:
+            cmp_name = f"cmp_{args.cmp_type}"
+        filename = os.path.join(output_folder, f"CM_{cmp_name}")
         mdic = {
                     "R_line": R_line, 
                     "label": "label", 
@@ -286,7 +292,7 @@ def main(args):
         np.save(filename, R_line)
 
         if args.save_everything is True:
-            filename = os.path.join(output_folder, f'CM_all_cost_lines_{args.det_method}_cost_{args.cmp_cost}')
+            filename = os.path.join(output_folder, f'CM_all_cost_{cmp_name}')
             mdic = {
                         "All_cost": All_cost, 
                         "label": "label", 
@@ -303,9 +309,9 @@ def main(args):
         os.makedirs(vis_folder, exist_ok=True)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(R_line, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_linesdet_{args.det_method}_cost_{args.cmp_cost}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=True)
+            save_vis(R_line, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_{cmp_name}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=True)
             if args.save_everything:
-                save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_linesdet_{args.det_method}_cost_{args.cmp_cost}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=True, vmin=-2, vmax=2)
+                save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{cmp_name}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=True, vmin=-2, vmax=2)
         
         print("-" * 50)
         print("-- CMP_END_TIME -- ")

@@ -69,9 +69,10 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
                     print(f"computed cost matrix for piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} candidate values) ")
                 #print(R_cost)
         elif compatibility_type == 'shape':
-            breakpoint()
+            #breakpoint()
             ids_to_score = np.where(mask_ij > 0)
             R_cost = compute_SDF_cost_matrix(pieces[idx1], pieces[idx2], ids_to_score, cmp_parameters, ppars)
+            #breakpoint()
 
         else: # other compatibilities!
             print("\n" * 20)
