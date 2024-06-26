@@ -156,7 +156,7 @@ def main(args):
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, compatibility_type=args.cmp_type, verbosity=args.verbosity)
                     # pdb.set_trace()
-                    if i - j == -1 and args.DEBUG is True:
+                    if i == 0 and j == 1 and args.DEBUG is True:
                         rotation_idx = 0
                         plt.suptitle(f"COST WITH {args.cmp_cost}", fontsize=45)
                         plt.subplot(541); plt.imshow(pieces[i]['img']); plt.title(f"piece {i}")
@@ -228,26 +228,28 @@ def main(args):
                 # max_i = np.max(All_cost[:, :, :, :, i])
                 # print(f"For piece {i} the maximum value is {max_i}")
                 # All_cost[:, :, :, :, i] /= max_i
-
-        if args.cmp_cost == 'LCI':
-            print("WARNING: normalized over each piece!")
-            #pdb.set_trace()
-            #All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
-        elif args.cmp_cost == 'LAP3':
-            min_vals = []
-            for j in range(All_cost.shape[3]):
-                for i in range(All_cost.shape[4]):
-                    min_val = np.min(All_cost[:, :, :, j, i])
-                    min_vals.append(min_val)
-            kmin_cut_val = np.max(min_vals) + 1
-            All_norm_cost = np.maximum(1 - All_cost/ kmin_cut_val, 0)
-        elif args.cmp_cost == 'LAP2':
-            clipping_val = line_matching_parameters.max_dist + (line_matching_parameters.badmatch_penalty - line_matching_parameters.max_dist) / 3
-            All_cost = np.clip(All_cost, 0, clipping_val)
-            All_norm_cost = 1 - All_cost / clipping_val
-        else:  # args.cmp_cost == 'LAP':
-            #All_norm_cost = np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
-            All_norm_cost = All_cost # / np.max(All_cost) #
+        if args.cmp_type == 'lines':
+            if args.cmp_cost == 'LCI':
+                print("WARNING: normalized over each piece!")
+                #pdb.set_trace()
+                #All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
+            elif args.cmp_cost == 'LAP3':
+                min_vals = []
+                for j in range(All_cost.shape[3]):
+                    for i in range(All_cost.shape[4]):
+                        min_val = np.min(All_cost[:, :, :, j, i])
+                        min_vals.append(min_val)
+                kmin_cut_val = np.max(min_vals) + 1
+                All_norm_cost = np.maximum(1 - All_cost/ kmin_cut_val, 0)
+            elif args.cmp_cost == 'LAP2':
+                clipping_val = line_matching_parameters.max_dist + (line_matching_parameters.badmatch_penalty - line_matching_parameters.max_dist) / 3
+                All_cost = np.clip(All_cost, 0, clipping_val)
+                All_norm_cost = 1 - All_cost / clipping_val
+            else:  # args.cmp_cost == 'LAP':
+                #All_norm_cost = np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
+                All_norm_cost = All_cost # / np.max(All_cost) #
+        else:
+            All_norm_cost = All_cost
 
         only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
         R_line = All_norm_cost + only_negative_region  # insert negative regions to cost matrix
