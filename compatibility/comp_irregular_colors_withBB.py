@@ -173,23 +173,23 @@ def main(args):
                     if i != j and args.DEBUG is True:
                         rotation_idx = 0
                         plt.suptitle(f"COST WITH {args.cmp_cost}", fontsize=45)
-                        plt.subplot(541);
-                        plt.imshow(pieces[i]['img']);
+                        plt.subplot(541)
+                        plt.imshow(pieces[i]['img'])
                         plt.title(f"piece {i}")
-                        plt.subplot(542);
-                        plt.imshow(pieces[j]['img']);
+                        plt.subplot(542)
+                        plt.imshow(pieces[j]['img'])
                         plt.title(f"piece {j}")
-                        plt.subplot(545);
-                        plt.imshow(region_mask[:, :, 0, j, i], vmin=-1, vmax=1, cmap='RdYlGn');
+                        plt.subplot(545)
+                        plt.imshow(region_mask[:, :, 0, j, i], vmin=-1, vmax=1, cmap='RdYlGn')
                         plt.title("region map 0")
-                        plt.subplot(546);
-                        plt.imshow(region_mask[:, :, 1, j, i], vmin=-1, vmax=1, cmap='RdYlGn');
+                        plt.subplot(546)
+                        plt.imshow(region_mask[:, :, 1, j, i], vmin=-1, vmax=1, cmap='RdYlGn')
                         plt.title("region map 1")
-                        plt.subplot(547);
-                        plt.imshow(region_mask[:, :, 2, j, i], vmin=-1, vmax=1, cmap='RdYlGn');
+                        plt.subplot(547)
+                        plt.imshow(region_mask[:, :, 2, j, i], vmin=-1, vmax=1, cmap='RdYlGn')
                         plt.title("region map 2")
-                        plt.subplot(548);
-                        plt.imshow(region_mask[:, :, 3, j, i], vmin=-1, vmax=1, cmap='RdYlGn');
+                        plt.subplot(548)
+                        plt.imshow(region_mask[:, :, 3, j, i], vmin=-1, vmax=1, cmap='RdYlGn')
                         plt.title("region map 3")
                         # plt.subplot(546); plt.imshow(ji_mat[:,:,rotation_idx], cmap='RdYlGn'); plt.title("cost")
                         # if args.cmp_cost == 'LCI':
@@ -220,34 +220,34 @@ def main(args):
                         k = min(line_matching_parameters.k, len(ji_unique_values))
                         kmin_cut_val = np.sort(ji_unique_values)[-k]
                         if args.cmp_cost == 'LAP':
-                            plt.subplot(5, 4, 13);
+                            plt.subplot(5, 4, 13)
                             plt.title("COST ROTATION KMINCUT 0")
                             plt.imshow(np.maximum(1 - ji_mat[:, :, 0] / kmin_cut_val, 0), cmap='RdYlGn');
-                            plt.subplot(5, 4, 14);
+                            plt.subplot(5, 4, 14)
                             plt.title("COST ROTATION KMINCUT 1")
                             plt.imshow(np.maximum(1 - ji_mat[:, :, 1] / kmin_cut_val, 0), cmap='RdYlGn')
-                            plt.subplot(5, 4, 15);
+                            plt.subplot(5, 4, 15)
                             plt.title("COST ROTATION KMINCUT 2")
                             plt.imshow(np.maximum(1 - ji_mat[:, :, 2] / kmin_cut_val, 0), cmap='RdYlGn')
-                            plt.subplot(5, 4, 16);
+                            plt.subplot(5, 4, 16)
                             plt.title("COST ROTATION KMINCUT 3")
                             plt.imshow(np.maximum(1 - ji_mat[:, :, 3] / kmin_cut_val, 0), cmap='RdYlGn')
 
-                            plt.subplot(5, 4, 17);
+                            plt.subplot(5, 4, 17)
                             plt.title("EXP ROTATION 0")
-                            plt.imshow(np.exp(-ji_mat[:, :, 0] / 76), cmap='RdYlGn');
+                            plt.imshow(np.exp(-ji_mat[:, :, 0] / 76), cmap='RdYlGn')
                             # plt.imshow(norm_cmp + np.minimum(region_mask[:,:,0,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn');
-                            plt.subplot(5, 4, 18);
+                            plt.subplot(5, 4, 18)
                             plt.title("EXP ROTATION 1")
-                            plt.imshow(np.exp(-ji_mat[:, :, 1] / 76), cmap='RdYlGn');
+                            plt.imshow(np.exp(-ji_mat[:, :, 1] / 76), cmap='RdYlGn')
                             # plt.imshow(norm_cmp + np.minimum(region_mask[:,:,1,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn');
-                            plt.subplot(5, 4, 19);
+                            plt.subplot(5, 4, 19)
                             plt.title("EXP ROTATION 2")
-                            plt.imshow(np.exp(-ji_mat[:, :, 2] / 76), cmap='RdYlGn');
+                            plt.imshow(np.exp(-ji_mat[:, :, 2] / 76), cmap='RdYlGn')
                             # plt.imshow(norm_cmp + np.minimum(region_mask[:,:,2,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn');
-                            plt.subplot(5, 4, 20);
+                            plt.subplot(5, 4, 20)
                             plt.title("EXP ROTATION 3")
-                            plt.imshow(np.exp(-ji_mat[:, :, 3] / 76), cmap='RdYlGn');
+                            plt.imshow(np.exp(-ji_mat[:, :, 3] / 76), cmap='RdYlGn')
                             # plt.imshow(norm_cmp + np.minimum(region_mask[:,:,3,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn');
                         plt.show()
                         pdb.set_trace()
@@ -281,8 +281,11 @@ def main(args):
             norm_term = np.max(a_ks) / (2 * k)
             All_norm_cost = 2 - All_cost_cut / norm_term  # only for colors
             All_norm_cost = np.where(All_norm_cost > 2, 0, All_norm_cost)  # only for colors
-            # All_norm_cost = np.where(All_norm_cost < 0, 0, All_norm_cost)   # only for colors
-            All_norm_cost = np.where(All_norm_cost <= 0, -1, All_norm_cost)  ## NEW idea di Prof.Pelillo
+            if args.norm_type == 'negative':
+                All_norm_cost = np.where(All_norm_cost <= 0, -1, All_norm_cost)  ## NEW idea di Prof.Pelillo
+            else:
+                All_norm_cost = np.where(All_norm_cost < 0, 0, All_norm_cost)  # only for colors
+
 
             ## BEST BUDDIES
             All_cost_BB = np.zeros((All_cost.shape))
@@ -331,7 +334,8 @@ def main(args):
         # save output
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
-        filename = os.path.join(output_folder, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}')
+        filename = os.path.join(output_folder, f'CM_{args.det_method}_{args.norm_type}_colors_BB')
+        #filename = os.path.join(output_folder, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}')
         mdic = {
             "R_line": R_line,
             "label": "label",
@@ -396,7 +400,8 @@ if __name__ == '__main__':
                         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
     parser.add_argument('--verbosity', type=int, default=1,
                         help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
-    parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')
+    parser.add_argument('--cmp_cost', type=str, default='colors_BB', help='cost computation')  # LAP, LCI, colors, colors_BB
+    parser.add_argument('--norm_type', type=str, default='simple', help='cost computation')  # negative, simple
     parser.add_argument('--border_len', type=int, default=-1,
                         help='length of border (if -1 [default] it will be set to xy_step)')
     parser.add_argument('-k', type=int, default=11,
