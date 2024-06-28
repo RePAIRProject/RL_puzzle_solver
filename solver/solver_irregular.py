@@ -20,7 +20,7 @@ import datetime
 import pdb 
 import time 
 import json 
-
+from puzzle_utils.visualization import save_vis
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
@@ -323,7 +323,7 @@ def main(args):
         print(f"{cfg_key}: {cfg[cfg_key]}")
     print("-" * 50)
 
-        #pieces_dict, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)  # commented for RePAIR test only !!!!
+    # pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)  # commented for RePAIR test only !!!!
     puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, args.puzzle)
     solver_patameters_path = os.path.join(puzzle_root_folder, 'solver_parameters.json')
     with open(solver_patameters_path, 'w') as spj:
@@ -370,16 +370,24 @@ def main(args):
         #breakpoint()
         R_lines = mat_lines['R_line']
         R_shape = mat_shape['R_line']
-        R = (R_lines * R_shape)
-        negative_region_map = R == 1
-        print("max", np.max(R))
-        #R /= np.max(R)
+        negative_region_map = R_lines < 0
+
+        # only positive values
+        R = (np.clip(R_lines, 0, 1) * np.clip(R_shape, 0, 1))
+        R /= np.max(R)
+        # test
+        R *= 2
+
+        # negative values set to -1
         R[negative_region_map] = -1
-        R[R > 0] = R[R > 0] * 25
+
+        # save_vis(R, pieces, 90, os.path.join("output/synthetic_irregular_9_pieces_by_drawing_coloured_lines_kxdwtu_26_02_2024/image_00003", 'visualization_combo_line_shape'), f"compatibility matrix", all_rotation=True)
+
+        # #R[R > 0] = R[R > 0]
         # for jkl in range(4):
-        #     plt.subplot(3, 4, 1+jkl); plt.imshow(R_lines[:,:,jkl,5,8], vmin=-1, vmax=1, cmap='jet'); plt.title('Lines')
-        #     plt.subplot(3, 4, 5+jkl); plt.imshow(R_shape[:,:,jkl,5,8], vmin=-1, vmax=1, cmap='jet'); plt.title('Shape')
-        #     plt.subplot(3, 4, 9+jkl); plt.imshow(R[:,:,jkl,5,8], vmin=-1, vmax=1, cmap='jet'); plt.title('Combined')
+        #     plt.subplot(3, 4, 1+jkl); plt.imshow(R_lines[:,:,jkl,8,5], vmin=-1, vmax=1, cmap='jet'); plt.title('Lines')
+        #     plt.subplot(3, 4, 5+jkl); plt.imshow(R_shape[:,:,jkl,8,5], vmin=-1, vmax=1, cmap='jet'); plt.title('Shape')
+        #     plt.subplot(3, 4, 9+jkl); plt.imshow(R[:,:,jkl,8,5], vmin=-1, vmax=1, cmap='jet'); plt.title('Combined')
         # plt.show()
         # breakpoint()
     else:
