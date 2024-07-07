@@ -49,16 +49,16 @@ def main(args):
         # ppars contains all the values needed for computing stuff (p_hs, comp_range..)
         # ppars is a dict but can be accessed by pieces_paramters.property!
         print()
-        print("-" * 50)
+        print("-" * 60)
         print("-- CMP_START_TIME -- ")
         # get the current date and time
         now = datetime.datetime.now()
         print(f"{now}\nStarted working on {puzzle}")
         print(f"Dataset: {args.dataset}")
-        print("-" * 50)
+        print("-" * 60)
         print("\tPIECES")
         pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, puzzle, verbose=True)
-        print("-" * 50)
+        print("-" * 60)
         print('\tIMAGE PARAMETERS')
         for cfg_key in img_parameters.keys():
             print(f"{cfg_key}: {img_parameters[cfg_key]}")
@@ -70,25 +70,26 @@ def main(args):
             ppars = CfgParameters()
             with open(cmp_parameter_path, 'r') as cp:
                 ppars_dict = json.load(cp)
-            print("-" * 50)
+            ppars_dict['cmp_type'] = args.cmp_type
+            print("-" * 60)
             print('\tCOMPATIBILITY PARAMETERS')
             for ppk in ppars_dict.keys():
                 ppars[ppk] = ppars_dict[ppk]
                 print(f"{ppk}: {ppars[ppk]}")
         else:
             print("\n" * 3)
-            print("/" * 70)
+            print("/" * 60)
             print("/\t***ERROR***\n/ compatibility_parameters.json not found!")
-            print("/" * 70)
+            print("/" * 60)
             print("\n" * 3)
             ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
         line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
-        print("-" * 50)
+        print("-" * 60)
         print('\tLINE MATCHING PARAMETERS')
         for cfg_key in line_matching_parameters.keys():
             print(f"{cfg_key}: {line_matching_parameters[cfg_key]}")
-        print("-" * 50)
+        print("-" * 60)
         line_matching_parameters_path = os.path.join(puzzle_root_folder, 'line_matching_parameters.json')
         with open(line_matching_parameters_path, 'w') as lmpj:
             json.dump(line_matching_parameters, lmpj, indent=3)
@@ -259,7 +260,7 @@ def main(args):
         # R_line[R_line < 0] = -1
         # for jj in range(n):
         #     R_line[:, :, :, jj, jj] = -1
-        print("-" * 50)
+        print("-" * 60)
         time_in_seconds = time.time()-time_start_puzzle
         if time_in_seconds > 60:
             time_in_minutes = (np.ceil(time_in_seconds / 60))
@@ -270,7 +271,7 @@ def main(args):
                 print(f"Compatibility for this puzzle took almost {time_in_hours:.0f} hours")
         else:
             print(f"Compatibility for this puzzle took {time_in_seconds:.0f} seconds")
-        print("-" * 50)
+        print("-" * 60)
         # save output
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
@@ -315,19 +316,19 @@ def main(args):
             if args.save_everything:
                 save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{cmp_name}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=True, vmin=-2, vmax=2)
         
-        print("-" * 50)
+        print("-" * 60)
         print("-- CMP_END_TIME -- ")
         # get the current date and time
         now = datetime.datetime.now()
         print(f"{now}")
         print(f'Done with {puzzle}\n')
-        print("-" * 50)
+        print("-" * 60)
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
     parser.add_argument('--dataset', type=str, default='synthetic_irregular_9_pieces_by_drawing_coloured_lines_peynrh', help='dataset folder')  # repair
-    parser.add_argument('--puzzle', type=str, default='image_00000', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
+    parser.add_argument('--puzzle', type=str, default='', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')

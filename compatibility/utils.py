@@ -1,7 +1,9 @@
 import numpy as np 
 from puzzle_utils.shape_utils import compute_SDF_cost_matrix
 from puzzle_utils.lines_ops import compute_cost_matrix_LAP_debug, compute_cost_matrix_LAP, \
-        compute_cost_matrix_LAP_v2, compute_cost_matrix_LAP_v3, compute_cost_matrix_LCI_method
+        compute_cost_matrix_LAP_v2, compute_cost_matrix_LAP_v3, compute_cost_matrix_LCI_method, \
+        extract_from
+import time
 
 def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, compatibility_type='lines', verbosity=1):
     """

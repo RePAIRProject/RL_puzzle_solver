@@ -49,6 +49,16 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     y_c1 = np.ceil(y+hs).astype(int)
     x_c0 = np.ceil(x-hs).astype(int)
     x_c1 = np.ceil(x+hs).astype(int)
+    # maybe not the best, but a quick fix ?
+    if y_c1 - y_c0 == 2*hs + 1:
+        y_c1 -= 1
+    elif y_c1 - y_c0 == 2*hs - 1:
+        y_c1 += 1
+    if x_c1 - x_c0 == 2*hs + 1:
+        x_c1 -= 1
+    elif x_c1 - x_c0 == 2*hs - 1:
+        x_c1 += 1
+
     if len(piece['img'].shape) > 2:
         img_with_channels =True
         channels = piece['img'].shape[2]
