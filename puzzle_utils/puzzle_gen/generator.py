@@ -11,9 +11,14 @@ import pdb
 import cv2
 import shapely
 
-from puzzle_utils.puzzle_gen import utils
-from puzzle_utils.puzzle_gen.vector import Vector
-from puzzle_utils.shape_utils import get_cm, get_polygon
+from GUI.RL_puzzle_solver.puzzle_utils.puzzle_gen import utils
+from GUI.RL_puzzle_solver.puzzle_utils.puzzle_gen.vector import Vector
+from GUI.RL_puzzle_solver.puzzle_utils.shape_utils import get_cm, get_polygon
+
+# from puzzle_utils.puzzle_gen import utils
+# from puzzle_utils.puzzle_gen.vector import Vector
+# from puzzle_utils.shape_utils import get_cm, get_polygon
+
 
 class PuzzleGenerator:
 
@@ -68,7 +73,6 @@ class PuzzleGenerator:
             else:
                 raise ValueError("The length of cutting points in x_arr must be larger than 0.")
 
-
         else:
             smooth_func = interpolate.interp1d(x_arr, y_arr, kind='linear')
 
@@ -79,7 +83,6 @@ class PuzzleGenerator:
         # plt.show()
 
         return x_arr, y_arr
-
 
     def get_mask(self, offset_rate_h, offset_rate_w):
 
@@ -217,10 +220,10 @@ class PuzzleGenerator:
         #     cv2.imshow('tmp', mask)
         #     cv2.waitKey(0)
 
-
     def save_raw_regions(self, iter):
 
         file_path = os.path.join(self.raw_regions, '%d.npy' % iter)
+
         file_path_mat = os.path.join(self.raw_regions, '%d_mat.npy' % iter)
         np.save(file_path, np.array(self.region_list, dtype=np.int32))
         np.save(file_path_mat, self.region_mat)
@@ -229,6 +232,17 @@ class PuzzleGenerator:
         f.write(str(self.region_cnt))
         f.close()
         print('\tSave to %s & %d.txt' % (file_path, iter))
+
+    def erode_regions(self, pixels_to_remove=10, erosion_kernel_size=0, iterations=10):
+        image = self.img
+
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        _, mask = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
+
+        kernel = np.ones((pixels_to_remove, pixels_to_remove), np.uint8)
+        eroded_mask = cv2.erode(mask, kernel, iterations=1)
+        new_image = cv2.bitwise_and(image, image, mask=eroded_mask)
+        self.eroded_image = new_image
 
     def extrapolate_regions(self, extr_pixels=5, return_vals=False, start_from=0):
         self.pieces = []
@@ -707,10 +721,13 @@ class PuzzleGenerator:
         self.get_mask(offset_rate_h, offset_rate_w)
         self.get_regions()
 
+
         self.num_of_missing_fragments = np.floor(self.region_cnt * perc_missing_fragments / 100).astype(int)
-        if self.num_of_missing_fragments > 0:
-            self.missing_indices = random.sample(set(np.arange(1, self.region_cnt)), self.num_of_missing_fragments)
-            self.missing_indices = np.sort([int(ind) for ind in self.missing_indices])
+
+        self.erode_regions(erosion_kernel_size=3, iterations=1)
+        # if self.num_of_missing_fragments > 0:
+        #     self.missing_indices = random.sample(set(np.arange(1, self.region_cnt)), self.num_of_missing_fragments)
+        #     self.missing_indices = np.sort([int(ind) for ind in self.missing_indices])
 
     def save(self, bg_color=(0,0,0), save_regions=False):
 
@@ -722,6 +739,7 @@ class PuzzleGenerator:
         self.save_zip(exist_data_len)
         self.save_challenge_zip(exist_data_len)
 
+
 def crop_extrapolated(image, padding=1, return_vals=False):
 
     x0 = np.min(np.where(image[:,:,3] > 0)[1]) - padding
@@ -732,3 +750,9 @@ def crop_extrapolated(image, padding=1, return_vals=False):
     if return_vals == True:
         return image[y0:y1, x0:x1, :], x0, x1, y0, y1
     return image[y0:y1, x0:x1, :]
+
+
+def run_erode(image, image_name):
+    puzzle_generator = PuzzleGenerator(image, image_name)
+    puzzle_generator.run(piece_n=100, offset_rate_h=0.2, offset_rate_w=0.2, small_region_area_ratio=0.25, rot_range=180)
+    return puzzle_generator.eroded_image

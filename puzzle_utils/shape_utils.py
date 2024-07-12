@@ -3,14 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np 
 import cv2 
 import skfmm
-import time 
+import time
 import pickle
 import scipy
 import pdb
 import os
 import shapely
 import json
-from puzzle_utils.lines_ops import draw_lines
+# from puzzle_utils.lines_ops import draw_lines
+from GUI.RL_puzzle_solver.puzzle_utils.lines_ops import draw_lines
 
 def get_polygon(binary_image):
     contours, _ = cv2.findContours(binary_image.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
