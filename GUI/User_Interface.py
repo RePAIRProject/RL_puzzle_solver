@@ -12,6 +12,8 @@ from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 
+import skfmm
+
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.toolbar import MDTopAppBar
 
@@ -19,9 +21,12 @@ from kivy.core.window import Window
 
 import Back_End
 from select_anchor_RePAIR import get_backend_path
+from RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
 
 import threading
 import time
+
+import cv2
 
 import PuzzlePiece
 
@@ -538,11 +543,35 @@ def image_reader(image_number, score, has_score):
 
     return image
 
+def eroding(directory_path):
+    eroded_dir_path = os.path.join(directory_path, "Eroded")
+
+    # Create the 'Eroded' directory if it doesn't exist
+    if not os.path.exists(eroded_dir_path):
+        os.makedirs(eroded_dir_path)
+
+    for file_name in os.listdir(directory_path):
+        if file_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+            file_path = os.path.join(directory_path, file_name)
+            image = cv2.imread(file_path)
+            save_path = os.path.join(eroded_dir_path, file_name)  # Corrected save path
+            file_name_without_extension = os.path.splitext(file_name)[0]
+            print(file_name_without_extension)
+            # name of the file without extension
+            eroded_image = run_erode(image, file_name_without_extension)
+            cv2.imwrite(save_path, eroded_image)
 
 if __name__ == '__main__':
     Config.set('input', 'mouse', 'mouse, multitouch_on_demand')
     test_thread = threading.Thread(target=communicate_thread, daemon=True)
+
     test_thread_started = True
     test_thread.start()
 
+
+    eroding_path = os.getcwd() + "/GUI/DataBase/Dafne/image_00000_1/pieces"
+    eroding(eroding_path)
+
     app = GUIApp().run()
+
+

@@ -4,9 +4,11 @@
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/GUI/RL_puzzle_solver/solver" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/GUI/kivy-circular-progress-bar-master" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/.venv/lib/python3.10/site-packages" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/GUI/DataBase" />
     </content>
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="GUI-Repair" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PyDocumentationSettings">
