@@ -454,8 +454,13 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
     for piece in pieces:
         piece_ID = piece['id']
         polygon_path = os.path.join(polygons_folder, f"{piece_ID}.npy")
+
         piece['polygon'] = np.load(polygon_path, allow_pickle=True).tolist()
-        assert(type(np.load(polygon_path, allow_pickle=True).tolist()) == shapely.Polygon), "The polygon is not a shapely.Polygon! Check the files!"
+        if type(piece['polygon']) != shapely.Polygon:
+            shapely_points = [(point[0], point[1]) for point in piece['polygon'][0]]
+            piece['polygon'] = shapely.Polygon(shapely_points)
+
+        #assert(type(np.load(polygon_path, allow_pickle=True).tolist()) == shapely.Polygon), "The polygon is not a shapely.Polygon! Check the files!"
         if line_based == True:
             lines_path = os.path.join(lines_folder, f"{piece_ID}.json")
             with open(lines_path, 'r') as file:
