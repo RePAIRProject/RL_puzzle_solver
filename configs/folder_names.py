@@ -21,3 +21,6 @@ polygons_folder = 'polygons'
 ref_image = 'image_scaled'
 ground_truth = 'ground_truth'
 
+#
+motifs_output_name = 'motifs_detection'
+

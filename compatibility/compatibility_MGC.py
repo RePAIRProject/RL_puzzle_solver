@@ -16,6 +16,7 @@ from matplotlib import cm
 
 def compute_cost_wrapper_for_Colors_compatibility(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, seg_len, verbosity=1):
 
+    #(p, z_id, m, rot, line_matching_pars) = cmp_parameters
     (p, z_id, m, rot, line_matching_pars) = cmp_parameters
 
     if verbosity > 1:
@@ -130,10 +131,11 @@ def colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, bo
 def MCG_for_irregular(border_i, border_j):
     # "Solving Square Jigsaw Puzzle by Hierarchical Loop Constraints [K.Son, J.Hays, D.B.Cooper] (2019)"
 
-    # dum = np.array([[0, 0, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]])
+    # dum = np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])
+    dum = np.array([[0, 0, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]])
     border_i = border_i / 255
     border_j = border_j / 255
-    dum = np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])
+
 
     l_i = np.squeeze(border_j[:, 0, ] - border_i[:, -1, ])
     e_i = np.squeeze(0.5 * (border_i[:, -1, ] - border_i[:, -2, ] + border_j[:, 1, ] - border_j[:, 0, ]))
