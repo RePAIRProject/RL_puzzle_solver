@@ -134,6 +134,8 @@ def main(args):
                             combo[thresholded_regions_map < 0] = -1  # enforce -1 in the overlapping areas
                             # ??? overlap lines is calculate independently from line-category ???
                             # IF we calculate separately overlap of different category, will it improve results ??
+                        else:
+                            resized_lines = np.zeros((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
 
                         #  MOTIFS case
                         if 'motif_mask' in pieces[i].keys():
@@ -154,6 +156,7 @@ def main(args):
                                     #plt.subplot(1,3,2); plt.imshow(b)
                                     #plt.subplot(1,3,3); plt.imshow(mask_mt[:, :, mt])
                                     #plt.show()
+
                             overlap_motifs = np.sum(mask_mt, 2)
                             binary_overlap_motifs = (overlap_motifs > ppars.threshold_overlap_motifs).astype(np.int32)  # CHECK !!!
                             resized_motifs = np.array(Image.fromarray(binary_overlap_motifs).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))

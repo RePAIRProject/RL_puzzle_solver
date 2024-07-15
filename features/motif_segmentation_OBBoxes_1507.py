@@ -20,16 +20,23 @@ def read_PIL_image(image_path):
     img = img.convert("RGB")
     return img
 
-def main():
+def main(args):
 
     #yolov8_model_path = '/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
     #imgs_folder = '/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
     #motifs_output = '/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/motif_OBB'
 
-    yolov8_model_path = '/Users/Marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
-    imgs_folder = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
-    motifs_output = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/motifs_detection'
-
+    if args.yolo_model == '':
+        yolov8_model_path = '/Users/Marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+    else:
+        yolov8_model_path = args.yolo_model
+    if args.images == "":
+        imgs_folder = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
+    else:
+        imgs_folder = args.images
+    motifs_output = 'output/repair/repair_g28/motifs_detection2'
+    os.makedirs(motifs_output, exist_ok=True)
+    
     patterns_v8_feats_folder = os.path.join(os.getcwd(), 'detected_obb')
     os.makedirs(patterns_v8_feats_folder, exist_ok=True)
     indent_spaces = 3
@@ -96,4 +103,9 @@ def main():
     return 1
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Detect motifs')
+    parser.add_argument('-ym', '--yolo_model', type=str, default='', help='yolo model path (.pt)')
+    parser.add_argument('-i', '--images', type=str, default='', help='images input folder')
+
+    args = parser.parse_args()
+    main(args)
