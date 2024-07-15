@@ -43,8 +43,9 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     y_c1 = int(y+hs)
     x_c0 = int(x-hs)
     x_c1 = int(x+hs)
+
     if len(piece['img'].shape) > 2:
-        img_with_channels =True
+        img_with_channels = True
         channels = piece['img'].shape[2]
     else:
         img_with_channels = False
@@ -52,8 +53,8 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
         img_on_canvas = np.zeros((canvas_size, canvas_size, channels))
     else:
         img_on_canvas = np.zeros((canvas_size, canvas_size))
+
     msk_on_canvas = np.zeros((canvas_size, canvas_size))
-    #lines_on_canvas = np.zeros((canvas_size, canvas_size))
     if 'sdf' in piece.keys():
         sdf_on_canvas = np.zeros((canvas_size, canvas_size))
         sdf_on_canvas += np.min(piece['sdf'])
@@ -61,8 +62,17 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     if 'lines_mask' in piece.keys():
         lines_on_canvas = np.zeros((canvas_size, canvas_size))
         piece_lines_mask = piece['lines_mask']
+    ## NEW MOTIF-BASED
+    if 'motif_mask' in piece.keys():
+        piece_motif_mask = piece['motif_mask']
+        n_motifs = piece_motif_mask.shape[2]
+        motif_on_canvas = np.zeros((canvas_size, canvas_size, n_motifs))
+
+
     piece_img = piece['img']
     piece_mask = piece['mask']
+
+    ## ROTATE
     if theta > 0:
         piece_img = scipy.ndimage.rotate(piece_img, theta, reshape=False, mode='constant')
         piece_mask = scipy.ndimage.rotate(piece_mask, theta, reshape=False, mode='constant')
@@ -71,30 +81,40 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
         if 'lines_mask' in piece.keys():
             piece_lines_mask = scipy.ndimage.rotate(piece_lines_mask, theta, reshape=False, mode='constant')
         piece['cm'] = get_cm(piece_mask)
+        ## NEW MOTIF-BASED
+        if 'motif_mask' in piece.keys():
+            piece_motif_mask = scipy.ndimage.rotate(piece_motif_mask, theta, reshape=False, mode='constant')
+        #piece['cm'] = get_cm(piece_mask)
+
     #print(y_c0, y_c1+1, x_c0, x_c1+1)
     #pdb.set_trace
     if piece['img'].shape[0] % 2 == 0:
+        msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
         if img_with_channels is True:
             img_on_canvas[y_c0:y_c1, x_c0:x_c1, :] = piece_img
         else:
             img_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_img
-        msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
         if 'sdf' in piece.keys():
             sdf_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_sdf
         if 'lines_mask' in piece.keys():
             lines_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_lines_mask
+        # NEW MOTIF-BASED !!!!
+        if 'motif_mask' in piece.keys():
+            motif_on_canvas[y_c0:y_c1, x_c0:x_c1, :] = piece_motif_mask
+
     else:
+        msk_on_canvas[y_c0:y_c1 + 1, x_c0:x_c1 + 1] = piece_mask
         if img_with_channels is True:
             img_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1, :] = piece_img
         else:
             img_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_img
-        
-        msk_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_mask
         if 'sdf' in piece.keys():
             sdf_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_sdf
         if 'lines_mask' in piece.keys():
             lines_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1] = piece_lines_mask
-
+        ## NEW MOTIF-BASED
+        if 'motif_mask' in piece.keys():
+            motif_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1, :] = piece_motif_mask
         
     shift_y = y - piece['cm'][1]
     shift_x = x - piece['cm'][0]
@@ -108,7 +128,12 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
         piece_on_canvas['sdf'] = sdf_on_canvas
     if 'lines_mask' in piece.keys():
         piece_on_canvas['lines_mask'] = lines_on_canvas
+    ## NEW MOTIF-BASED
+    if 'motif_mask' in piece.keys():
+        piece_on_canvas['motif_mask'] = motif_on_canvas
+
     return piece_on_canvas
+
 
 def get_mask(img, background=0):
 
@@ -368,7 +393,7 @@ def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, 
         piece['boundary_seg'] = borders_segments
     return pieces
 
-def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1, line_based=True):
+def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1, line_based=True, motif_based=True):
 
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle)
     polygons_folder = os.path.join(root_folder, fnames.polygons_folder)
@@ -378,6 +403,14 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
         lines_files = os.listdir(lines_folder)
         lines = [line for line in lines_files if line.endswith('.json')]
         assert len(polygons) == len(lines), f'Error: have {len(polygons)} polygons files and {len(lines)} lines files, they should have the same length!'
+
+    ## NEW MOTIVE PART
+    if motif_based == True:
+        motif_folder = os.path.join(root_folder, fnames.motifs_output_name)
+        motif_files = os.listdir(motif_folder)
+        motif = [line for line in motif_files if line.endswith('.npy')]
+        assert len(polygons) == len(motif), f'Error: have {len(polygons)} polygons files and {len(motif)} motif files, they should have the same length!'
+
     for piece in pieces:
         piece_ID = piece['id']
         polygon_path = os.path.join(polygons_folder, f"{piece_ID}.npy")
@@ -388,6 +421,13 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
                 piece['extracted_lines'] = json.load(file)
             drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape, line_thickness, use_color=False)
             piece['lines_mask'] = drawn_lines
+
+        ## NEW MOTIVE BASED
+        if motif_based == True:
+            motif_path = os.path.join(motif_folder, f'motifs_cube_{piece_ID}.npy')
+            motif_cube = np.load(motif_path)
+            piece['motif_mask'] = motif_cube
+
     return pieces
 
 def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False):
@@ -409,7 +449,9 @@ def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False)
         mask_full_path = os.path.join(masks_folder, piece_name)
         piece_d['mask'] = plt.imread(mask_full_path)
         piece_d['cm'] = get_cm(piece_d['mask'])
-        piece_d['id'] = piece_name[:10] #piece_XXXXX.png
+        piece_d['id'] = piece_name[:10]  # piece_XXXXX.png
+        if dataset=='repair':
+            piece_d['id'] = piece_name[:9]   # RPf_00194.png
         pieces.append(piece_d)
     
     with open(os.path.join(os.getcwd(), root_folder, f'parameters_{puzzle_name}.json'), 'r') as pf:

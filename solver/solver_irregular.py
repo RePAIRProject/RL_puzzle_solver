@@ -411,8 +411,8 @@ def main(args):
 
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')
-    plt.figure(figsize=(16, 16))
-    plt.title("Final solution including all piece")
+    #plt.figure(figsize=(16, 16))
+    #plt.title("Final solution including all piece")
     plt.imshow((fin_im1 * 255).astype(np.uint8))
     plt.tight_layout()
     plt.savefig(final_solution)
@@ -489,7 +489,7 @@ if __name__ == '__main__':
     parser.add_argument('--puzzle', type=str, default='image_00000_1', help='puzzle folder')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')  # LAP, LCI
-    parser.add_argument('--anchor', type=int, default=-1, help='anchor piece (index)')
+    parser.add_argument('--anchor', type=int, default=2, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--verbosity', type=int, default=2, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
