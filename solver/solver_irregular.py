@@ -4,6 +4,8 @@ import cv2 as cv
 # import matplotlib
 # matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import cv2
 from scipy.io import savemat, loadmat
 from scipy.ndimage import rotate
 from PIL import Image
@@ -18,7 +20,7 @@ import datetime
 import pdb 
 import time 
 import json 
-
+from puzzle_utils.visualization import save_vis
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
@@ -33,7 +35,8 @@ def initialization(R, anc, p_size=0):
         Y = p_size 
         X = Y 
     else:
-        Y = round(no_grid_points * 2 + 1) 
+        Y = round(no_grid_points * np.sqrt(no_patches)) # + no_patches)
+        #Y = round(no_grid_points * 2 + 1) 
         # Y = round(0.5 * (no_grid_points - 1) * (no_patches + 1) + 1)
         X = Y
     Z = no_rotations
@@ -223,14 +226,18 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, Z, pieces, ppars, use_RGB=True
 
     return canvas_image
                     
-def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars):
+def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars, show_borders=False):
     step = np.ceil(ppars.xy_step)
     #ang = ppars.theta_step # 360 / Z    
     ang = 360 / Z
     z_rot = np.arange(0, 360, ang)
     pos = fin_sol
     fin_im = np.zeros(((Y * step + (ppars.p_hs+1) * 2).astype(int), (X * step + (ppars.p_hs+1) * 2).astype(int), 3))
-
+    if show_borders == True:
+        # plt.ion()
+        borders_cmap = mpl.colormaps['jet'].resampled(len(pieces))
+        # deprecated
+        # borders_cmap = mpl.cm.get_cmap('jet').resampled(len(pieces))
     for i in range(len(pieces)):
         image = pieces_files[pieces[i]]  # read image 1
         im_file = os.path.join(pieces_folder, image)
@@ -247,13 +254,20 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, pp
         if pos.shape[1] == 3:
             rot = z_rot[pos[i, 2]]
             Im = rotate(Im, rot, reshape=False, mode='constant')
+            if show_borders == True:
+                mask = (Im > 0.0005).astype(np.uint8)
+                em = cv2.erode(mask, np.ones((5,5)))
+                bordered_im = Im * em + (mask-em) * borders_cmap(i)[:3]
+                Im = bordered_im
         if ppars.p_hs*2 < ppars.piece_size:
             fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
                                                                                        ids[0] - cc:ids[0] + cc + 1,
                                                                                        ids[1] - cc:ids[1] + cc + 1, :]
         else:
             fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :] = Im+fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :]
-
+        # if show_borders == True:
+        #     plt.imshow(fin_im)
+        #     breakpoint()
     return fin_im
 
 
@@ -302,13 +316,14 @@ def main(args):
     cfg['Tmax'] = args.tmax
     cfg['anc_fix_tresh'] = args.thresh
     cfg['p_matrix_shape'] = args.p_pts
+    cfg['cmp_type'] = args.cmp_type
     cfg['cmp_cost'] = args.cmp_cost
     print('\tSOLVER PARAMETERS')
     for cfg_key in cfg.keys():
         print(f"{cfg_key}: {cfg[cfg_key]}")
     print("-" * 50)
 
-        #pieces_dict, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)  # commented for RePAIR test only !!!!
+    # pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)  # commented for RePAIR test only !!!!
     puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, args.puzzle)
     solver_patameters_path = os.path.join(puzzle_root_folder, 'solver_parameters.json')
     with open(solver_patameters_path, 'w') as spj:
@@ -331,18 +346,54 @@ def main(args):
         ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
     # ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
-    if args.cmp_cost == 'LAP':
-        # mat = loadmat(os.path.join(puzzle_root_folder,fnames.cm_output_name, f'CM_lines_{method}.mat'))
-        mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
+    if args.cmp_type == 'lines':
+        cmp_name = f"linesdet_{args.det_method}_cost_{args.cmp_cost}"
+    elif args.cmp_type == 'shape':
+        cmp_name = "shape"
+    elif args.cmp_type == 'combo_LS':
+        cmp_name = f"shape_and_linesdet_{args.det_method}_cost_{args.cmp_cost}"
     else:
-        mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{method}_cost_{args.cmp_cost}'))
+        cmp_name = f"cmp_{args.cmp_type}"
+    it_nums = f"{args.tmax}its"
+    # if args.cmp_cost == 'LAP':
+    #     # mat = loadmat(os.path.join(puzzle_root_folder,fnames.cm_output_name, f'CM_lines_{method}.mat'))
+    #     mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
+    # else:
+    
+    
     pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.pieces_folder}")
+    # check if we are combining!
+    if args.cmp_type == 'combo_LS':
+        print("combining shape and lines..")
+        mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}'))
+        mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+        #breakpoint()
+        R_lines = mat_lines['R_line']
+        R_shape = mat_shape['R_line']
+        negative_region_map = R_lines < 0
 
-    ### HERE THE LINES WERE USED
-    #only_lines_pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.lines_output_name}", method, 'lines_only')
-    #detect_output = os.path.join(puzzle_root_folder, f"{fnames.lines_output_name}", method)
-    #pdb.set_trace()
-    R = mat['R_line']
+        # only positive values
+        R = (np.clip(R_lines, 0, 1) * np.clip(R_shape, 0, 1))
+        R /= np.max(R)
+        # test
+        R *= 2
+
+        # negative values set to -1
+        R[negative_region_map] = -1
+
+        # save_vis(R, pieces, 90, os.path.join("output/synthetic_irregular_9_pieces_by_drawing_coloured_lines_kxdwtu_26_02_2024/image_00003", 'visualization_combo_line_shape'), f"compatibility matrix", all_rotation=True)
+
+        # #R[R > 0] = R[R > 0]
+        # for jkl in range(4):
+        #     plt.subplot(3, 4, 1+jkl); plt.imshow(R_lines[:,:,jkl,8,5], vmin=-1, vmax=1, cmap='jet'); plt.title('Lines')
+        #     plt.subplot(3, 4, 5+jkl); plt.imshow(R_shape[:,:,jkl,8,5], vmin=-1, vmax=1, cmap='jet'); plt.title('Shape')
+        #     plt.subplot(3, 4, 9+jkl); plt.imshow(R[:,:,jkl,8,5], vmin=-1, vmax=1, cmap='jet'); plt.title('Combined')
+        # plt.show()
+        # breakpoint()
+    else:
+        print("loading", os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
+        mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
+        R = mat['R_line']
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
@@ -388,7 +439,7 @@ def main(args):
     print("-" * 50)
 
     num_rot = p_initial.shape[2]
-    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{method}_cost_{args.cmp_cost}_rot{num_rot}')
+    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}')
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
 
@@ -403,12 +454,13 @@ def main(args):
     Y, X, Z, _ = p_final.shape
     fin_sol = all_sol[f-1]
     # pdb.set_trace()
-    fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
+    fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars, show_borders=False)
+    fin_im1_brd = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars, show_borders=True)
     
     # fin_im_v3 = reconstruct_puzzle_vis(fin_sol, pieces_folder, ppars, suffix='')
     # alternative method for reconstruction (with transparency on overlap because of b/w image)
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
-
+    # breakpoint()
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')
     #plt.figure(figsize=(16, 16))
@@ -417,6 +469,7 @@ def main(args):
     plt.tight_layout()
     plt.savefig(final_solution)
     plt.close()
+    plt.imsave(f"{final_solution[:-4]}_bordered.png", np.clip(fin_im1_brd, 0, 1))
 
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, Z, pieces_dict, ppars, use_RGB=True)
     # final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
@@ -497,8 +550,9 @@ if __name__ == '__main__':
     parser.add_argument('--tnext', type=int, default=250, help='the step for multi-phase (each tnext reset)')
     parser.add_argument('--tmax', type=int, default=1000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
-    parser.add_argument('--p_pts', type=int, default=15, help='the size of the p matrix (it will be p_pts x p_pts)')
+    parser.add_argument('--p_pts', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
+    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo_LS'])   
     args = parser.parse_args()
 
     main(args)
