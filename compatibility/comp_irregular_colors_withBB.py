@@ -8,14 +8,18 @@ import datetime
 import matplotlib.pyplot as plt
 import time
 
+from PIL import Image
+from ultralytics import YOLO
+
 # internal
 from configs import folder_names as fnames
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, \
     encode_boundary_segments
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
-from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
+#from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
 
+from compatibility_Motifs import compute_cost_wrapper_for_Motifs_compatibility
 from compatibility_MGC import compute_cost_wrapper_for_Colors_compatibility
 
 
@@ -33,6 +37,10 @@ def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
 
 def main(args):
     print("Compatibility log\nSearch for `CMP_START_TIME` or `CMP_END_TIME` if you want to see which images are done")
+
+    ## IF to add
+    yolov8_model_path = '/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+    yolov8_obb_detector = YOLO(yolov8_model_path)
 
     if args.puzzle == '':
         puzzles = os.listdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset))
@@ -86,16 +94,16 @@ def main(args):
             print("\n" * 3)
             ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
-        line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
-        print("-" * 50)
-        print('\tLINE MATCHING PARAMETERS')
-        for cfg_key in line_matching_parameters.keys():
-            print(f"{cfg_key}: {line_matching_parameters[cfg_key]}")
-        print("-" * 50)
-        line_matching_parameters_path = os.path.join(puzzle_root_folder, 'line_matching_parameters.json')
-        with open(line_matching_parameters_path, 'w') as lmpj:
-            json.dump(line_matching_parameters, lmpj, indent=3)
-        print("saved json line matching file")
+        # line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
+        # print("-" * 50)
+        # print('\tLINE MATCHING PARAMETERS')
+        # for cfg_key in line_matching_parameters.keys():
+        #     print(f"{cfg_key}: {line_matching_parameters[cfg_key]}")
+        # print("-" * 50)
+        # line_matching_parameters_path = os.path.join(puzzle_root_folder, 'line_matching_parameters.json')
+        # with open(line_matching_parameters_path, 'w') as lmpj:
+        #     json.dump(line_matching_parameters, lmpj, indent=3)
+        # print("saved json line matching file")
 
         if args.border_len < 0:
             seg_len = ppars.xy_step
@@ -103,8 +111,8 @@ def main(args):
             seg_len = args.border_len
         print("Using border length of {seg_len} pixels")
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, line_based=False)
-        pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=seg_len,
-                                          boundary_thickness=2)
+        #pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=seg_len,
+        #                                  boundary_thickness=2)
 
         region_mask_mat = loadmat(
             os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name,
@@ -125,7 +133,8 @@ def main(args):
             rot = [0]
         else:
             rot = np.arange(0, 360 - ang + 1, ang)
-        cmp_parameters = (p, z_id, m, rot, line_matching_parameters)
+        #cmp_parameters = (p, z_id, m, rot, line_matching_parameters) #for lines
+        cmp_parameters = (p, z_id, m, rot)
         n = len(pieces)
 
         # COST MATRICES
@@ -156,9 +165,8 @@ def main(args):
                 delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars,
                                               verbosity=args.verbosity) for i in range(n) for j in
                 range(n))  ## is something change replacing j and i ???
-            # costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
-            All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n,
-                                                                     norm_value=line_matching_parameters.rmax)
+            #All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n,
+             #                                                        norm_value=line_matching_parameters.rmax)
         else:
             for i in range(n):  # select fixed fragment
                 for j in range(n):
@@ -166,9 +174,11 @@ def main(args):
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
                     # ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
                     # FOR TEST ONLY ####
-                    ji_mat = compute_cost_wrapper_for_Colors_compatibility(i, j, pieces, region_mask, cmp_parameters,
-                                                                           ppars, seg_len,
-                                                                           verbosity=args.verbosity)
+                    # ji_mat = compute_cost_wrapper_for_Colors_compatibility(i, j, pieces, region_mask, cmp_parameters,
+                    #                                                        ppars, seg_len,
+                    #                                                        verbosity=args.verbosity)
+
+                    ji_mat = compute_cost_wrapper_for_Motifs_compatibility(i, j, pieces, region_mask, cmp_parameters, ppars, yolov8_obb_detector, verbosity=1)
 
                     if i != j and args.DEBUG is True:
                         rotation_idx = 0
@@ -385,9 +395,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
-    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne_10px',
+    parser.add_argument('--dataset', type=str, default='repair',
                         help='dataset folder')  # repair
-    parser.add_argument('--puzzle', type=str, default='image_00001_17',
+    parser.add_argument('--puzzle', type=str, default='repair_g28',
                         help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--det_method', type=str, default='exact',
                         help='method line detection')  # exact, manual, deeplsd

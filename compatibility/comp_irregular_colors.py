@@ -14,7 +14,7 @@ from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_sha
     encode_boundary_segments
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
-from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
+#from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
 
 from compatibility_MGC import compute_cost_wrapper_for_Colors_compatibility
 
@@ -159,8 +159,14 @@ def main(args):
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
                     #ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
                     # FOR TEST ONLY ####
-                    ji_mat = compute_cost_wrapper_for_Colors_compatibility(i, j, pieces, region_mask, cmp_parameters, ppars, seg_len,
-                                                  verbosity=args.verbosity)
+
+                    #ji_mat = compute_cost_wrapper_for_Colors_compatibility(i, j, pieces, region_mask, cmp_parameters, ppars, seg_len,
+                    #                              verbosity=args.verbosity)
+
+                    # FOR Motif_compatibility
+                    ji_mat = compute_cost_wrapper_for_Motifs_compatibility(i, j, pieces, region_mask, cmp_parameters,
+                                                                           ppars, seg_len,
+                                                                           verbosity=args.verbosity)
 
                     if i != j and args.DEBUG is True:
                         rotation_idx = 0
@@ -317,8 +323,8 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
-    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne', help='dataset folder')  # repair
-    parser.add_argument('--puzzle', type=str, default='image_00000_1', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
+    parser.add_argument('--dataset', type=str, default='repair', help='dataset folder')  # repair
+    parser.add_argument('--puzzle', type=str, default='repair_g28', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')
