@@ -9,6 +9,8 @@ import scipy
 import pdb
 import os
 import shapely
+from shapely import transform
+from shapely.affinity import rotate
 import json
 from puzzle_utils.lines_ops import draw_lines
 
@@ -86,6 +88,9 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
 
     piece_img = piece['img']
     piece_mask = piece['mask']
+    if 'polygon' in piece.keys():
+        piece_center_pixel = piece_img.shape[0] // 2
+        half_piece_shift = [piece_center_pixel, piece_center_pixel]
 
     ## ROTATE
     if theta > 0:
@@ -104,9 +109,12 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
         if 'motif_mask' in piece.keys():
             piece_motif_mask = scipy.ndimage.rotate(piece_motif_mask, theta, reshape=False, mode='constant')
         #piece['cm'] = get_cm(piece_mask)
+        if 'polygon' in piece.keys():
+            piece['polygon'] = rotate(piece['polygon'], -theta, origin=half_piece_shift)
+    
+    if 'polygon' in piece.keys():
+        poly_on_canvas = transform(piece['polygon'], lambda f: f + [x,y] - half_piece_shift)
 
-    #print(y_c0, y_c1+1, x_c0, x_c1+1)
-    #pdb.set_trace
     if piece['img'].shape[0] % 2 == 0:
         msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
         if img_with_channels is True:
@@ -134,7 +142,7 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
         ## NEW MOTIF-BASED
         if 'motif_mask' in piece.keys():
             motif_on_canvas[y_c0:y_c1+1, x_c0:x_c1+1, :] = piece_motif_mask
-        
+    
     shift_y = y - piece['cm'][1]
     shift_x = x - piece['cm'][0]
     cm_on_canvas = [piece['cm'][0] + shift_x, piece['cm'][1] + shift_y]
@@ -145,12 +153,17 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     }
     if 'sdf' in piece.keys():
         piece_on_canvas['sdf'] = sdf_on_canvas
+    if 'polygon' in piece.keys():
+        piece_on_canvas['polygon'] = poly_on_canvas
     if 'lines_mask' in piece.keys():
         piece_on_canvas['lines_mask'] = lines_on_canvas
     ## NEW MOTIF-BASED
     if 'motif_mask' in piece.keys():
         piece_on_canvas['motif_mask'] = motif_on_canvas
 
+    # plt.imshow(piece_on_canvas['img'])
+    # plt.plot(*piece_on_canvas['polygon'].boundary.xy)
+    # breakpoint()
     return piece_on_canvas
 
 
@@ -441,7 +454,8 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
     for piece in pieces:
         piece_ID = piece['id']
         polygon_path = os.path.join(polygons_folder, f"{piece_ID}.npy")
-        piece['polygon'] = np.load(polygon_path, allow_pickle=True)
+        piece['polygon'] = np.load(polygon_path, allow_pickle=True).tolist()
+        assert(type(np.load(polygon_path, allow_pickle=True).tolist()) == shapely.Polygon), "The polygon is not a shapely.Polygon! Check the files!"
         if line_based == True:
             lines_path = os.path.join(lines_folder, f"{piece_ID}.json")
             with open(lines_path, 'r') as file:

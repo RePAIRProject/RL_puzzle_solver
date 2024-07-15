@@ -61,7 +61,7 @@ def main(args):
         print("saved json compatibility file")
 
         # INCLUDE SHAPE
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_based=False, line_thickness=3)
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_based=False, line_thickness=3, motif_based=False)
 
         grid_size_xy = ppars.comp_matrix_shape[0]
         grid_size_rot = ppars.comp_matrix_shape[2]
@@ -164,16 +164,20 @@ def main(args):
                             # COMBO for MOTIFS case
                             combo = thresholded_regions_map * binary_overlap_motifs
                             combo[thresholded_regions_map < 0] = -1  # enforce -1 in the overlapping areas
+                        else:
+                            resized_motifs = np.zeros((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
 
                         # we convert the matrix to resize the image without losing the values
                         thr_reg_map_shape_uint = (thresholded_regions_map + 1).astype(np.uint8)
                         thr_reg_map_comp_range = thr_reg_map_shape_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
                         resized_shape = np.array(Image.fromarray(thr_reg_map_comp_range).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
 
-                        combo_uint = (combo + 1).astype(np.uint8)
-                        combo_comp_range = combo_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
-                        resized_combo = np.array(Image.fromarray(combo_comp_range).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
-
+                        if 'motif_mask' in pieces[i].keys() or 'lines_mask' in pieces[i].keys():
+                            combo_uint = (combo + 1).astype(np.uint8)
+                            combo_comp_range = combo_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
+                            resized_combo = np.array(Image.fromarray(combo_comp_range).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
+                        else:
+                            resized_combo = resized_shape
                         #resized_lines2 = cv2.resize(binary_overlap_lines.astype(np.uint8), (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
                         #resized_motifs2 = cv2.resize(binary_overlap_motifs.astype(np.uint8), (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
                         #resized_shape2 = cv2.resize(thr_reg_map_comp_range, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
@@ -290,7 +294,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')
     parser.add_argument('--dataset', type=str, default='repair', help='dataset (name of the folders)')
-    parser.add_argument('--puzzle', type=str, default='repair_g28',
+    parser.add_argument('--puzzle', type=str, default='',
                         help='puzzle to work on - leave empty to generate for the whole dataset')
     parser.add_argument('--method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
