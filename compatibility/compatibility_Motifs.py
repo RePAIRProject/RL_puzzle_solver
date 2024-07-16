@@ -16,7 +16,7 @@ from matplotlib import cm
 
 from puzzle_utils.shape_utils import place_on_canvas
 
-def compute_cost_wrapper_for_Motifs_compatibility(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, yolov8_obb_detector, verbosity=1):
+def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, cmp_parameters, ppars, yolov8_obb_detector, verbosity=1):
 
     (p, z_id, m, rot) = cmp_parameters
 
@@ -27,7 +27,6 @@ def compute_cost_wrapper_for_Motifs_compatibility(idx1, idx2, pieces, regions_ma
         R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
     else:
         print(f"computing cost matrix for piece {idx1} vs piece {idx2}")
-        mask_ij = regions_mask[:, :, :, idx2, idx1]
         candidate_values = np.sum(mask_ij > 0)
         image1 = pieces[idx1]['img']
         image2 = pieces[idx2]['img']

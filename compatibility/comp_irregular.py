@@ -8,13 +8,13 @@ import datetime
 import matplotlib.pyplot as plt 
 import time 
 
+
 # internal
 from configs import folder_names as fnames
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
-from puzzle_utils.lines_ops import calc_line_matching_parameters
-from utils import compute_cost_wrapper
+from utils import compute_cost_wrapper, calc_computation_parameters
 
 def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
     first_element = comp_as_list[0]
@@ -63,23 +63,22 @@ def main(args):
         for cfg_key in img_parameters.keys():
             print(f"{cfg_key}: {img_parameters[cfg_key]}")
         
-
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
-        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
+        cmp_parameter_path = os.path.join(puzzle_root_folder, 'regions_parameters.json')
         if os.path.exists(cmp_parameter_path):
             ppars = CfgParameters()
             with open(cmp_parameter_path, 'r') as cp:
                 ppars_dict = json.load(cp)
             ppars_dict['cmp_type'] = args.cmp_type
             print("-" * 60)
-            print('\tCOMPATIBILITY PARAMETERS')
+            print('\tREGIONS PARAMETERS')
             for ppk in ppars_dict.keys():
                 ppars[ppk] = ppars_dict[ppk]
                 print(f"{ppk}: {ppars[ppk]}")
         else:
             print("\n" * 3)
             print("/" * 60)
-            print("/\t***ERROR***\n/ compatibility_parameters.json not found!")
+            print("/\t***ERROR***\n/ regions_parameters.json not found!")
             print("/" * 60)
             print("\n" * 3)
             ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
@@ -98,6 +97,14 @@ def main(args):
         motif_based = False
         if args.cmp_type == 'motifs':
             motif_based = True
+            from ultralytics import YOLO
+            if args.yolo_path == '':
+                raise Exception("You are trying to use yolo-based motif compatibility without specifying the yolo model to be used.\
+                    \nPlease set the path with `--yolo_path path_to_the_pt_model` and relaunch")
+            yolov8_model_path = args.yolo_path
+            yolov8_obb_detector = YOLO(yolov8_model_path)
+        else:
+            yolov8_obb_detector = None
         computation_parameters['motif_based'] = motif_based
 
         print("-" * 60)
@@ -105,7 +112,7 @@ def main(args):
         for cfg_key in computation_parameters.keys():
             print(f"{cfg_key}: {computation_parameters[cfg_key]}")
         print("-" * 60)
-        computation_parameters_path = os.path.join(puzzle_root_folder, 'cmp_computation_parameters.json')
+        computation_parameters_path = os.path.join(puzzle_root_folder, 'calc_compatibility_parameters.json')
         with open(computation_parameters_path, 'w') as lmpj:
             json.dump(computation_parameters, lmpj, indent=3)
         print("saved json compatibility computations parameters file")
@@ -131,7 +138,7 @@ def main(args):
             rot = [0]
         else:
             rot = np.arange(0, 360 - ang + 1, ang)
-        cmp_parameters = (p, z_id, m, rot, line_matching_parameters)
+        cmp_parameters = (p, z_id, m, rot, computation_parameters)
         n = len(pieces)
 
         # COST MATRICES 
@@ -160,14 +167,18 @@ def main(args):
             #with parallel_backend('threading', n_jobs=args.jobs):
             costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars, compatibility_type=args.cmp_type, verbosity=args.verbosity) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
             #costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
-            All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n, norm_value=line_matching_parameters.rmax)
+            All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n, norm_value=computation_parameters.rmax)
         else:
             for i in range(n):  # select fixed fragment
                 for j in range(n):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
-                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, compatibility_type=args.cmp_type, verbosity=args.verbosity)
-                    # pdb.set_trace()
+                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, \
+                        detector=yolov8_obb_detector, verbosity=args.verbosity)
+                    
+                    All_cost[:, :, :, j, i] = ji_mat
+                    
+                    # DEBUG
                     if i == 0 and j == 1 and args.DEBUG is True:
                         rotation_idx = 0
                         plt.suptitle(f"COST WITH {args.cmp_cost}", fontsize=45)
@@ -180,11 +191,11 @@ def main(args):
                             plt.subplot(548); plt.imshow(region_mask[:,:,3,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 3")
                         # plt.subplot(546); plt.imshow(ji_mat[:,:,rotation_idx], cmap='RdYlGn'); plt.title("cost")
                         # if args.cmp_cost == 'LCI':
-                        #     norm_cmp = ji_mat[:,:,0] / np.max(ji_mat[:,:,0]) #np.maximum(1 - ji_mat[:,:,0] / line_matching_parameters.rmax, 0)
+                        #     norm_cmp = ji_mat[:,:,0] / np.max(ji_mat[:,:,0]) #np.maximum(1 - ji_mat[:,:,0] / computation_parameters.rmax, 0)
                         #     plt.subplot(547); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
                         #     plt.subplot(548); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,rotation_idx,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
                         # else:
-                        #     norm_cmp = np.maximum(1 - ji_mat[:,:,0] / line_matching_parameters.rmax, 0)
+                        #     norm_cmp = np.maximum(1 - ji_mat[:,:,0] / computation_parameters.rmax, 0)
                         #     plt.subplot(547); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
                         #     plt.subplot(548); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,rotation_idx,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
                         
@@ -200,9 +211,9 @@ def main(args):
 
                         
                         if args.cmp_cost == 'LAP':
-                            ji_mat[ji_mat > line_matching_parameters.badmatch_penalty] = line_matching_parameters.badmatch_penalty
+                            ji_mat[ji_mat > computation_parameters.badmatch_penalty] = computation_parameters.badmatch_penalty
                             ji_unique_values = np.unique(ji_mat)
-                            k = min(line_matching_parameters.k, len(ji_unique_values))
+                            k = min(computation_parameters.k, len(ji_unique_values))
                             kmin_cut_val = np.sort(ji_unique_values)[-k]
                             plt.subplot(5,4,13); plt.title("COST ROTATION KMINCUT 0")
                             plt.imshow(np.maximum(1 - ji_mat[:,:,0] / kmin_cut_val, 0), cmap='RdYlGn'); 
@@ -227,23 +238,18 @@ def main(args):
                                 plt.imshow(np.exp(-ji_mat[:,:,3]/76), cmap='RdYlGn'); 
                             #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,3,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
                         if args.cmp_cost == 'LAP2':
-                            clipping_val = line_matching_parameters.max_dist + (line_matching_parameters.badmatch_penalty - line_matching_parameters.max_dist) / 3
+                            clipping_val = computation_parameters.max_dist + (computation_parameters.badmatch_penalty - computation_parameters.max_dist) / 3
                             ji_mat = np.clip(ji_mat, 0, clipping_val)
                             ji_mat_normalized = 1 - ji_mat / clipping_val
                             plt.subplot(5,4,13); plt.title("compatibility normalized")
                             plt.imshow(ji_mat_normalized, cmap='RdYlGn'); 
                         
                         plt.show()
-                        pdb.set_trace()
-                    All_cost[:, :, :, j, i] = ji_mat
-                # # loop over j is finished
-                # max_i = np.max(All_cost[:, :, :, :, i])
-                # print(f"For piece {i} the maximum value is {max_i}")
-                # All_cost[:, :, :, :, i] /= max_i
+                        breakpoint()
+
         if args.cmp_type == 'lines':
             if args.cmp_cost == 'LCI':
                 print("WARNING: normalized over each piece!")
-                #pdb.set_trace()
                 #All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
             elif args.cmp_cost == 'LAP3':
                 min_vals = []
@@ -254,17 +260,17 @@ def main(args):
                 kmin_cut_val = np.max(min_vals) + 1
                 All_norm_cost = np.maximum(1 - All_cost/ kmin_cut_val, 0)
             elif args.cmp_cost == 'LAP2':
-                clipping_val = line_matching_parameters.max_dist + (line_matching_parameters.badmatch_penalty - line_matching_parameters.max_dist) / 3
+                clipping_val = computation_parameters.max_dist + (computation_parameters.badmatch_penalty - computation_parameters.max_dist) / 3
                 All_cost = np.clip(All_cost, 0, clipping_val)
                 All_norm_cost = 1 - All_cost / clipping_val
             else:  # args.cmp_cost == 'LAP':
-                #All_norm_cost = np.maximum(1 - All_cost / line_matching_parameters.rmax, 0)
+                #All_norm_cost = np.maximum(1 - All_cost / computation_parameters.rmax, 0)
                 All_norm_cost = All_cost # / np.max(All_cost) #
         else:
             All_norm_cost = All_cost
 
         only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
-        R_line = All_norm_cost + only_negative_region  # insert negative regions to cost matrix
+        R = All_norm_cost + only_negative_region  # insert negative regions to cost matrix
 
         # it should not be needed
         # R_line = (All_norm_cost * region_mask) * 2
@@ -290,20 +296,23 @@ def main(args):
             cmp_name = f"linesdet_{args.det_method}_cost_{args.cmp_cost}"
         elif args.cmp_type == 'shape':
             cmp_name = "shape"
+        elif args.cmp_type == 'motifs':
+            cmp_name = "motifs"
         else:
             cmp_name = f"cmp_{args.cmp_type}"
         filename = os.path.join(output_folder, f"CM_{cmp_name}")
         mdic = {
-                    "R_line": R_line, 
+                    "R": R, 
                     "label": "label", 
-                    "method":args.det_method, 
-                    "cost":args.cmp_cost, 
+                    "cmp_type":args.cmp_type, 
+                    "cmp_cost":args.cmp_cost, 
+                    "det_method":args.det_method, 
                     "xy_step": ppars.xy_step, 
                     "xy_grid_points": ppars.xy_grid_points, 
                     "theta_step": ppars.theta_step
                 }
         savemat(f'{filename}.mat', mdic)
-        np.save(filename, R_line)
+        np.save(filename, R)
 
         if args.save_everything is True:
             filename = os.path.join(output_folder, f'CM_all_cost_{cmp_name}')
@@ -323,7 +332,7 @@ def main(args):
         os.makedirs(vis_folder, exist_ok=True)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(R_line, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_{cmp_name}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=True)
+            save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_{cmp_name}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=True)
             if args.save_everything:
                 save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{cmp_name}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=True, vmin=-2, vmax=2)
         
@@ -368,6 +377,8 @@ if __name__ == '__main__':
     parser.add_argument('--det_method', type=str, default='exact', 
         help='method for the feature detection (usually lines or motif)',
         choices=['exact', 'deeplsd', 'manual', 'yolo-obb', 'yolo', 'yolo-seg'])  
+    parser.add_argument('--yolo_path', type=str, default='', help='yolo path (.pt model)') 
+
         # exact, manual, deeplsd
     # parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
     # parser.add_argument('--xy_grid_points', type=int, default=7, 

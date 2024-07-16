@@ -3,9 +3,38 @@ from puzzle_utils.shape_utils import compute_SDF_cost_matrix
 from puzzle_utils.lines_ops import compute_cost_matrix_LAP_debug, compute_cost_matrix_LAP, \
         compute_cost_matrix_LAP_v2, compute_cost_matrix_LAP_v3, compute_cost_matrix_LCI_method, \
         extract_from
+from compatibility.compatibility_Motifs import compute_cost_using_motifs_compatibility
 import time
 
-def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, compatibility_type='lines', verbosity=1):
+calc_computation_parameters(ppars, cmp_type=args.cmp_type, \
+            cmp_cost=args.cmp_cost, det_method=args.det_method)
+def calc_computation_parameters(parameters, cmp_type=cmp_type, cmp_cost=cmp_cost, det_method=det_method):
+
+    cmp_pars = CfgParameters()
+
+    cmp_pars['cmp_type'] = cmp_type 
+    cmp_pars['cmp_cost'] = cmp_cost 
+    cmp_pars['det_method'] = det_method 
+    if cmp_type == 'lines':
+        cmp_pars['thr_coef'] = 0.13
+        #lm_pars['max_dist'] = 0.70*parameters.xy_step ## changed *0.7
+        if (parameters.xy_step)> 6:
+            cmp_pars['max_dist'] = 6   ## changed *0.7*parameters.xy_step
+        else:
+            cmp_pars['max_dist'] = 0.70*(parameters.xy_step)
+
+        cmp_pars['badmatch_penalty'] = max(5, cmp_pars['max_dist'] * 5 / 3) # parameters.piece_size / 3 #?
+        cmp_pars['mismatch_penalty'] = max(4, cmp_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
+        cmp_pars['rmax'] = .5 * cmp_pars['max_dist'] * 7 / 6
+        cmp_pars['cmp_cost'] = cmp_cost
+        cmp_pars['k'] = 3
+    elif cmp_type == 'shape':
+        cmp_pars['dilation_size'] = 35
+    #elif cmp_type == 'motifs': #nothing needed it seems
+
+    return cmp_pars
+
+def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, detector=None, verbosity=1):
     """
     Wrapper for the cost computation, so that it can be called in one-line, 
     making it easier to parallelize using joblib's Parallel (in comp_irregular.py) 
@@ -15,8 +44,10 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
     shape, color, line, pattern.. 
     """
 
-    (p, z_id, m, rot, line_matching_pars) = cmp_parameters
+    (p, z_id, m, rot, computation_parameters) = cmp_parameters
     n = len(pieces)
+    compatibility_type = computation_parameters['cmp_type']
+    compatibility_cost = computation_parameters['cmp_cost']
     
     if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
@@ -34,15 +65,15 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
             alfa2, r2, s21, s22, color2, cat2 = extract_from(pieces[idx2]['extracted_lines'])
             if len(alfa1) == 0 and len(alfa2) == 0:
                 #print('no lines')
-                R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + line_matching_pars.max_dist * 2
+                R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + computation_parameters.max_dist * 2
             elif (len(alfa1) > 0 and len(alfa2) == 0) or (len(alfa1) == 0 and len(alfa2) > 0):
                 #print('only one side with lines')
-                R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + line_matching_pars.mismatch_penalty
+                R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + computation_parameters.mismatch_penalty
             else:
                 #print('values!')
                 
                 t1 = time.time()
-                if line_matching_pars.cmp_cost == 'DEBUG':
+                if compatibility_cost == 'DEBUG':
                     print(f"Computing compatibility between Piece {idx1} and Piece {idx2}")
                     if idx2 - idx1 == 1:
                         plt.suptitle(f"COST between Piece {idx1} and Piece {idx2}", fontsize=32)
@@ -51,20 +82,20 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
                     else:
                         R_cost = compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
                                                     mask_ij, ppars, verbosity=verbosity, show=False)
-                elif line_matching_pars.cmp_cost == 'LAP':
+                elif compatibility_cost == 'LAP':
                     R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
                                                     mask_ij, ppars, verbosity=verbosity)
-                elif line_matching_pars.cmp_cost == 'LCI':
+                elif compatibility_cost == 'LCI':
                     R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
                                                             mask_ij, ppars, verbosity=verbosity)
-                elif line_matching_pars.cmp_cost == 'LAP2':
+                elif compatibility_cost == 'LAP2':
                     R_cost = compute_cost_matrix_LAP_v2(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
                                                             mask_ij, ppars, verbosity=verbosity)
-                elif line_matching_pars.cmp_cost == 'LAP3':
+                elif compatibility_cost == 'LAP3':
                     R_cost = compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
                                                             mask_ij, ppars, verbosity=verbosity)
                 else:
-                    print('weird: using {line_matching_pars.cmp_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
+                    print('weird: using {compatibility_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
                     R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
                                                             mask_ij, ppars)
                 if verbosity > 1:
@@ -73,8 +104,10 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
         elif compatibility_type == 'shape':
             #breakpoint()
             ids_to_score = np.where(mask_ij > 0)
-            R_cost = compute_SDF_cost_matrix(pieces[idx1], pieces[idx2], ids_to_score, cmp_parameters, ppars)
+            R_cost = compute_SDF_cost_matrix(pieces[idx1], pieces[idx2], ids_to_score, computation_parameters, ppars, verbosity=verbosity)
             #breakpoint()
+        elif compatibility_type == 'motifs':
+            R_cost = compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, computation_parameters, ppars, yolov8_obb_detector=detector, verbosity=verbosity)
 
         else: # other compatibilities!
             print("\n" * 20)
