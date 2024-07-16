@@ -352,6 +352,9 @@ def main(args):
         cmp_name = "shape"
     elif args.cmp_type == 'combo_LS':
         cmp_name = f"shape_and_linesdet_{args.det_method}_cost_{args.cmp_cost}"
+    elif args.cmp_type == 'motifs':
+        cmp_name = "yolo8_simple_motifs"
+        # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
     else:
         cmp_name = f"cmp_{args.cmp_type}"
     it_nums = f"{args.tmax}its"
@@ -390,10 +393,31 @@ def main(args):
         #     plt.subplot(3, 4, 9+jkl); plt.imshow(R[:,:,jkl,8,5], vmin=-1, vmax=1, cmap='jet'); plt.title('Combined')
         # plt.show()
         # breakpoint()
+
+    elif args.cmp_type == 'combo_MS':
+        print("combining shape and motifs..")
+        cmp_name = "yolo8_simple_motifs"
+        # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
+        mat_motifs = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name,
+                                         f'CM_{cmp_name}'))
+        mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+        # breakpoint()
+        R_motif = mat_motifs['R_motifs']
+        R_shape = mat_shape['R_line']
+        negative_region_map = R_motif < 0
+
+        # only positive values
+        R = (np.clip(R_motif, 0, 1) * np.clip(R_shape, 0, 1))
+        R /= np.max(R)
+        # negative values set to -1
+        R[negative_region_map] = -1
+
+
     else:
         print("loading", os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
         mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
-        R = mat['R_line']
+        # R = mat['R_line']
+        R = mat['R_motifs']
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
@@ -552,7 +576,7 @@ if __name__ == '__main__':
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
     parser.add_argument('--p_pts', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
-    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo_LS'])   
+    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo_LS', 'motifs', 'combo_MS'])
     args = parser.parse_args()
 
     main(args)

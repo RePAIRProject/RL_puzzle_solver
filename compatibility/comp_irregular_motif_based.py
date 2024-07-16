@@ -180,6 +180,7 @@ def main(args):
                     ji_mat = compute_cost_wrapper_for_Motifs_compatibility(i, j, pieces, region_mask, cmp_parameters, ppars, yolov8_obb_detector, verbosity=1)
                     All_cost[:, :, :, j, i] = ji_mat
 
+            # Normalization (if needed )
             only_negative_region = np.clip(region_mask, -1, 0)
             All_cost = np.clip(All_cost, 0, 2)
             R_motifs = All_cost + only_negative_region
@@ -256,7 +257,7 @@ if __name__ == '__main__':
     parser.add_argument('--puzzle', type=str, default='repair_g28',
                         help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--det_method', type=str, default='yolo8',
-                        help='method line detection')  # exact, manual, deeplsd, yolo
+                        help='method line detection')  # exact, manual, deeplsd, yolo8, yolo10obb,
     parser.add_argument('--penalty', type=int, default=-1,
                         help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')
