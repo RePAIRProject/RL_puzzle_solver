@@ -8,14 +8,18 @@ import datetime
 import matplotlib.pyplot as plt
 import time
 
+from PIL import Image
+from ultralytics import YOLO
+
 # internal
 from configs import folder_names as fnames
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, \
     encode_boundary_segments
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
-from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
+#from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
 
+from compatibility_Motifs import compute_cost_wrapper_for_Motifs_compatibility
 from compatibility_MGC import compute_cost_wrapper_for_Colors_compatibility
 
 
@@ -33,6 +37,10 @@ def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
 
 def main(args):
     print("Compatibility log\nSearch for `CMP_START_TIME` or `CMP_END_TIME` if you want to see which images are done")
+
+    ## IF to add
+    yolov8_model_path = '/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+    yolov8_obb_detector = YOLO(yolov8_model_path)
 
     if args.puzzle == '':
         puzzles = os.listdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset))
@@ -86,16 +94,16 @@ def main(args):
             print("\n" * 3)
             ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
-        line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
-        print("-" * 50)
-        print('\tLINE MATCHING PARAMETERS')
-        for cfg_key in line_matching_parameters.keys():
-            print(f"{cfg_key}: {line_matching_parameters[cfg_key]}")
-        print("-" * 50)
-        line_matching_parameters_path = os.path.join(puzzle_root_folder, 'line_matching_parameters.json')
-        with open(line_matching_parameters_path, 'w') as lmpj:
-            json.dump(line_matching_parameters, lmpj, indent=3)
-        print("saved json line matching file")
+        # line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
+        # print("-" * 50)
+        # print('\tLINE MATCHING PARAMETERS')
+        # for cfg_key in line_matching_parameters.keys():
+        #     print(f"{cfg_key}: {line_matching_parameters[cfg_key]}")
+        # print("-" * 50)
+        # line_matching_parameters_path = os.path.join(puzzle_root_folder, 'line_matching_parameters.json')
+        # with open(line_matching_parameters_path, 'w') as lmpj:
+        #     json.dump(line_matching_parameters, lmpj, indent=3)
+        # print("saved json line matching file")
 
         if args.border_len < 0:
             seg_len = ppars.xy_step
@@ -103,8 +111,8 @@ def main(args):
             seg_len = args.border_len
         print("Using border length of {seg_len} pixels")
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, line_based=False)
-        pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=seg_len,
-                                          boundary_thickness=2)
+        #pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=seg_len,
+        #                                  boundary_thickness=2)
 
         region_mask_mat = loadmat(
             os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name,
@@ -125,7 +133,8 @@ def main(args):
             rot = [0]
         else:
             rot = np.arange(0, 360 - ang + 1, ang)
-        cmp_parameters = (p, z_id, m, rot, line_matching_parameters)
+        #cmp_parameters = (p, z_id, m, rot, line_matching_parameters) #for lines
+        cmp_parameters = (p, z_id, m, rot)
         n = len(pieces)
 
         # COST MATRICES
@@ -152,23 +161,23 @@ def main(args):
             # pool = multiprocessing.Pool(args.jobs)
             # costs_list = zip(*pool.map(compute_cost_matrix_LAP, [(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n)]))
             # with parallel_backend('threading', n_jobs=args.jobs):
-            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(
-                delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars,
-                                              verbosity=args.verbosity) for i in range(n) for j in
-                range(n))  ## is something change replacing j and i ???
-            # costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
-            All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n,
-                                                                     norm_value=line_matching_parameters.rmax)
+            #costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(
+                #delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars,
+                 #                             verbosity=args.verbosity) for i in range(n) for j in
+                #range(n))  ## is something change replacing j and i ???
+            #All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n,
+             #                                                        norm_value=line_matching_parameters.rmax)
         else:
             for i in range(n):  # select fixed fragment
                 for j in range(n):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
-                    # ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, verbosity=args.verbosity)
-                    # FOR TEST ONLY ####
-                    ji_mat = compute_cost_wrapper_for_Colors_compatibility(i, j, pieces, region_mask, cmp_parameters,
-                                                                           ppars, seg_len,
-                                                                           verbosity=args.verbosity)
+
+                    # ji_mat = compute_cost_wrapper_for_Colors_compatibility(i, j, pieces, region_mask, cmp_parameters,
+                    #                                                        ppars, seg_len,
+                    #                                                        verbosity=args.verbosity)
+
+                    ji_mat = compute_cost_wrapper_for_Motifs_compatibility(i, j, pieces, region_mask, cmp_parameters, ppars, yolov8_obb_detector, verbosity=1)
 
                     if i != j and args.DEBUG is True:
                         rotation_idx = 0
@@ -251,73 +260,78 @@ def main(args):
                             # plt.imshow(norm_cmp + np.minimum(region_mask[:,:,3,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn');
                         plt.show()
                         pdb.set_trace()
+
                     All_cost[:, :, :, j, i] = ji_mat
 
-            def index(array, item):
-                for idx, val in np.ndenumerate(array):
-                    if val == item:
-                        return idx
+            # ### Normalization for MGC k-thresh
+            # def index(array, item):
+            #     for idx, val in np.ndenumerate(array):
+            #         if val == item:
+            #             return idx
+            #
+            # k = args.k
+            # All_cost_cut = np.zeros((All_cost.shape))
+            # a_ks = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
+            # a_min = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
+            #
+            # for i in range(n):
+            #     a_cost_i = All_cost[:, :, :, :, i]
+            #     for x in range(a_cost_i.shape[0]):
+            #         for y in range(a_cost_i.shape[1]):
+            #             a_xy = a_cost_i[x, y, :, :]
+            #             a_all = np.array(np.unique(a_xy))
+            #             a = a_all[np.minimum(k, len(a_all) - 1)]
+            #             a_xy = np.where(a_xy > a, -1, a_xy)
+            #             a_cost_i[x, y, :, :] = a_xy
+            #             a_ks[x, y, i] = a
+            #             if len(a_all) > 1:
+            #                 a_min[x, y, i] = a_all[1]
+            #     print(a_ks[:, :, i])
+            #     All_cost_cut[:, :, :, :, i] = a_cost_i
+            #
+            # norm_term = np.max(a_ks) / (2 * k)
+            # All_norm_cost = 2 - All_cost_cut / norm_term  # only for colors
+            # All_norm_cost = np.where(All_norm_cost > 2, 0, All_norm_cost)  # only for colors
+            # if args.norm_type == 'negative':
+            #     All_norm_cost = np.where(All_norm_cost <= 0, -1, All_norm_cost)  ## NEW idea di Prof.Pelillo
+            # else:
+            #     All_norm_cost = np.where(All_norm_cost < 0, 0, All_norm_cost)  # only for colors
 
-            k = args.k
-            All_cost_cut = np.zeros((All_cost.shape))
-            a_ks = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
-            a_min = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
 
-            for i in range(n):
-                a_cost_i = All_cost[:, :, :, :, i]
-                for x in range(a_cost_i.shape[0]):
-                    for y in range(a_cost_i.shape[1]):
-                        a_xy = a_cost_i[x, y, :, :]
-                        a_all = np.array(np.unique(a_xy))
-                        a = a_all[np.minimum(k, len(a_all) - 1)]
-                        a_xy = np.where(a_xy > a, -1, a_xy)
-                        a_cost_i[x, y, :, :] = a_xy
-                        a_ks[x, y, i] = a
-                        if len(a_all) > 1:
-                            a_min[x, y, i] = a_all[1]
-                print(a_ks[:, :, i])
-                All_cost_cut[:, :, :, :, i] = a_cost_i
+        #     ## BEST BUDDIES
+        #     All_cost_BB = np.zeros((All_cost.shape))
+        #     bb_bonus = 3
+        #     for i in range(n-1):
+        #         for j in range(i+1,n,1):
+        #             a_cost_i = All_cost[:, :, :, j, i]
+        #             amin_1 = np.array(np.unique(a_cost_i))[1]  ## min = -1  second_min is best
+        #
+        #             a_cost_j = All_cost[:, :, :, i, j]
+        #             amin_2 = np.array(np.unique(a_cost_j))[1]
+        #             idx_1 = index(a_cost_i, amin_1)
+        #             all_val_1 = All_cost[idx_1[0], idx_1[1], idx_1[2], :, i]
+        #             v1 = np.min(all_val_1)
+        #             if v1 == -1:
+        #                 v1 = np.array(np.unique(all_val_1))[1]
+        #
+        #             idx_2 = index(a_cost_j, amin_2)
+        #             all_val_2 = All_cost[idx_2[0], idx_2[1], idx_2[2], :, j]
+        #             v2 = np.min(all_val_2)
+        #             if v2 == -1:
+        #                 v2 = np.array(np.unique(all_val_2))[1]
+        #
+        #             if v1 == amin_1 and v2 == amin_2:
+        #                 if v1 >= norm_term and v2 >= norm_term:
+        #                     All_cost_BB[idx_1[0], idx_1[1], idx_1[2], j, i] = bb_bonus
+        #                     All_cost_BB[idx_2[0], idx_2[1], idx_2[2], i, j] = bb_bonus
+        #
+        # # NEW OPTION with Negative compatibilities
+        # only_zero_region = np.abs(region_mask)  # recover zero aria in region matrix
+        # R_line_initial = All_norm_cost * only_zero_region
+        # R_line = R_line_initial + All_cost_BB
 
-            norm_term = np.max(a_ks) / (2 * k)
-            All_norm_cost = 2 - All_cost_cut / norm_term  # only for colors
-            All_norm_cost = np.where(All_norm_cost > 2, 0, All_norm_cost)  # only for colors
-            if args.norm_type == 'negative':
-                All_norm_cost = np.where(All_norm_cost <= 0, -1, All_norm_cost)  ## NEW idea di Prof.Pelillo
-            else:
-                All_norm_cost = np.where(All_norm_cost < 0, 0, All_norm_cost)  # only for colors
-
-
-            ## BEST BUDDIES
-            All_cost_BB = np.zeros((All_cost.shape))
-            bb_bonus = 3
-            for i in range(n-1):
-                for j in range(i+1,n,1):
-                    a_cost_i = All_cost[:, :, :, j, i]
-                    amin_1 = np.array(np.unique(a_cost_i))[1]  ## min = -1  second_min is best
-
-                    a_cost_j = All_cost[:, :, :, i, j]
-                    amin_2 = np.array(np.unique(a_cost_j))[1]
-                    idx_1 = index(a_cost_i, amin_1)
-                    all_val_1 = All_cost[idx_1[0], idx_1[1], idx_1[2], :, i]
-                    v1 = np.min(all_val_1)
-                    if v1 == -1:
-                        v1 = np.array(np.unique(all_val_1))[1]
-
-                    idx_2 = index(a_cost_j, amin_2)
-                    all_val_2 = All_cost[idx_2[0], idx_2[1], idx_2[2], :, j]
-                    v2 = np.min(all_val_2)
-                    if v2 == -1:
-                        v2 = np.array(np.unique(all_val_2))[1]
-
-                    if v1 == amin_1 and v2 == amin_2:
-                        if v1 >= norm_term and v2 >= norm_term:
-                            All_cost_BB[idx_1[0], idx_1[1], idx_1[2], j, i] = bb_bonus
-                            All_cost_BB[idx_2[0], idx_2[1], idx_2[2], i, j] = bb_bonus
-
-        # NEW OPTION with Negative compatibilities
-        only_zero_region = np.abs(region_mask)  # recover zero aria in region matrix
-        R_line_initial = All_norm_cost * only_zero_region
-        R_line = R_line_initial + All_cost_BB
+        ## Motif_comp case
+        R_motifs = All_cost
 
         print("-" * 50)
         time_in_seconds = time.time() - time_start_puzzle
@@ -337,7 +351,7 @@ def main(args):
         filename = os.path.join(output_folder, f'CM_{args.det_method}_{args.norm_type}_colors_BB')
         #filename = os.path.join(output_folder, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}')
         mdic = {
-            "R_line": R_line,
+            "R_motifs": R_motifs,
             "label": "label",
             "method": args.det_method,
             "cost": args.cmp_cost,
@@ -346,7 +360,7 @@ def main(args):
             "theta_step": ppars.theta_step
         }
         savemat(f'{filename}.mat', mdic)
-        np.save(filename, R_line)
+        np.save(filename, R_motifs)
 
         if args.save_everything is True:
             filename = os.path.join(output_folder, f'CM_all_cost_lines_{args.det_method}_cost_{args.cmp_cost}')
@@ -366,7 +380,7 @@ def main(args):
         os.makedirs(vis_folder, exist_ok=True)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(R_line, pieces, ppars.theta_step, os.path.join(vis_folder,
+            save_vis(R_motifs, pieces, ppars.theta_step, os.path.join(vis_folder,
                                                                     f'visualization_{puzzle}_linesdet_{args.det_method}_cost_{args.cmp_cost}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'),
                      f"compatibility matrix {puzzle}", all_rotation=True, vmin=-2, vmax=10)
             if args.save_everything:
@@ -385,9 +399,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
-    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne_10px',
+    parser.add_argument('--dataset', type=str, default='repair',
                         help='dataset folder')  # repair
-    parser.add_argument('--puzzle', type=str, default='image_00001_17',
+    parser.add_argument('--puzzle', type=str, default='repair_g28',
                         help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--det_method', type=str, default='exact',
                         help='method line detection')  # exact, manual, deeplsd

@@ -17,7 +17,7 @@ from matplotlib import cm
 def compute_cost_wrapper_for_Colors_compatibility(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, seg_len, verbosity=1):
 
     #(p, z_id, m, rot, line_matching_pars) = cmp_parameters
-    (p, z_id, m, rot, line_matching_pars) = cmp_parameters
+    (p, z_id, m, rot) = cmp_parameters
 
     if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
