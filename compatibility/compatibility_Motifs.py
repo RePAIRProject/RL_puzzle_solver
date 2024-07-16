@@ -90,6 +90,19 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                             score_sum = score_sum + bb_score
                             cont = 1 + cont
 
+                        # Polygon corner points coordinates
+                        pts = np.array(do_pts, dtype='int64')
+                        color = (255, 255, 255)
+                        im0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
+                        im_ij_obb_mask = cv2.fillPoly(im0, [pts], color)
+                        class_label = det_obb.cpu().cls.numpy()[0]
+
+                        im_i_obb_mask = piece_i_on_canvas['img'][class_label-1]
+                        im_j_obb_mask = piece_j_on_canvas['img'][class_label-1]
+
+
+
+
                     motif_conf_scores = 0
                     if cont > 0:
                         motif_conf_scores = score_sum/cont
