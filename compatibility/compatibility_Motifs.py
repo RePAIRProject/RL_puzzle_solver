@@ -13,12 +13,13 @@ from shapely.affinity import rotate
 from matplotlib import pyplot as plt
 from sklearn.cluster import DBSCAN
 from matplotlib import cm
+import cv2
 
 from puzzle_utils.shape_utils import place_on_canvas
 
 def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, cmp_parameters, ppars, yolov8_obb_detector, verbosity=1):
 
-    (p, z_id, m, rot) = cmp_parameters
+    (p, z_id, m, rot, computation_parameters) = cmp_parameters
 
     if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
@@ -94,13 +95,10 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                         color = (255, 255, 255)
                         im0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
                         im_ij_obb_mask = cv2.fillPoly(im0, [pts], color)
-                        class_label = det_obb.cpu().cls.numpy()[0]
+                        class_label = int(det_obb.cpu().cls.numpy()[0])
 
                         im_i_obb_mask = piece_i_on_canvas['img'][class_label-1]
                         im_j_obb_mask = piece_j_on_canvas['img'][class_label-1]
-
-
-
 
                     motif_conf_scores = 0
                     if cont > 0:

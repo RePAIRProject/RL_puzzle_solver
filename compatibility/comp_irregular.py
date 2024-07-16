@@ -359,7 +359,7 @@ if __name__ == '__main__':
     parser.add_argument('--cmp_type', type=str, default='lines', 
         help='Chooses the compaitbility to use.\nIf more than one should be used, select `combo`\
             \nIt is connected with `--cmp_cost` and `--det_method`!', 
-        choices=['lines', 'shape', 'color', 'motif', 'combo'])   
+        choices=['lines', 'shape', 'color', 'motifs', 'combo'])   
     parser.add_argument('--cmp_cost', type=str, default='LCI', 
         help='Chooses the cost used to compute compatibility - it depends on the `--cmp_type`\
             \nUse LAP, LAP3 or LCI for lines, YOLO or overlap for motif, SDF for shape, MGC for color', 

@@ -6,9 +6,11 @@ from puzzle_utils.lines_ops import compute_cost_matrix_LAP_debug, compute_cost_m
 from compatibility.compatibility_Motifs import compute_cost_using_motifs_compatibility
 import time
 
-calc_computation_parameters(ppars, cmp_type=args.cmp_type, \
-            cmp_cost=args.cmp_cost, det_method=args.det_method)
-def calc_computation_parameters(parameters, cmp_type=cmp_type, cmp_cost=cmp_cost, det_method=det_method):
+
+class CfgParameters(dict):
+    __getattr__ = dict.__getitem__
+
+def calc_computation_parameters(parameters, cmp_type, cmp_cost, det_method):
 
     cmp_pars = CfgParameters()
 
@@ -107,7 +109,7 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
             R_cost = compute_SDF_cost_matrix(pieces[idx1], pieces[idx2], ids_to_score, computation_parameters, ppars, verbosity=verbosity)
             #breakpoint()
         elif compatibility_type == 'motifs':
-            R_cost = compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, computation_parameters, ppars, yolov8_obb_detector=detector, verbosity=verbosity)
+            R_cost = compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, cmp_parameters, ppars, yolov8_obb_detector=detector, verbosity=verbosity)
 
         else: # other compatibilities!
             print("\n" * 20)
