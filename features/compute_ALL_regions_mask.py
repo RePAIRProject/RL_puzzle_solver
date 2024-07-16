@@ -41,7 +41,7 @@ def main(args):
         print(puzzle)
         # old version
         pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, puzzle, args.num_pieces, verbose=True)
-
+        
         # PARAMETERS
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
         cmp_parameter_path = os.path.join(puzzle_root_folder, 'regions_parameters.json')
@@ -61,8 +61,15 @@ def main(args):
         print("saved json regions file")
 
         # INCLUDE SHAPE
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, line_based=False, line_thickness=3, motif_based=False)
-
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, \
+            line_based=False, line_thickness=3, motif_based=True)
+        if 'lines' not in pieces[0].keys():
+            print("-" * 50)
+            print("\nWARNING:\nno lines found, line-based region will be empty!\n")
+        if 'motif_mask' not in pieces[0].keys():
+            print("-" * 50)
+            print("\nWARNING:\nno motifs found, motifs-based region will be empty!\n")
+        print("-" * 50)
         grid_size_xy = ppars.comp_matrix_shape[0]
         grid_size_rot = ppars.comp_matrix_shape[2]
         grid, grid_step_size = create_grid(grid_size_xy, ppars.p_hs, ppars.canvas_size)
@@ -135,6 +142,7 @@ def main(args):
                             # ??? overlap lines is calculate independently from line-category ???
                             # IF we calculate separately overlap of different category, will it improve results ??
                         else:
+                            
                             resized_lines = np.zeros((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
 
                         #  MOTIFS case

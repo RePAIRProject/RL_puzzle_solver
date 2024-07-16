@@ -453,8 +453,8 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
         assert len(polygons) == len(motif), f'Error: have {len(polygons)} polygons files and {len(motif)} motif files, they should have the same length!'
 
     for piece in pieces:
-        piece_ID = piece['id']
-        polygon_path = os.path.join(polygons_folder, f"{piece_ID}.npy")
+        piece_name = piece['name']
+        polygon_path = os.path.join(polygons_folder, f"{piece_name}.npy")
 
         piece['polygon'] = np.load(polygon_path, allow_pickle=True).tolist()
         if type(piece['polygon']) != shapely.Polygon:
@@ -474,7 +474,7 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
 
         ## NEW MOTIVE BASED
         if motif_based == True:
-            motif_path = os.path.join(motif_folder, f'motifs_cube_{piece_ID}.npy')
+            motif_path = os.path.join(motif_folder, f'motifs_cube_{piece_name}.npy')
             motif_cube = np.load(motif_path)
             piece['motif_mask'] = motif_cube
 
@@ -498,10 +498,14 @@ def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False)
         img = cv2.imread(piece_full_path)
         piece_d['img'] = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         mask_full_path = os.path.join(masks_folder, piece_name)
-        mask = plt.imread(mask_full_path)
+        mask = plt.imread(mask_full_path, cv2.IMREAD_GRAYSCALE)
+        if len(mask.shape) > 2:
+            print("WARNING:Mask has multiple channels, using the first..")
+            mask = mask[:,:,0]
         piece_d['mask'] = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, closing_kernel)
         piece_d['cm'] = get_cm(piece_d['mask'])
         piece_d['id'] = piece_name[:10]  # piece_XXXXX.png
+        piece_d['name'] = piece_name[:-4]  # piece_XXXXX.png
         if dataset=='repair':
             piece_d['id'] = piece_name[:9]   # RPf_00194.png
         pieces.append(piece_d)
