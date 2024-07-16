@@ -26,12 +26,14 @@ def main(args):
     #imgs_folder = '/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
     #motifs_output = '/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/motif_OBB'
 
+    # to get yolo output (terminal):
+    # yolo obb predict source='/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces' model='/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
     if args.yolo_model == '':
-        yolov8_model_path = '/Users/Marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+        yolov8_model_path = '/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
     else:
         yolov8_model_path = args.yolo_model
     if args.images == "":
-        imgs_folder = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
+        imgs_folder = '/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
     else:
         imgs_folder = args.images
     motifs_output = 'output/repair/repair_g28/motifs_detection2'
@@ -75,14 +77,14 @@ def main(args):
 
             # Polygon corner points coordinates
             pts = np.array(do_pts, dtype='int64')
-            color = 255*np.array(obb_colormap(class_label)[:3])
-            # color = (255, 0, 0)
+            #color = 255*np.array(obb_colormap(class_label)[:3])
+            color = (255, 255, 255)
             thickness = 2
             isClosed = True
             im0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
-            image0 = cv2.polylines(im0, [pts], isClosed, color, thickness)
+            image0_new = cv2.fillPoly(im0, [pts], color)
             print(int(class_label))
-            cubo_image0[:, :, int(class_label)-1] = cubo_image0[:, :, int(class_label)-1] + image0
+            cubo_image0[:, :, int(class_label)-1] = cubo_image0[:, :, int(class_label)-1] + image0_new
 
         # save motifs_CUBE per ogni image
         filename = os.path.join(motifs_output, f'motifs_cube_{img_name}')
