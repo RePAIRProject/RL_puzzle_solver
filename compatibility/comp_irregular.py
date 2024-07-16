@@ -84,24 +84,35 @@ def main(args):
             print("\n" * 3)
             ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
-        line_matching_parameters = calc_line_matching_parameters(ppars, args.cmp_cost)
-        print("-" * 60)
-        print('\tLINE MATCHING PARAMETERS')
-        for cfg_key in line_matching_parameters.keys():
-            print(f"{cfg_key}: {line_matching_parameters[cfg_key]}")
-        print("-" * 60)
-        line_matching_parameters_path = os.path.join(puzzle_root_folder, 'line_matching_parameters.json')
-        with open(line_matching_parameters_path, 'w') as lmpj:
-            json.dump(line_matching_parameters, lmpj, indent=3)
-        print("saved json line matching file")
-
+        computation_parameters = calc_computation_parameters(ppars, cmp_type=args.cmp_type, \
+            cmp_cost=args.cmp_cost, det_method=args.det_method)
+        computation_parameters['cmp_type'] = args.cmp_type
         calc_sdf = False
         if args.cmp_type == 'shape':
             calc_sdf = True
+        computation_parameters['calc_sdf'] = calc_sdf
         line_based = False
         if args.cmp_type == 'lines':
             line_based = True
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, line_based=line_based, sdf=calc_sdf)
+        computation_parameters['line_based'] = line_based
+        motif_based = False
+        if args.cmp_type == 'motifs':
+            motif_based = True
+        computation_parameters['motif_based'] = motif_based
+
+        print("-" * 60)
+        print('\tCOMPUTATIONS PARAMETERS')
+        for cfg_key in computation_parameters.keys():
+            print(f"{cfg_key}: {computation_parameters[cfg_key]}")
+        print("-" * 60)
+        computation_parameters_path = os.path.join(puzzle_root_folder, 'cmp_computation_parameters.json')
+        with open(computation_parameters_path, 'w') as lmpj:
+            json.dump(computation_parameters, lmpj, indent=3)
+        print("saved json compatibility computations parameters file")
+
+        
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, \
+            line_based=line_based, sdf=calc_sdf, motif_based=motif_based)
 
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
         region_mask = region_mask_mat['RM']
@@ -329,15 +340,35 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
     parser.add_argument('--dataset', type=str, default='synthetic_irregular_9_pieces_by_drawing_coloured_lines_peynrh', help='dataset folder')  # repair
     parser.add_argument('--puzzle', type=str, default='', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
-    parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')
     parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
     parser.add_argument('--save_everything', default=False, action='store_true',
         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
-    parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')   
-    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo'])   
+    # COMPATIBILITY PARAMETERS
+    parser.add_argument('--cmp_type', type=str, default='lines', 
+        help='Chooses the compaitbility to use.\nIf more than one should be used, select `combo`\
+            \nIt is connected with `--cmp_cost` and `--det_method`!', 
+        choices=['lines', 'shape', 'color', 'motif', 'combo'])   
+    parser.add_argument('--cmp_cost', type=str, default='LCI', 
+        help='Chooses the cost used to compute compatibility - it depends on the `--cmp_type`\
+            \nUse LAP, LAP3 or LCI for lines, YOLO or overlap for motif, SDF for shape, MGC for color', 
+        choices=[
+            'LAP', 'LAP3', 'LCI', # line-based 
+            'YOLO_conf', 'overlap', # motif-based
+            'SDF', # shape-based
+            'MGC' # color-based
+        ])    
+    parser.add_argument('--cmp_combo', type=str, default='LS', 
+        help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
+            \nThe capital letters are used (L=lines, M=motif, S=shape, C=color)\
+            \nFor example, MS is motif+shape, LS is lines+shape', 
+        choices=['LS', 'MS', 'CS', 'CLMS'])   
+    parser.add_argument('--det_method', type=str, default='exact', 
+        help='method for the feature detection (usually lines or motif)',
+        choices=['exact', 'deeplsd', 'manual', 'yolo-obb', 'yolo', 'yolo-seg'])  
+        # exact, manual, deeplsd
     # parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
     # parser.add_argument('--xy_grid_points', type=int, default=7, 
     #     help='the number of points in the grid (for each axis, total number will be the square of what is given)')
