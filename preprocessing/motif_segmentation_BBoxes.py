@@ -10,7 +10,7 @@ matplotlib.use('TkAgg')
 
 import matplotlib.pyplot as plt
 from PIL import Image
-from ultralytics import YOLO
+from ultralytics import YOLOv10
 import pdb
 import json
 from configs import folder_names as fnames
@@ -48,7 +48,7 @@ def main(args):
     indent_spaces = 3
 
     # Get the yolo model
-    yolov8_obb_detector = YOLO(yolov8_model_path)
+    yolov8_obb_detector = YOLOv10(yolov8_model_path)
 
     # Go through the images and extract features
     obb_colormap = mpl.colormaps['jet'].resampled(12)
