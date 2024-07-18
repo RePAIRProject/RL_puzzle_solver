@@ -330,7 +330,7 @@ def main(args):
         json.dump(cfg, spj, indent=3)
     print("saved json solver parameters file")
 
-    cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
+    cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters_v2.json')
     if os.path.exists(cmp_parameter_path):
         ppars = CfgParameters()
         with open(cmp_parameter_path, 'r') as cp:
@@ -340,7 +340,7 @@ def main(args):
     else:
         print("\n" * 3)
         print("/" * 70)
-        print("/\t***ERROR***\n/ compatibility_parameters.json not found!")
+        print("/\t***ERROR***\n/ compatibility_parameters_v2.json not found!")
         print("/" * 70)
         print("\n" * 3)
         ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)

@@ -114,7 +114,6 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                             # print(bb_score)
                             score_sum_conf = score_sum_conf + bb_score
                             cont1 = 1 + cont1
-                            breakpoint()
 
                             # Polygon corner points coordinates
                             # x0, y0 is from crop to canvas

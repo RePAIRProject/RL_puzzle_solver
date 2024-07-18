@@ -117,9 +117,9 @@ def main(args):
         for cfg_key in ppars.keys():
             print(f"{cfg_key}: {ppars[cfg_key]}")
         print("-" * 60)
-        computation_parameters_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
+        computation_parameters_path = os.path.join(puzzle_root_folder, 'compatibility_parameters_v2.json')
         with open(computation_parameters_path, 'w') as lmpj:
-            json.dump(computation_parameters, lmpj, indent=3)
+            json.dump(ppars, lmpj, indent=3)
         print("saved json compatibility parameters file")
 
         
