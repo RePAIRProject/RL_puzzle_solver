@@ -56,7 +56,6 @@ def main(args):
         #         ppars[ppk] = int(ppars[ppk])
         #     print(ppk, ":", type(ppars[ppk]))
         # pdb.set_trace()
-        breakpoint()
         with open(cmp_parameter_path, 'w') as cpj:
             json.dump(ppars, cpj, indent=3)
         print("saved json compatibility_parameters file")
