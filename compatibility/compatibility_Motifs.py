@@ -83,9 +83,9 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                     
 
                     ### Check Poly-motif-bb intersection
-                    plt.imshow(pieces_ij_on_canvas)
-                    plt.plot(*piece_i_on_canvas['polygon'].boundary.xy)
-                    plt.plot(*piece_j_on_canvas['polygon'].boundary.xy)
+                    # plt.imshow(pieces_ij_on_canvas)
+                    # plt.plot(*piece_i_on_canvas['polygon'].boundary.xy)
+                    # plt.plot(*piece_j_on_canvas['polygon'].boundary.xy)
                     score_sum_conf = 0; cont1 = 0
                     score_sum_overlap = 0; cont2 = 0
                     for det_obb in obbs.obb:
@@ -95,8 +95,7 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                         else:
                             obb_shapely_points = [(point[0], point[1]) for point in do_pts]
                         obb_poly = shapely.Polygon(obb_shapely_points)
-                        plt.plot(*obb_poly.boundary.xy)
-                        
+                        # plt.plot(*obb_poly.boundary.xy)
 
                         inters_poly_i = shapely.is_empty(shapely.intersection(obb_poly, piece_i_on_canvas['polygon'].boundary))
                         inters_poly_j = shapely.is_empty(shapely.intersection(obb_poly, piece_j_on_canvas['polygon'].boundary))
@@ -123,21 +122,21 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                             if np.sum(sum_ij_obb_mask) > 0:
                                 overlap_score = np.sum(sum_ij_obb_mask*im_ij_obb_mask)/np.sum(sum_ij_obb_mask)
 
-                            print('sum * ', np.sum(sum_ij_obb_mask*im_ij_obb_mask))
-                            print(' /sum', np.sum(sum_ij_obb_mask))
-                            print('ovrelap score', overlap_score)
+                            # print('sum * ', np.sum(sum_ij_obb_mask*im_ij_obb_mask))
+                            # print(' /sum', np.sum(sum_ij_obb_mask))
+                            # print('ovrelap score', overlap_score)
                             score_sum_overlap = score_sum_overlap + overlap_score
                             cont2 = 1 + cont2
 
                     motif_conf_score = 0
                     if cont1 > 0:
                         motif_conf_score = score_sum_conf / cont1
-                    print(motif_conf_score)
+                    # print(motif_conf_score)
 
                     motif_overlap_score = 0
                     if cont2 > 0:
                         motif_overlap_score = score_sum_overlap / cont2
-                    print(motif_overlap_score)
+                    # print(motif_overlap_score)
 
                     #plt.show()
                     R_cost_conf[iy, ix, t] = motif_conf_score
