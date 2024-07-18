@@ -111,9 +111,12 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
             ids_to_score = np.where(mask_ij > 0)
             R_cost = compute_SDF_cost_matrix(pieces[idx1], pieces[idx2], ids_to_score, ppars, verbosity=verbosity)
             #breakpoint()
+        elif compatibility_type == 'motifs-obb':
+            R_cost = motif_OBB_compatibility_for_irregular(idx1, idx2, pieces, mask_ij, ppars, yolov8_obb_detector=detector, verbosity=verbosity)
+        elif compatibility_type == 'motifs-bbox':
+            R_cost = motif_OBB_compatibility_for_irregular(idx1, idx2, pieces, mask_ij, ppars, yolov8_obb_detector=detector, verbosity=verbosity)
         elif compatibility_type == 'motifs':
-            R_cost = compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolov8_obb_detector=detector, verbosity=verbosity)
-
+            print("Error: you probably want `motifs-obb` or `motifs-bbox`, motifs alone is not supported anymore")
         else: # other compatibilities!
             print("\n" * 20)
             print("=" * 50)

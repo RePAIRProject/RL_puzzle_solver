@@ -318,6 +318,7 @@ def main(args):
     cfg['p_matrix_shape'] = args.p_pts
     cfg['cmp_type'] = args.cmp_type
     cfg['cmp_cost'] = args.cmp_cost
+    cfg['combo_type'] = args.combo_type
     print('\tSOLVER PARAMETERS')
     for cfg_key in cfg.keys():
         print(f"{cfg_key}: {cfg[cfg_key]}")
@@ -350,8 +351,8 @@ def main(args):
         cmp_name = f"linesdet_{args.det_method}_cost_{args.cmp_cost}"
     elif args.cmp_type == 'shape':
         cmp_name = "shape"
-    elif args.cmp_type == 'combo_LS':
-        cmp_name = f"shape_and_linesdet_{args.det_method}_cost_{args.cmp_cost}"
+    elif args.cmp_type == 'combo':
+        cmp_name = f"cmp_combo{args.combo_type}"
     elif args.cmp_type == 'motifs':
         cmp_name = "motifs"
         # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
@@ -366,52 +367,45 @@ def main(args):
     
     pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.pieces_folder}")
     # check if we are combining!
-    if args.cmp_type == 'combo_LS':
-        print("combining shape and lines..")
-        mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}'))
-        mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
-        #breakpoint()
-        R_lines = mat_lines['R_line']
-        R_shape = mat_shape['R_line']
-        negative_region_map = R_lines < 0
+    if args.cmp_type == 'combo':
+        if args.combo_type == "LS":
+            cmp_name = "combo_LS"
+            print("combining shape and lines..")
+            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}'))
+            mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+            #breakpoint()
+            R_lines = mat_lines['R_line']
+            R_shape = mat_shape['R_line']
+            negative_region_map = R_lines < 0
 
-        # only positive values
-        R = (np.clip(R_lines, 0, 1) * np.clip(R_shape, 0, 1))
-        R /= np.max(R)
-        # test
-        R *= 2
+            # only positive values
+            R = (np.clip(R_lines, 0, 1) * np.clip(R_shape, 0, 1))
+            R /= np.max(R)
+            # test
+            R *= 2
 
-        # negative values set to -1
-        R[negative_region_map] = -1
+            # negative values set to -1
+            R[negative_region_map] = -1
 
-        # save_vis(R, pieces, 90, os.path.join("output/synthetic_irregular_9_pieces_by_drawing_coloured_lines_kxdwtu_26_02_2024/image_00003", 'visualization_combo_line_shape'), f"compatibility matrix", all_rotation=True)
+        elif args.combo_type == 'MS':
+            print("combining shape and motifs..")
+            cmp_name = "combo_MS"
+            # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
+            mat_motifs = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_motifs'))
+            mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+            # breakpoint()
+            R_motif = mat_motifs['R']
+            R_shape = mat_shape['R']
+            negative_region_map = R_motif < 0
 
-        # #R[R > 0] = R[R > 0]
-        # for jkl in range(4):
-        #     plt.subplot(3, 4, 1+jkl); plt.imshow(R_lines[:,:,jkl,8,5], vmin=-1, vmax=1, cmap='jet'); plt.title('Lines')
-        #     plt.subplot(3, 4, 5+jkl); plt.imshow(R_shape[:,:,jkl,8,5], vmin=-1, vmax=1, cmap='jet'); plt.title('Shape')
-        #     plt.subplot(3, 4, 9+jkl); plt.imshow(R[:,:,jkl,8,5], vmin=-1, vmax=1, cmap='jet'); plt.title('Combined')
-        # plt.show()
-        # breakpoint()
+            # only positive values
+            R = (np.clip(R_motif, 0, 1) * np.clip(R_shape, 0, 1))
+            R /= np.max(R)
+            # negative values set to -1
+            R[negative_region_map] = -1
 
-    elif args.cmp_type == 'combo_MS':
-        print("combining shape and motifs..")
-        cmp_name = "yolo8_simple_motifs"
-        # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
-        mat_motifs = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name,
-                                         f'CM_{cmp_name}'))
-        mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
-        # breakpoint()
-        R_motif = mat_motifs['R_motifs']
-        R_shape = mat_shape['R_line']
-        negative_region_map = R_motif < 0
-
-        # only positive values
-        R = (np.clip(R_motif, 0, 1) * np.clip(R_shape, 0, 1))
-        R /= np.max(R)
-        # negative values set to -1
-        R[negative_region_map] = -1
-
+        else:
+            raise Exception(f"Please select another combo type, this ({args.combo_type}) has not been implemented yet")
 
     else:
         print("loading", os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
@@ -577,8 +571,8 @@ if __name__ == '__main__':
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
     parser.add_argument('--p_pts', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
-    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo_LS', 'motifs', 'combo_MS'])
-    parser.add_argument('--cmp_combo', type=str, default='LS', 
+    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo', 'motifs'])
+    parser.add_argument('--combo_type', type=str, default='LS', 
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
             \nThe capital letters are used (L=lines, M=motif, S=shape, C=color)\
             \nFor example, MS is motif+shape, LS is lines+shape', 

@@ -18,7 +18,7 @@ import cv2
 from puzzle_utils.shape_utils import place_on_canvas
 from puzzle_utils.pieces_utils import crop_to_content
 
-def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolov8_obb_detector, verbosity=1):
+def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolov8_detector, bb_type=1, verbosity=1):
 
     p = ppars['p']
     z_id = ppars['z_id']
@@ -38,16 +38,19 @@ def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, 
         poly1 = pieces[idx1]['polygon']
         poly2 = pieces[idx2]['polygon']
 
-        R_cost_conf, R_cost_overlap  = motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, yolov8_obb_detector, verbosity=1)
-        print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
-
+        if bb_type == 1:
+            R_cost_conf, R_cost_overlap  = motif_OBB_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, yolov8_obb_detector, verbosity=1)
+            print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
+        elif bb_type == 0:
+            R_cost_conf, R_cost_overlap  = motif_bbox_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, yolov8_obb_detector, verbosity=1)
+            print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
         R_cost = R_cost_overlap
 
     return R_cost
 
 #### NEW
 ## pairwise compatibility measure between two pieces with and without rotation
-def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, \
+def motif_OBB_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, \
         yolov8_obb_detector, detect_on_crop=True, area_ratio=0.1, verbosity=1):
     # Get the yolo model
 

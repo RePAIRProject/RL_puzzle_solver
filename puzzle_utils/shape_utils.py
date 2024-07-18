@@ -620,7 +620,7 @@ def process_region_map(region_map, perc_min=0.01):
     # pdb.set_trace()
     return rmap, rc-1
 
-def compute_SDF_cost_matrix(piece_i, piece_j, ids_to_score, ppars):
+def compute_SDF_cost_matrix(piece_i, piece_j, ids_to_score, ppars, verbosity=1):
     """ 
     It computes SDF-based cost matrix between piece_i and piece_j
     """
