@@ -31,13 +31,13 @@ def main(args):
     # yolo obb predict source='/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces' model='/Users/Marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
 
     if args.yolo_model == '':
-        #yolov8_model_path = '/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
-        yolov8_model_path = '/Users/Marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+        yolov8_model_path = '/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+        #yolov8_model_path = '/Users/Marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
     else:
         yolov8_model_path = args.yolo_model
     if args.images == "":
-        #imgs_folder = '/home/marina/PycharmProjects/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
-        imgs_folder = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
+        imgs_folder = '/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
+        #imgs_folder = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
         #motifs_output = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/motif_OBB'
     else:
         imgs_folder = os.path.join(args.images, 'pieces')

@@ -107,37 +107,32 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                             score_sum_conf = score_sum_conf + bb_score
                             cont1 = 1 + cont1
 
-                        # Polygon corner points coordinates
-                        pts = np.array(do_pts, dtype='int64')
-                        color = (255, 255, 255)
-                        im0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
-                        im_ij_obb_mask = cv2.fillPoly(im0, [pts], color)
-                        class_label = int(det_obb.cpu().cls.numpy()[0])
+                            # Polygon corner points coordinates
+                            pts = np.array(do_pts, dtype='int64')
+                            color = (255, 255, 255)
+                            im0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
+                            im_ij_obb_mask = cv2.fillPoly(im0, [pts], color)
+                            class_label = int(det_obb.cpu().cls.numpy()[0])
 
-                        im_i_obb_mask = piece_i_on_canvas['motif_mask'][:, :, class_label]
-                        im_j_obb_mask = piece_j_on_canvas['motif_mask'][:, :, class_label]
-                        im_ij_obb_mask = np.clip(im_ij_obb_mask, 0, 1)
-                        im_i_obb_mask = np.clip(im_i_obb_mask, 0, 1)
-                        im_j_obb_mask = np.clip(im_j_obb_mask, 0, 1)
-                        area_i = np.sum(im_i_obb_mask)
-                        area_j = np.sum(im_j_obb_mask)
-                        area_ij = np.sum(im_ij_obb_mask)
-                        #
-                        overlap_score = 0
-                        if area_i + area_j > 0:
-                            overlap_score = area_ij/(area_i + area_j)
+                            im_i_obb_mask = piece_i_on_canvas['motif_mask'][:, :, class_label]
+                            im_j_obb_mask = piece_j_on_canvas['motif_mask'][:, :, class_label]
+                            im_ij_obb_mask = np.clip(im_ij_obb_mask, 0, 1)
 
-                        print(overlap_score)
-                        score_sum_overlap = score_sum_overlap + overlap_score
-                        cont2 = 1 + cont2
+                            sum_ij_obb_mask = np.clip(im_i_obb_mask+im_j_obb_mask, 0, 1)
+                            overlap_score = 0
+                            if np.sum(sum_ij_obb_mask) > 0:
+                                overlap_score = np.sum(sum_ij_obb_mask*im_ij_obb_mask)/np.sum(sum_ij_obb_mask)
 
-                    plt.show()
-                    breakpoint()
+                            print('sum * ', np.sum(sum_ij_obb_mask*im_ij_obb_mask))
+                            print(' /sum', np.sum(sum_ij_obb_mask))
+                            print('ovrelap score', overlap_score)
+                            score_sum_overlap = score_sum_overlap + overlap_score
+                            cont2 = 1 + cont2
 
-                    motif_conf_scores = 0
+                    motif_conf_score = 0
                     if cont1 > 0:
-                        motif_conf_scores = score_sum_conf/cont1
-                    print(motif_conf_scores)
+                        motif_conf_score = score_sum_conf / cont1
+                    print(motif_conf_score)
 
                     motif_overlap_score = 0
                     if cont2 > 0:
@@ -145,7 +140,7 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                     print(motif_overlap_score)
 
                     #plt.show()
-                    R_cost_conf[iy, ix, t] = motif_conf_scores
+                    R_cost_conf[iy, ix, t] = motif_conf_score
                     R_cost_overlap[iy, ix, t] = motif_overlap_score
 
     return R_cost_conf, R_cost_overlap
