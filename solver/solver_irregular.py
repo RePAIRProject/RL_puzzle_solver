@@ -255,7 +255,7 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, pp
             rot = z_rot[pos[i, 2]]
             Im = rotate(Im, rot, reshape=False, mode='constant')
             if show_borders == True:
-                mask = (Im > 0.0005).astype(np.uint8)
+                mask = (Im > 0.05).astype(np.uint8)
                 em = cv2.erode(mask, np.ones((5,5)))
                 bordered_im = Im * em + (mask-em) * borders_cmap(i)[:3]
                 Im = bordered_im
@@ -353,7 +353,7 @@ def main(args):
     elif args.cmp_type == 'combo_LS':
         cmp_name = f"shape_and_linesdet_{args.det_method}_cost_{args.cmp_cost}"
     elif args.cmp_type == 'motifs':
-        cmp_name = "yolo8_simple_motifs"
+        cmp_name = "motifs"
         # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
     else:
         cmp_name = f"cmp_{args.cmp_type}"
@@ -494,7 +494,8 @@ def main(args):
     plt.savefig(final_solution)
     plt.close()
     plt.imsave(f"{final_solution[:-4]}_bordered.png", np.clip(fin_im1_brd, 0, 1))
-
+    clean_img = fin_im1 * (fin_im1 > 0.1)
+    plt.imsave(f"{final_solution[:-4]}_cropped.png", crop_to_content(clean_img * 255).astype(np.uint8))
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, Z, pieces_dict, ppars, use_RGB=True)
     # final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
     # if np.max(fin_im_v2) > 1:
