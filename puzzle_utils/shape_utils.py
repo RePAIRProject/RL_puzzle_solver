@@ -167,12 +167,16 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     return piece_on_canvas
 
 
-def get_mask(img, background=0):
+def get_mask(img, background=0, noisy=False, epsilon=0.1):
 
     if img.shape[2] == 4:
-        mask = 1 - (img[:,:,3] == background).astype(np.uint8)
+        img = img[:,:,3]
     else:
-        mask = 1 - (img[:,:,0] == background).astype(np.uint8)
+        img = img[:,:,0]
+    if noisy == True:
+        mask = img > epsilon*np.max(img)
+    else:
+        mask = 1 - (img == background).astype(np.uint8)
     return mask
 
 def get_sd(img, background=0):
