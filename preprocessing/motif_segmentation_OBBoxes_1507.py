@@ -28,14 +28,20 @@ def main(args):
 
     # to get yolo output (terminal):
     # yolo obb predict source='/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces' model='/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+    # yolo obb predict source='/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces' model='/Users/Marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+
     if args.yolo_model == '':
-        yolov8_model_path = '/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+        #yolov8_model_path = '/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+        yolov8_model_path = '/Users/Marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
     else:
         yolov8_model_path = args.yolo_model
     if args.images == "":
-        imgs_folder = '/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
+        #imgs_folder = '/home/marina/PycharmProjects/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
+        imgs_folder = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
+        #motifs_output = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/motif_OBB'
     else:
         imgs_folder = os.path.join(args.images, 'pieces')
+
     motifs_output = os.path.join(args.images, 'motifs_detection')
     os.makedirs(motifs_output, exist_ok=True)
     
@@ -59,7 +65,7 @@ def main(args):
         obbs = yolov8_obb_detector(img_pil)[0]
 
         image0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
-        cubo_image0 = np.zeros((np.shape(img_pil)[0],np.shape(img_pil)[1],12), dtype='uint8')
+        cubo_image0 = np.zeros((np.shape(img_pil)[0], np.shape(img_pil)[1], 14), dtype='uint8')
         for det_obb in obbs.obb:
             # breakpoint()
             class_label = det_obb.cpu().cls.numpy()[0]
@@ -83,7 +89,7 @@ def main(args):
             im0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
             image0_new = cv2.fillPoly(im0, [pts], color)
             print(int(class_label))
-            cubo_image0[:, :, int(class_label)-1] = cubo_image0[:, :, int(class_label)-1] + image0_new
+            cubo_image0[:, :, int(class_label)] = cubo_image0[:, :, int(class_label)] + image0_new
 
         # save motifs_CUBE per ogni image
         filename = os.path.join(motifs_output, f'motifs_cube_{img_name}')
@@ -92,7 +98,7 @@ def main(args):
         n_motifs = cubo_image0.shape[2]
         for mt in range(n_motifs):
             motif_mask_mt = cubo_image0[:, :, mt]
-            plt.subplot(2, 6, mt+1)
+            plt.subplot(2, 7, mt+1)
             plt.imshow(motif_mask_mt)
         #plt.show()
         plt.title(f"Fragment {img_name}")

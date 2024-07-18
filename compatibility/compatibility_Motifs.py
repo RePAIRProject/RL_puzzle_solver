@@ -19,7 +19,8 @@ from puzzle_utils.shape_utils import place_on_canvas
 
 def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, cmp_parameters, ppars, yolov8_obb_detector, verbosity=1):
 
-    (p, z_id, m, rot, computation_parameters) = cmp_parameters
+    #(p, z_id, m, rot, computation_parameters) = cmp_parameters ### ERROR ???
+    (p, z_id, m, rot) = cmp_parameters
 
     if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
@@ -34,8 +35,10 @@ def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, cmp_par
         poly1 = pieces[idx1]['polygon']
         poly2 = pieces[idx2]['polygon']
 
-        R_cost = motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, yolov8_obb_detector, verbosity=1)
+        R_cost_conf, R_cost_overlap  = motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, yolov8_obb_detector, verbosity=1)
         print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
+
+        R_cost = R_cost_overlap
 
     return R_cost
 
@@ -44,7 +47,8 @@ def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, cmp_par
 def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, yolov8_obb_detector, verbosity=1):
     # Get the yolo model
 
-    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+    R_cost_conf = np.zeros((m.shape[1], m.shape[1], len(rot)))
+    R_cost_overlap = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
     for t in range(len(rot)):
         theta = rot[t]     # theta_rad = theta * np.pi / 180
@@ -65,7 +69,7 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                     pieces_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
                     #mask_ij_on_canvas = piece_i_on_canvas['mask'] + piece_j_on_canvas['mask']
                     #pieces_ij_on_canvas/= np.clip(mask_ij_on_canvas,1,2).astype(float)
-                    plt.imshow(pieces_ij_on_canvas)
+                    #plt.imshow(pieces_ij_on_canvas)
 
                     img_pil = Image.fromarray(np.uint8(pieces_ij_on_canvas))
                     obbs = yolov8_obb_detector(img_pil)[0]
@@ -74,7 +78,8 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                     #plt.imshow(pieces_ij_on_canvas)
                     #plt.plot(*piece_i_on_canvas['polygon'].boundary.xy)
                     #plt.plot(*piece_j_on_canvas['polygon'].boundary.xy)
-                    score_sum = 0; cont = 0
+                    score_sum_conf = 0; cont1 = 0
+                    score_sum_overlap = 0; cont2 = 0
                     for det_obb in obbs.obb:
                         do_pts = det_obb.cpu().xyxyxyxy.numpy()[0]
                         obb_shapely_points = [(point[0], point[1]) for point in do_pts]
@@ -87,8 +92,8 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                         if (inters_poly_j == False) and (inters_poly_i == False):
                             bb_score = det_obb.conf.item()
                             print(bb_score)
-                            score_sum = score_sum + bb_score
-                            cont = 1 + cont
+                            score_sum_conf = score_sum_conf + bb_score
+                            cont1 = 1 + cont1
 
                         # Polygon corner points coordinates
                         pts = np.array(do_pts, dtype='int64')
@@ -97,14 +102,35 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                         im_ij_obb_mask = cv2.fillPoly(im0, [pts], color)
                         class_label = int(det_obb.cpu().cls.numpy()[0])
 
-                        im_i_obb_mask = piece_i_on_canvas['img'][class_label-1]
-                        im_j_obb_mask = piece_j_on_canvas['img'][class_label-1]
+                        im_i_obb_mask = piece_i_on_canvas['motif_mask'][:, :, class_label]
+                        im_j_obb_mask = piece_j_on_canvas['motif_mask'][:, :, class_label]
+                        im_ij_obb_mask = np.clip(im_ij_obb_mask, 0, 1)
+                        im_i_obb_mask = np.clip(im_i_obb_mask, 0, 1)
+                        im_j_obb_mask = np.clip(im_j_obb_mask, 0, 1)
+                        area_i = np.sum(im_i_obb_mask)
+                        area_j = np.sum(im_j_obb_mask)
+                        area_ij = np.sum(im_ij_obb_mask)
+                        #
+                        overlap_score = 0
+                        if area_i + area_j > 0:
+                            overlap_score = area_ij/(area_i + area_j)
+
+                        print(overlap_score)
+                        score_sum_overlap = score_sum_overlap + overlap_score
+                        cont2 = 1 + cont2
 
                     motif_conf_scores = 0
-                    if cont > 0:
-                        motif_conf_scores = score_sum/cont
+                    if cont1 > 0:
+                        motif_conf_scores = score_sum_conf/cont1
                     print(motif_conf_scores)
-                    #plt.show()
-                    R_cost[iy, ix, t] = motif_conf_scores
 
-    return R_cost
+                    motif_overlap_score = 0
+                    if cont2 > 0:
+                        motif_overlap_score = score_sum_overlap / cont2
+                    print(motif_overlap_score)
+
+                    #plt.show()
+                    R_cost_conf[iy, ix, t] = motif_conf_scores
+                    R_cost_overlap[iy, ix, t] = motif_overlap_score
+
+    return R_cost_conf, R_cost_overlap

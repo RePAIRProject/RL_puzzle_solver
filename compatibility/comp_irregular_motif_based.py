@@ -7,6 +7,9 @@ from scipy.io import loadmat, savemat
 import datetime
 import matplotlib.pyplot as plt
 import time
+import matplotlib as mpl
+import matplotlib
+matplotlib.use('TkAgg')
 
 from PIL import Image
 from ultralytics import YOLO
@@ -19,7 +22,7 @@ from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
 #from puzzle_utils.lines_ops import compute_cost_wrapper, calc_line_matching_parameters
 
-from compatibility_Motifs import compute_cost_wrapper_for_Motifs_compatibility
+from compatibility_Motifs import compute_cost_using_motifs_compatibility
 from compatibility_MGC import compute_cost_wrapper_for_Colors_compatibility
 
 
@@ -39,7 +42,8 @@ def main(args):
     print("Compatibility log\nSearch for `CMP_START_TIME` or `CMP_END_TIME` if you want to see which images are done")
 
     ## IF to add
-    yolov8_model_path = '/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+    #yolov8_model_path = '/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
+    yolov8_model_path = '/Users/Marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt'
     yolov8_obb_detector = YOLO(yolov8_model_path)
 
     if args.puzzle == '':
@@ -177,12 +181,14 @@ def main(args):
                     #                                                        ppars, seg_len,
                     #                                                        verbosity=args.verbosity)
 
-                    ji_mat = compute_cost_wrapper_for_Motifs_compatibility(i, j, pieces, region_mask, cmp_parameters, ppars, yolov8_obb_detector, verbosity=1)
+                    ji_mat = compute_cost_using_motifs_compatibility(i, j, pieces, region_mask[:,:,:,j,i], cmp_parameters, ppars, yolov8_obb_detector, verbosity=1)
+
                     All_cost[:, :, :, j, i] = ji_mat
 
             # Normalization (if needed )
+            max_cost = np.max(All_cost)
             only_negative_region = np.clip(region_mask, -1, 0)
-            All_cost = np.clip(All_cost, 0, 2)
+            All_cost = (np.clip(All_cost, 0, max_cost))/max_cost
             R_motifs = All_cost + only_negative_region
 
 

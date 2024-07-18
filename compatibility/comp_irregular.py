@@ -377,7 +377,7 @@ if __name__ == '__main__':
     parser.add_argument('--det_method', type=str, default='exact', 
         help='method for the feature detection (usually lines or motif)',
         choices=['exact', 'deeplsd', 'manual', 'yolo-obb', 'yolo', 'yolo-seg'])  
-    parser.add_argument('--yolo_path', type=str, default='', help='yolo path (.pt model)') 
+    parser.add_argument('--yolo_path', type=str, default='/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt', help='yolo path (.pt model)')
 
         # exact, manual, deeplsd
     # parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
