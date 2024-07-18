@@ -36,7 +36,7 @@ def calc_computation_parameters(parameters, cmp_type, cmp_cost, det_method):
 
     return cmp_pars
 
-def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, detector=None, verbosity=1):
+def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None, verbosity=1):
     """
     Wrapper for the cost computation, so that it can be called in one-line, 
     making it easier to parallelize using joblib's Parallel (in comp_irregular.py) 
@@ -46,10 +46,13 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
     shape, color, line, pattern.. 
     """
 
-    (p, z_id, m, rot, computation_parameters) = cmp_parameters
+    p = ppars['p']
+    m = ppars['m']
+    z_id = ppars['z_id']
+    rot = ppars['rot']
     n = len(pieces)
-    compatibility_type = computation_parameters['cmp_type']
-    compatibility_cost = computation_parameters['cmp_cost']
+    compatibility_type = ppars['cmp_type']
+    compatibility_cost = ppars['cmp_cost']
     
     if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
@@ -67,10 +70,10 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
             alfa2, r2, s21, s22, color2, cat2 = extract_from(pieces[idx2]['extracted_lines'])
             if len(alfa1) == 0 and len(alfa2) == 0:
                 #print('no lines')
-                R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + computation_parameters.max_dist * 2
+                R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + ppars.max_dist * 2
             elif (len(alfa1) > 0 and len(alfa2) == 0) or (len(alfa1) == 0 and len(alfa2) > 0):
                 #print('only one side with lines')
-                R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + computation_parameters.mismatch_penalty
+                R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + ppars.mismatch_penalty
             else:
                 #print('values!')
                 
@@ -106,10 +109,10 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars
         elif compatibility_type == 'shape':
             #breakpoint()
             ids_to_score = np.where(mask_ij > 0)
-            R_cost = compute_SDF_cost_matrix(pieces[idx1], pieces[idx2], ids_to_score, computation_parameters, ppars, verbosity=verbosity)
+            R_cost = compute_SDF_cost_matrix(pieces[idx1], pieces[idx2], ids_to_score, ppars, verbosity=verbosity)
             #breakpoint()
         elif compatibility_type == 'motifs':
-            R_cost = compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, cmp_parameters, ppars, yolov8_obb_detector=detector, verbosity=verbosity)
+            R_cost = compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolov8_obb_detector=detector, verbosity=verbosity)
 
         else: # other compatibilities!
             print("\n" * 20)

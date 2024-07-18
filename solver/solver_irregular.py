@@ -417,7 +417,7 @@ def main(args):
         print("loading", os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
         mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
         # R = mat['R_line']
-        R = mat['R_motifs']
+        R = mat['R']
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()

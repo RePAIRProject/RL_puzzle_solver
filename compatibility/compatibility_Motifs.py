@@ -18,10 +18,12 @@ import cv2
 from puzzle_utils.shape_utils import place_on_canvas
 from puzzle_utils.pieces_utils import crop_to_content
 
-def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, cmp_parameters, ppars, yolov8_obb_detector, verbosity=1):
+def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolov8_obb_detector, verbosity=1):
 
-    (p, z_id, m, rot, computation_parameters) = cmp_parameters ### ERROR ???
-    #(p, z_id, m, rot) = cmp_parameters
+    p = ppars['p']
+    z_id = ppars['z_id']
+    m = ppars['m']
+    rot = ppars['rot']   
 
     if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
@@ -45,7 +47,8 @@ def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, cmp_par
 
 #### NEW
 ## pairwise compatibility measure between two pieces with and without rotation
-def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, yolov8_obb_detector, detect_on_crop=True, verbosity=1):
+def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, \
+        yolov8_obb_detector, detect_on_crop=True, area_ratio=0.1, verbosity=1):
     # Get the yolo model
 
     R_cost_conf = np.zeros((m.shape[1], m.shape[1], len(rot)))
@@ -77,6 +80,8 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                         cropped_img, x0, x1, y0, y1  = crop_to_content(pieces_ij_on_canvas, return_vals=True)
                         img_pil = Image.fromarray(np.uint8(cropped_img))
                     else:
+                        x0 = 0
+                        y0 = 0
                         img_pil = Image.fromarray(np.uint8(pieces_ij_on_canvas))
 
                     obbs = yolov8_obb_detector(img_pil)[0]
@@ -89,6 +94,8 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                     score_sum_conf = 0; cont1 = 0
                     score_sum_overlap = 0; cont2 = 0
                     for det_obb in obbs.obb:
+                        # do_pts are in cropped version! 
+                        # please add [x0, y0] to go back to canvas
                         do_pts = det_obb.cpu().xyxyxyxy.numpy()[0]
                         if detect_on_crop == True:
                             obb_shapely_points = [(point[0]+x0, point[1]+y0) for point in do_pts]
@@ -97,17 +104,21 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                         obb_poly = shapely.Polygon(obb_shapely_points)
                         # plt.plot(*obb_poly.boundary.xy)
 
-                        inters_poly_i = shapely.is_empty(shapely.intersection(obb_poly, piece_i_on_canvas['polygon'].boundary))
-                        inters_poly_j = shapely.is_empty(shapely.intersection(obb_poly, piece_j_on_canvas['polygon'].boundary))
+                        inters_poly_i = shapely.intersection(obb_poly, piece_i_on_canvas['polygon'])
+                        inters_poly_j = shapely.intersection(obb_poly, piece_j_on_canvas['polygon'])
+                        # breakpoint()
 
-                        if (inters_poly_j == False) and (inters_poly_i == False):
+                        if (inters_poly_j.area / obb_poly.area > area_ratio) and \
+                            (inters_poly_i.area / obb_poly.area > area_ratio):
                             bb_score = det_obb.conf.item()
                             # print(bb_score)
                             score_sum_conf = score_sum_conf + bb_score
                             cont1 = 1 + cont1
+                            breakpoint()
 
                             # Polygon corner points coordinates
-                            pts = np.array(do_pts, dtype='int64')
+                            # x0, y0 is from crop to canvas
+                            pts = np.array(do_pts, dtype='int64') + np.array([x0, y0])
                             color = (255, 255, 255)
                             im0 = np.zeros(np.shape(pieces_ij_on_canvas)[0:2], dtype='uint8')
                             im_ij_obb_mask = cv2.fillPoly(im0, [pts], color)
@@ -136,9 +147,11 @@ def motif_compatibility_measure_for_irregular(p, z_id, m, rot, pieces, mask_ij, 
                     motif_overlap_score = 0
                     if cont2 > 0:
                         motif_overlap_score = score_sum_overlap / cont2
-                    # print(motif_overlap_score)
+                    # print("motif overlap", motif_overlap_score)
 
-                    #plt.show()
+                    # plt.title(f"Score: {motif_overlap_score}")
+                    # plt.show()
+                    # breakpoint()
                     R_cost_conf[iy, ix, t] = motif_conf_score
                     R_cost_overlap[iy, ix, t] = motif_overlap_score
 

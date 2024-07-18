@@ -44,7 +44,7 @@ def main(args):
         
         # PARAMETERS
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
-        cmp_parameter_path = os.path.join(puzzle_root_folder, 'regions_parameters.json')
+        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
         # if os.path.exists(cmp_parameter_path):
         #     print("never tested! remove this comment afterwars (line 53 of comp_irregular.py)")
         #     with open(cmp_parameter_path, 'r') as cp:
@@ -58,7 +58,7 @@ def main(args):
         # pdb.set_trace()
         with open(cmp_parameter_path, 'w') as cpj:
             json.dump(ppars, cpj, indent=3)
-        print("saved json regions file")
+        print("saved json compatibility_parameters file")
 
         # INCLUDE SHAPE
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, \

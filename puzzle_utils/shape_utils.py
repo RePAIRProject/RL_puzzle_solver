@@ -620,11 +620,14 @@ def process_region_map(region_map, perc_min=0.01):
     # pdb.set_trace()
     return rmap, rc-1
 
-def compute_SDF_cost_matrix(piece_i, piece_j, ids_to_score, cmp_parameters, ppars):
+def compute_SDF_cost_matrix(piece_i, piece_j, ids_to_score, ppars):
     """ 
     It computes SDF-based cost matrix between piece_i and piece_j
     """
-    (p, alignment_grid, m, rot, computation_parameters) = cmp_parameters    
+    p = ppars['p']
+    alignment_grid = ppars['z_id']
+    m = ppars['m']
+    rot = ppars['rot']    
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
     # grid on the canvas
@@ -632,7 +635,7 @@ def compute_SDF_cost_matrix(piece_i, piece_j, ids_to_score, cmp_parameters, ppar
     grid = alignment_grid + canv_cnt #alignment_grid has negative values
 
     # TODO: move these to parameters?   improve?
-    dilation_size = computation_parameters['dilation_size'] #35
+    dilation_size = ppars['dilation_size'] #35
     dil_kernel = np.ones((dilation_size, dilation_size))
     sigma = ppars.p_hs
     for x,y,t in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):

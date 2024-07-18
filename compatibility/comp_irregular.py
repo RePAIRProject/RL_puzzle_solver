@@ -64,36 +64,39 @@ def main(args):
             print(f"{cfg_key}: {img_parameters[cfg_key]}")
         
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
-        cmp_parameter_path = os.path.join(puzzle_root_folder, 'regions_parameters.json')
+        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
         if os.path.exists(cmp_parameter_path):
             ppars = CfgParameters()
             with open(cmp_parameter_path, 'r') as cp:
                 ppars_dict = json.load(cp)
             ppars_dict['cmp_type'] = args.cmp_type
             print("-" * 60)
-            print('\tREGIONS PARAMETERS')
+            print('\tCOMPATIBILITY PARAMETERS')
             for ppk in ppars_dict.keys():
                 ppars[ppk] = ppars_dict[ppk]
                 print(f"{ppk}: {ppars[ppk]}")
         else:
             print("\n" * 3)
             print("/" * 60)
-            print("/\t***ERROR***\n/ regions_parameters.json not found!")
+            print("/\t***ERROR***\n/ compatibility_parameters.json not found!")
             print("/" * 60)
             print("\n" * 3)
             ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
-        computation_parameters = calc_computation_parameters(ppars, cmp_type=args.cmp_type, \
+        additional_cmp_pars = calc_computation_parameters(ppars, cmp_type=args.cmp_type, \
             cmp_cost=args.cmp_cost, det_method=args.det_method)
-        computation_parameters['cmp_type'] = args.cmp_type
+
+        for parkey in additional_cmp_pars.keys():
+            ppars[parkey] = additional_cmp_pars[parkey]
+        ppars['cmp_type'] = args.cmp_type
         calc_sdf = False
         if args.cmp_type == 'shape':
             calc_sdf = True
-        computation_parameters['calc_sdf'] = calc_sdf
+        ppars['calc_sdf'] = calc_sdf
         line_based = False
         if args.cmp_type == 'lines':
             line_based = True
-        computation_parameters['line_based'] = line_based
+        ppars['line_based'] = line_based
         motif_based = False
         if args.cmp_type == 'motifs':
             motif_based = True
@@ -103,19 +106,21 @@ def main(args):
                     \nPlease set the path with `--yolo_path path_to_the_pt_model` and relaunch")
             yolov8_model_path = args.yolo_path
             yolov8_obb_detector = YOLO(yolov8_model_path)
+            ppars['yolo_path'] = yolov8_model_path
         else:
             yolov8_obb_detector = None
-        computation_parameters['motif_based'] = motif_based
+        ppars['motif_based'] = motif_based
+        
 
         print("-" * 60)
-        print('\tCOMPUTATIONS PARAMETERS')
-        for cfg_key in computation_parameters.keys():
-            print(f"{cfg_key}: {computation_parameters[cfg_key]}")
+        print('\tUPDATED COMPATIBILITY PARAMETERS')
+        for cfg_key in ppars.keys():
+            print(f"{cfg_key}: {ppars[cfg_key]}")
         print("-" * 60)
-        computation_parameters_path = os.path.join(puzzle_root_folder, 'calc_compatibility_parameters.json')
+        computation_parameters_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
         with open(computation_parameters_path, 'w') as lmpj:
             json.dump(computation_parameters, lmpj, indent=3)
-        print("saved json compatibility computations parameters file")
+        print("saved json compatibility parameters file")
 
         
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, \
@@ -138,7 +143,11 @@ def main(args):
             rot = [0]
         else:
             rot = np.arange(0, 360 - ang + 1, ang)
-        cmp_parameters = (p, z_id, m, rot, computation_parameters)
+        ppars['p'] = p
+        ppars['z_id'] = z_id
+        ppars['m'] = m
+        ppars['rot'] = rot
+        # cmp_parameters = (p, z_id, m, rot, ppars)
         n = len(pieces)
 
         # COST MATRICES 
@@ -161,11 +170,17 @@ def main(args):
 
         # TO BE PARALLELIZED
         if args.jobs > 1:
+            print("##" * 50)
+            print("##" * 50)
+            print("PROBABLY NOT WORKING NOW WITH NEW COMPATIBILITY, RE-RUN with jobs = 0!")
+            print("##" * 50)
+            print("##" * 50)
+
             print(f'running {args.jobs} parallel jobs with multiprocessing')
             #pool = multiprocessing.Pool(args.jobs)
             #costs_list = zip(*pool.map(compute_cost_matrix_LAP, [(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n)]))
             #with parallel_backend('threading', n_jobs=args.jobs):
-            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, cmp_parameters, ppars, compatibility_type=args.cmp_type, verbosity=args.verbosity) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
+            costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, ppars, compatibility_type=args.cmp_type, verbosity=args.verbosity) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
             #costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
             All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n, norm_value=computation_parameters.rmax)
         else:
@@ -173,7 +188,7 @@ def main(args):
                 for j in range(n):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
-                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, cmp_parameters, ppars, \
+                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, ppars, \
                         detector=yolov8_obb_detector, verbosity=args.verbosity)
                     
                     All_cost[:, :, :, j, i] = ji_mat
@@ -263,13 +278,27 @@ def main(args):
                 clipping_val = computation_parameters.max_dist + (computation_parameters.badmatch_penalty - computation_parameters.max_dist) / 3
                 All_cost = np.clip(All_cost, 0, clipping_val)
                 All_norm_cost = 1 - All_cost / clipping_val
-            else:  # args.cmp_cost == 'LAP':
+            else: 
+                #max_cost = np.max(All_cost)
                 #All_norm_cost = np.maximum(1 - All_cost / computation_parameters.rmax, 0)
                 All_norm_cost = All_cost # / np.max(All_cost) #
         else:
             All_norm_cost = All_cost
 
-        only_negative_region = np.minimum(region_mask, 0)  # recover overlap (negative) areas
+                    
+            # only_negative_region = np.clip(region_mask, -1, 0)
+            # All_cost = (np.clip(All_cost, 0, max_cost))/max_cost
+
+        if args.cmp_type == 'motifs':
+            max_cost = np.max(All_cost)
+            print(max_cost)
+            if max_cost < 0.1:
+                breakpoint()
+            only_negative_region = np.clip(region_mask, -1, 0)
+            All_norm_cost = (np.clip(All_cost, 0, max_cost))/max_cost
+        else:
+            only_negative_region =  np.minimum(region_mask, 0)  # recover overlap (negative) areas
+
         R = All_norm_cost + only_negative_region  # insert negative regions to cost matrix
 
         # it should not be needed
