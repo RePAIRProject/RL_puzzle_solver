@@ -427,7 +427,7 @@ def add_colors(image, borders_segments, thickness):
 def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, boundary_thickness=2):
     for piece in pieces:
         #pdb.set_trace()
-        borders_segments = divide_boundaries_in_segments(piece['polygon'].tolist(), seg_len=boundary_seg_len)
+        borders_segments = divide_boundaries_in_segments(piece['polygon'], seg_len=boundary_seg_len)
         #borders_segments = piece['polygon'].tolist().segmentize(boundary_seg_len)
         borders_segments = add_colors(piece['img'], borders_segments, boundary_thickness)
         coords = [bs['start'] for bs in borders_segments]

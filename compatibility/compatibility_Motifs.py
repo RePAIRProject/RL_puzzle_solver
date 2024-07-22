@@ -18,7 +18,7 @@ import cv2
 from puzzle_utils.shape_utils import place_on_canvas
 from puzzle_utils.pieces_utils import crop_to_content
 
-def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolov8_detector, bb_type=1, verbosity=1):
+def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector, det_type='yolo-obb', verbosity=1):
 
     p = ppars['p']
     z_id = ppars['z_id']
@@ -38,20 +38,17 @@ def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, 
         poly1 = pieces[idx1]['polygon']
         poly2 = pieces[idx2]['polygon']
 
-        if bb_type == 1:
-            R_cost_conf, R_cost_overlap  = motif_OBB_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, yolov8_obb_detector, verbosity=1)
-            print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
-        elif bb_type == 0:
-            R_cost_conf, R_cost_overlap  = motif_bbox_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, yolov8_obb_detector, verbosity=1)
-            print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
+        R_cost_conf, R_cost_overlap  = motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, yolo_obj_detector, det_type=det_type, verbosity=1)
+        print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
+      
         R_cost = R_cost_overlap
 
     return R_cost
 
 #### NEW
 ## pairwise compatibility measure between two pieces with and without rotation
-def motif_OBB_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, \
-        yolov8_obb_detector, detect_on_crop=True, area_ratio=0.1, verbosity=1):
+def motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, \
+        yolo_obj_detector, det_type='yolo-obb', detect_on_crop=True, area_ratio=0.1, verbosity=1):
     # Get the yolo model
 
     R_cost_conf = np.zeros((m.shape[1], m.shape[1], len(rot)))
@@ -87,19 +84,34 @@ def motif_OBB_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppar
                         y0 = 0
                         img_pil = Image.fromarray(np.uint8(pieces_ij_on_canvas))
 
-                    obbs = yolov8_obb_detector(img_pil)[0]
+                    detected = yolo_obj_detector(img_pil, verbose=False)[0]
                     
-
                     ### Check Poly-motif-bb intersection
                     # plt.imshow(pieces_ij_on_canvas)
                     # plt.plot(*piece_i_on_canvas['polygon'].boundary.xy)
                     # plt.plot(*piece_j_on_canvas['polygon'].boundary.xy)
                     score_sum_conf = 0; cont1 = 0
                     score_sum_overlap = 0; cont2 = 0
-                    for det_obb in obbs.obb:
+                    if det_type == 'yolo-obb':
+                        det_objs = detected.obb
+                    elif det_type == 'yolo-bbox':
+                        det_objs = detected.boxes
+                        
+                    for det_obb in det_objs:
+
+                        if det_type == 'yolo-obb':
+                            do_pts = det_obb.cpu().xyxyxyxy.numpy()[0]
+                        elif det_type == 'yolo-bbox':
+                            ps = det_obb.cpu().xyxy[0]
+                            p1 = np.asarray(ps[:2])
+                            p2 = np.asarray([ps[0], ps[3]])
+                            p3 = np.asarray(ps[2:])
+                            p4 = np.asarray([ps[2], ps[1]])
+                            do_pts = np.asarray([p1,p2,p3,p4])
+
                         # do_pts are in cropped version! 
                         # please add [x0, y0] to go back to canvas
-                        do_pts = det_obb.cpu().xyxyxyxy.numpy()[0]
+                        
                         if detect_on_crop == True:
                             obb_shapely_points = [(point[0]+x0, point[1]+y0) for point in do_pts]
                         else:

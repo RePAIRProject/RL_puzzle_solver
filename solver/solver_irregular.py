@@ -354,10 +354,13 @@ def main(args):
     elif args.cmp_type == 'combo':
         cmp_name = f"cmp_combo{args.combo_type}"
     elif args.cmp_type == 'motifs':
-        cmp_name = "motifs"
+        cmp_name = f"motifs_{args.det_method}"
         # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
+    elif args.cmp_type == 'color':
+        cmp_name = f"color_border{args.border_len}"
     else:
         cmp_name = f"cmp_{args.cmp_type}"
+
     it_nums = f"{args.tmax}its"
     # if args.cmp_cost == 'LAP':
     #     # mat = loadmat(os.path.join(puzzle_root_folder,fnames.cm_output_name, f'CM_lines_{method}.mat'))
@@ -577,7 +580,8 @@ if __name__ == '__main__':
             \nThe capital letters are used (L=lines, M=motif, S=shape, C=color)\
             \nFor example, MS is motif+shape, LS is lines+shape', 
         choices=['LS', 'MS', 'CS', 'CLMS'])   
-        
+    parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')   
+
     args = parser.parse_args()
 
     main(args)

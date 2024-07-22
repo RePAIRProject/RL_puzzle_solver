@@ -11,7 +11,7 @@ import time
 
 # internal
 from configs import folder_names as fnames
-from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info
+from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, encode_boundary_segments
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
 from utils import compute_cost_wrapper, calc_computation_parameters
@@ -100,7 +100,10 @@ def main(args):
         motif_based = False
         if args.cmp_type == 'motifs':
             motif_based = True
-            from ultralytics import YOLO
+            if args.det_method == 'yolo-bbox':
+                from ultralytics import YOLOv10 as YOLO
+            elif args.det_method == 'yolo-obb':
+                from ultralytics import YOLO
             if args.yolo_path == '':
                 raise Exception("You are trying to use yolo-based motif compatibility without specifying the yolo model to be used.\
                     \nPlease set the path with `--yolo_path path_to_the_pt_model` and relaunch")
@@ -110,7 +113,18 @@ def main(args):
         else:
             yolov8_obb_detector = None
         ppars['motif_based'] = motif_based
-        
+        color_based = False
+        seg_len = 0
+        if args.cmp_type == 'color':
+            color_based = True
+            if args.border_len < 0:
+                seg_len = ppars.xy_step
+            else:
+                seg_len = args.border_len
+        print("Using border length of {seg_len} pixels")
+        ppars['color_based'] = color_based
+        ppars['seg_len'] = seg_len
+        ppars['k'] = args.k
 
         print("-" * 60)
         print('\tUPDATED COMPATIBILITY PARAMETERS')
@@ -125,7 +139,9 @@ def main(args):
         
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, \
             line_based=line_based, sdf=calc_sdf, motif_based=motif_based)
-
+        if color_based == True:
+            pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=seg_len,
+                                         boundary_thickness=2)
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
         region_mask = region_mask_mat['RM']
         
@@ -189,7 +205,8 @@ def main(args):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, ppars, \
-                        detector=yolov8_obb_detector, verbosity=args.verbosity)
+                        detector=yolov8_obb_detector, seg_len=seg_len,
+                        verbosity=args.verbosity)
                     
                     All_cost[:, :, :, j, i] = ji_mat
                     
@@ -243,7 +260,7 @@ def main(args):
                                 plt.imshow(np.maximum(1 - ji_mat[:,:,3] / kmin_cut_val, 0), cmap='RdYlGn')
 
                                 #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,0,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
-                                plt.subplot(5,4,18); plt.title("EXP ROTATION 1")
+                                plt.subplot(det_method5,4,18); plt.title("EXP ROTATION 1")
                                 plt.imshow(np.exp(-ji_mat[:,:,1]/76), cmap='RdYlGn'); 
                                 #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,1,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
                                 plt.subplot(5,4,19); plt.title("EXP ROTATION 2")
@@ -282,6 +299,38 @@ def main(args):
                 #max_cost = np.max(All_cost)
                 #All_norm_cost = np.maximum(1 - All_cost / computation_parameters.rmax, 0)
                 All_norm_cost = All_cost # / np.max(All_cost) #
+        elif args.cmp_type == 'color':
+            breakpoint()
+            # normalization
+            k = ppars['k']
+            All_cost_cut = np.zeros((All_cost.shape))
+            a_ks = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
+            a_min = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
+            for i in range(n):
+                a_cost_i = All_cost[:, :, :, :, i]
+                for x in range(a_cost_i.shape[0]):
+                    for y in range(a_cost_i.shape[1]):
+                        a_xy = a_cost_i[x, y, :, :]
+                        a_all = np.array(np.unique(a_xy))
+                        a = a_all[np.minimum(k, len(a_all) - 1)]
+                        a_xy = np.where(a_xy > a, -1, a_xy)
+                        a_cost_i[x, y, :, :] = a_xy
+                        a_ks[x, y, i] = a
+                        if len(a_all) > 1:
+                            a_min[x, y, i] = a_all[1]
+                print(a_ks[:, :, i])
+                All_cost_cut[:, :, :, :, i] = a_cost_i
+
+            # norm_term = 100
+            # norm_term = np.max(a_min)/(3*k)
+            norm_term = np.max(a_ks)/(2*k)
+
+            All_norm_cost = 2 - All_cost_cut / norm_term  # only for colors
+
+            All_norm_cost = np.where(All_norm_cost > 2, 0, All_norm_cost)    # only for colors
+            #All_norm_cost = np.where(All_norm_cost < 0, 0, All_norm_cost)   # only for colors
+            All_norm_cost = np.where(All_norm_cost <= 0, -1, All_norm_cost)  ## NEW idea di Prof.Pelillo
+
         else:
             All_norm_cost = All_cost
 
@@ -326,7 +375,9 @@ def main(args):
         elif args.cmp_type == 'shape':
             cmp_name = "shape"
         elif args.cmp_type == 'motifs':
-            cmp_name = "motifs"
+            cmp_name = f"motifs_{args.det_method}"
+        elif args.cmp_type == 'color':
+            cmp_name = f"color_border{seg_len}"
         else:
             cmp_name = f"cmp_{args.cmp_type}"
         filename = os.path.join(output_folder, f"CM_{cmp_name}")
@@ -340,6 +391,8 @@ def main(args):
                     "xy_grid_points": ppars.xy_grid_points, 
                     "theta_step": ppars.theta_step
                 }
+        if color_based == True:
+            mdic['seg_len'] = seg_len 
         savemat(f'{filename}.mat', mdic)
         np.save(filename, R)
 
@@ -405,8 +458,10 @@ if __name__ == '__main__':
         choices=['LS', 'MS', 'CS', 'CLMS'])   
     parser.add_argument('--det_method', type=str, default='exact', 
         help='method for the feature detection (usually lines or motif)',
-        choices=['exact', 'deeplsd', 'manual', 'yolo-obb', 'yolo', 'yolo-seg'])  
+        choices=['exact', 'deeplsd', 'manual', 'yolo-obb', 'yolo-bbox', 'yolo-seg'])  
     parser.add_argument('--yolo_path', type=str, default='/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt', help='yolo path (.pt model)')
+    parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')   
+    parser.add_argument('--k', type=int, default=5, help='keep the best k values (for given gamma transformation) in the compatibility')   
 
         # exact, manual, deeplsd
     # parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')
