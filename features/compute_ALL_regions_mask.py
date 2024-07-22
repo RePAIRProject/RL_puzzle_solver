@@ -61,7 +61,7 @@ def main(args):
         print("saved json compatibility_parameters file")
 
         # INCLUDE SHAPE
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.method, \
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, \
             line_based=False, line_thickness=3, motif_based=True)
         if 'lines' not in pieces[0].keys():
             print("-" * 50)
@@ -304,7 +304,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='repair', help='dataset (name of the folders)')
     parser.add_argument('--puzzle', type=str, default='',
                         help='puzzle to work on - leave empty to generate for the whole dataset')
-    parser.add_argument('--method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
+    parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
     parser.add_argument('--save_visualization', type=bool, default=True,
                         help='save an image that showes the matrices color-coded')

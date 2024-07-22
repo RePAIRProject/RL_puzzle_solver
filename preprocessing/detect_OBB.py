@@ -50,7 +50,7 @@ def main(args):
     else:
         imgs_folder = os.path.join(args.images, 'pieces')
 
-    motifs_output = os.path.join(args.images, 'motifs_detection_OBB')
+    motifs_output = os.path.join(args.images, 'motifs_detection_OBB_tuned')
     os.makedirs(motifs_output, exist_ok=True)
     
     indent_spaces = 3
