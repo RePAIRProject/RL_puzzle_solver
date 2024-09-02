@@ -569,10 +569,10 @@ if __name__ == '__main__':
     test_thread.start()
 
     # file = open("GUI/DataBase/Archive/CM_color_border20.npy")
-    f = "GUI/DataBase/Archive/CM_color_border20.npy"
-    mmapped_array = np.load(f, mmap_mode='r')
+    # f = "GUI/DataBase/Archive/CM_color_border20.npy"
+    # mmapped_array = np.load(f, mmap_mode='r')
 
-    print(mmapped_array.shape)
+    # print(mmapped_array.shape)
 
 
     # eroding_path = os.getcwd() + "/GUI/DataBase/Dafne/image_00000_1/pieces"
