@@ -533,7 +533,7 @@ def eroding(directory_path):
             cv2.imwrite(save_path, eroded_image)
 
 
-def setting():
+def setting(): # unified path setting
     global image_path
     global mask_path
     global backend_path
