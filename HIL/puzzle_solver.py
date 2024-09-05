@@ -39,9 +39,11 @@ def assemble(fragments_list, return_solution_as='dict'):
     print("anchor_piece", anchor_piece)
     print("neighbours", neighbours)
 
-    puzzle_root = os.path.join(os.getcwd(), 'output', puzzle)
+    puzzle_root = os.path.join(os.getcwd(), 'GUI', 'DataBase', 'output', puzzle)
+
     pieces_folder = os.path.join(puzzle_root, 'pieces')
     cmp_parameter_path = os.path.join(puzzle_root, 'compatibility_parameters.json')
+    print(cmp_parameter_path)
     if os.path.exists(cmp_parameter_path):
         ppars = {}
         with open(cmp_parameter_path, 'r') as cp:
