@@ -1,0 +1,3 @@
+image_path: /GUI/DataBase/Images/RePAIR_plaque_2/RGBA_merged/
+mask_path: /GUI/DataBase/Images/RePAIR_plaque_2/FG_merged/
+backend_path: /GUI/DataBase/Images/RePAIR_plaque_2/

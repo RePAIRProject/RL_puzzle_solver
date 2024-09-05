@@ -32,14 +32,30 @@ neighbour_ids = []
 input_dict = {}
 pl_solution = {}
 
+backend_path = ""
+path = ""
+path_bw = ""
+
+
+def set_backend_path(back_path, image_path, pw_path):
+    global backend_path
+    global path
+    global path_bw
+    backend_path = back_path
+    path = image_path
+    path_bw = pw_path
+
 
 def select_anchor_thread_function():
     global anchor_images
     global image_names
     global image_scores
     global image_numbers
+    global backend_path
+    global path
+    global path_bw
     set_select_anchor_running(True)
-    anchor_images = select_anchor_RePAIR.select_anchor()
+    anchor_images = select_anchor_RePAIR.select_anchor(backend_path, path, path_bw)
     extract_lists(anchor_images)
     set_select_anchor_running(False)
     set_select_anchor_done(True)
@@ -59,8 +75,11 @@ def select_neighbour_thread_function():
     global image_names
     global image_scores
     global image_numbers
+    global backend_path
+    global path
+    global path_bw
     set_select_neighbour_running(True)
-    neighbour_images = select_anchor_RePAIR.select_neighbour()
+    neighbour_images = select_anchor_RePAIR.select_neighbour(backend_path, path, path_bw)
     extract_lists(neighbour_images)
     set_select_neighbour_running(False)
     set_select_neighbour_done(True)

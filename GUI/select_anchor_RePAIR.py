@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import argparse
 import json
 
+fg_folder = ""
+images_folder = ""
+
 
 def calculate_color_variation(img, mask, band_width):
     # Find contours of the foreground mask
@@ -196,9 +199,11 @@ def display_detected_key_fragments(sorted_image_scores, image_scores, images_wit
     plt.show()
 
 
-def select_neighbour():
-    args = get_args()
-    images_folder = args.dataset
+def select_neighbour(back_path, path, path_bw):
+    global images_folder
+    global fg_folder
+    set_backend_path(back_path, path, path_bw)
+
     images_names = [img_name for img_name in os.listdir(images_folder)]
 
     neighbour_fragments = []
@@ -229,9 +234,12 @@ def is_neighbour(img_name):
         return False
 
 
-def select_anchor():
+def select_anchor(back_path, path, path_bw):
+    global images_folder
+    global fg_folder
+    set_backend_path(back_path, path, path_bw)
 
-    args = get_args()
+    # args = get_args()
     plt.close('all')
     band_width = 100  # Adjust the width of the band as needed
     nmb_frag = 10
@@ -239,8 +247,10 @@ def select_anchor():
     check_color = True
     check_corner = True
 
-    images_folder = args.dataset
-    fg_folder = args.fg_mask
+    # images_folder = args.dataset
+
+    # fg_folder = args.fg_mask
+
     existing_lines = []
     images_names = [img_name for img_name in os.listdir(images_folder)]
 
@@ -334,22 +344,13 @@ def init_visualization(band_width, fg_img, images_with_borders, rgb_image):
     ##-----------------------------------------------------------------------------------------------------------##
 
 
-backend_path = os.getcwd() + "/GUI/Images/RePAIR_plaque_2/"
+backend_path = os.getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
 
 
-def get_backend_path():
-    return backend_path
-
-
-def get_args():
-    parser = argparse.ArgumentParser(description='Select anchor / key fragment')
-    # parser.add_argument('-d', '--dataset', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/RGBA_merged', help='data folder')
-    parser.add_argument('-d', '--dataset', type=str,
-                        default=backend_path + 'RGBA_merged',
-                        help='data folder')
-    # parser.add_argument('-f', '--fg_mask', type=str, default='/home/sinem/PycharmProjects/User-Interface-Repair-Project/Images/RePAIR_plaque_2/FG_merged', help='data folder')
-    parser.add_argument('-f', '--fg_mask', type=str,
-                        default=backend_path + 'FG_merged',
-                        help='data folder')
-    answer = parser.parse_args()
-    return answer
+def set_backend_path(back_path, path, path_bw):
+    global backend_path
+    global images_folder
+    global fg_folder
+    backend_path = back_path
+    images_folder = path
+    fg_folder = path_bw

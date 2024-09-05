@@ -2,25 +2,19 @@ import os
 
 from kivy import Config
 from kivy.clock import Clock, mainthread
-from kivy.uix.scatter import Scatter
-from kivy.uix.scatterlayout import ScatterLayout
 from kivymd.app import MDApp
-import argparse
 import numpy as np
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button
-from kivy.uix.image import Image
 from kivy.uix.label import Label
-
-import skfmm
 
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.toolbar import MDTopAppBar
 
 from kivy.core.window import Window
 
-import Back_End
-from select_anchor_RePAIR import get_backend_path
+import Back_End as back_end
+
 from RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
 
 import threading
@@ -28,13 +22,13 @@ import time
 
 import cv2
 
-import PuzzlePiece
-
 from MoveableImage import MovableImage
 
 Window.clearcolor = (0, 0, 0, 0)
 
-backend_path = os.getcwd() + "/GUI/Images/RePAIR_plaque_2/"
+backend_path = os.getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
+image_path = ""
+mask_path = ""
 
 showed_image_list = []
 current_image_list = []
@@ -181,16 +175,16 @@ class GUIApp(MDApp):
         global initial_image_updates
         global key_image
 
-        scores = Back_End.image_scores
+        scores = back_end.image_scores
         current_image_list = []
         # score_label.text = str(scores[i])
-        backend_path = get_backend_path()
-        file_names = Back_End.image_names
+        backend_path = backend_path
+        file_names = back_end.image_names
         if has_score == 0 & (key_image is not None):
             file_names.append(key_image.get_id())
-            Back_End.image_numbers += 1
+            back_end.image_numbers += 1
             scores.append(0)
-        for i in range(Back_End.image_numbers):
+        for i in range(back_end.image_numbers):
 
             image = image_reader(i, scores[i], has_score)
             # image.fit_mode = "contain"
@@ -209,7 +203,6 @@ class GUIApp(MDApp):
         global key_image
 
         scrolling = 0
-        print(keyboard_input)
         if keyboard_input == 304:
             self.is_grabbing_window = True
         if keyboard_input == 305:
@@ -259,7 +252,6 @@ class GUIApp(MDApp):
                                 if image.check_mask(pixel):
                                     grabbed_image = image
                                     grabbed_image.update_translate()
-                                    print("grabbed image: ", grabbed_image.texture_size, "here", grabbed_image.norm_image_size)
                                     checked_border = True  # /todo
                                     break
                 if not checked_border:
@@ -279,7 +271,6 @@ class GUIApp(MDApp):
                     click_label.text = str(grabbed_image.get_number() + 1)
                 else:
                     if self.is_grabbing_window:  # left shift
-                        print("here")
                         grid_layout = self.widget_dict['grid_layout']
                         if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
                             # Store the initial touch position
@@ -346,8 +337,6 @@ class GUIApp(MDApp):
         center_x = (Window.size[0] / 2)  # Calculate the center of the window in x-axis
         center_y = (Window.size[1] / 2)  # Calculate the center of the window in y-axis
 
-        print("center_x", center_x, "center_y", center_y)
-
         for image in current_image_list:
             image_id = image.get_id()
 
@@ -362,7 +351,6 @@ class GUIApp(MDApp):
                     key_offset_y = center_y - position[1]
                     break
 
-        print("key_offset_x", key_offset_x, "key_offset_y", key_offset_y)
 
         for image in current_image_list:
             image_id = image.get_id()
@@ -373,7 +361,6 @@ class GUIApp(MDApp):
                 position = np.array([positions[1], -1 * positions[0]])  # fix the coordinates
 
                 new_positions = np.array([position[0] + key_offset_x, position[1] + key_offset_y])
-                print("image_id", image_id, "positions", new_positions)
 
                 r = np.array([image.texture_size[0] / image.norm_image_size[0],
                               image.texture_size[1] / image.norm_image_size[1]])
@@ -396,18 +383,18 @@ class GUIApp(MDApp):
         if clicked.isdigit():
             selected_pic = int(clicked)
         if not anchor_showed:
-            if (Back_End.get_select_anchor_done()) & (len(current_image_list) == 0):
+            if (back_end.get_select_anchor_done()) & (len(current_image_list) == 0):
                 self.set_images(1)
                 self.show_images(self)
                 anchor_showed = True
-        elif ((Back_End.get_select_anchor_done()) & (len(current_image_list) == 0) &
-              (Back_End.get_select_neighbour_done()) & (not neighbour_showed)):
+        elif ((back_end.get_select_anchor_done()) & (len(current_image_list) == 0) &
+              (back_end.get_select_neighbour_done()) & (not neighbour_showed)):
             self.set_images(0)
             self.show_images(self)
             neighbour_showed = True
-        elif ((Back_End.get_select_anchor_done()) & (Back_End.get_select_neighbour_done()) & neighbour_showed &
-              Back_End.get_pl_solver_done() & (not solution_applied)):
-            pl_solution = Back_End.get_pl_solution()
+        elif ((back_end.get_select_anchor_done()) & (back_end.get_select_neighbour_done()) & neighbour_showed &
+              back_end.get_pl_solver_done() & (not solution_applied)):
+            pl_solution = back_end.get_pl_solution()
             self.apply_solution()
             solution_applied = True
         if (time.time() - time_stamp > 1) and not initial_image_updates:
@@ -444,7 +431,7 @@ class GUIApp(MDApp):
 def start_select_anchor(self):
     global image_is_set
     image_is_set = False
-    Back_End.start_anchor_thread()
+    back_end.start_anchor_thread()
 
 
 def start_select_neighbour(self):
@@ -452,10 +439,10 @@ def start_select_neighbour(self):
     global image_is_set
     global key_fragment_id
 
-    Back_End.key_fragment = key_fragment_id
+    back_end.key_fragment = key_fragment_id
     image_is_set = False
     current_image_list = []
-    Back_End.start_neighbour_thread()
+    back_end.start_neighbour_thread()
 
 
 def start_pl_solver(self):
@@ -466,10 +453,10 @@ def start_pl_solver(self):
     for i in range(0, len(current_image_list)):
         if not (current_image_list[i].get_id() == key_image.get_id()):
             neighbour_ids.append(current_image_list[i].get_id())
-    Back_End.neighbour_ids = neighbour_ids
+    back_end.neighbour_ids = neighbour_ids
     # image_is_set = False
     # current_image_list = []
-    Back_End.start_pl_solver_thread()
+    back_end.start_pl_solver_thread()
 
 
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
@@ -483,12 +470,12 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
     while True:
         communicate_thread_lock.acquire()
 
-        select_anchor_running = Back_End.get_select_anchor_running()
-        select_neighbour_running = Back_End.get_select_neighbour_running()
-        pl_solver_running = Back_End.get_pl_solver_running()
-        select_neighbour_done = Back_End.get_select_neighbour_done()
-        select_anchor_done = Back_End.get_select_anchor_done()
-        pl_solver_done = Back_End.get_pl_solver_done()
+        select_anchor_running = back_end.get_select_anchor_running()
+        select_neighbour_running = back_end.get_select_neighbour_running()
+        pl_solver_running = back_end.get_pl_solver_running()
+        select_neighbour_done = back_end.get_select_neighbour_done()
+        select_anchor_done = back_end.get_select_anchor_done()
+        pl_solver_done = back_end.get_pl_solver_done()
 
         if select_anchor_running is not None:
             if select_anchor_running:
@@ -512,34 +499,19 @@ def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_hei
     global ratio
 
     ratio = (ratio_x, ratio_y)
-    print(ratio)
 
     relative_pos = (mouse_pos[0] - image_pos[0] - width_height[0], mouse_pos[1] - image_pos[1] - width_height[1])
     reality_pixel = (relative_pos[0] * ratio[0], relative_pos[1] * ratio[1])
     return reality_pixel
 
 
-def get_args():
-    parser = argparse.ArgumentParser(description='Select anchor / key fragment')
-
-    parser.add_argument('-d', '--dataset', type=str,
-                        default=backend_path + 'RGBA_merged',
-                        help='data folder')
-
-    parser.add_argument('-f', '--fg_mask', type=str,
-                        default=backend_path + 'FG_merged',
-                        help='data folder')
-    answer = parser.parse_args()
-    return answer
-
-
 def image_reader(image_number, score, has_score):
-    path = file_names[image_number]
+    name = file_names[image_number]
 
-    source = backend_path + "RGBA_merged/" + path
+    source = backend_path + "RGBA_merged/" + name
 
     click_label.color = (1, 0, 1, 1)
-    image = MovableImage(source, click_label, score, image_number, has_score, path, 0)
+    image = MovableImage(image_path, mask_path, click_label, score, image_number, has_score, name, 0)
 
     return image
 
@@ -556,27 +528,61 @@ def eroding(directory_path):
             image = cv2.imread(file_path)
             save_path = os.path.join(eroded_dir_path, file_name)  # Corrected save path
             file_name_without_extension = os.path.splitext(file_name)[0]
-            print(file_name_without_extension)
             # name of the file without extension
             eroded_image = run_erode(image, file_name_without_extension)
             cv2.imwrite(save_path, eroded_image)
 
+
+def setting():
+    global image_path
+    global mask_path
+    global backend_path
+    setting_dir = os.path.join(os.getcwd(), "GUI")
+    setting_path = os.path.join(setting_dir, "setting.txt")
+    if not os.path.exists(setting_path):
+
+        with open(setting_path, "w") as setting_file:
+            setting_file.writelines(["image_path: /GUI/DataBase/Images/RePAIR_plaque_2/RGBA_merged/",
+                                     "\n",
+                                     "mask_path: /GUI/DataBase/Images/RePAIR_plaque_2/FG_merged/",
+                                     "\n",
+                                     "backend_path: /GUI/DataBase/Images/RePAIR_plaque_2/"])
+
+    if os.path.exists(setting_path):
+        with open(setting_path, 'r') as setting_file:
+            lines = setting_file.readlines()
+            for line in lines:
+                if line.startswith('image_path:'):
+                    image_path = line.split('image_path: ')[1].strip()
+                elif line.startswith('mask_path:'):
+                    mask_path = line.split('mask_path: ')[1].strip()
+                elif line.startswith('backend_path:'):
+                    backend_path = line.split('backend_path: ')[1].strip()
+
+    image_path = os.getcwd() + image_path
+    mask_path = os.getcwd() + mask_path
+    backend_path = os.getcwd() + backend_path
+
+    back_end.set_backend_path(backend_path, image_path, mask_path)
+
+
+def erode_data():
+    file = open("GUI/DataBase/Archive/CM_color_border20.npy")
+    f = "GUI/DataBase/Archive/CM_color_border20.npy"
+    mmapped_array = np.load(f, mmap_mode='r')
+    eroding_path = os.getcwd() + "/GUI/DataBase/Dafne/image_00000_1/pieces"
+    eroding(eroding_path)
+
+
 if __name__ == '__main__':
+    setting()
     Config.set('input', 'mouse', 'mouse, multitouch_on_demand')
     test_thread = threading.Thread(target=communicate_thread, daemon=True)
 
     test_thread_started = True
     test_thread.start()
 
-    # file = open("GUI/DataBase/Archive/CM_color_border20.npy")
-    # f = "GUI/DataBase/Archive/CM_color_border20.npy"
-    # mmapped_array = np.load(f, mmap_mode='r')
-
-    # print(mmapped_array.shape)
-
-
-    # eroding_path = os.getcwd() + "/GUI/DataBase/Dafne/image_00000_1/pieces"
-    # eroding(eroding_path)
+    # erode_data()
 
     app = GUIApp().run()
 

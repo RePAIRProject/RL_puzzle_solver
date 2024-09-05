@@ -15,15 +15,15 @@ from PuzzlePiece import PuzzlePiece
 
 
 class MovableImage(Image):
-    def __init__(self, source, label, score, image_number, has_score, path, angle):
+    def __init__(self, path, path_bw, label, score, image_number, has_score, name, angle):
         super(MovableImage, self).__init__()
 
-        self.name = path
+        self.name = name
         os_path = getcwd()
-        self.path = os_path + "/GUI/Images/RePAIR_plaque_2/RGBA_merged/" + self.name
-        self.path_bw = os_path + "/GUI/Images/RePAIR_plaque_2/FG_merged/" + self.name
+        self.path = path + self.name
+        self.path_bw = path_bw + self.name
         self.limit_image = self
-        self.source = source
+        self.source = self.path
         self.drag_timeout = 10000000
         self.drag_distance = 0
         self.image_number = image_number
@@ -42,7 +42,7 @@ class MovableImage(Image):
         self.puzzle_piece = PuzzlePiece(self.name)
 
         self.score_label = Label()
-        self.backend_path = getcwd() + "/GUI/Images/RePAIR_plaque_2/"
+        self.backend_path = getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
 
         self.add_score()
         self.image_bw = self.extract_cv_image()
@@ -144,7 +144,6 @@ class MovableImage(Image):
         # self.canvas.before.add(self.rot)
         self.angle = self.angle + delta_angle
         self.angle = self.normalize_angle(self.angle)
-        print(self.angle)
 
     def translate(self, x, y):
         # x = float(x)
@@ -177,7 +176,6 @@ class MovableImage(Image):
         self.trans.x = x - self.pos[0]
         self.trans.y = y - self.pos[1]
         self.trans_bank = (self.trans.x, self.trans.y)
-        print("pos", self.pos, "trans", self.trans.x, self.trans.y)
 
     def update_translate(self):
         self.trans.x = self.trans_bank[0]
