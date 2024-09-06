@@ -12,7 +12,8 @@ This is the method which should be used from the HIL interface
 Now it actually assumes RM and CM are precomputed and just launches the solver
 """
 
-def assemble(fragments_list, return_solution_as='dict'):
+
+def assemble(fragments_list, path_dic, return_solution_as='dict'):
     """
     Assemble a small subset of the puzzle given one anchor and some neighbours:
     ---
@@ -39,11 +40,9 @@ def assemble(fragments_list, return_solution_as='dict'):
     print("anchor_piece", anchor_piece)
     print("neighbours", neighbours)
 
-    puzzle_root = os.path.join(os.getcwd(), 'GUI', 'DataBase', 'output', puzzle)
+    pieces_folder = path_dic['pieces_path']
 
-    pieces_folder = os.path.join(puzzle_root, 'pieces')
-    cmp_parameter_path = os.path.join(puzzle_root, 'compatibility_parameters.json')
-    print(cmp_parameter_path)
+    cmp_parameter_path = path_dic['comp_path']
     if os.path.exists(cmp_parameter_path):
         ppars = {}
         with open(cmp_parameter_path, 'r') as cp:
@@ -70,7 +69,12 @@ def assemble(fragments_list, return_solution_as='dict'):
     print("piece to include", pieces_to_include)
     # extract from R matrix
     # THIS IS HARDCODED WE NEED TO CHANGE LATER
-    mat = loadmat(os.path.join(puzzle_root, 'compatibility_matrix', f'CM_linesdet_manual_cost_LAP')) # load the new compatibility matrix
+    comp_folder = path_dic['comp_folder']
+    comp_name = path_dic['comp_name']
+    # print(comp_name)
+    # comp_name = eval("f'{}'".format(comp_name))
+    mat = loadmat(os.path.join(comp_folder, comp_name)) # load the new compatibility matrix
+    print(mat)
     R = mat['R_line'] # ['R']
     # R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
     # R = R[:, :, :, :, pieces_to_include]
