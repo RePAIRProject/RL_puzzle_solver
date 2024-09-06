@@ -74,8 +74,10 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     # print(comp_name)
     # comp_name = eval("f'{}'".format(comp_name))
     mat = loadmat(os.path.join(comp_folder, comp_name)) # load the new compatibility matrix
+    print(mat.__class__)
     print(mat)
-    R = mat['R_line'] # ['R']
+    R = mat['R'] # ['R']
+
     # R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
     # R = R[:, :, :, :, pieces_to_include]
     # if you want rotation which you shouldn't
