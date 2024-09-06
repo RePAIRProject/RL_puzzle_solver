@@ -83,8 +83,9 @@ def select_neighbour_thread_function():
     global backend_path
     global path
     global path_bw
+    global path_dic
     set_select_neighbour_running(True)
-    neighbour_images = select_anchor_RePAIR.select_neighbour(backend_path, path, path_bw)
+    neighbour_images = select_anchor_RePAIR.select_neighbour(path_dic, key_fragment)
     extract_lists(neighbour_images)
     set_select_neighbour_running(False)
     set_select_neighbour_done(True)

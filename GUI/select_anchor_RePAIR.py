@@ -1,9 +1,11 @@
 import os
+import re
 import numpy as np 
 import cv2
 import matplotlib.pyplot as plt
 import argparse
 import json
+from scipy.io import loadmat
 
 fg_folder = ""
 images_folder = ""
@@ -199,18 +201,57 @@ def display_detected_key_fragments(sorted_image_scores, image_scores, images_wit
     plt.show()
 
 
-def select_neighbour(back_path, path, path_bw):
+def extract_number_from_image_name(image_name):
+    match = re.search(r'\d+', image_name)
+    return int(match.group()) if match else 0
+
+
+def select_neighbour(path_dic, anchor_id):
     global images_folder
     global fg_folder
-    set_backend_path(back_path, path, path_bw)
+
+    back_path = path_dic['backend_path']
+    path = path_dic['image_path']
+    path_bw = path_dic['mask_path']
+    comp_folder = path_dic['comp_folder']
+    comp_name = path_dic['comp_name']
+
+    images = []
+    k = 0
 
     images_names = [img_name for img_name in os.listdir(images_folder)]
+    sorted_images_names = sorted(images_names, key=extract_number_from_image_name)
+
+    for img_name in sorted_images_names:
+        if anchor_id == img_name:
+            anchor_id = k
+        images.append((img_name, k, -3))
+        k += 1
+    print(anchor_id)
+
+    mat = loadmat(os.path.join(comp_folder, comp_name))
+
+    R = mat['R']
+
+    for i in range(R.shape[len(R.shape) - 1]):
+        images[i] = (images[i][0], images[i][1], np.max(R[:, :, :, anchor_id, i]))
+
+    neighbour_numbers = 3
+
+    sorted_by_score = sorted(images, key=lambda x: x[2], reverse=True)
+
+    top_k_images = sorted_by_score[:neighbour_numbers]
+
+    print(top_k_images)
+
+    set_backend_path(back_path, path, path_bw)
 
     neighbour_fragments = []
 
-    for img_name in images_names:
-        if is_neighbour(img_name):
-            neighbour_fragments.append((img_name, 0))
+    for top in top_k_images:
+        neighbour_fragments.append((top[0], top[2]))
+
+    print(neighbour_fragments)
 
     return neighbour_fragments
 

@@ -30,6 +30,7 @@ backend_path = os.getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
 image_path = ""
 mask_path = ""
 path_dic = None
+rotation_interval = 0.5
 
 showed_image_list = []
 current_image_list = []
@@ -202,6 +203,7 @@ class GUIApp(MDApp):
         global keyboard_input
         global key_fragment_id
         global key_image
+        global rotation_interval
 
         scrolling = 0
         if keyboard_input == 304:
@@ -209,10 +211,10 @@ class GUIApp(MDApp):
         if keyboard_input == 305:
             if touch.button == 'scrollup':  # scroll up is scrolling down :|
                 if grabbed_image is not None:
-                    grabbed_image.rotate(-1)
+                    grabbed_image.rotate(-1 * rotation_interval)  # its  2x God knows why
             elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
                 if grabbed_image is not None:
-                    grabbed_image.rotate(1)
+                    grabbed_image.rotate(+1 * rotation_interval)  # its  2x God knows why
 
         if 'button' in touch.profile:  # may cause bug in different systems -_- /todo
             if not hasattr(touch, 'prev_mouse') or not (touch.prev_mouse == touch.button):
@@ -536,6 +538,7 @@ def setting(): # unified path setting
     global mask_path
     global backend_path
     global path_dic
+    global rotation_interval
     comp_path = ""
     pieces_path = ""
     comp_folder = ""
@@ -557,7 +560,9 @@ def setting(): # unified path setting
                                      "\n",
                                      "comp_folder: /GUI/DataBase/output/repair_g28/compatibility_matrix/",
                                      "\n",
-                                     "comp_name: CM_linesdet_manual_cost_LAP.mat"])
+                                     "comp_name: CM_linesdet_manual_cost_LAP.mat",
+                                     "\n",
+                                     "Rotation_Intervals: 1",])
     os_path = os.getcwd()
     if os.path.exists(setting_path):
         with open(setting_path, 'r') as setting_file:
@@ -577,14 +582,16 @@ def setting(): # unified path setting
                     comp_folder = os_path + line.split('comp_folder: ')[1].strip()
                 elif line.startswith('comp_name:'):
                     comp_name = line.split('comp_name: ')[1].strip()
+                elif line.startswith('Rotation_Intervals:'):
+                    rotation_intervals = line.split('Rotation_Intervals: ')[1].strip()
 
     path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path, 'comp_path': comp_path,
                 'pieces_path': pieces_path, 'comp_folder': comp_folder, 'comp_name': comp_name}
     image_path = image_path
     mask_path = mask_path
     backend_path = backend_path
-
-    print(path_dic)
+    rotation_interval = float(rotation_intervals) / 2
+    print(rotation_interval)
 
     back_end.set_backend_path(path_dic)
 
