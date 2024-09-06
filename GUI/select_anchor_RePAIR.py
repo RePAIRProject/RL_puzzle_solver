@@ -231,6 +231,8 @@ def select_neighbour(path_dic, anchor_id):
 
     mat = loadmat(os.path.join(comp_folder, comp_name))
 
+    print(mat.keys())
+    # R = mat['R_line']
     R = mat['R']
 
     for i in range(R.shape[len(R.shape) - 1]):

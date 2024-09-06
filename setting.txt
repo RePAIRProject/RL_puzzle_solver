@@ -5,3 +5,4 @@ comp_path: /GUI/DataBase/Dafne/image_00000_1/compatibility_parameters.json
 pieces_path: /GUI/DataBase/Dafne/image_00000_1/pieces/
 comp_folder: /GUI/DataBase/Dafne/image_00000_1/compatibility_matrix/
 comp_name: CM_color_border20.mat
+Rotation_Intervals: 90
