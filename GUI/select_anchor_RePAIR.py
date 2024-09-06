@@ -216,7 +216,7 @@ def select_neighbour(back_path, path, path_bw):
 
 
 def is_neighbour(img_name):
-    if img_name == "gr28_RPf_00194_intact_mesh.png":
+    if img_name == "piece_0010.png":
         return True
     elif img_name == "gr28_RPf_00200_intact_mesh.png":
         return True

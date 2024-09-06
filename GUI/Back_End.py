@@ -36,14 +36,18 @@ backend_path = ""
 path = ""
 path_bw = ""
 
+path_dic = None
 
-def set_backend_path(back_path, image_path, pw_path):
+
+def set_backend_path(dic):
     global backend_path
     global path
     global path_bw
-    backend_path = back_path
-    path = image_path
-    path_bw = pw_path
+    global path_dic
+    backend_path = dic['backend_path']
+    path = dic['image_path']
+    path_bw = dic['mask_path']
+    path_dic = dic
 
 
 def select_anchor_thread_function():
@@ -64,8 +68,9 @@ def select_anchor_thread_function():
 def pl_solver_thread_function():
     global input_dict
     global pl_solution
+    global path_dic
     set_pl_solver_running(True)
-    pl_solution = puzzle_solver.assemble(input_dict)
+    pl_solution = puzzle_solver.assemble(input_dict, path_dic)
     set_pl_solver_running(False)
     set_pl_solver_done(True)
 

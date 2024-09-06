@@ -29,6 +29,7 @@ Window.clearcolor = (0, 0, 0, 0)
 backend_path = os.getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
 image_path = ""
 mask_path = ""
+path_dic = None
 
 showed_image_list = []
 current_image_list = []
@@ -507,9 +508,6 @@ def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_hei
 
 def image_reader(image_number, score, has_score):
     name = file_names[image_number]
-
-    source = backend_path + "RGBA_merged/" + name
-
     click_label.color = (1, 0, 1, 1)
     image = MovableImage(image_path, mask_path, click_label, score, image_number, has_score, name, 0)
 
@@ -537,6 +535,11 @@ def setting(): # unified path setting
     global image_path
     global mask_path
     global backend_path
+    global path_dic
+    comp_path = ""
+    pieces_path = ""
+    comp_folder = ""
+    comp_name = ""
     setting_dir = os.path.join(os.getcwd(), "GUI")
     setting_path = os.path.join(setting_dir, "setting.txt")
     if not os.path.exists(setting_path):
@@ -546,24 +549,44 @@ def setting(): # unified path setting
                                      "\n",
                                      "mask_path: /GUI/DataBase/Images/RePAIR_plaque_2/FG_merged/",
                                      "\n",
-                                     "backend_path: /GUI/DataBase/Images/RePAIR_plaque_2/"])
-
+                                     "backend_path: /GUI/DataBase/Images/RePAIR_plaque_2/",
+                                     "\n",
+                                     "comp_path: /GUI/DataBase/output/repair_g28/compatibility_parameters.json",
+                                     "\n",
+                                     "pieces_path: /GUI/DataBase/output/repair_g28/pieces/",
+                                     "\n",
+                                     "comp_folder: /GUI/DataBase/output/repair_g28/compatibility_matrix/",
+                                     "\n",
+                                     "comp_name: CM_linesdet_manual_cost_LAP.mat"])
+    os_path = os.getcwd()
     if os.path.exists(setting_path):
         with open(setting_path, 'r') as setting_file:
             lines = setting_file.readlines()
             for line in lines:
                 if line.startswith('image_path:'):
-                    image_path = line.split('image_path: ')[1].strip()
+                    image_path = os_path + line.split('image_path: ')[1].strip()
                 elif line.startswith('mask_path:'):
-                    mask_path = line.split('mask_path: ')[1].strip()
+                    mask_path = os_path + line.split('mask_path: ')[1].strip()
                 elif line.startswith('backend_path:'):
-                    backend_path = line.split('backend_path: ')[1].strip()
+                    backend_path = os_path + line.split('backend_path: ')[1].strip()
+                elif line.startswith('comp_path:'):
+                    comp_path = os_path + line.split('comp_path: ')[1].strip()
+                elif line.startswith('pieces_path:'):
+                    pieces_path = os_path + line.split('pieces_path: ')[1].strip()
+                elif line.startswith('comp_folder:'):
+                    comp_folder = os_path + line.split('comp_folder: ')[1].strip()
+                elif line.startswith('comp_name:'):
+                    comp_name = line.split('comp_name: ')[1].strip()
 
-    image_path = os.getcwd() + image_path
-    mask_path = os.getcwd() + mask_path
-    backend_path = os.getcwd() + backend_path
+    path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path, 'comp_path': comp_path,
+                'pieces_path': pieces_path, 'comp_folder': comp_folder, 'comp_name': comp_name}
+    image_path = image_path
+    mask_path = mask_path
+    backend_path = backend_path
 
-    back_end.set_backend_path(backend_path, image_path, mask_path)
+    print(path_dic)
+
+    back_end.set_backend_path(path_dic)
 
 
 def erode_data():
