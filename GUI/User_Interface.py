@@ -72,8 +72,6 @@ ratio = 1
 time_stamp = 0
 none_counter = 0
 keyboard_input = 0
-key_offset_x = 0
-key_offset_y = 0
 
 toolbar_color = 0  # 0 for light blue, -1 for red, 1 for green
 
@@ -91,6 +89,7 @@ class MainLayout(GridLayout):  # might need to change GridLayout to sth else to 
 class GUIApp(MDApp):
     widget_list = []
     widget_dict = {}
+    clicked = ""
     global select_anchor_running
     global toolbar_color
     toolbar_bg = 0
@@ -271,7 +270,9 @@ class GUIApp(MDApp):
                     if (not select_anchor_running) and (not select_neighbour_running) and (not select_neighbour_done):
                         key_fragment_id = str(grabbed_image.get_id())
                         key_image = grabbed_image
-                    click_label.text = str(grabbed_image.get_number() + 1)
+                    # click_label.text = str(grabbed_image.get_number() + 1)
+                    click_label.text = str(grabbed_image.get_name())
+                    self.clicked = str(grabbed_image.get_number() + 1)
                 else:
                     if self.is_grabbing_window:  # left shift
                         grid_layout = self.widget_dict['grid_layout']
@@ -335,25 +336,8 @@ class GUIApp(MDApp):
         global pl_solution
         global key_fragment_id
         global key_image
-        global key_offset_x
-        global key_offset_y
         center_x = (Window.size[0] / 2)  # Calculate the center of the window in x-axis
         center_y = (Window.size[1] / 2)  # Calculate the center of the window in y-axis
-
-        for image in current_image_list:
-            image_id = image.get_id()
-
-            # Check if the image ID exists in pl_solution
-            if image_id in pl_solution:
-                positions = pl_solution[image_id]
-
-                # If the image is the key fragment, calculate its offset from the center
-                if image_id == key_fragment_id:
-                    position = np.array([positions[1], -1 * positions[0]])  # fix the coordinates
-                    key_offset_x = center_x - position[0]
-                    key_offset_y = center_y - position[1]
-                    break
-
 
         for image in current_image_list:
             image_id = image.get_id()
@@ -363,11 +347,13 @@ class GUIApp(MDApp):
 
                 position = np.array([positions[1], -1 * positions[0]])  # fix the coordinates
 
-                new_positions = np.array([position[0] + key_offset_x, position[1] + key_offset_y])
+                new_positions = np.array([position[0] + center_x, position[1] + center_y])
 
                 r = np.array([image.texture_size[0] / image.norm_image_size[0],
                               image.texture_size[1] / image.norm_image_size[1]])
-                image.update(new_positions, r)
+                # print(solved_rotation)
+                # image.rotate(solved_rotation/2)
+                image.update(new_positions, r, positions[2])
 
     def checking_clock(self, *args, **kwargs):
         global selected_pic
@@ -379,7 +365,7 @@ class GUIApp(MDApp):
         communicate_thread_lock.acquire()
         self.toolbar_changes(toolbar_color)
 
-        clicked = click_label.text
+        clicked = self.clicked
         if (clicked.isdigit()) & (selected_pic == 0):
             self.widget_list[4].disabled = False
             selected_pic = int(clicked)
@@ -515,6 +501,7 @@ def image_reader(image_number, score, has_score):
 
     return image
 
+
 def eroding(directory_path):
     eroded_dir_path = os.path.join(directory_path, "Eroded")
 
@@ -543,6 +530,10 @@ def setting(): # unified path setting
     pieces_path = ""
     comp_folder = ""
     comp_name = ""
+    ground_truth = ""
+    apply_gt = False
+    number_of_neighbours = 3
+    number_of_anchors = 4
     setting_dir = os.path.join(os.getcwd(), "GUI")
     setting_path = os.path.join(setting_dir, "setting.txt")
     if not os.path.exists(setting_path):
@@ -562,7 +553,18 @@ def setting(): # unified path setting
                                      "\n",
                                      "comp_name: CM_linesdet_manual_cost_LAP.mat",
                                      "\n",
-                                     "Rotation_Intervals: 1",])
+                                     "Rotation_Intervals: 1",
+                                     "\n",
+                                     "number_of_neighbours: 3",
+                                     "\n",
+                                     "comp_format: R_line",
+                                     "\n",
+                                     "apply_gt: False",
+                                     "\n",
+                                     "parameters: /GUI/DataBase/output/repair_g28/compatibility_parameters.json",
+                                     "\n",
+                                     "number_of_anchors: 4"
+                                     ])
     os_path = os.getcwd()
     if os.path.exists(setting_path):
         with open(setting_path, 'r') as setting_file:
@@ -584,14 +586,27 @@ def setting(): # unified path setting
                     comp_name = line.split('comp_name: ')[1].strip()
                 elif line.startswith('Rotation_Intervals:'):
                     rotation_intervals = line.split('Rotation_Intervals: ')[1].strip()
-
+                elif line.startswith('ground_truth:'):
+                    ground_truth = os_path + line.split('ground_truth: ')[1].strip()
+                elif line.startswith('number_of_neighbours:'):
+                    number_of_neighbours = int(line.split('number_of_neighbours: ')[1].strip())
+                elif line.startswith('comp_format:'):
+                    comp_format = line.split('comp_format: ')[1].strip()
+                elif line.startswith('apply_gt:'):
+                    apply_gt = line.split('apply_gt: ')[1].strip()
+                elif line.startswith('parameters:'):
+                    parameters = os_path + line.split('parameters: ')[1].strip()
+                elif line.startswith('number_of_anchors:'):
+                    number_of_anchors = int(line.split('number_of_anchors: ')[1].strip())
     path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path, 'comp_path': comp_path,
-                'pieces_path': pieces_path, 'comp_folder': comp_folder, 'comp_name': comp_name}
+                'pieces_path': pieces_path, 'comp_folder': comp_folder, 'comp_name': comp_name,
+                'rotation_intervals': rotation_intervals, 'ground_truth': ground_truth,
+                'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
+                'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors}
     image_path = image_path
     mask_path = mask_path
     backend_path = backend_path
     rotation_interval = float(rotation_intervals) / 2
-    print(rotation_interval)
 
     back_end.set_backend_path(path_dic)
 
@@ -604,6 +619,48 @@ def erode_data():
     eroding(eroding_path)
 
 
+def transparent_data(path):
+    for img in os.listdir(path):
+        if img.endswith('.png'):
+            input_path = os.path.join(path, img)
+            img_t = transparent(input_path)
+            output_image = img.split('.')[0] + ".png"
+            output_path = os.path.join(path, output_image)
+            cv2.imwrite(output_path, img_t)
+
+
+def transparent(img):
+    src = cv2.imread(img, 1)
+
+    if src is None:
+        print(f"Error: Unable to load image '{img}'. Please check the file path.")
+        print(img)
+        return None
+
+    tmp = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
+
+    _, alpha = cv2.threshold(tmp, 0, 255, cv2.THRESH_BINARY)
+
+    b, g, r = cv2.split(src)
+
+    rgba = [b, g, r, alpha]
+
+    dst = cv2.merge(rgba, 4)
+
+    return dst
+
+
+def read_ground_truth():
+    global path_dic
+    ground_truth = path_dic['ground_truth']
+    print(ground_truth)
+    if ground_truth != "":
+        with open(ground_truth, 'r') as file:
+            lines = file.readlines()
+            for line in lines:
+                print(line)
+
+
 if __name__ == '__main__':
     setting()
     Config.set('input', 'mouse', 'mouse, multitouch_on_demand')
@@ -611,6 +668,11 @@ if __name__ == '__main__':
 
     test_thread_started = True
     test_thread.start()
+
+    read_ground_truth()
+
+    # transparent_path = os.getcwd() + "/GUI/pieces/"
+    # transparent_data(transparent_path)
 
     # erode_data()
 

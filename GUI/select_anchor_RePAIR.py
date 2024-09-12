@@ -3,7 +3,6 @@ import re
 import numpy as np 
 import cv2
 import matplotlib.pyplot as plt
-import argparse
 import json
 from scipy.io import loadmat
 
@@ -227,24 +226,20 @@ def select_neighbour(path_dic, anchor_id):
             anchor_id = k
         images.append((img_name, k, -3))
         k += 1
-    print(anchor_id)
 
     mat = loadmat(os.path.join(comp_folder, comp_name))
 
-    print(mat.keys())
-    # R = mat['R_line']
-    R = mat['R']
+    R = mat[path_dic['comp_format']]
 
     for i in range(R.shape[len(R.shape) - 1]):
         images[i] = (images[i][0], images[i][1], np.max(R[:, :, :, anchor_id, i]))
 
-    neighbour_numbers = 3
+    neighbour_numbers = path_dic['number_of_neighbours']
+    print(neighbour_numbers)
 
     sorted_by_score = sorted(images, key=lambda x: x[2], reverse=True)
 
     top_k_images = sorted_by_score[:neighbour_numbers]
-
-    print(top_k_images)
 
     set_backend_path(back_path, path, path_bw)
 
@@ -253,33 +248,19 @@ def select_neighbour(path_dic, anchor_id):
     for top in top_k_images:
         neighbour_fragments.append((top[0], top[2]))
 
-    print(neighbour_fragments)
-
     return neighbour_fragments
 
 
-def is_neighbour(img_name):
-    if img_name == "piece_0010.png":
-        return True
-    elif img_name == "gr28_RPf_00200_intact_mesh.png":
-        return True
-    elif img_name == "gr28_RPf_00203_intact_mesh.png":
-        return True
-    elif img_name == "gr41_RPf_00334_intact_mesh.png":
-        return True
-    elif img_name == "RPf_00203.png":
-        return True
-    elif img_name == "RPf_00197.png":
-        return True
-    elif img_name == "RPf_00201.png":
-        return True
-    else:
-        return False
-
-
-def select_anchor(back_path, path, path_bw):
+def select_anchor(path_dic):
     global images_folder
     global fg_folder
+
+    back_path = path_dic['backend_path']
+    path = path_dic['image_path']
+    path_bw = path_dic['mask_path']
+    comp_folder = path_dic['comp_folder']
+    comp_name = path_dic['comp_name']
+
     set_backend_path(back_path, path, path_bw)
 
     # args = get_args()
@@ -339,7 +320,7 @@ def select_anchor(back_path, path, path_bw):
     sorted_image_scores = sorted(image_scores, key=lambda x: x[1], reverse=True)
 
     # Select the top 10 fragments
-    top_10_fragments = sorted_image_scores[:4]
+    top_10_fragments = sorted_image_scores[:path_dic['number_of_anchors']]
 
     # Display user interface and get selected fragments
     # selected_fragments = create_user_interface(top_10_fragments, images_with_borders, imgs_names)
@@ -352,8 +333,6 @@ def select_anchor(back_path, path, path_bw):
     output_file_path = 'top_10_fragments.json'
     with open(output_file_path, 'w') as json_file:
         json.dump(output_data, json_file, indent=2)
-
-    print(f"Top 10 fragments saved to: {output_file_path}")
 
     # Read the saved JSON file back into Python
     with open(output_file_path, 'r') as json_file:

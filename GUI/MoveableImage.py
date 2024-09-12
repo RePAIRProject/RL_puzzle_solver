@@ -189,13 +189,17 @@ class MovableImage(Image):
         return self.collide_point(x - self.trans.x, y - self.trans.y)
         # return self.x <= x <= self.right and self.y <= y - self.trans.y <= self.top
 
-    def update(self, position, ratio, *args, **kwargs):
+    def update(self, position, ratio, solved_rotation, *args, **kwargs):
         x = position[0] / ratio[0] - self.width * 0.5 / ratio[1]
         y = position[1] / ratio[1] - self.height * 0.5 / ratio[1]
         # x = position[0]
         # y = position[1]
+        # self.rotate(solved_rotation/2)
+
+        self.rotate(solved_rotation)
         self.translate(x, y)
-        # self.rotate(90)
+
+
 
     def pure_update(self):
         self.translate(self.vx, self.vy)
