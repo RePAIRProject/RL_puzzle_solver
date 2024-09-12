@@ -76,8 +76,8 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     mat = loadmat(os.path.join(comp_folder, comp_name)) # load the new compatibility matrix
     print(mat.__class__)
     print(mat)
-    # R = mat['R_line']
-    R = mat['R']
+
+    R = mat[path_dic['comp_format']]
 
     # R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
     # R = R[:, :, :, :, pieces_to_include]
