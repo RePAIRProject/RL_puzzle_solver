@@ -218,8 +218,8 @@ def get_pl_solution():
     apply_gt = path_dic['apply_gt']
     if apply_gt == "True":
         pl_solution = apply_ground_truth()
-        print("pl solution: " + str(pl_solution))
     pl_solution = scale_solution()
+    print("pl solution: " + str(pl_solution))
     return pl_solution
 
 
@@ -230,6 +230,7 @@ def scale_solution():
     parametrs = path_dic['parameters']
     with open(parametrs, 'r') as f:
         data = json.load(f)
+        print(data.keys())
 
     adjusted_solution = {}
 

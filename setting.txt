@@ -11,3 +11,4 @@ number_of_neighbours: 3
 comp_format: R
 apply_gt: True
 parameters: /GUI/DataBase/Dafne/parameters.json
+dataset_name: Dafne_group_1

@@ -336,17 +336,21 @@ class GUIApp(MDApp):
         global pl_solution
         global key_fragment_id
         global key_image
+        global path_dic
         center_x = (Window.size[0] / 2)  # Calculate the center of the window in x-axis
         center_y = (Window.size[1] / 2)  # Calculate the center of the window in y-axis
 
         for image in current_image_list:
             image_id = image.get_id()
+            print("image size: ", image.norm_image_size)
 
             if image_id in pl_solution:
                 positions = pl_solution[image_id]
-
-                position = np.array([positions[1], -1 * positions[0]])  # fix the coordinates
-
+                position = np.array([positions[0], positions[1]])
+                if path_dic['dataset_name'] == 'RePair_group_28':
+                    position = np.array([positions[1], (-1 * positions[0])])  # fix the coordinates
+                elif path_dic['dataset_name'] == 'Dafne_group_1':
+                    position = np.array([-1 * positions[0]/2, (positions[1]/2)])  # fix the coordinates
                 new_positions = np.array([position[0] + center_x, position[1] + center_y])
 
                 r = np.array([image.texture_size[0] / image.norm_image_size[0],
@@ -531,6 +535,7 @@ def setting(): # unified path setting
     comp_folder = ""
     comp_name = ""
     ground_truth = ""
+    dataset_name = ""
     apply_gt = False
     number_of_neighbours = 3
     number_of_anchors = 4
@@ -563,7 +568,9 @@ def setting(): # unified path setting
                                      "\n",
                                      "parameters: /GUI/DataBase/output/repair_g28/compatibility_parameters.json",
                                      "\n",
-                                     "number_of_anchors: 4"
+                                     "number_of_anchors: 4",
+                                    "\n",
+                                     "dataset_name: RePair_group_28"
                                      ])
     os_path = os.getcwd()
     if os.path.exists(setting_path):
@@ -598,11 +605,14 @@ def setting(): # unified path setting
                     parameters = os_path + line.split('parameters: ')[1].strip()
                 elif line.startswith('number_of_anchors:'):
                     number_of_anchors = int(line.split('number_of_anchors: ')[1].strip())
+                elif line.startswith('dataset_name:'):
+                    dataset_name = line.split('dataset_name: ')[1].strip()
     path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path, 'comp_path': comp_path,
                 'pieces_path': pieces_path, 'comp_folder': comp_folder, 'comp_name': comp_name,
                 'rotation_intervals': rotation_intervals, 'ground_truth': ground_truth,
                 'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
-                'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors}
+                'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors,
+                'dataset_name': dataset_name}
     image_path = image_path
     mask_path = mask_path
     backend_path = backend_path
