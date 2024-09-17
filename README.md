@@ -58,7 +58,7 @@ argparse
 We use slightly less but still most likely to be needed:
 ```
 scipy
-skfmm
+scikit-fmm
 scikit-learn
 scikit-image
 opencv-python-contrib

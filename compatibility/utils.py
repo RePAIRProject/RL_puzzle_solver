@@ -4,6 +4,7 @@ from puzzle_utils.lines_ops import compute_cost_matrix_LAP_debug, compute_cost_m
         compute_cost_matrix_LAP_v2, compute_cost_matrix_LAP_v3, compute_cost_matrix_LCI_method, \
         extract_from
 from compatibility.compatibility_Motifs import compute_cost_using_motifs_compatibility
+from compatibility.compatibility_Segmentation import compute_cost_using_segmentation_compatibility
 from compatibility.compatibility_MGC import compute_cost_using_color_compatibility
 import time
 
@@ -37,7 +38,7 @@ def calc_computation_parameters(parameters, cmp_type, cmp_cost, det_method):
 
     return cmp_pars
 
-def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None, seg_len=0, verbosity=1):
+def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None, segmentator=None, seg_len=0, verbosity=1):
     """
     Wrapper for the cost computation, so that it can be called in one-line, 
     making it easier to parallelize using joblib's Parallel (in comp_irregular.py) 
@@ -116,6 +117,8 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
         elif compatibility_type == 'motifs':
             assert ( (det_type == "yolo-obb") | (det_type == "yolo-bbox")), f"Unkown detection method for motifs!\nWe know `yolo-obb` and `yolo-bbox`, given `{det_type}`\nRe-run specifying `--det_method`"
             R_cost = compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=det_type, verbosity=verbosity)
+        elif compatibility_type == 'seg':
+            R_cost = compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, ppars, sam_segmentator=segmentator, verbosity=verbosity)
         elif compatibility_type == 'color':
             R_cost = compute_cost_using_color_compatibility(idx1, idx2, pieces, mask_ij, ppars, seg_len=seg_len, verbosity=1)
         else: # other compatibilities!

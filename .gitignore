@@ -30,4 +30,7 @@ output_*/
 # personal scripts to copy/upload stuff
 **/*_lucap.sh
 
+# Mac system files
+.DS_Store
+
 

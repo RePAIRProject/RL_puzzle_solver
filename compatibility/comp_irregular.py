@@ -64,7 +64,7 @@ def main(args):
             print(f"{cfg_key}: {img_parameters[cfg_key]}")
         
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
-        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
+        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters_v2.json')
         if os.path.exists(cmp_parameter_path):
             ppars = CfgParameters()
             with open(cmp_parameter_path, 'r') as cp:
@@ -113,6 +113,21 @@ def main(args):
         else:
             yolov8_obb_detector = None
         ppars['motif_based'] = motif_based
+        ####### Segmentation #######
+        seg_based = False
+        if args.cmp_type == 'seg':
+            seg_based = True
+            if args.sam_model_type is None or args.sam_model_path is None:
+                raise Exception("You are trying to use SAM-based compatibility without specifying arguments")
+            from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
+            sam = sam_model_registry[args.sam_model_type](checkpoint=args.sam_model_path)
+            sam_segmentator = SamAutomaticMaskGenerator(sam)
+            ppars['sam_model_type'] = args.sam_model_type
+            ppars['sam_model_path'] = args.sam_model_path
+        else:
+            sam_segmentator = None
+        ppars['seg_based'] = seg_based
+        ###### Color ######
         color_based = False
         seg_len = 0
         if args.cmp_type == 'color':
@@ -205,7 +220,7 @@ def main(args):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, ppars, \
-                        detector=yolov8_obb_detector, seg_len=seg_len,
+                        detector=yolov8_obb_detector, segmentator=sam_segmentator, seg_len=seg_len,
                         verbosity=args.verbosity)
                     
                     All_cost[:, :, :, j, i] = ji_mat
@@ -441,7 +456,7 @@ if __name__ == '__main__':
     parser.add_argument('--cmp_type', type=str, default='lines', 
         help='Chooses the compaitbility to use.\nIf more than one should be used, select `combo`\
             \nIt is connected with `--cmp_cost` and `--det_method`!', 
-        choices=['lines', 'shape', 'color', 'motifs', 'combo'])   
+        choices=['lines', 'shape', 'color', 'motifs', 'combo','seg'])   
     parser.add_argument('--cmp_cost', type=str, default='LCI', 
         help='Chooses the cost used to compute compatibility - it depends on the `--cmp_type`\
             \nUse LAP, LAP3 or LCI for lines, YOLO or overlap for motif, SDF for shape, MGC for color', 
@@ -458,8 +473,10 @@ if __name__ == '__main__':
         choices=['LS', 'MS', 'CS', 'CLMS'])   
     parser.add_argument('--det_method', type=str, default='exact', 
         help='method for the feature detection (usually lines or motif)',
-        choices=['exact', 'deeplsd', 'manual', 'yolo-obb', 'yolo-bbox', 'yolo-seg'])  
+        choices=['exact', 'deeplsd', 'manual', 'yolo-obb', 'yolo-bbox', 'yolo-seg']) 
     parser.add_argument('--yolo_path', type=str, default='/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt', help='yolo path (.pt model)')
+    parser.add_argument('--sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
+    parser.add_argument('--sam_model_type', type=str, choices=['default','vit_h','vit_l','vit_b'], help='SAM model type')
     parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')   
     parser.add_argument('--k', type=int, default=5, help='keep the best k values (for given gamma transformation) in the compatibility')   
 
