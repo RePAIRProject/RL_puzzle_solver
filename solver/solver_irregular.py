@@ -79,7 +79,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
         if na_new > na:
             na = na_new
             faze += 1
-            p = np.ones((Y, X, Z, noPatches)) / (Y * X)
+            p = np.ones((Y, X, Z, noPatches)) / (Y*X*Z)
 
             for jj in range(noPatches):
                 if new_anc[jj, 0] != 0:
@@ -402,8 +402,8 @@ def main(args):
                                          f'CM_{cmp_name}'))
         mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
         # breakpoint()
-        R_motif = mat_motifs['R_motifs']
-        R_shape = mat_shape['R_line']
+        R_motif = mat_motifs['R_motifs'] # R_motif = mat_motifs['R']
+        R_shape = mat_shape['R_line']    # R_shape = mat_shape['R']
         negative_region_map = R_motif < 0
 
         # only positive values
@@ -440,9 +440,25 @@ def main(args):
     # HERE THE LINES WERE USED
     if args.anchor < 0:
         anc = np.random.choice(len(all_pieces))  # select_anchor(detect_output)
+        ## optional
+        # m, I = np.max(R), np.argmax(R)
+        # ii = np.unravel_index(I, R.shape)
+        # anc = ii[4]
     else:
         anc = args.anchor
     print(f"Using anchor the piece with id: {anc}")
+
+    ## K-sparsification
+    k = 3
+    for i in range(np.shape(R)[4]):
+        for j in range(np.shape(R)[4]):
+            r_temp = R[:, :, :, j, i]
+            m = np.max(r_temp)
+            a = np.min(np.partition(np.ravel(r_temp), -k)[-k:])
+            r_zer = np.where(r_temp > -1, 0, -1)
+            r_val = np.where(r_temp < a, 0, r_temp)
+            R[:, :, :, j, i] = r_zer + r_val
+
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts)  # (R, anc, anc_rot, nh, nw)
     # print(p_initial.shape)
