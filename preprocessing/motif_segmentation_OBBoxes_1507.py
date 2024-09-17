@@ -36,7 +36,7 @@ def main(args):
     else:
         yolov8_model_path = args.yolo_model
     if args.images == "":
-        imgs_folder = '/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
+        imgs_folder = '/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/red_rp_o0037_no_rot/pieces'
         #imgs_folder = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
         #motifs_output = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/motif_OBB'
     else:
