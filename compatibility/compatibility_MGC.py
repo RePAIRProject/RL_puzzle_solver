@@ -14,10 +14,13 @@ from matplotlib import pyplot as plt
 from sklearn.cluster import DBSCAN
 from matplotlib import cm
 
-def compute_cost_wrapper_for_Colors_compatibility(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, seg_len, verbosity=1):
+def compute_cost_using_color_compatibility(idx1, idx2, pieces, mask_ij, ppars, seg_len, verbosity=1):
 
     #(p, z_id, m, rot, line_matching_pars) = cmp_parameters
-    (p, z_id, m, rot) = cmp_parameters
+    p = ppars['p']
+    z_id = ppars['z_id']
+    m = ppars['m']
+    rot = ppars['rot']
 
     if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
@@ -27,7 +30,7 @@ def compute_cost_wrapper_for_Colors_compatibility(idx1, idx2, pieces, regions_ma
 
     else:
         print(f"computing cost matrix for piece {idx1} vs piece {idx2}")
-        mask_ij = regions_mask[:, :, :, idx2, idx1]
+        # mask_ij = regions_mask[:, :, :, idx2, idx1]
         candidate_values = np.sum(mask_ij > 0)
         #image1 = pieces[idx1]['img']
         #image2 = pieces[idx2]['img']
@@ -96,9 +99,10 @@ def colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, bo
                                 border_j = border_colors2[j]['colors']  # for up to down and to the left  !!!
 
                                 if border_i.shape[0] != seg_len or border_j.shape[0] != seg_len:
-                                    print('STOP - Wrong Length of border !!!')
-                                    print(border_i.shape[0])
-                                    print(border_j.shape[0])
+                                    assert(border_i.shape[0] == seg_len), f"Wrong Length of border !!!\nseg_len={seg_len}, border_i={border_i.shape[0]}"
+                                    # print('STOP - Wrong Length of border !!!')
+                                    # print(border_i.shape[0])
+                                    # print(border_j.shape[0])
                                     if border_i.shape[0] > seg_len or border_j.shape[0] > seg_len:
                                         border_i = border_i[0:seg_len, :, :]
                                         border_j = border_j[0:seg_len, :, :]
@@ -121,7 +125,7 @@ def colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, bo
                     #MGC_scores = np.nanmax(comp_scores_matrix[np.where(comp_scores_matrix >= 0)])   # TEST !!!
 
                     # print('score for all segments')
-                    print(MGC_scores)
+                    #print(MGC_scores)
                     if not (np.isnan(MGC_scores)):
                         R_cost[iy, ix, t] = MGC_scores
 

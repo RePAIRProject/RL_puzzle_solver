@@ -427,7 +427,7 @@ def add_colors(image, borders_segments, thickness):
 def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, boundary_thickness=2):
     for piece in pieces:
         #pdb.set_trace()
-        borders_segments = divide_boundaries_in_segments(piece['polygon'].tolist(), seg_len=boundary_seg_len)
+        borders_segments = divide_boundaries_in_segments(piece['polygon'], seg_len=boundary_seg_len)
         #borders_segments = piece['polygon'].tolist().segmentize(boundary_seg_len)
         borders_segments = add_colors(piece['img'], borders_segments, boundary_thickness)
         coords = [bs['start'] for bs in borders_segments]
@@ -450,7 +450,14 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
 
     ## NEW MOTIVE PART
     if motif_based == True:
-        motif_folder = os.path.join(root_folder, fnames.motifs_output_name)
+        if method == 'yolo-obb':
+            motif_subfolder = f"{fnames.motifs_output_name}_OBB"
+        elif method == 'yolo-bbox':
+            motif_subfolder = f"{fnames.motifs_output_name}_BB"
+        else:
+            print(f'No method, just reading from {fnames.motifs_output_name}')
+            motif_subfolder = fnames.motifs_output_name
+        motif_folder = os.path.join(root_folder, motif_subfolder)
         # motif_folder = os.path.join(root_folder, fnames.motifs_output_name, method)  #TODO - add method to detection path !!! Yolo5 ect...
         motif_files = os.listdir(motif_folder)
         motif = [line for line in motif_files if line.endswith('.npy')]
@@ -620,7 +627,7 @@ def process_region_map(region_map, perc_min=0.01):
     # pdb.set_trace()
     return rmap, rc-1
 
-def compute_SDF_cost_matrix(piece_i, piece_j, ids_to_score, ppars):
+def compute_SDF_cost_matrix(piece_i, piece_j, ids_to_score, ppars, verbosity=1):
     """ 
     It computes SDF-based cost matrix between piece_i and piece_j
     """
