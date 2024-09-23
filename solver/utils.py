@@ -11,7 +11,7 @@ def default_cfg():
     cfg = CfgParameters()
     cfg['Tfirst'] = 50
     cfg['Tnext'] = 75
-    cfg['Tmax'] = 100
+    cfg['Tmax'] = 150
     cfg['anc_fix_tresh'] = 0.55
     return cfg
 
