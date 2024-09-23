@@ -18,6 +18,7 @@ import cv2
 from puzzle_utils.shape_utils import place_on_canvas
 from puzzle_utils.pieces_utils import crop_to_content
 
+
 def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, ppars, sam_segmentator, verbosity=1):
 
     p = ppars['p']
@@ -27,6 +28,7 @@ def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, p
 
     if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
+
     if idx1 == idx2:
         # set compatibility to -1:
         R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
@@ -34,7 +36,7 @@ def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, p
         print(f"computing cost matrix for piece {idx1} vs piece {idx2}")
         candidate_values = np.sum(mask_ij > 0)
 
-        R_cost_conf, R_cost_overlap  = segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, sam_segmentator, verbosity=1)
+        R_cost_conf, R_cost_overlap  = segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, sam_segmentator, verbosity=verbosity)
         print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
       
         R_cost = R_cost_overlap
@@ -49,136 +51,109 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
     R_cost_conf = np.zeros((m.shape[1], m.shape[1], len(rot)))
     R_cost_overlap = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
-    for t in range(len(rot)):
-        theta = rot[t]     # theta_rad = theta * np.pi / 180
-        for ix in range(m.shape[1]):
-            for iy in range(m.shape[1]):
-                z = z_id[iy, ix]
-                valid_point = mask_ij[iy, ix, t]
-                if valid_point > 0:
+    valid_points_mask = mask_ij > 0
 
-                    canv_cnt = ppars.canvas_size // 2
-                    grid = z_id + canv_cnt
-                    x_j_pixel, y_j_pixel = grid[iy, ix]
+    ### <hack>
+    ### Remove the one that do not touch. This is an hack and should be removed
+    neg_points_mask = mask_ij < 0
 
-                    # Place on canvas pairs of pieces given position
-                    center_pos = ppars.canvas_size // 2
-                    piece_i_on_canvas = place_on_canvas(pieces[idx1], (center_pos, center_pos), ppars.canvas_size, 0)
-                    piece_j_on_canvas = place_on_canvas(pieces[idx2], (x_j_pixel, y_j_pixel), ppars.canvas_size, t * ppars.theta_step)
-                    pieces_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
-                    #mask_ij_on_canvas = piece_i_on_canvas['mask'] + piece_j_on_canvas['mask']
-                    #pieces_ij_on_canvas/= np.clip(mask_ij_on_canvas,1,2).astype(float)
-                    #plt.imshow(pieces_ij_on_canvas)
-                    #plt.show()
+    zero_points_mask = mask_ij != 0
 
-                    x0 = 0
-                    y0 = 0
-                    img = pieces_ij_on_canvas
+    valid_points_mask_eroded = np.zeros_like(valid_points_mask)
 
-                    if detect_on_crop == True:
-                        img, x0, x1, y0, y1  = crop_to_content(pieces_ij_on_canvas, return_vals=True)
-                        
-                    #plt.imshow(img)
-                    #plt.show()
-                    
-                    # Compute segmentation
-                    img_cv2 = cv2.cvtColor(np.uint8(img), cv2.COLOR_BGR2RGB)
-                    masks = sam_segmentator.generate(img_cv2)
+    for i in range(zero_points_mask.shape[2]):
+        # plt.subplot(1,2,1)
+        # plt.imshow(valid_points_mask[:,:,i])
+        valid_points_mask_eroded[:,:,i] = cv2.erode(zero_points_mask[:,:,i].astype(np.uint8),np.ones((3,3))) - neg_points_mask[:,:,i]
+        # plt.subplot(1,2,2)
+        # plt.imshow(valid_points_mask_eroded[:,:,i])
+        # plt.show()
+    ### </hack>
+    
 
-                    plt.imshow(img_cv2)
-                    show_anns(masks)
-                    plt.axis('off')
-                    plt.show()
+    valid_points_idx = np.argwhere(valid_points_mask_eroded)
+    
 
-                    breakpoint()
+    # Generate images
 
-                    """detected = yolo_obj_detector(img_pil, verbose=False)[0]
-                    
-                    ### Check Poly-motif-bb intersection
-                    # plt.imshow(pieces_ij_on_canvas)
-                    # plt.plot(*piece_i_on_canvas['polygon'].boundary.xy)
-                    # plt.plot(*piece_j_on_canvas['polygon'].boundary.xy)
-                    score_sum_conf = 0; cont1 = 0
-                    score_sum_overlap = 0; cont2 = 0
-                    if det_type == 'yolo-obb':
-                        det_objs = detected.obb
-                    elif det_type == 'yolo-bbox':
-                        det_objs = detected.boxes
-                        
-                    for det_obb in det_objs:
+    # One day this will be processed in batches, but that day is not today
+    #images_batch = np.zeros((len(valid_points_idx),ppars.canvas_size,ppars.canvas_size,3),dtype=np.uint8)
 
-                        if det_type == 'yolo-obb':
-                            do_pts = det_obb.cpu().xyxyxyxy.numpy()[0]
-                        elif det_type == 'yolo-bbox':
-                            ps = det_obb.cpu().xyxy[0]
-                            p1 = np.asarray(ps[:2])
-                            p2 = np.asarray([ps[0], ps[3]])
-                            p3 = np.asarray(ps[2:])
-                            p4 = np.asarray([ps[2], ps[1]])
-                            do_pts = np.asarray([p1,p2,p3,p4])
+    for k,idx in enumerate(valid_points_idx):
 
-                        # do_pts are in cropped version! 
-                        # please add [x0, y0] to go back to canvas
-                        
-                        if detect_on_crop == True:
-                            obb_shapely_points = [(point[0]+x0, point[1]+y0) for point in do_pts]
-                        else:
-                            obb_shapely_points = [(point[0], point[1]) for point in do_pts]
-                        obb_poly = shapely.Polygon(obb_shapely_points)
-                        # plt.plot(*obb_poly.boundary.xy)
+        iy,ix,t = tuple(idx)
 
-                        inters_poly_i = shapely.intersection(obb_poly, piece_i_on_canvas['polygon'])
-                        inters_poly_j = shapely.intersection(obb_poly, piece_j_on_canvas['polygon'])
-                        # breakpoint()
+        canv_cnt = ppars.canvas_size // 2
+        grid = z_id + canv_cnt
+        x_j_pixel, y_j_pixel = grid[iy, ix]
 
-                        if (inters_poly_j.area / obb_poly.area > area_ratio) and \
-                            (inters_poly_i.area / obb_poly.area > area_ratio):
-                            bb_score = det_obb.conf.item()
-                            # print(bb_score)
-                            score_sum_conf = score_sum_conf + bb_score
-                            cont1 = 1 + cont1
+        # Place on canvas pairs of pieces given position
+        center_pos = ppars.canvas_size // 2
+        piece_i_on_canvas = place_on_canvas(pieces[idx1], (center_pos, center_pos), ppars.canvas_size, 0)
+        piece_j_on_canvas = place_on_canvas(pieces[idx2], (x_j_pixel, y_j_pixel), ppars.canvas_size, t * ppars.theta_step)
+        pieces_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
+        #mask_ij_on_canvas = piece_i_on_canvas['mask'] + piece_j_on_canvas['mask']
+        #pieces_ij_on_canvas/= np.clip(mask_ij_on_canvas,1,2).astype(float)
+        #plt.imshow(pieces_ij_on_canvas)
+        #plt.show()
 
-                            # Polygon corner points coordinates
-                            # x0, y0 is from crop to canvas
-                            pts = np.array(do_pts, dtype='int64') + np.array([x0, y0])
-                            color = (255, 255, 255)
-                            im0 = np.zeros(np.shape(pieces_ij_on_canvas)[0:2], dtype='uint8')
-                            im_ij_obb_mask = cv2.fillPoly(im0, [pts], color)
-                            class_label = int(det_obb.cpu().cls.numpy()[0])
+        x0 = 0
+        y0 = 0
+        img = pieces_ij_on_canvas
 
-                            im_i_obb_mask = piece_i_on_canvas['motif_mask'][:, :, class_label]
-                            im_j_obb_mask = piece_j_on_canvas['motif_mask'][:, :, class_label]
-                            im_ij_obb_mask = np.clip(im_ij_obb_mask, 0, 1)
+        # if detect_on_crop == True:
+        #     img, x0, x1, y0, y1  = crop_to_content(pieces_ij_on_canvas, return_vals=True)
+            
+        # plt.imshow(img)
+        # plt.show()
 
-                            sum_ij_obb_mask = np.clip(im_i_obb_mask+im_j_obb_mask, 0, 1)
-                            overlap_score = 0
-                            if np.sum(sum_ij_obb_mask) > 0:
-                                overlap_score = np.sum(sum_ij_obb_mask*im_ij_obb_mask)/np.sum(sum_ij_obb_mask)
+        filename = f'./seg/mask_{idx1}vs{idx2}_y{iy}_x{ix}_r{t}.npy'
 
-                            # print('sum * ', np.sum(sum_ij_obb_mask*im_ij_obb_mask))
-                            # print(' /sum', np.sum(sum_ij_obb_mask))
-                            # print('ovrelap score', overlap_score)
-                            score_sum_overlap = score_sum_overlap + overlap_score
-                            cont2 = 1 + cont2
+        if os.path.isfile(filename):
+            print("loading segmentation from file...",end='',flush=True)
+            masks = np.load(filename,allow_pickle=True)
+            print('done')
+        else:
+            # Compute segmentation
+            if verbosity > 1:
+                print("segmenting...",end='',flush=True)
+                start = time.time()
 
-                    motif_conf_score = 0
-                    if cont1 > 0:
-                        motif_conf_score = score_sum_conf / cont1
-                    # print(motif_conf_score)
+            #img_cv2 = cv2.cvtColor(np.uint8(img), cv2.COLOR_BGR2RGB)
+            masks = sam_segmentator(np.uint8(img))
 
-                    motif_overlap_score = 0
-                    if cont2 > 0:
-                        motif_overlap_score = score_sum_overlap / cont2
-                    # print("motif overlap", motif_overlap_score)
+            if verbosity > 1:
+                print(f"computed segmentation in {time.time()-start:.2f}s ({len(masks)} areas detected)")
 
-                    # plt.title(f"Score: {motif_overlap_score}")
-                    # plt.show()
-                    # breakpoint() """
-                    R_cost_conf[iy, ix, t] = 1
-                    R_cost_overlap[iy, ix, t] = 1
+            np.save(filename,masks)
+
+        # Computing score
+
+        score = 0
+        threshold = 20
+
+        for mask_dict in masks:
+            mask = mask_dict['segmentation'].astype(np.uint8)
+            # for every color channel
+            for c in range(3):
+                s1 = np.sum(mask * piece_i_on_canvas['img'][:,:,c])
+                s2 = np.sum(mask * piece_j_on_canvas['img'][:,:,c])
+                if s1 > threshold and s2 > threshold:
+                    score += 1
+
+        # Show the image with the segmentation superposed
+        # plt.title(f"Masks: {len(masks)} Score: {score}")
+        # plt.imshow(img)
+        # show_anns(masks)
+        # plt.axis('off')
+        # plt.show()
+
+        R_cost_conf[iy, ix, t] = score
+        R_cost_overlap[iy, ix, t] = score
 
     return R_cost_conf, R_cost_overlap
 
+# utility function to draw areas on top of image
 def show_anns(anns):
     if len(anns) == 0:
         return

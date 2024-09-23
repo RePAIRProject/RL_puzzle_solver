@@ -114,19 +114,36 @@ def main(args):
             yolov8_obb_detector = None
         ppars['motif_based'] = motif_based
         ####### Segmentation #######
-        seg_based = False
         if args.cmp_type == 'seg':
-            seg_based = True
-            if args.sam_model_type is None or args.sam_model_path is None:
-                raise Exception("You are trying to use SAM-based compatibility without specifying arguments")
+            ppars['seg_based'] = True
+            if args.sam_model_path is None or args.sam_model_type is None:
+                raise Exception("You are trying to use SAM-based compatibility without specifying model path")
+            
+            ##### SAM #####
+
+            ##### Meta #####
             from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
             sam = sam_model_registry[args.sam_model_type](checkpoint=args.sam_model_path)
-            sam_segmentator = SamAutomaticMaskGenerator(sam)
+            sam_amg = SamAutomaticMaskGenerator(sam)
+            sam_segmentator = sam_amg.generate
+
+            ##### Ultralitycs #####
+            # from ultralytics import SAM
+            # sam_segmentator = SAM(args.sam_model_path)
+            # sam_segmentator.info()
+            
+
+            ##### Hugginface #####
+            # from transformers import SamModel, SamProcessor
+            # processor = SamProcessor.from_pretrained("facebook/sam-vit-q")
+            # model = SamModel.from_pretrained("facebook/sam-vit-q")
+
             ppars['sam_model_type'] = args.sam_model_type
             ppars['sam_model_path'] = args.sam_model_path
+
         else:
             sam_segmentator = None
-        ppars['seg_based'] = seg_based
+        
         ###### Color ######
         color_based = False
         seg_len = 0
