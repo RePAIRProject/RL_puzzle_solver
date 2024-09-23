@@ -4,6 +4,7 @@ from kivy import Config
 from kivy.clock import Clock, mainthread
 from kivymd.app import MDApp
 import numpy as np
+import math
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -19,6 +20,8 @@ from RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
 
 import threading
 import time
+
+import shutil
 
 import cv2
 
@@ -45,6 +48,7 @@ key_fragment_id = ""
 image_is_set = False
 anchor_showed = False
 neighbour_showed = False
+next_neighbour_requested = False
 solution_applied = False
 initial_image_updates = False
 hold_left = False
@@ -119,8 +123,8 @@ class GUIApp(MDApp):
         anchor_button.bind(on_press=start_select_anchor)
         anchor_button.size_hint_x = 0.5
 
-        show_button = Button(text="Show")
-        show_button.bind(on_press=self.show_images)
+        show_button = Button(text="Next")
+        show_button.bind(on_press=self.get_next_neighbour)
         show_button.size_hint_x = 0.5
 
         neighbour_button = Button(text="Neighbour")
@@ -181,7 +185,9 @@ class GUIApp(MDApp):
         # score_label.text = str(scores[i])
         backend_path = backend_path
         file_names = back_end.image_names
-        if has_score == 0 & (key_image is not None):
+
+        if key_image is not None:
+            scores.append("Anchor")
             file_names.append(key_image.get_id())
             back_end.image_numbers += 1
             scores.append(0)
@@ -249,7 +255,8 @@ class GUIApp(MDApp):
                                 pixel = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
                                                             image.get_norm_image_size(), mouse_pos, width_height,
                                                             (image.texture_size[0]/image.norm_image_size[0]),
-                                                            (image.texture_size[1]/image.norm_image_size[1]))
+                                                            (image.texture_size[1]/image.norm_image_size[1]),
+                                                            image.angle)
 
                                 if image.check_mask(pixel):
                                     grabbed_image = image
@@ -265,7 +272,12 @@ class GUIApp(MDApp):
                         touch.offset_x = mouse_pos[0] - grabbed_image.get_real_pos()[0]
                         touch.offset_y = mouse_pos[1] - grabbed_image.get_real_pos()[1]
                         # grabbed_image.translate(touch.offset_x, touch.offset_y)
+                    # x_y = (mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
+                    # r = np.array([1,1])
                     grabbed_image.translate(mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
+                    # grabbed_image.update(x_y, r, 0)
+                    if solution_applied:
+                        grabbed_image
 
                     if (not select_anchor_running) and (not select_neighbour_running) and (not select_neighbour_done):
                         key_fragment_id = str(grabbed_image.get_id())
@@ -308,7 +320,21 @@ class GUIApp(MDApp):
     def on_resize(self, *args):
         if (select_anchor_done is not None) & (select_neighbour_done is not None) & (pl_solver_done is not None):
             if select_anchor_done & select_neighbour_done & pl_solver_done:
-                self.apply_solution()
+                self.apply_resize()
+
+    @mainthread
+    def get_next_neighbour(self, *args, **kwargs):
+        global next_neighbour_requested
+        global current_image_list
+        global image_is_set
+        if not solution_applied:
+            boolean, next_neighbours = back_end.get_next_neighbour(click_label.text)
+            if boolean:
+                image_is_set = False
+                current_image_list = []
+                next_neighbour_requested = True
+        else:
+            build_meta_fragment()
 
     @mainthread
     def show_images(self, *args, **kwargs):
@@ -332,6 +358,21 @@ class GUIApp(MDApp):
         showed_image_list = []
 
     @mainthread
+    def apply_resize(self):
+        global pl_solution
+        global key_fragment_id
+        global key_image
+        global path_dic
+        print(pl_solution)
+        for image in current_image_list:
+            image_id = image.get_id()
+            positions = np.array(image.get_position_memory())
+            # positions = current_positions[image_id]
+            position = np.array([positions[0], positions[1]])
+
+            image.update(position, 0)
+
+    @mainthread
     def apply_solution(self):
         global pl_solution
         global key_fragment_id
@@ -341,23 +382,23 @@ class GUIApp(MDApp):
         center_y = (Window.size[1] / 2)  # Calculate the center of the window in y-axis
 
         for image in current_image_list:
+            image.remove_score()
             image_id = image.get_id()
-            print("image size: ", image.norm_image_size)
 
             if image_id in pl_solution:
                 positions = pl_solution[image_id]
-                position = np.array([positions[0], positions[1]])
                 if path_dic['dataset_name'] == 'RePair_group_28':
                     position = np.array([positions[1], (-1 * positions[0])])  # fix the coordinates
                 elif path_dic['dataset_name'] == 'Dafne_group_1':
-                    position = np.array([-1 * positions[0]/2, (positions[1]/2)])  # fix the coordinates
+                    position = np.array([-1 * positions[0] / 2, (positions[1] / 2)])  # fix the coordinates
+                else:
+                    position = np.array([-1 * positions[0] / 2, (positions[1] / 2)])  # fix the coordinates
                 new_positions = np.array([position[0] + center_x, position[1] + center_y])
 
                 r = np.array([image.texture_size[0] / image.norm_image_size[0],
                               image.texture_size[1] / image.norm_image_size[1]])
-                # print(solved_rotation)
                 # image.rotate(solved_rotation/2)
-                image.update(new_positions, r, positions[2])
+                image.update(new_positions, positions[2])
 
     def checking_clock(self, *args, **kwargs):
         global selected_pic
@@ -366,6 +407,7 @@ class GUIApp(MDApp):
         global initial_image_updates
         global solution_applied
         global pl_solution
+        global next_neighbour_requested
         communicate_thread_lock.acquire()
         self.toolbar_changes(toolbar_color)
 
@@ -382,18 +424,20 @@ class GUIApp(MDApp):
                 anchor_showed = True
         elif ((back_end.get_select_anchor_done()) & (len(current_image_list) == 0) &
               (back_end.get_select_neighbour_done()) & (not neighbour_showed)):
-            self.set_images(0)
+            self.set_images(1)
             self.show_images(self)
             neighbour_showed = True
+        elif ((back_end.get_select_anchor_done()) & (len(current_image_list) == 0) &
+              (back_end.get_select_neighbour_done()) & neighbour_showed & next_neighbour_requested):
+            print("HEREERE")
+            self.set_images(1)
+            self.show_images(self)
+            next_neighbour_requested = False
         elif ((back_end.get_select_anchor_done()) & (back_end.get_select_neighbour_done()) & neighbour_showed &
               back_end.get_pl_solver_done() & (not solution_applied)):
             pl_solution = back_end.get_pl_solution()
             self.apply_solution()
             solution_applied = True
-        if (time.time() - time_stamp > 1) and not initial_image_updates:
-            for i in range(len(current_image_list)):
-                current_image_list[i].update_virtual_pos()
-            initial_image_updates = True
         communicate_thread_lock.release()
 
     def toolbar_changes(self, color):
@@ -488,13 +532,20 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         time.sleep(communication_freq)  # Thread sleep timerfasd
 
 
-def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_height, ratio_x, ratio_y):
+def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_height, ratio_x, ratio_y, angle):
     global ratio
-
     ratio = (ratio_x, ratio_y)
 
-    relative_pos = (mouse_pos[0] - image_pos[0] - width_height[0], mouse_pos[1] - image_pos[1] - width_height[1])
-    reality_pixel = (relative_pos[0] * ratio[0], relative_pos[1] * ratio[1])
+    angle_rad = math.radians(angle)
+
+    relative_pos = (mouse_pos[0] - (image_pos[0] + width_height[0]),
+                    mouse_pos[1] - (image_pos[1] + width_height[1]))
+
+    rotated_x = (relative_pos[0] * math.cos(-angle_rad)) - (relative_pos[1] * math.sin(-angle_rad))
+    rotated_y = (relative_pos[0] * math.sin(-angle_rad)) + (relative_pos[1] * math.cos(-angle_rad))
+
+    reality_pixel = (rotated_x * ratio[0], rotated_y * ratio[1])
+
     return reality_pixel
 
 
@@ -536,13 +587,13 @@ def setting(): # unified path setting
     comp_name = ""
     ground_truth = ""
     dataset_name = ""
+    cache_path = ""
     apply_gt = False
     number_of_neighbours = 3
     number_of_anchors = 4
     setting_dir = os.path.join(os.getcwd(), "GUI")
     setting_path = os.path.join(setting_dir, "setting.txt")
     if not os.path.exists(setting_path):
-
         with open(setting_path, "w") as setting_file:
             setting_file.writelines(["image_path: /GUI/DataBase/Images/RePAIR_plaque_2/RGBA_merged/",
                                      "\n",
@@ -607,18 +658,44 @@ def setting(): # unified path setting
                     number_of_anchors = int(line.split('number_of_anchors: ')[1].strip())
                 elif line.startswith('dataset_name:'):
                     dataset_name = line.split('dataset_name: ')[1].strip()
+    cache_path = "/GUI/pieces/"
+    cache_path = os_path + cache_path
     path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path, 'comp_path': comp_path,
                 'pieces_path': pieces_path, 'comp_folder': comp_folder, 'comp_name': comp_name,
                 'rotation_intervals': rotation_intervals, 'ground_truth': ground_truth,
                 'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
                 'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors,
-                'dataset_name': dataset_name}
+                'dataset_name': dataset_name, 'cache_path': cache_path}
     image_path = image_path
     mask_path = mask_path
     backend_path = backend_path
     rotation_interval = float(rotation_intervals) / 2
 
+    copy_to_cache()
+
     back_end.set_backend_path(path_dic)
+
+
+def copy_to_cache(file_extension = '.png'):
+    global path_dic
+    source = path_dic['pieces_path']
+    cache = path_dic['cache_path']
+    # Remove the cache folder and its contents if it exists
+    if os.path.exists(cache):
+        shutil.rmtree(cache)
+        print(f"Cache folder {cache} cleared.")
+
+    # Recreate an empty cache folder
+    os.makedirs(cache)
+    print(f"Cache folder {cache} recreated.")
+    if not os.path.exists(cache):
+        os.makedirs(path_dic['cache_path'])
+    for file_name in os.listdir(source):
+        if file_name.endswith(file_extension):
+            source_path = os.path.join(source, file_name)
+            cache_path = os.path.join(cache, file_name)
+            shutil.copy2(source_path, cache_path)
+    # remove_image_from_cache('piece_0000')
 
 
 def erode_data():
@@ -663,12 +740,81 @@ def transparent(img):
 def read_ground_truth():
     global path_dic
     ground_truth = path_dic['ground_truth']
-    print(ground_truth)
     if ground_truth != "":
         with open(ground_truth, 'r') as file:
             lines = file.readlines()
-            for line in lines:
-                print(line)
+
+
+def build_meta_fragment():
+    global current_image_list, path_dic
+    cache = path_dic['cache_path']
+    # for image in current_image_list:
+    #     print(image.get_position_memory)
+    #     remove_image_from_cache(image.get_id())
+
+    canvas_width = 10000
+    canvas_height = 10000
+    canvas = np.zeros((canvas_height, canvas_width, 4), dtype=np.uint8)  # RGBA canvas
+
+    for image in current_image_list:
+        image_id = image.get_id()
+        path = os.path.join(cache, image_id)
+
+        # Load the image from the cache
+        if os.path.exists(path):
+            img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+            if img is None:
+                print(f"Failed to load image: {image_id}")
+                continue
+
+            # Get image's position and rotation
+            x, y, rotation = image.get_position_memory()
+
+            # Ensure x and y are integers for slicing
+            x = int(x)
+            y = int(y)
+
+            # Apply rotation (rotate around the center of the image)
+            center = (img.shape[1] // 2, img.shape[0] // 2)
+            M = cv2.getRotationMatrix2D(center, rotation, 1.0)  # Rotation matrix
+            rotated_img = cv2.warpAffine(img, M, (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR,
+                                         borderMode=cv2.BORDER_TRANSPARENT)
+
+            # Ensure image stays within canvas boundaries
+            img_h, img_w = rotated_img.shape[:2]
+            if x + img_w > canvas_width or y + img_h > canvas_height or x < 0 or y < 0:
+                print(f"Skipping image {image_id} due to out-of-bounds placement")
+                continue
+
+            # Place rotated image on the canvas at position (x, y)
+            canvas[y:y + img_h, x:x + img_w] = rotated_img
+
+            # Remove the image from cache after placing it on the canvas
+            remove_image_from_cache(image_id)
+        else:
+            print(f"Image {image_id} does not exist in the cache.")
+
+        # Save the final meta fragment as a PNG
+    output_path = cache + "/meta_fragment.png"
+    cv2.imwrite(output_path, canvas)
+
+    print(f"Meta fragment saved at {output_path}")
+
+
+def remove_image_from_cache(image_id):
+    global path_dic
+    cache = path_dic['cache_path']
+    file_name = image_id
+    file_path = os.path.join(cache, file_name)
+
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)  # Remove the file
+            print(f"Removed: {file_name} from {cache}")
+        except Exception as e:
+            print(f"Error removing {file_name}: {e}")
+    else:
+        print(f"File {file_name} does not exist in {cache}")
 
 
 if __name__ == '__main__':

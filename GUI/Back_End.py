@@ -39,6 +39,8 @@ path = ""
 path_bw = ""
 
 path_dic = None
+sorted_neighbour_images = None
+neighbour_after = 0
 
 
 def set_backend_path(dic):
@@ -78,6 +80,28 @@ def pl_solver_thread_function():
     set_pl_solver_done(True)
 
 
+def get_next_neighbour(image_id):
+    global path_dic
+    global sorted_neighbour_images
+    global neighbour_after
+    boolean = False
+    next_neighbour = None
+    neighbour_number = path_dic['number_of_neighbours'] + neighbour_after
+    if sorted_neighbour_images is not None:
+        if neighbour_number >= len(sorted_neighbour_images):
+            neighbour_after = -1 * path_dic['number_of_neighbours']
+        neighbour_number = path_dic['number_of_neighbours'] + neighbour_after
+        next_neighbour = sorted_neighbour_images[neighbour_number]
+    for image in neighbour_images:
+        if image_id == image[0]:
+            neighbour_images.remove(image)
+            neighbour_images.append(next_neighbour)
+            neighbour_after += 1
+            extract_lists(neighbour_images)
+            boolean = True
+    return boolean, neighbour_images
+
+
 def select_neighbour_thread_function():
     global neighbour_images
     global image_names
@@ -87,8 +111,18 @@ def select_neighbour_thread_function():
     global path
     global path_bw
     global path_dic
+    global sorted_neighbour_images
     set_select_neighbour_running(True)
-    neighbour_images = select_anchor_RePAIR.select_neighbour(path_dic, key_fragment)
+
+    sorted_neighbour_images = select_anchor_RePAIR.select_neighbour(path_dic, key_fragment)
+    print(sorted_neighbour_images)
+
+    neighbour_numbers = path_dic['number_of_neighbours']
+    neighbour_images = sorted_neighbour_images[:neighbour_numbers]
+
+    print(sorted_neighbour_images)
+    print(neighbour_images)
+
     extract_lists(neighbour_images)
     set_select_neighbour_running(False)
     set_select_neighbour_done(True)
@@ -219,7 +253,6 @@ def get_pl_solution():
     if apply_gt == "True":
         pl_solution = apply_ground_truth()
     pl_solution = scale_solution()
-    print("pl solution: " + str(pl_solution))
     return pl_solution
 
 
@@ -235,14 +268,12 @@ def scale_solution():
     adjusted_solution = {}
 
     for piece, (x, y, rotation) in pl_solution.items():
-        # Adjust the position relative to the key_fragment
+
         new_x = x - key_x
         new_y = y - key_y
-        # Keep the rotation unchanged
+
         adjusted_solution[piece] = np.array([new_x, new_y, rotation])
 
-    # Show the adjusted result
-    print(adjusted_solution)
     return adjusted_solution
 
 

@@ -9,6 +9,7 @@ from kivy.uix.label import Label
 
 from point_Inside import is_inside_sm
 from os import getcwd
+import numpy as np
 
 import cv2
 from PuzzlePiece import PuzzlePiece
@@ -58,10 +59,10 @@ class MovableImage(Image):
         self.total_delta_x = 0
         self.total_delta_y = 0
 
-        self.vx = self.x
-        self.vy = self.y
-        self.vtop = self.top
-        self.vright = self.right
+        self.position_memory = (self.x, self.y, self.angle)
+
+        self.ratio = np.array([self.texture_size[0] / self.norm_image_size[0],
+                               self.texture_size[1] / self.norm_image_size[1]])
 
         with self.canvas.before:
             PushMatrix()
@@ -72,22 +73,8 @@ class MovableImage(Image):
         with self.canvas.after:
             PopMatrix()
 
-
-
-        # self.bind(pos=self.binding)
-
-        # self.update()
-        # opencv binary pic
-
     def get_id(self, *args, **kwargs):
         return self.name
-
-    def update_virtual_pos(self, *args, **kwargs):
-        self.vx = self.x
-        self.vy = self.y
-        self.vtop = self.top
-        self.vright = self.right
-        # self.center = (self.x + self.width / 2, self.y + self.height)
 
     def check_mask(self, point):
         try:
@@ -135,7 +122,10 @@ class MovableImage(Image):
             self.grid.add_widget(self.score_label)
 
     def remove_score(self):
-        self.grid.remove_widget(self.score_label)
+        print(self.score_label.text)
+
+        self.score_label.text = ""
+        print(self.score_label.text)
 
     def rotate(self, delta_angle):
         self.rot.origin = self.center
@@ -144,38 +134,14 @@ class MovableImage(Image):
         # self.canvas.before.add(self.rot)
         self.angle = self.angle + delta_angle
         self.angle = self.normalize_angle(self.angle)
+        self.set_position_memory(self.position_memory[0], self.position_memory[1], self.angle)
 
     def translate(self, x, y):
-        # x = float(x)
-        # y = float(y)
-        # # Calculate the displacement from the object's current center to the target position
-        # dx = x - self.x
-        # dy = y - self.y
-        #
-        # # Convert the rotation angle to radians
-        # angle_rad = math.radians(self.angle)
-        #
-        # # Rotate the translation vector (dx, dy) based on the current rotation angle
-        # new_dx = dx * math.cos(angle_rad) - dy * math.sin(angle_rad)
-        # new_dy = dx * math.sin(angle_rad) + dy * math.cos(angle_rad)
-        #
-        # # # Scale the translation vector to compensate for the rotation
-        # # scale_factor = math.cos(angle_rad)
-        # # new_dx *= scale_factor
-        # # new_dy *= scale_factor
-        #
-        # new_dx = round(new_dx, 10)
-        # new_dy = round(new_dy, 10)
-        #
-        # # Update the object's center position
-        # self.x += new_dx
-        # self.y += new_dy
-        # self.update_virtual_pos()
-        # # self.rot.origin = self.center
-        # # self.rot.origin = self.center
         self.trans.x = x - self.pos[0]
         self.trans.y = y - self.pos[1]
         self.trans_bank = (self.trans.x, self.trans.y)
+
+        self.set_position_memory(x * self.ratio[0], y * self.ratio[1], self.position_memory[2])
 
     def update_translate(self):
         self.trans.x = self.trans_bank[0]
@@ -185,13 +151,18 @@ class MovableImage(Image):
         real_pos = (self.pos[0] + self.trans.x, self.pos[1] + self.trans.y)
         return real_pos
 
+    def get_angel(self):
+        return self.angle
+
     def collides(self, x, y):
         return self.collide_point(x - self.trans.x, y - self.trans.y)
         # return self.x <= x <= self.right and self.y <= y - self.trans.y <= self.top
 
-    def update(self, position, ratio, solved_rotation, *args, **kwargs):
-        x = position[0] / ratio[0] - self.width * 0.5 / ratio[1]
-        y = position[1] / ratio[1] - self.height * 0.5 / ratio[1]
+    def update(self, position, solved_rotation, *args, **kwargs):
+        self.ratio = np.array([self.texture_size[0] / self.norm_image_size[0],
+                               self.texture_size[1] / self.norm_image_size[1]])
+        x = position[0] / self.ratio[0]
+        y = position[1] / self.ratio[1]
         # x = position[0]
         # y = position[1]
         # self.rotate(solved_rotation/2)
@@ -199,10 +170,11 @@ class MovableImage(Image):
         self.rotate(solved_rotation)
         self.translate(x, y)
 
+    def set_position_memory(self, x, y, angle):
+        self.position_memory = (x, y, angle)
 
-
-    def pure_update(self):
-        self.translate(self.vx, self.vy)
+    def get_position_memory(self):
+        return self.position_memory
 
     @staticmethod
     def normalize_angle(angle):

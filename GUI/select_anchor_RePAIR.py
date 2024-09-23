@@ -232,14 +232,16 @@ def select_neighbour(path_dic, anchor_id):
     R = mat[path_dic['comp_format']]
 
     for i in range(R.shape[len(R.shape) - 1]):
-        images[i] = (images[i][0], images[i][1], np.max(R[:, :, :, anchor_id, i]))
-
-    neighbour_numbers = path_dic['number_of_neighbours']
-    print(neighbour_numbers)
+        if images[i][1] == anchor_id:
+            images[i] = (images[i][0], images[i][1], -3)
+        else:
+            images[i] = (images[i][0], images[i][1], np.max(R[:, :, :, anchor_id, i]))
 
     sorted_by_score = sorted(images, key=lambda x: x[2], reverse=True)
 
-    top_k_images = sorted_by_score[:neighbour_numbers]
+    neighbour_numbers = path_dic['number_of_neighbours']
+
+    top_k_images = sorted_by_score[:(len(sorted_by_score)-1)]  # to remove anchor
 
     set_backend_path(back_path, path, path_bw)
 
