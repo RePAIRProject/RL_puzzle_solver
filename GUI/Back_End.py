@@ -76,6 +76,7 @@ def pl_solver_thread_function():
     global path_dic
     set_pl_solver_running(True)
     pl_solution = puzzle_solver.assemble(input_dict, path_dic)
+    print("Solver Solution: ", pl_solution)
     set_pl_solver_running(False)
     set_pl_solver_done(True)
 

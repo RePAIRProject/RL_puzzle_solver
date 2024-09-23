@@ -10,6 +10,6 @@ Rotation_Intervals: 90
 number_of_neighbours: 3
 number_of_anchors: 4
 comp_format: R
-apply_gt: True
+apply_gt: False
 parameters: /GUI/DataBase/new_Dafne/image_00003_14/solver_parameters.json
 dataset_name: new_Dafne_00003_14

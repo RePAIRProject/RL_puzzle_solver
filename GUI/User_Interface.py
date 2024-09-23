@@ -14,6 +14,8 @@ from kivymd.uix.toolbar import MDTopAppBar
 
 from kivy.core.window import Window
 
+from PIL import Image as PILImage
+
 import Back_End as back_end
 
 from RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
@@ -389,10 +391,8 @@ class GUIApp(MDApp):
                 positions = pl_solution[image_id]
                 if path_dic['dataset_name'] == 'RePair_group_28':
                     position = np.array([positions[1], (-1 * positions[0])])  # fix the coordinates
-                elif path_dic['dataset_name'] == 'Dafne_group_1':
-                    position = np.array([-1 * positions[0] / 2, (positions[1] / 2)])  # fix the coordinates
                 else:
-                    position = np.array([-1 * positions[0] / 2, (positions[1] / 2)])  # fix the coordinates
+                    position = np.array([positions[1], (-1 * positions[0])])  # fix the coordinates
                 new_positions = np.array([position[0] + center_x, position[1] + center_y])
 
                 r = np.array([image.texture_size[0] / image.norm_image_size[0],
@@ -745,60 +745,158 @@ def read_ground_truth():
             lines = file.readlines()
 
 
-def build_meta_fragment():
-    global current_image_list, path_dic
-    cache = path_dic['cache_path']
-    # for image in current_image_list:
-    #     print(image.get_position_memory)
-    #     remove_image_from_cache(image.get_id())
+def get_bounding_box(size, rotation):
+    w, h = size
+    # Convert rotation to radians
+    rotation = math.radians(rotation)
 
-    canvas_width = 10000
-    canvas_height = 10000
-    canvas = np.zeros((canvas_height, canvas_width, 4), dtype=np.uint8)  # RGBA canvas
+    # Calculate bounding box using rotation matrix
+    new_w = abs(w * math.cos(rotation)) + abs(h * math.sin(rotation))
+    new_h = abs(w * math.sin(rotation)) + abs(h * math.cos(rotation))
+
+    return int(new_w), int(new_h)
+
+
+def calculate_canvas_size():
+    global current_image_list
+    global path_dic
+    min_x, min_y = float('inf'), float('inf')
+    max_x, max_y = float('-inf'), float('-inf')
+    cache = path_dic['cache_path']
 
     for image in current_image_list:
-        image_id = image.get_id()
-        path = os.path.join(cache, image_id)
+        img_path = image.get_id()
+        img_path = os.path.join(cache, img_path)
+        position = image.get_position_memory()
+        x, y, rotation = int(position[0]), int(position[1]), int(position[2])
+        y = -1 * y  # Invert y-axis
 
-        # Load the image from the cache
-        if os.path.exists(path):
-            img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
-            if img is None:
-                print(f"Failed to load image: {image_id}")
-                continue
+        # Open the puzzle piece to get its size
+        piece = PILImage.open(img_path)
+        original_size = piece.size
 
-            # Get image's position and rotation
-            x, y, rotation = image.get_position_memory()
+        # Calculate the bounding box after rotation
+        rotated_size = get_bounding_box(original_size, rotation)
 
-            # Ensure x and y are integers for slicing
-            x = int(x)
-            y = int(y)
+        # Calculate the corners of the bounding box based on the center position
+        min_x = min(min_x, x - rotated_size[0] // 2)
+        min_y = min(min_y, y - rotated_size[1] // 2)
+        max_x = max(max_x, x + rotated_size[0] // 2)
+        max_y = max(max_y, y + rotated_size[1] // 2)
 
-            # Apply rotation (rotate around the center of the image)
-            center = (img.shape[1] // 2, img.shape[0] // 2)
-            M = cv2.getRotationMatrix2D(center, rotation, 1.0)  # Rotation matrix
-            rotated_img = cv2.warpAffine(img, M, (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR,
-                                         borderMode=cv2.BORDER_TRANSPARENT)
+    # Return the width and height of the bounding box
+    canvas_width = max_x - min_x
+    canvas_height = max_y - min_y
 
-            # Ensure image stays within canvas boundaries
-            img_h, img_w = rotated_img.shape[:2]
-            if x + img_w > canvas_width or y + img_h > canvas_height or x < 0 or y < 0:
-                print(f"Skipping image {image_id} due to out-of-bounds placement")
-                continue
+    return int(canvas_width), int(canvas_height), int(min_x), int(min_y)
 
-            # Place rotated image on the canvas at position (x, y)
-            canvas[y:y + img_h, x:x + img_w] = rotated_img
 
-            # Remove the image from cache after placing it on the canvas
-            remove_image_from_cache(image_id)
-        else:
-            print(f"Image {image_id} does not exist in the cache.")
+def build_meta_fragment(canvas_size=(1000, 1000)):
+    global current_image_list, path_dic
+    cache = path_dic['cache_path']
 
-        # Save the final meta fragment as a PNG
-    output_path = cache + "/meta_fragment.png"
-    cv2.imwrite(output_path, canvas)
+    canvas_width, canvas_height, offset_x, offset_y = calculate_canvas_size()
+    canvas = PILImage.new('RGBA', (canvas_width, canvas_height), (255, 255, 255, 0))
 
-    print(f"Meta fragment saved at {output_path}")
+    for image in current_image_list:
+        img_path = image.get_id()
+        img_path = os.path.join(cache, img_path)
+        position = image.get_position_memory()
+        print(position)
+        x, y, rotation = int(position[0]), int(position[1]), int(position[2])
+        y = -1 * y  # Invert y-axis
+
+        # Open the puzzle piece
+        piece = PILImage.open(img_path).convert('RGBA')
+
+        # Rotate the piece around its center
+        rotated_piece = piece.rotate(rotation, expand=True)
+
+        # Calculate new position to paste based on the center
+        center_x, center_y = rotated_piece.size[0] // 2, rotated_piece.size[1] // 2
+        paste_position = (x - center_x, y - center_y)
+        paste_position = ((x - center_x - offset_x), (y - center_y - offset_y))
+        print(paste_position)
+
+        # Paste the rotated piece onto the canvas
+        canvas.paste(rotated_piece, paste_position, rotated_piece)
+    output_path = os.path.join(cache, "meta_fragment.png")
+    canvas.save(output_path)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # # for image in current_image_list:
+    # #     print(image.get_position_memory)
+    # #     remove_image_from_cache(image.get_id())
+    #
+    # canvas_width = 10000
+    # canvas_height = 10000
+    # canvas = np.zeros((canvas_height, canvas_width, 4), dtype=np.uint8)  # RGBA canvas
+    #
+    # for image in current_image_list:
+    #     image_id = image.get_id()
+    #     path = os.path.join(cache, image_id)
+    #
+    #     # Load the image from the cache
+    #     if os.path.exists(path):
+    #         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    #         if img is None:
+    #             print(f"Failed to load image: {image_id}")
+    #             continue
+    #
+    #         # Get image's position and rotation
+    #         x, y, rotation = image.get_position_memory()
+    #
+    #         # Ensure x and y are integers for slicing
+    #         x = int(x)
+    #         y = int(y)
+    #
+    #         # Apply rotation (rotate around the center of the image)
+    #         center = (img.shape[1] // 2, img.shape[0] // 2)
+    #         M = cv2.getRotationMatrix2D(center, rotation, 1.0)  # Rotation matrix
+    #         rotated_img = cv2.warpAffine(img, M, (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR,
+    #                                      borderMode=cv2.BORDER_TRANSPARENT)
+    #
+    #         # Ensure image stays within canvas boundaries
+    #         img_h, img_w = rotated_img.shape[:2]
+    #         if x + img_w > canvas_width or y + img_h > canvas_height or x < 0 or y < 0:
+    #             print(f"Skipping image {image_id} due to out-of-bounds placement")
+    #             continue
+    #
+    #         # Place rotated image on the canvas at position (x, y)
+    #         canvas[y:y + img_h, x:x + img_w] = rotated_img
+    #
+    #         # Remove the image from cache after placing it on the canvas
+    #         remove_image_from_cache(image_id)
+    #     else:
+    #         print(f"Image {image_id} does not exist in the cache.")
+    #
+    #     # Save the final meta fragment as a PNG
+    # output_path = cache + "/meta_fragment.png"
+    # cv2.imwrite(output_path, canvas)
+    #
+    # print(f"Meta fragment saved at {output_path}")
 
 
 def remove_image_from_cache(image_id):
