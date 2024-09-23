@@ -20,7 +20,69 @@ from puzzle_utils.shape_utils import place_on_canvas
 from puzzle_utils.pieces_utils import crop_to_content
 
 
-def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, ppars, sam_segmentator, verbosity=1):
+class Segmentator:
+    def __init__():
+        pass
+
+    @staticmethod
+    def add_args(parser):
+        parser.add_argument('--sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
+        parser.add_argument('--sam_model_type', type=str, choices=['default','vit_h','vit_l','vit_b'], help='SAM model type')
+
+    def __init__(self,ppars,args):
+        
+        if args.sam_model_path is None or args.sam_model_type is None:
+            raise Exception("You are trying to use SAM-based compatibility without specifying model path")
+        
+        ppars['sam_model_type'] = args.sam_model_type
+        ppars['sam_model_path'] = args.sam_model_path
+
+        import torch
+        # Automatically select best device for torch
+        if torch.backends.mps.is_available():
+            # macOS specific
+            self.device = "mps"
+            os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+        elif torch.cuda.is_available():
+            self.device = "cuda"
+        else:
+            self.device = "cpu"
+
+        ##### Meta (SAM)
+        from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
+        self.sam = sam_model_registry[args.sam_model_type](checkpoint=args.sam_model_path).to(self.device)
+        self.sam_amg = SamAutomaticMaskGenerator(self.sam)
+
+        ##### Meta (SAM 2)
+        # from sam2.build_sam import build_sam2
+        # from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
+        # sam2_checkpoint = "../sam2_hiera_large.pt"
+        # model_cfg = "sam2_hiera_l.yaml"
+        # sam2 = build_sam2(model_cfg, sam2_checkpoint, device=device, apply_postprocessing=False)
+        # sam_amg = SAM2AutomaticMaskGenerator(sam2)
+        # sam_segmentator = sam_amg.generate
+
+        ##### Ultralitycs
+        # from ultralytics import SAM
+        # sam_segmentator = SAM(args.sam_model_path)
+        # sam_segmentator.info()
+        
+
+        ##### Hugginface
+        # from transformers import SamModel, SamProcessor
+        # processor = SamProcessor.from_pretrained("facebook/sam-vit-q")
+        # model = SamModel.from_pretrained("facebook/sam-vit-q")
+
+    def compute(self,input):
+        return self.sam_amg.generate(input)
+    
+    def __call__(self,input):
+        return self.compute(input)
+
+
+#########################################
+
+def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, ppars, segmentator, verbosity=1):
 
     p = ppars['p']
     z_id = ppars['z_id']
@@ -37,7 +99,7 @@ def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, p
         print(f"computing cost matrix for piece {idx1} vs piece {idx2}")
         candidate_values = np.sum(mask_ij > 0)
 
-        R_cost_conf, R_cost_overlap  = segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, sam_segmentator, verbosity=verbosity)
+        R_cost_conf, R_cost_overlap  = segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, segmentator, verbosity=verbosity)
         print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
       
         R_cost = R_cost_overlap
@@ -47,7 +109,7 @@ def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, p
 #### NEW
 ## pairwise compatibility measure between two pieces with and without rotation
 def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, \
-        sam_segmentator, detect_on_crop=True, area_ratio=0.1, verbosity=1):
+        segmentator, detect_on_crop=True, area_ratio=0.1, verbosity=1):
 
     R_cost_conf = np.zeros((m.shape[1], m.shape[1], len(rot)))
     R_cost_overlap = np.zeros((m.shape[1], m.shape[1], len(rot)))
@@ -77,12 +139,14 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
     # Generate images
 
+    if verbosity > 1:
+        print(f"generating images",end='',flush=True)
     # One day this will be processed in batches, but that day is not today
     images = np.zeros((len(valid_points_idx),ppars.canvas_size,ppars.canvas_size,3),dtype=np.uint8)
 
-    for k,idx in enumerate(valid_points_idx):
+    for k,(iy,ix,t) in enumerate(valid_points_idx):
 
-        iy,ix,t = tuple(idx)
+        filename_img = f'./seg/pairs/pair_img_p{idx1}vs{idx2}_y{iy}_x{ix}_r{t}.jpg'
 
         canv_cnt = ppars.canvas_size // 2
         grid = z_id + canv_cnt
@@ -102,6 +166,13 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         y0 = 0
         images[k] = pieces_ij_on_canvas
 
+        if verbosity > 1:
+            print(".",end='',flush=True)
+
+        #print('saving image')
+        cv2.imwrite(filename_img,cv2.cvtColor(images[k], cv2.COLOR_RGB2BGR))
+        
+
         # if detect_on_crop == True:
         #     img, x0, x1, y0, y1  = crop_to_content(pieces_ij_on_canvas, return_vals=True)
             
@@ -111,29 +182,18 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
     # Convert images to 8-bit
     images = np.uint8(images)
 
-    # Select best device for torch
-    if torch.backends.mps.is_available():
-        device = "mps"
-    elif torch.cuda.is_available():
-        device = "cuda"
-    else:
-        device = "cpu"
+    #images = torch.from_numpy(images).permute(0,3,2,1) # no need to use .to(device)
 
     if verbosity > 1:
-                print(f"loading images in device {device}... ",end='',flush=True)
+        print("done")
 
-    images = torch.from_numpy(images).permute(0,3,2,1).to(device)
+    for k,(iy,ix,t) in enumerate(valid_points_idx):
 
-    if verbosity > 1:
-                print("done")
+        filename = f'./seg/masks/mask_p{idx1}vs{idx2}_y{iy}_x{ix}_r{t}.npy'
 
-    for k,idx in enumerate(valid_points_idx):
-
-        filename = f'./seg/mask_{idx1}vs{idx2}_y{iy}_x{ix}_r{t}.npy'
-
-        if False:
-        #if os.path.isfile(filename):
-            print("loading segmentation from file... ",end='',flush=True)
+        #if False:
+        if os.path.isfile(filename):
+            print(f"loading segmentation from file '{filename}'... ",end='',flush=True)
             masks = np.load(filename,allow_pickle=True)
             print('done')
         else:
@@ -144,14 +204,14 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
             #img_cv2 = cv2.cvtColor(np.uint8(img), cv2.COLOR_BGR2RGB)
             
-            masks = sam_segmentator(images[k])
+            masks = segmentator(images[k])
 
             if verbosity > 1:
                 print(f"done in {time.time()-start:.2f}s ({len(masks)} areas detected)")
 
-        #    np.save(filename,masks)
+            np.save(filename,masks)
 
-        breakpoint()
+        #breakpoint()
 
         # Computing score
 
@@ -168,11 +228,11 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
                     score += 1
 
         # Show the image with the segmentation superposed
-        # plt.title(f"Masks: {len(masks)} Score: {score}")
-        # plt.imshow(img)
-        # show_anns(masks)
-        # plt.axis('off')
-        # plt.show()
+        plt.title(f"Masks: {len(masks)} Score: {score}")
+        plt.imshow(images[k])
+        show_anns(masks)
+        plt.axis('off')
+        plt.show()
 
         R_cost_conf[iy, ix, t] = score
         R_cost_overlap[iy, ix, t] = score

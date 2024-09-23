@@ -16,6 +16,8 @@ from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
 from utils import compute_cost_wrapper, calc_computation_parameters
 
+from compatibility_Segmentation import Segmentator
+
 def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
     first_element = comp_as_list[0]
     cost_matrix = np.zeros((first_element.shape[0], first_element.shape[1], first_element.shape[2], n, n))
@@ -114,36 +116,10 @@ def main(args):
             yolov8_obb_detector = None
         ppars['motif_based'] = motif_based
         ####### Segmentation #######
+        ppars['seg_based'] = False
         if args.cmp_type == 'seg':
             ppars['seg_based'] = True
-            if args.sam_model_path is None or args.sam_model_type is None:
-                raise Exception("You are trying to use SAM-based compatibility without specifying model path")
-            
-            ##### SAM #####
-
-            ##### Meta #####
-            from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
-            sam = sam_model_registry[args.sam_model_type](checkpoint=args.sam_model_path)
-            sam_amg = SamAutomaticMaskGenerator(sam)
-            sam_segmentator = sam_amg.generate
-
-            ##### Ultralitycs #####
-            # from ultralytics import SAM
-            # sam_segmentator = SAM(args.sam_model_path)
-            # sam_segmentator.info()
-            
-
-            ##### Hugginface #####
-            # from transformers import SamModel, SamProcessor
-            # processor = SamProcessor.from_pretrained("facebook/sam-vit-q")
-            # model = SamModel.from_pretrained("facebook/sam-vit-q")
-
-            ppars['sam_model_type'] = args.sam_model_type
-            ppars['sam_model_path'] = args.sam_model_path
-
-        else:
-            sam_segmentator = None
-        
+            segmentator = Segmentator(ppars,args)
         ###### Color ######
         color_based = False
         seg_len = 0
@@ -237,7 +213,7 @@ def main(args):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, ppars, \
-                        detector=yolov8_obb_detector, segmentator=sam_segmentator, seg_len=seg_len,
+                        detector=yolov8_obb_detector, segmentator=segmentator, seg_len=seg_len,
                         verbosity=args.verbosity)
                     
                     All_cost[:, :, :, j, i] = ji_mat
@@ -492,10 +468,10 @@ if __name__ == '__main__':
         help='method for the feature detection (usually lines or motif)',
         choices=['exact', 'deeplsd', 'manual', 'yolo-obb', 'yolo-bbox', 'yolo-seg']) 
     parser.add_argument('--yolo_path', type=str, default='/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt', help='yolo path (.pt model)')
-    parser.add_argument('--sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
-    parser.add_argument('--sam_model_type', type=str, choices=['default','vit_h','vit_l','vit_b'], help='SAM model type')
     parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')   
-    parser.add_argument('--k', type=int, default=5, help='keep the best k values (for given gamma transformation) in the compatibility')   
+    parser.add_argument('--k', type=int, default=5, help='keep the best k values (for given gamma transformation) in the compatibility')
+    
+    Segmentator.add_args(parser)  
 
         # exact, manual, deeplsd
     # parser.add_argument('--xy_step', type=int, default=30, help='the step (in pixels) between each grid point')

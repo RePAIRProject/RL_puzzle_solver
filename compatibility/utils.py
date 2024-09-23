@@ -118,7 +118,7 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
             assert ( (det_type == "yolo-obb") | (det_type == "yolo-bbox")), f"Unkown detection method for motifs!\nWe know `yolo-obb` and `yolo-bbox`, given `{det_type}`\nRe-run specifying `--det_method`"
             R_cost = compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=det_type, verbosity=verbosity)
         elif compatibility_type == 'seg':
-            R_cost = compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, ppars, sam_segmentator=segmentator, verbosity=verbosity)
+            R_cost = compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, ppars, segmentator=segmentator, verbosity=verbosity)
         elif compatibility_type == 'color':
             R_cost = compute_cost_using_color_compatibility(idx1, idx2, pieces, mask_ij, ppars, seg_len=seg_len, verbosity=1)
         else: # other compatibilities!
