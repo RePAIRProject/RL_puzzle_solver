@@ -96,6 +96,8 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
 
     solution = solve_puzzle(R, anchor, pieces_included, ppars, return_as=return_solution_as)
 
+    print("solution", solution)
+
     return solution
     
     
