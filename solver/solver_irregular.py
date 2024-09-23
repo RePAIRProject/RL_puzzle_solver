@@ -357,7 +357,8 @@ def main(args):
         cmp_name = f"motifs_{args.det_method}"
         # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
     elif args.cmp_type == 'color':
-        cmp_name = f"color_border{args.border_len}"
+        cmp_name = f"cmp_color"
+        #cmp_name = f"color_border{args.border_len}"
     else:
         cmp_name = f"cmp_{args.cmp_type}"
 
@@ -446,7 +447,7 @@ def main(args):
     print(f"Using anchor the piece with id: {anc}")
 
     ## K-sparsification
-    k = 3
+    k = 10
     for i in range(np.shape(R)[4]):
         for j in range(np.shape(R)[4]):
             r_temp = R[:, :, :, j, i]
