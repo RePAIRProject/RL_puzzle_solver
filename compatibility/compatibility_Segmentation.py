@@ -5,6 +5,7 @@ import os
 import configs.folder_names as fnames
 from PIL import Image
 import time
+import torch
 
 import shapely
 from shapely import transform
@@ -77,7 +78,7 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
     # Generate images
 
     # One day this will be processed in batches, but that day is not today
-    #images_batch = np.zeros((len(valid_points_idx),ppars.canvas_size,ppars.canvas_size,3),dtype=np.uint8)
+    images = np.zeros((len(valid_points_idx),ppars.canvas_size,ppars.canvas_size,3),dtype=np.uint8)
 
     for k,idx in enumerate(valid_points_idx):
 
@@ -99,7 +100,7 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
         x0 = 0
         y0 = 0
-        img = pieces_ij_on_canvas
+        images[k] = pieces_ij_on_canvas
 
         # if detect_on_crop == True:
         #     img, x0, x1, y0, y1  = crop_to_content(pieces_ij_on_canvas, return_vals=True)
@@ -107,25 +108,50 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         # plt.imshow(img)
         # plt.show()
 
+    # Convert images to 8-bit
+    images = np.uint8(images)
+
+    # Select best device for torch
+    if torch.backends.mps.is_available():
+        device = "mps"
+    elif torch.cuda.is_available():
+        device = "cuda"
+    else:
+        device = "cpu"
+
+    if verbosity > 1:
+                print(f"loading images in device {device}... ",end='',flush=True)
+
+    images = torch.from_numpy(images).permute(0,3,2,1).to(device)
+
+    if verbosity > 1:
+                print("done")
+
+    for k,idx in enumerate(valid_points_idx):
+
         filename = f'./seg/mask_{idx1}vs{idx2}_y{iy}_x{ix}_r{t}.npy'
 
-        if os.path.isfile(filename):
-            print("loading segmentation from file...",end='',flush=True)
+        if False:
+        #if os.path.isfile(filename):
+            print("loading segmentation from file... ",end='',flush=True)
             masks = np.load(filename,allow_pickle=True)
             print('done')
         else:
             # Compute segmentation
             if verbosity > 1:
-                print("segmenting...",end='',flush=True)
+                print("computing segmentation... ",end='',flush=True)
                 start = time.time()
 
             #img_cv2 = cv2.cvtColor(np.uint8(img), cv2.COLOR_BGR2RGB)
-            masks = sam_segmentator(np.uint8(img))
+            
+            masks = sam_segmentator(images[k])
 
             if verbosity > 1:
-                print(f"computed segmentation in {time.time()-start:.2f}s ({len(masks)} areas detected)")
+                print(f"done in {time.time()-start:.2f}s ({len(masks)} areas detected)")
 
-            np.save(filename,masks)
+        #    np.save(filename,masks)
+
+        breakpoint()
 
         # Computing score
 
