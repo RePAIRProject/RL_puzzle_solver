@@ -26,31 +26,37 @@ class Segmentator:
 
     @staticmethod
     def add_args(parser):
-        parser.add_argument('--sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
-        parser.add_argument('--sam_model_type', type=str, choices=['default','vit_h','vit_l','vit_b'], help='SAM model type')
+        parser.add_argument('--seg_torch_device', type=str, help='torch device')
+        parser.add_argument('--seg_sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
+        parser.add_argument('--seg_sam_model_type', type=str, choices=['default','vit_h','vit_l','vit_b'], help='SAM model type')
 
     def __init__(self,ppars,args):
         
-        if args.sam_model_path is None or args.sam_model_type is None:
+        if args.seg_sam_model_path is None or args.seg_sam_model_type is None:
             raise Exception("You are trying to use SAM-based compatibility without specifying model path")
         
-        ppars['sam_model_type'] = args.sam_model_type
-        ppars['sam_model_path'] = args.sam_model_path
+        ppars['seg_sam_model_type'] = args.seg_sam_model_type
+        ppars['seg_sam_model_path'] = args.seg_sam_model_path
 
-        import torch
-        # Automatically select best device for torch
-        if torch.backends.mps.is_available():
-            # macOS specific
-            self.device = "mps"
-            os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-        elif torch.cuda.is_available():
-            self.device = "cuda"
+        if args.seg_torch_device != "":
+            self.device = args.seg_torch_device
         else:
-            self.device = "cpu"
+            import torch
+            # Automatically select best device if not specified
+            if torch.backends.mps.is_available():
+                # macOS specific
+                self.device = "mps"
+                os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+            elif torch.cuda.is_available():
+                self.device = "cuda"
+            else:
+                self.device = "cpu"
+        
+        ppars['seg_torch_device'] = args.seg_torch_device
 
         ##### Meta (SAM)
         from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
-        self.sam = sam_model_registry[args.sam_model_type](checkpoint=args.sam_model_path).to(self.device)
+        self.sam = sam_model_registry[args.seg_sam_model_type](checkpoint=args.seg_sam_model_path).to(self.device)
         self.sam_amg = SamAutomaticMaskGenerator(self.sam)
 
         ##### Meta (SAM 2)
@@ -89,9 +95,6 @@ def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, p
     m = ppars['m']
     rot = ppars['rot']
 
-    if verbosity > 1:
-        print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
-
     if idx1 == idx2:
         # set compatibility to -1:
         R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
@@ -110,9 +113,10 @@ def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, p
 ## pairwise compatibility measure between two pieces with and without rotation
 def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, \
         segmentator, detect_on_crop=True, area_ratio=0.1, verbosity=1):
-
+    
     R_cost_conf = np.zeros((m.shape[1], m.shape[1], len(rot)))
     R_cost_overlap = np.zeros((m.shape[1], m.shape[1], len(rot)))
+
 
     valid_points_mask = mask_ij > 0
 
@@ -135,6 +139,13 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
     
 
     valid_points_idx = np.argwhere(valid_points_mask_eroded)
+
+    # Filter valid points to speed up testing
+    filter = np.random.choice(len(valid_points_idx),3)
+    valid_points_idx = valid_points_idx[filter]
+
+    if verbosity > 1:
+        print(f"found {len(valid_points_idx)} valid points")
     
 
     # Generate images
@@ -169,23 +180,25 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         if verbosity > 1:
             print(".",end='',flush=True)
 
-        #print('saving image')
-        cv2.imwrite(filename_img,cv2.cvtColor(images[k], cv2.COLOR_RGB2BGR))
+        #
+        if not os.path.isfile(filename_img):
+            cv2.imwrite(filename_img,cv2.cvtColor(images[k], cv2.COLOR_RGB2BGR))
         
 
         # if detect_on_crop == True:
         #     img, x0, x1, y0, y1  = crop_to_content(pieces_ij_on_canvas, return_vals=True)
             
-        # plt.imshow(img)
+        # plt.imshow(cv2.cvtColor(images[k], cv2.COLOR_RGB2BGR))
         # plt.show()
 
     # Convert images to 8-bit
     images = np.uint8(images)
 
     #images = torch.from_numpy(images).permute(0,3,2,1) # no need to use .to(device)
-
     if verbosity > 1:
         print("done")
+
+    ######### Segmentation
 
     for k,(iy,ix,t) in enumerate(valid_points_idx):
 

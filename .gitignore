@@ -36,7 +36,9 @@ output_*/
 # Conda env
 .conda
 
-# Temporary folder (Marco)
+# Marco
 seg
+.ipynb_checkpoints
+*.ipynb
 
 
