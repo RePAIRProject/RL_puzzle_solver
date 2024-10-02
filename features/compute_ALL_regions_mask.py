@@ -12,7 +12,8 @@ from PIL import Image
 # from configs import repair_cfg as cfg
 from configs import folder_names as fnames
 
-from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, get_outside_borders, place_on_canvas, get_borders_around, include_shape_info
+from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, create_grid_v2, get_outside_borders, \
+        place_on_canvas, get_borders_around, include_shape_info
 # from puzzle_utils.shape_utils import prepare_pieces, shape_pairwise_compatibility
 from puzzle_utils.pieces_utils import calc_parameters_v2
 from puzzle_utils.visualization import save_vis
@@ -62,7 +63,7 @@ def main(args):
 
         # INCLUDE SHAPE
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, \
-            line_based=False, line_thickness=3, motif_based=True)
+            line_based=args.lines, line_thickness=3, motif_based=args.motif)
         if 'lines' not in pieces[0].keys():
             print("-" * 50)
             print("\nWARNING:\nno lines found, line-based region will be empty!\n")
@@ -72,7 +73,8 @@ def main(args):
         print("-" * 50)
         grid_size_xy = ppars.comp_matrix_shape[0]
         grid_size_rot = ppars.comp_matrix_shape[2]
-        grid, grid_step_size = create_grid(grid_size_xy, ppars.p_hs, ppars.canvas_size)
+        # grid, grid_step_size = create_grid(grid_size_xy, ppars.p_hs, ppars.canvas_size)
+        grid, grid_step_size = create_grid_v2(ppars)
 
         print()
         print('#' * 50)
@@ -306,6 +308,8 @@ if __name__ == '__main__':
                         help='puzzle to work on - leave empty to generate for the whole dataset')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
+    parser.add_argument('--lines', type=bool, default=False, help='use line-based regions')
+    parser.add_argument('--motif', type=bool, default=False, help='use motif-based regions')
     parser.add_argument('--save_visualization', type=bool, default=True,
                         help='save an image that showes the matrices color-coded')
     parser.add_argument('-np', '--num_pieces', type=int, default=0,

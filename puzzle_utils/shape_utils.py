@@ -26,13 +26,30 @@ def get_polygon(binary_image):
     polygon = shapely.Polygon(shapely_points)
     return polygon
 
+def create_grid_v2(ppars):
+    step = ppars['xy_step']
+    pts = ppars['xy_grid_points']
+    canvas_size = ppars['canvas_size']
+    largest_val = step*pts
+    # create a regularly spaced grid (the center value should be the center of th epiece)
+    axis_grid = np.linspace(step, largest_val, pts)
+    # align to the canvas
+    canvas_alignment = (canvas_size - largest_val - step) / 2
+    pieces_grid = np.zeros((pts, pts, 2))
+    for b in range(len(axis_grid)):
+        for g in range(len(axis_grid)):
+            pieces_grid[g, b] = (axis_grid[g]+canvas_alignment, axis_grid[b]+canvas_alignment)
+    return pieces_grid, step
+
 def create_grid(grid_size, padding, canvas_size):
-    axis_grid = np.linspace(padding, canvas_size - padding - 1, grid_size)
+    half_space = canvas_size - padding // 2
+    axis_grid = np.linspace(-half_space-1, half_space+1, grid_size+1)
     grid_step_size = axis_grid[1] - axis_grid[0]
     pieces_grid = np.zeros((grid_size, grid_size, 2))
     for b in range(len(axis_grid)):
         for g in range(len(axis_grid)):
-            pieces_grid[g, b] = (axis_grid[g], axis_grid[b])
+            pieces_grid[g, b] = (axis_grid[g]+half_space, axis_grid[b]+half_space)
+    breakpoint()
     return pieces_grid, grid_step_size
 
 def place_on_canvas(piece, coords, canvas_size, theta=0):

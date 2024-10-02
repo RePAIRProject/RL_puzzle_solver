@@ -69,11 +69,11 @@ def calc_parameters_v2(parameters, xy_step=3, xy_grid_points=101, theta_step=45)
     ppars['comp_matrix_shape'] = [ppars.xy_grid_points, ppars.xy_grid_points, ppars.theta_grid_points]
 
     # region
-    ppars['threshold_overlap'] = ppars.piece_size / 2
+    ppars['threshold_overlap'] = ppars.piece_size / 10 # it was /2 !
     ppars['threshold_overlap_lines'] = ppars.piece_size / 8
     ppars['threshold_overlap_motifs'] = ppars.piece_size / 5
-    ppars['borders_regions_width_outside'] = 3
-    ppars['borders_regions_width_inside'] = 2  # changed from 5 +++++++
+    ppars['borders_regions_width_outside'] = 1 # 3
+    ppars['borders_regions_width_inside'] = 1 # 2 # changed from 5 +++++++
     ppars['border_tolerance'] = ppars.piece_size // 30
 
     return ppars
