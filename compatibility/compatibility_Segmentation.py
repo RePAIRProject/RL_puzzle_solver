@@ -27,6 +27,7 @@ class Segmentator:
     @staticmethod
     def add_args(parser):
         parser.add_argument('--seg_torch_device', type=str, help='torch device')
+        parser.add_argument('--seg_sam_points_per_side', type=int, default=32, help='')
         #parser.add_argument('--seg_sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
         #parser.add_argument('--seg_sam_model_type', type=str, choices=['default','vit_h','vit_l','vit_b'], help='SAM model type')
 
@@ -66,9 +67,11 @@ class Segmentator:
         
 
         #### Common
+        self.points_per_side = args.seg_sam_points_per_side
         self.sam_amg = SamAutomaticMaskGenerator(self.sam,
-                                                points_per_side=32,
-                                                stability_score_thresh=0.85)
+                                                points_per_side=self.points_per_side,
+                                                stability_score_thresh=0.85,
+                                                )
 
         ##### Meta (SAM 2)
         # from sam2.build_sam import build_sam2
@@ -79,12 +82,27 @@ class Segmentator:
         # sam_amg = SAM2AutomaticMaskGenerator(sam2)
         # sam_segmentator = sam_amg.generate
 
+    def set_point_grid(self,grid):
+        self.sam_amg.point_grids = [grid]
+
     def compute(self,input):
         return self.sam_amg.generate(input)
     
     def __call__(self,input):
         return self.compute(input)
 
+
+#########################################
+
+# Taken from SAM code
+def build_point_grid(n_per_side: int) -> np.ndarray:
+    """Generates a 2D grid of points evenly spaced in [0,1]x[0,1]."""
+    offset = 1 / (2 * n_per_side)
+    points_one_side = np.linspace(offset, 1 - offset, n_per_side)
+    points_x = np.tile(points_one_side[None, :], (n_per_side, 1))
+    points_y = np.tile(points_one_side[:, None], (1, n_per_side))
+    points = np.stack([points_x, points_y], axis=-1).reshape(-1, 2)
+    return points
 
 #########################################
 
@@ -100,7 +118,6 @@ def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, p
         R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
     else:
         print(f"computing cost matrix for piece {idx1} vs piece {idx2}")
-        candidate_values = np.sum(mask_ij > 0)
         if idx1 == 5 and idx2 == 8:
             R_cost  = segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, segmentator, verbosity=verbosity)
             print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
@@ -113,6 +130,7 @@ def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, p
 ## pairwise compatibility measure between two pieces with and without rotation
 def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, \
         segmentator, detect_on_crop=True, area_ratio=0.1, verbosity=1):
+
     
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
@@ -120,24 +138,28 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
     valid_points_mask = mask_ij > 0
 
     ### <hack>
-    ### Remove the one that do not touch. This is an hack and should be removed
-    neg_points_mask = mask_ij < 0
-
-    zero_points_mask = mask_ij != 0
-
-    valid_points_mask_eroded = np.zeros_like(valid_points_mask)
-
-    for i in range(zero_points_mask.shape[2]):
-        # plt.subplot(1,2,1)
-        # plt.imshow(valid_points_mask[:,:,i])
-        valid_points_mask_eroded[:,:,i] = cv2.erode(zero_points_mask[:,:,i].astype(np.uint8),np.ones((3,3))) - neg_points_mask[:,:,i]
-        # plt.subplot(1,2,2)
-        # plt.imshow(valid_points_mask_eroded[:,:,i])
-        # plt.show()
+    valid_points_mask[:,:,1:] = 0
     ### </hack>
+
+    ### <hack>
+    ### Remove the one that do not touch. This is an hack and should be removed
+    # neg_points_mask = mask_ij < 0
+
+    # zero_points_mask = mask_ij != 0
+
+    # valid_points_mask_eroded = np.zeros_like(valid_points_mask)
+
+    # for i in range(zero_points_mask.shape[2]):
+    #     # plt.subplot(1,2,1)
+    #     # plt.imshow(valid_points_mask[:,:,i])
+    #     valid_points_mask_eroded[:,:,i] = cv2.erode(zero_points_mask[:,:,i].astype(np.uint8),np.ones((3,3))) - neg_points_mask[:,:,i]
+    #     # plt.subplot(1,2,2)
+    #     # plt.imshow(valid_points_mask_eroded[:,:,i])
+    #     # plt.show()
+    # ### </hack>
     
 
-    valid_points_idx = np.argwhere(valid_points_mask_eroded)
+    valid_points_idx = np.argwhere(valid_points_mask)
 
     # Filter valid points to speed up testing
     # filter = np.random.choice(len(valid_points_idx),3)
@@ -220,6 +242,11 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
             start_seg = time.time()
 
         #img_cv2 = cv2.cvtColor(np.uint8(img), cv2.COLOR_BGR2RGB)
+
+        # grid = build_point_grid(segmentator.points_per_side)
+
+        #for p in grid
+        # segmentator.set_point_grid(grid)
         
         masks = segmentator(np.uint8(images[k]))
 
