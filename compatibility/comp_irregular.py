@@ -87,6 +87,9 @@ def main(args):
 
         additional_cmp_pars = calc_computation_parameters(ppars, cmp_type=args.cmp_type, \
             cmp_cost=args.cmp_cost, det_method=args.det_method)
+        
+        ############################## Saving puzzle root folder #############################
+        ppars['puzzle_root_folder'] = puzzle_root_folder
 
         for parkey in additional_cmp_pars.keys():
             ppars[parkey] = additional_cmp_pars[parkey]
