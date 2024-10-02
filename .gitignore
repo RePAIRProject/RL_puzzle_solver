@@ -30,4 +30,15 @@ output_*/
 # personal scripts to copy/upload stuff
 **/*_lucap.sh
 
+# macOS system files
+.DS_Store
+
+# Conda env
+.conda
+
+# Marco
+seg
+.ipynb_checkpoints
+*.ipynb
+
 
