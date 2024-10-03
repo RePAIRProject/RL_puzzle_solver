@@ -11,7 +11,7 @@ import time
 
 # internal
 from configs import folder_names as fnames
-from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, encode_boundary_segments
+from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid_v2, include_shape_info, encode_boundary_segments
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
 from utils import compute_cost_wrapper, calc_computation_parameters
@@ -170,6 +170,11 @@ def main(args):
             rot = [0]
         else:
             rot = np.arange(0, 360 - ang + 1, ang)
+        # breakpoint()
+
+        #grid, grid_step_size = create_grid_v2(ppars)
+        #z_id = grid - grid[(grid.shape[0]-1)//2]
+
         ppars['p'] = p
         ppars['z_id'] = z_id
         ppars['m'] = m

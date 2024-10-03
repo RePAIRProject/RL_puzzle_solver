@@ -189,23 +189,22 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
             print(f"generating image... ",end='',flush=True)
             start_img = time.time()
 
-        canv_cnt = ppars.canvas_size // 2
-        grid = z_id + canv_cnt
+        center_pos = ppars.canvas_size // 2
+        grid = z_id + center_pos
         x_j_pixel, y_j_pixel = grid[iy, ix]
 
         # Place on canvas pairs of pieces given position
-        center_pos = ppars.canvas_size // 2
         piece_i_on_canvas = place_on_canvas(pieces[idx1], (center_pos, center_pos), ppars.canvas_size, 0)
         piece_j_on_canvas = place_on_canvas(pieces[idx2], (x_j_pixel, y_j_pixel), ppars.canvas_size, t * ppars.theta_step)
-        pieces_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
-        #mask_ij_on_canvas = piece_i_on_canvas['mask'] + piece_j_on_canvas['mask']
-        #pieces_ij_on_canvas/= np.clip(mask_ij_on_canvas,1,2).astype(float)
-        #plt.imshow(pieces_ij_on_canvas)
-        #plt.show()
+        img_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
+
+        mask_i = piece_i_on_canvas['mask']
+        mask_j = piece_j_on_canvas['mask']
+        mask_ij = np.bool(mask_i) | np.bool(mask_j)
 
         x0 = 0
         y0 = 0
-        images[k] = pieces_ij_on_canvas
+        images[k] = img_ij_on_canvas
 
         if verbosity > 1:
             print(f"done in {time.time()-start_img:.2f}s")
@@ -243,15 +242,38 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
         #img_cv2 = cv2.cvtColor(np.uint8(img), cv2.COLOR_BGR2RGB)
 
-        # grid = build_point_grid(segmentator.points_per_side)
+        grid = build_point_grid(segmentator.points_per_side)
 
-        #for p in grid
-        # segmentator.set_point_grid(grid)
+        # plt.scatter(grid[:, 0], grid[:, 1], color='red', s=10, marker='o')
+        # plt.savefig(filename_img)
+        # plt.cla()
+
+        def on_pieces(p):
+            q = np.round(p * ppars.canvas_size)
+            q = np.uint(q)
+            return mask_ij[q[0],q[1]]
+            #return (mask_i[p[0],p[1]] == 1) or (mask_j[p[0],p[1]] == 1)
         
-        masks = segmentator(np.uint8(images[k]))
+        #breakpoint()
+        
+        # point_list = []
+        # for _,point in enumerate(grid):
+        #     if on_pieces(point):
+        #         print(f"{point} -> ok")
+        #         point_list.append(point)
+        
+        filtered_grid = np.array([p for _,p in enumerate(grid) if on_pieces(p)])
 
-        if verbosity > 1:
-            print(f"done in {time.time()-start_seg:.2f}s ({len(masks)} areas detected)")
+        print(f"feeding SAM with {len(filtered_grid)} points")
+        # segmentator.set_point_grid(filtered_grid)
+
+        if len(filtered_grid) == 0:
+            continue
+        
+        # masks = segmentator(np.uint8(images[k]))
+
+        # if verbosity > 1:
+        #     print(f"done in {time.time()-start_seg:.2f}s ({len(masks)} areas detected)")
 
         #breakpoint()
 
@@ -260,22 +282,29 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         score = 0
         threshold = 50
 
-        for mask_dict in masks:
-            mask = mask_dict['segmentation'].astype(np.uint8)
-            s1 = np.sum(mask * piece_i_on_canvas['mask'])
-            s2 = np.sum(mask * piece_j_on_canvas['mask'])
-            if s1 > threshold and s2 > threshold:
-                score += 1
+        # for mask_dict in masks:
+        #     mask = mask_dict['segmentation'].astype(np.uint8)
+        #     s1 = np.sum(mask * mask_i)
+        #     s2 = np.sum(mask * mask_j)
+        #     if s1 > threshold and s2 > threshold:
+        #         score += 1
+
+        real_grid = filtered_grid*ppars.canvas_size
 
         # Show the image with the segmentation superposed
-        plt.title(f"Masks: {len(masks)} Score: {score}")
+        #plt.title(f"Masks: {len(masks)} Score: {score}")
         plt.imshow(images[k])
-        show_anns(masks)
-        plt.axis('off')
+        #plt.imshow(mask_ij)
+        plt.scatter(real_grid[:, 0], real_grid[:, 1], color='white', s=5, marker='o')
+        #show_anns(masks)
+        #plt.axis('off')
         plt.savefig(filename_img)
         plt.cla()
+        breakpoint()
 
         R_cost[iy, ix, t] = score
+
+    breakpoint()
 
     return R_cost
 
