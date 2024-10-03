@@ -318,7 +318,7 @@ def main(args):
                         a_ks[x, y, i] = a
                         if len(a_all) > 1:
                             a_min[x, y, i] = a_all[1]
-                breakpoint()
+                #breakpoint()
                 print(a_ks[:, :, i])
                 All_cost_cut[:, :, :, :, i] = a_cost_i
 
