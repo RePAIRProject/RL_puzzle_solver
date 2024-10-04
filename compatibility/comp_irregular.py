@@ -170,9 +170,8 @@ def main(args):
             rot = [0]
         else:
             rot = np.arange(0, 360 - ang + 1, ang)
-        # breakpoint()
 
-        #grid, grid_step_size = create_grid_v2(ppars)
+        grid, grid_step_size = create_grid_v2(ppars)
         #z_id = grid - grid[(grid.shape[0]-1)//2]
 
         ppars['p'] = p

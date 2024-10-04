@@ -15,6 +15,7 @@ from matplotlib import pyplot as plt
 from sklearn.cluster import DBSCAN
 from matplotlib import cm
 import cv2
+import warnings
 
 from puzzle_utils.shape_utils import place_on_canvas
 from puzzle_utils.pieces_utils import crop_to_content
@@ -28,6 +29,8 @@ class Segmentator:
     def add_args(parser):
         parser.add_argument('--seg_torch_device', type=str, help='torch device')
         parser.add_argument('--seg_sam_points_per_side', type=int, default=32, help='')
+        parser.add_argument('--seg_sam_stability_score_thresh', type=float, default=0.85, help='')
+        
         #parser.add_argument('--seg_sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
         #parser.add_argument('--seg_sam_model_type', type=str, choices=['default','vit_h','vit_l','vit_b'], help='SAM model type')
 
@@ -67,10 +70,15 @@ class Segmentator:
         
 
         #### Common
-        self.points_per_side = args.seg_sam_points_per_side
+        ppars['seg_sam_points_per_side'] = args.seg_sam_points_per_side
+        ppars['seg_sam_stability_score_thresh'] = args.seg_sam_stability_score_thresh
+        self.grid = build_point_grid(args.seg_sam_points_per_side)
+
         self.sam_amg = SamAutomaticMaskGenerator(self.sam,
-                                                points_per_side=self.points_per_side,
-                                                stability_score_thresh=0.85,
+                                                #points_per_side=args.seg_sam_points_per_side,
+                                                points_per_side=None,
+                                                stability_score_thresh=args.seg_sam_stability_score_thresh,
+                                                point_grids=[self.grid]
                                                 )
 
         ##### Meta (SAM 2)
@@ -82,7 +90,27 @@ class Segmentator:
         # sam_amg = SAM2AutomaticMaskGenerator(sam2)
         # sam_segmentator = sam_amg.generate
 
-    def set_point_grid(self,grid):
+    def set_point_grid_mask(self,masks,scale,filter_size = 5):
+
+        # half filter size
+        hfs = (filter_size - 1) // 2
+
+        def on_mask(p):
+            p = np.uint(np.round(p * scale))
+
+            for mask in masks:
+                if (np.sum(mask[p[1]-hfs:p[1]+(hfs+1),p[0]-hfs:p[0]+(hfs+1)]) == (filter_size**2)):
+                    return True
+            return False
+    
+        
+        sam_masked_grid = np.array([p for _,p in enumerate(self.grid) if on_mask(p)])
+
+        self._set_point_grid(sam_masked_grid)
+
+        return sam_masked_grid * scale
+
+    def _set_point_grid(self,grid):
         self.sam_amg.point_grids = [grid]
 
     def compute(self,input):
@@ -118,18 +146,21 @@ def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, p
         R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
     else:
         print(f"computing cost matrix for piece {idx1} vs piece {idx2}")
-        if idx1 == 5 and idx2 == 8:
+        #if False
+        if idx1 == 0 and idx2 == 3:
             R_cost  = segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, segmentator, verbosity=verbosity)
-            print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
+            breakpoint()
         else:
             R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+        print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
 
+    
     return R_cost
 
 #### NEW
 ## pairwise compatibility measure between two pieces with and without rotation
 def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, \
-        segmentator, detect_on_crop=True, area_ratio=0.1, verbosity=1):
+        segmentator : Segmentator, detect_on_crop=True, area_ratio=0.1, verbosity=1):
 
     
     R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
@@ -138,6 +169,8 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
     valid_points_mask = mask_ij > 0
 
     ### <hack>
+    # we know no rotation
+    warnings.warn("Discard all rotation aprt from the 0-th")
     valid_points_mask[:,:,1:] = 0
     ### </hack>
 
@@ -160,10 +193,6 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
     
 
     valid_points_idx = np.argwhere(valid_points_mask)
-
-    # Filter valid points to speed up testing
-    # filter = np.random.choice(len(valid_points_idx),3)
-    # valid_points_idx = valid_points_idx[filter]
 
     if verbosity > 1:
         print(f"found {len(valid_points_idx)} valid points")
@@ -238,75 +267,64 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         # Compute segmentation
         if verbosity > 1:
             print("computing segmentation... ",end='',flush=True)
-            start_seg = time.time()
+            start_seg = time.time()        
 
-        #img_cv2 = cv2.cvtColor(np.uint8(img), cv2.COLOR_BGR2RGB)
+        sam_masked_grid_scaled = segmentator.set_point_grid_mask([mask_i,mask_j],ppars.canvas_size)
 
-        grid = build_point_grid(segmentator.points_per_side)
-
-        # plt.scatter(grid[:, 0], grid[:, 1], color='red', s=10, marker='o')
+        # plt.imshow(images[k])
+        # plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='white', s=1, marker='o')
+        # #plt.axis('off')
         # plt.savefig(filename_img)
         # plt.cla()
+        # continue
 
-        def on_pieces(p):
-            q = np.round(p * ppars.canvas_size)
-            q = np.uint(q)
-            return mask_ij[q[0],q[1]]
-            #return (mask_i[p[0],p[1]] == 1) or (mask_j[p[0],p[1]] == 1)
-        
-        #breakpoint()
-        
-        # point_list = []
-        # for _,point in enumerate(grid):
-        #     if on_pieces(point):
-        #         print(f"{point} -> ok")
-        #         point_list.append(point)
-        
-        filtered_grid = np.array([p for _,p in enumerate(grid) if on_pieces(p)])
+        print(f"feeding SAM with {len(sam_masked_grid_scaled)} points")
 
-        print(f"feeding SAM with {len(filtered_grid)} points")
-        # segmentator.set_point_grid(filtered_grid)
-
-        if len(filtered_grid) == 0:
+        if len(sam_masked_grid_scaled) == 0:
             continue
         
-        # masks = segmentator(np.uint8(images[k]))
+        masks = segmentator(np.uint8(images[k]))
 
-        # if verbosity > 1:
-        #     print(f"done in {time.time()-start_seg:.2f}s ({len(masks)} areas detected)")
+        if verbosity > 1:
+            print(f"done in {time.time()-start_seg:.2f}s ({len(masks)} areas detected)")
 
         #breakpoint()
 
         # Computing score
 
-        score = 0
-        threshold = 50
-
-        # for mask_dict in masks:
-        #     mask = mask_dict['segmentation'].astype(np.uint8)
-        #     s1 = np.sum(mask * mask_i)
-        #     s2 = np.sum(mask * mask_j)
-        #     if s1 > threshold and s2 > threshold:
-        #         score += 1
-
-        real_grid = filtered_grid*ppars.canvas_size
+        score = compute_score(mask_i,mask_j,masks)
+        
 
         # Show the image with the segmentation superposed
-        #plt.title(f"Masks: {len(masks)} Score: {score}")
-        plt.imshow(images[k])
+        plt.title(f"Masks: {len(masks)} Score: {score}")
+        bw_img = cv2.cvtColor(images[k],cv2.COLOR_RGB2GRAY)
+        #breakpoint()
+        bw_img_3c = np.dstack([bw_img,bw_img,bw_img])
+        plt.imshow(bw_img_3c)
         #plt.imshow(mask_ij)
-        plt.scatter(real_grid[:, 0], real_grid[:, 1], color='white', s=5, marker='o')
-        #show_anns(masks)
+        show_anns(masks)
+        plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='white', s=2, marker='o')
         #plt.axis('off')
         plt.savefig(filename_img)
         plt.cla()
-        breakpoint()
+        #breakpoint()
 
         R_cost[iy, ix, t] = score
 
-    breakpoint()
-
     return R_cost
+
+
+def compute_score(mask_i,mask_j,masks):
+    score = 0
+    threshold = 0.01 * np.min([mask_i.sum(),mask_j.sum()])
+
+    for mask_dict in masks:
+        mask = mask_dict['segmentation'].astype(np.uint8)
+        s1 = np.sum(mask * mask_i)
+        s2 = np.sum(mask * mask_j)
+        if s1 > threshold and s2 > threshold:
+            score += 1/3
+    return score
 
 # utility function to draw areas on top of image
 def show_anns(anns):
