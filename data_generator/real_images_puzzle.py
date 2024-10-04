@@ -122,8 +122,18 @@ def main(args):
             region_map = cv2.imread(os.path.join(args.patterns_folder, list_of_patterns_names[k]), 0)
             pattern_map, num_pieces = process_region_map(region_map)
             print(f"found {num_pieces} pieces on {list_of_patterns_names[k]}")
+            regions_centers = None
+        elif args.shape == 'polyominos':
+            list_of_patterns_names = os.listdir(args.patterns_folder)
+            region_map = cv2.imread(os.path.join(args.patterns_folder, list_of_patterns_names[k]), 0)
+            with open(os.path.join(args.patterns_folder, list_of_patterns_names[k].split(".")[0]+".json"), 'r') as jc:
+                regions_centers = json.load(jc)
+            pattern_map, num_pieces = process_region_map(region_map)
+            print(f"found {num_pieces} pieces on {list_of_patterns_names[k]}")
         else:
             num_pieces = args.num_pieces
+            pattern_map = None
+            regions_centers = None
 
         ## make folders to save pieces and detected lines
         img_name = img_path[:-4]
@@ -143,10 +153,14 @@ def main(args):
         single_image_parameters_path = os.path.join(single_image_folder, f'parameters_{puzzle_name}.json')
 
         # this gives us the pieces
-        if args.shape == 'pattern':
-            pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, patterns_map=pattern_map, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation)
-        else:
-            pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation)
+        # if args.shape == 'pattern':
+        #     pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, patterns_map=pattern_map, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation)
+        # elif args.shape == 'polyominos':
+        #     pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, patterns_map=pattern_map, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation)
+        # else:
+        pieces, patch_size = cut_into_pieces(img, args.shape, num_pieces, single_image_folder, puzzle_name, \
+            patterns_map=pattern_map, rotate_pieces=use_rotation, save_extrapolated_regions=args.extrapolation, \
+            pieces_centers=regions_centers, rotation_prob=args.rotation_prob)
  
         #pieces, patch_size = cut_into_pieces(img, args.shape, args.num_pieces, single_image_folder, puzzle_name)
         
@@ -197,10 +211,11 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', type=str, default='', help='output folder')
     parser.add_argument('-i', '--images', type=str, default='', help='images folder (where to cut the pieces from)')
     parser.add_argument('-np', '--num_pieces', type=int, default=9, help='number of pieces the images')
-    parser.add_argument('-s', '--shape', type=str, default='pattern', help='shape of the pieces', choices=['square', 'pattern', 'irregular'])
+    parser.add_argument('-s', '--shape', type=str, default='pattern', help='shape of the pieces', choices=['square', 'pattern', 'irregular', 'polyominos'])
     parser.add_argument('-r', '--rescale', type=int, default=300, help='rescale the largest of the two axis to this number (default 1000) to avoid large puzzles.')
     parser.add_argument('-noR', "--do_not_rotate", help="Use it to disable rotation!", action="store_true")
     parser.add_argument('-extr', "--extrapolation", help="Use it to create an extrapolated version of each fragment", action="store_true")
     parser.add_argument('-pf', '--patterns_folder', type=str, default='', help='(used only if shape == pattern): the folder where the patterns are stored')
+    parser.add_argument('-rp', '--rotation_prob', type=float, default=0.4, help='probability of each piece being rotated (useless if -noR is active)')
     args = parser.parse_args()
     main(args)

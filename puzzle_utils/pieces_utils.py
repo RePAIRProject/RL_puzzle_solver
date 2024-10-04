@@ -106,7 +106,8 @@ def rescale_lines(lines, ratio):
         scaled_lines.append(new_values)
     return scaled_lines
 
-def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns_map=None, rotate_pieces=True, save_extrapolated_regions=False):
+def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns_map=None, rotate_pieces=True, \
+        save_extrapolated_regions=False, pieces_centers=None, rotation_prob=0.4):
 
     pieces = []
     if shape == 'square':
@@ -181,6 +182,13 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         generator.save_jpg_regions(output_path, skip_bg=True)
         pieces, patch_size = generator.get_pieces_from_puzzle_v2(start_from=1)
 
+    if shape == 'polyominos' and patterns_map is not None:
+        generator = PuzzleGenerator(image, puzzle_name, pieces_centers=pieces_centers)
+        generator.region_cnt = num_pieces + 1
+        generator.region_mat = patterns_map 
+        generator.save_jpg_regions(output_path, skip_bg=True)
+        pieces, patch_size = generator.get_polyomino_pieces_from_puzzle(start_from=1)
+
     # for piece in pieces:
     #     plt.subplot(131); plt.title("IMAGE")
     #     plt.imshow(piece['image']); plt.plot(*piece['polygon'].boundary.xy)
@@ -195,8 +203,8 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
     #     print('shift2center:', piece['shift2center'])
     #     plt.show()
     #     pdb.set_trace()
-    if (shape == 'irregular' or shape == 'pattern') and save_extrapolated_regions is True:
-        if shape == 'pattern':
+    if (shape == 'irregular' or shape == 'pattern' or shape == 'polyominos') and save_extrapolated_regions is True:
+        if shape == 'pattern' or shape == 'polyominos':
             generator.extrapolate_regions(start_from=1)
         if shape == 'irregular':
             generator.extrapolate_regions(start_from=0)
@@ -228,7 +236,7 @@ def cut_into_pieces(image, shape, num_pieces, output_path, puzzle_name, patterns
         # rand_num = 2
         # plt.imshow(pieces[rand_num]['squared_image'])
         # plt.plot(*(pieces[rand_num]['squared_polygon'].boundary.xy))
-        rotated_pieces, rotation_info_unused = randomly_rotate_pieces(pieces, chances_to_be_rotated=0.4, possible_rotation=4)
+        rotated_pieces, rotation_info_unused = randomly_rotate_pieces(pieces, chances_to_be_rotated=rotation_prob, possible_rotation=4)
 
         # plt.subplot(122)
         # print(rotation_info)
