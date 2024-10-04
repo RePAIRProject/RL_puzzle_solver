@@ -20,6 +20,8 @@ import warnings
 from puzzle_utils.shape_utils import place_on_canvas
 from puzzle_utils.pieces_utils import crop_to_content
 
+import argparse
+
 
 class Segmentator:
     def __init__():
@@ -28,8 +30,11 @@ class Segmentator:
     @staticmethod
     def add_args(parser):
         parser.add_argument('--seg_torch_device', type=str, help='torch device')
-        parser.add_argument('--seg_sam_points_per_side', type=int, default=32, help='')
-        parser.add_argument('--seg_sam_stability_score_thresh', type=float, default=0.85, help='')
+        parser.add_argument('--seg_sam_points_per_side', type=int, default=32)
+        parser.add_argument('--seg_sam_stability_score_thresh', type=float, default=0.85)
+        parser.add_argument('--seg_load_from_files',action=argparse.BooleanOptionalAction, default=False)
+        parser.add_argument('--seg_save_to_files',action=argparse.BooleanOptionalAction, default=True)
+
         
         #parser.add_argument('--seg_sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
         #parser.add_argument('--seg_sam_model_type', type=str, choices=['default','vit_h','vit_l','vit_b'], help='SAM model type')
@@ -39,6 +44,9 @@ class Segmentator:
         # if args.seg_sam_model_path is None or args.seg_sam_model_type is None:
         #     raise Exception("You are trying to use SAM-based compatibility without specifying model path")
         
+        ppars['seg_load_from_files'] = args.seg_load_from_files
+        ppars['seg_save_to_files'] = args.seg_save_to_files
+
         #ppars['seg_sam_model_type'] = args.seg_sam_model_type
         #ppars['seg_sam_model_path'] = args.seg_sam_model_path
 
@@ -196,23 +204,25 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
     if verbosity > 1:
         print(f"found {len(valid_points_idx)} valid points")
-    
 
-    # Generate images
 
-    # if verbosity > 1:
-    #     print(f"generating images",end='',flush=True)
     # One day this will be processed in batches, but that day is not today
-
-    images = np.zeros((len(valid_points_idx),ppars.canvas_size,ppars.canvas_size,3),dtype=np.uint8)
+    #images = np.zeros((len(valid_points_idx),ppars.canvas_size,ppars.canvas_size,3),dtype=np.uint8)
 
     folder = os.path.join(ppars['puzzle_root_folder'],f'seg/pairs/{idx1}vs{idx2}')
+    img_folder  = os.path.join(folder,'img')
+    seg_folder  = os.path.join(folder,'seg')
 
     os.makedirs(folder,exist_ok=True)
 
+    os.makedirs(img_folder,exist_ok=True)
+    os.makedirs(seg_folder,exist_ok=True)
+
     for k,(iy,ix,t) in enumerate(valid_points_idx):
 
-        filename_img = os.path.join(folder,f'pair_img_p{idx1}vs{idx2}_y{iy}_x{ix}_r{t}.png')
+        filename = f'pair_p{idx1}vs{idx2}_y{iy}_x{ix}_r{t}_pps{ppars['seg_sam_points_per_side']}_sst{ppars['seg_sam_stability_score_thresh']}'
+
+        filename_img = os.path.join(img_folder,filename + '.png')
 
         if verbosity > 1:
             print(f"generating image... ",end='',flush=True)
@@ -225,15 +235,11 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         # Place on canvas pairs of pieces given position
         piece_i_on_canvas = place_on_canvas(pieces[idx1], (center_pos, center_pos), ppars.canvas_size, 0)
         piece_j_on_canvas = place_on_canvas(pieces[idx2], (x_j_pixel, y_j_pixel), ppars.canvas_size, t * ppars.theta_step)
-        img_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
+        img_ij_on_canvas = np.uint8(piece_i_on_canvas['img'] + piece_j_on_canvas['img'])
 
         mask_i = piece_i_on_canvas['mask']
         mask_j = piece_j_on_canvas['mask']
         mask_ij = np.bool(mask_i) | np.bool(mask_j)
-
-        x0 = 0
-        y0 = 0
-        images[k] = img_ij_on_canvas
 
         if verbosity > 1:
             print(f"done in {time.time()-start_img:.2f}s")
@@ -252,25 +258,16 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         # plt.imshow(cv2.cvtColor(images[k], cv2.COLOR_RGB2BGR))
         # plt.show()
 
-    # Convert images to 8-bit
-    # images = np.uint8(images)
+        # Convert images to 8-bit
+        # images = np.uint8(images)
 
-    #images = torch.from_numpy(images).permute(0,3,2,1) # no need to use .to(device)
-    # if verbosity > 1:
-    #     print("done")
+        #images = torch.from_numpy(images).permute(0,3,2,1) # no need to use .to(device)
+        # if verbosity > 1:
+        #     print("done")
 
-    ######### Segmentation
 
-    # for k,(iy,ix,t) in enumerate(valid_points_idx):
-
-        
-        # Compute segmentation
-        if verbosity > 1:
-            print("computing segmentation... ",end='',flush=True)
-            start_seg = time.time()        
-
+        # Setting points
         sam_masked_grid_scaled = segmentator.set_point_grid_mask([mask_i,mask_j],ppars.canvas_size)
-
         # plt.imshow(images[k])
         # plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='white', s=1, marker='o')
         # #plt.axis('off')
@@ -278,17 +275,42 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         # plt.cla()
         # continue
 
-        print(f"feeding SAM with {len(sam_masked_grid_scaled)} points")
+        filename_seg = os.path.join(seg_folder,filename + '.npy')
 
-        if len(sam_masked_grid_scaled) == 0:
-            continue
-        
-        masks = segmentator(np.uint8(images[k]))
+        if ppars['seg_load_from_files']:
+            if verbosity > 1:
+                print("loading segmentation... ",end='',flush=True)
+                start_seg = time.time()
+            
+            masks = np.load(filename_seg,allow_pickle=True)
+
+        else:
+            # Compute segmentation
+            if verbosity > 1:
+                print("computing segmentation... ",end='',flush=True)
+                start_seg = time.time()  
+
+            print(f"feeding SAM with {len(sam_masked_grid_scaled)} points")
+
+            if len(sam_masked_grid_scaled) == 0:
+                raise Exception(f'SAM Mask should have some points!')
+            
+            masks = segmentator(img_ij_on_canvas)
 
         if verbosity > 1:
-            print(f"done in {time.time()-start_seg:.2f}s ({len(masks)} areas detected)")
+            print(f"done in {time.time()-start_seg:.2f}s ({len(masks)} areas found)")
 
-        #breakpoint()
+        if ppars['seg_save_to_files'] and not ppars['seg_load_from_files']:
+            # Save masks to files
+
+            if verbosity > 1:
+                print("saving to file... ",end='',flush=True)
+            
+            np.save(filename_seg,masks)
+
+            if verbosity > 1:
+                print("done")
+
 
         # Computing score
 
@@ -297,14 +319,14 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
         # Show the image with the segmentation superposed
         plt.title(f"Masks: {len(masks)} Score: {score}")
-        bw_img = cv2.cvtColor(images[k],cv2.COLOR_RGB2GRAY)
+        bw_img = cv2.cvtColor(img_ij_on_canvas,cv2.COLOR_RGB2GRAY)
         #breakpoint()
         bw_img_3c = np.dstack([bw_img,bw_img,bw_img])
         plt.imshow(bw_img_3c)
         #plt.imshow(mask_ij)
         show_anns(masks)
         plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='white', s=2, marker='o')
-        #plt.axis('off')
+        plt.axis('off')
         plt.savefig(filename_img)
         plt.cla()
         #breakpoint()
