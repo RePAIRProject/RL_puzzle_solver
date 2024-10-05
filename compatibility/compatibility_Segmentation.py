@@ -29,11 +29,15 @@ class Segmentator:
 
     @staticmethod
     def add_args(parser):
-        parser.add_argument('--seg_torch_device', type=str, help='torch device')
-        parser.add_argument('--seg_sam_points_per_side', type=int, default=32)
-        parser.add_argument('--seg_sam_stability_score_thresh', type=float, default=0.85)
-        parser.add_argument('--seg_load_from_files',action=argparse.BooleanOptionalAction, default=False)
-        parser.add_argument('--seg_save_to_files',action=argparse.BooleanOptionalAction, default=True)
+        parser.add_argument('--seg_torch_device', type=str, help='torch device to use')
+        # SAM parameters
+        parser.add_argument('--seg_sam_points_per_side', type=int, default=32, help='SAM points_per_side parameter')
+        parser.add_argument('--seg_sam_stability_score_thresh', type=float, default=0.85, help='SAM stability_score_thresh parameter')
+        # Save/Load parameters
+        parser.add_argument('--seg_load_from_files',action=argparse.BooleanOptionalAction, default=False, help='Load segmentations from files')
+        parser.add_argument('--seg_save_to_files',action=argparse.BooleanOptionalAction, default=True, help='Save segmentations from files')
+        # Debugging
+        parser.add_argument('--seg_break_each_pair',action=argparse.BooleanOptionalAction, default=True, help='Set a breakpoint after each pair')
 
         
         #parser.add_argument('--seg_sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
@@ -46,6 +50,8 @@ class Segmentator:
         
         ppars['seg_load_from_files'] = args.seg_load_from_files
         ppars['seg_save_to_files'] = args.seg_save_to_files
+
+        ppars['seg_break_each_pair'] = args.seg_break_each_pair
 
         #ppars['seg_sam_model_type'] = args.seg_sam_model_type
         #ppars['seg_sam_model_path'] = args.seg_sam_model_path
@@ -154,14 +160,12 @@ def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, p
         R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
     else:
         print(f"computing cost matrix for piece {idx1} vs piece {idx2}")
-        #if False
-        if idx1 == 0 and idx2 == 3:
-            R_cost  = segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, segmentator, verbosity=verbosity)
-            breakpoint()
-        else:
-            R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+        R_cost  = segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, segmentator, verbosity=verbosity)
         print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
-
+    
+    # for debugging purposes
+    if ppars['seg_break_each_pair']:
+        breakpoint()
     
     return R_cost
 
