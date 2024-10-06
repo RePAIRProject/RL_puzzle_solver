@@ -37,7 +37,7 @@ class Segmentator:
         parser.add_argument('--seg_load_from_files',action=argparse.BooleanOptionalAction, default=False, help='Load segmentations from files')
         parser.add_argument('--seg_save_to_files',action=argparse.BooleanOptionalAction, default=True, help='Save segmentations from files')
         # Debugging
-        parser.add_argument('--seg_break_each_pair',action=argparse.BooleanOptionalAction, default=True, help='Set a breakpoint after each pair')
+        parser.add_argument('--seg_break_each_pair',action=argparse.BooleanOptionalAction, default=False, help='Set a breakpoint after each pair')
 
         
         #parser.add_argument('--seg_sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
@@ -329,7 +329,7 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         plt.imshow(bw_img_3c)
         #plt.imshow(mask_ij)
         show_anns(masks)
-        plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='white', s=2, marker='o')
+        #plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='white', s=2, marker='o')
         plt.axis('off')
         plt.savefig(filename_img)
         plt.cla()
@@ -349,7 +349,7 @@ def compute_score(mask_i,mask_j,masks):
         s1 = np.sum(mask * mask_i)
         s2 = np.sum(mask * mask_j)
         if s1 > threshold and s2 > threshold:
-            score += 1/3
+            score += 0.3
     return score
 
 # utility function to draw areas on top of image
