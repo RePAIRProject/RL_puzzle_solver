@@ -300,7 +300,7 @@ def main(args):
                 #All_norm_cost = np.maximum(1 - All_cost / computation_parameters.rmax, 0)
                 All_norm_cost = All_cost # / np.max(All_cost) #
         elif args.cmp_type == 'color':
-            breakpoint()
+            # breakpoint()
             # normalization
             k = ppars['k']
             All_cost_cut = np.zeros((All_cost.shape))
@@ -318,6 +318,7 @@ def main(args):
                         a_ks[x, y, i] = a
                         if len(a_all) > 1:
                             a_min[x, y, i] = a_all[1]
+                #breakpoint()
                 print(a_ks[:, :, i])
                 All_cost_cut[:, :, :, :, i] = a_cost_i
 
@@ -330,7 +331,7 @@ def main(args):
             All_norm_cost = np.where(All_norm_cost > 2, 0, All_norm_cost)    # only for colors
             #All_norm_cost = np.where(All_norm_cost < 0, 0, All_norm_cost)   # only for colors
             All_norm_cost = np.where(All_norm_cost <= 0, -1, All_norm_cost)  ## NEW idea di Prof.Pelillo
-
+            #All_norm_cost /= np.max(All_norm_cost)
         else:
             All_norm_cost = All_cost
 
