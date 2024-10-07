@@ -64,7 +64,7 @@ def main(args):
             print(f"{cfg_key}: {img_parameters[cfg_key]}")
         
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
-        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
+        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters_v2.json')
         if os.path.exists(cmp_parameter_path):
             ppars = CfgParameters()
             with open(cmp_parameter_path, 'r') as cp:
