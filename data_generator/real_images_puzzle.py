@@ -124,8 +124,10 @@ def main(args):
             print(f"found {num_pieces} pieces on {list_of_patterns_names[k]}")
             regions_centers = None
         elif args.shape == 'polyominos':
-            list_of_patterns_names = os.listdir(args.patterns_folder)
+            list_of_files = os.listdir(args.patterns_folder)
+            list_of_patterns_names = [img_name for img_name in list_of_files if img_name.endswith('.png')]
             region_map = cv2.imread(os.path.join(args.patterns_folder, list_of_patterns_names[k]), 0)
+            print("pattern map: ", list_of_patterns_names[k])
             with open(os.path.join(args.patterns_folder, list_of_patterns_names[k].split(".")[0]+".json"), 'r') as jc:
                 regions_centers = json.load(jc)
             pattern_map, num_pieces = process_region_map(region_map)
