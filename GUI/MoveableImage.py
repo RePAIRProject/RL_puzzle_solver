@@ -61,8 +61,8 @@ class MovableImage(Image):
 
         self.position_memory = (self.x, self.y, self.angle)
 
-        self.ratio = np.array([self.texture_size[0] / self.norm_image_size[0],
-                               self.texture_size[1] / self.norm_image_size[1]])
+        self.ratio = np.array([1, 1])
+        self.update_ratio()
 
         with self.canvas.before:
             PushMatrix()
@@ -134,14 +134,13 @@ class MovableImage(Image):
         # self.canvas.before.add(self.rot)
         self.angle = self.angle + delta_angle
         self.angle = self.normalize_angle(self.angle)
-        self.set_position_memory(self.position_memory[0], self.position_memory[1], self.angle)
+        self.position_memory = [self.position_memory[0], self.position_memory[1], self.angle]
 
     def translate(self, x, y):
         self.trans.x = x - self.pos[0]
         self.trans.y = y - self.pos[1]
         self.trans_bank = (self.trans.x, self.trans.y)
-
-        self.set_position_memory(x * self.ratio[0], y * self.ratio[1], self.position_memory[2])
+        self.position_memory = [x * self.ratio[0], y * self.ratio[1], self.position_memory[2]]
 
     def update_translate(self):
         self.trans.x = self.trans_bank[0]
@@ -158,11 +157,11 @@ class MovableImage(Image):
         return self.collide_point(x - self.trans.x, y - self.trans.y)
         # return self.x <= x <= self.right and self.y <= y - self.trans.y <= self.top
 
-    def update(self, position, solved_rotation, *args, **kwargs):
-        self.ratio = np.array([self.texture_size[0] / self.norm_image_size[0],
-                               self.texture_size[1] / self.norm_image_size[1]])
+    def update_positions(self, position, solved_rotation, *args, **kwargs):
+        self.update_ratio()
         x = position[0] / self.ratio[0]
         y = position[1] / self.ratio[1]
+
         # x = position[0]
         # y = position[1]
         # self.rotate(solved_rotation/2)
@@ -170,11 +169,9 @@ class MovableImage(Image):
         self.rotate(solved_rotation)
         self.translate(x, y)
 
-    def set_position_memory(self, x, y, angle):
-        self.position_memory = (x, y, angle)
-
-    def get_position_memory(self):
-        return self.position_memory
+    def update_ratio(self):
+        self.ratio = np.array([self.texture_size[0] / self.norm_image_size[0],
+                               self.texture_size[1] / self.norm_image_size[1]])
 
     @staticmethod
     def normalize_angle(angle):

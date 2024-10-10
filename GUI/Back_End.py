@@ -30,6 +30,7 @@ select_neighbour_done = False
 pl_solver_done = False
 
 key_fragment = ""
+solved_pieces = []
 neighbour_ids = []
 input_dict = {}
 pl_solution = {}
@@ -76,7 +77,6 @@ def pl_solver_thread_function():
     global path_dic
     set_pl_solver_running(True)
     pl_solution = puzzle_solver.assemble(input_dict, path_dic)
-    print("Solver Solution: ", pl_solution)
     set_pl_solver_running(False)
     set_pl_solver_done(True)
 
@@ -116,13 +116,9 @@ def select_neighbour_thread_function():
     set_select_neighbour_running(True)
 
     sorted_neighbour_images = select_anchor_RePAIR.select_neighbour(path_dic, key_fragment)
-    print(sorted_neighbour_images)
 
     neighbour_numbers = path_dic['number_of_neighbours']
     neighbour_images = sorted_neighbour_images[:neighbour_numbers]
-
-    print(sorted_neighbour_images)
-    print(neighbour_images)
 
     extract_lists(neighbour_images)
     set_select_neighbour_running(False)
@@ -142,39 +138,44 @@ def extract_lists(main_list):
         image_numbers += 1
 
 
-def set_select_anchor_running(boolean):
-    global select_anchor_running
-    select_anchor_lock.acquire()
-    select_anchor_running = boolean
-    select_anchor_lock.release()
+def loop_finalization(solved_list, offset, center):
+    parameters = path_dic['parameters']
+    print("parameters")
+    data = None
+    xy_step = 1
+    theta_step = 360
+    with open(parameters, 'r') as f:
+        data = json.load(f)
+
+    if data is not None:
+        xy_step = data['xy_step']
+        theta_step = data['theta_step']
+        print(data['xy_grid_points'])
+        print(data.keys())
+    for pieces in solved_list:
+        name = pieces[0]
+        pos = pieces[1]
+        print(pos)
+
+        pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
+        print(pos)
+
+        pos = scale_to_solver(xy_step, theta_step, pos)
+        print(name, pos)
+        solved_pieces.append(pieces)
 
 
-def set_select_anchor_done(boolean):
-    global select_anchor_done
-    select_anchor_lock.acquire()
-    select_anchor_done = boolean
-    select_anchor_lock.release()
+def scale_to_solver(xy_step, theta_step, position):
+    y, x, rotation = position
+    x = -1 * x / xy_step
+    y = y / xy_step
+    x = round(x) # should I
+    y = round(y) # should I?
+    rotation = rotation / theta_step
 
-
-def set_pl_solver_done(boolean):
-    global pl_solver_done
-    pl_solver_lock.acquire()
-    pl_solver_done = boolean
-    pl_solver_lock.release()
-
-
-def set_select_neighbour_running(boolean):
-    global select_neighbour_running
-    select_neighbour_lock.acquire()
-    select_neighbour_running = boolean
-    select_neighbour_lock.release()
-
-
-def set_pl_solver_running(boolean):
-    global pl_solver_running
-    pl_solver_lock.acquire()
-    pl_solver_running = boolean
-    pl_solver_lock.release()
+    # centralizing in solution how can I get 16 from?! #ask LUCA
+    position = [x + 16, y + 16, rotation]
+    return position
 
 
 def start_anchor_thread():
@@ -192,7 +193,8 @@ def start_neighbour_thread():
 def start_pl_solver_thread():
     global pl_solver_thread
     global input_dict
-    input_dict = {'anchor': key_fragment, 'neighbours': neighbour_ids, 'puzzle': "repair_g28"}
+
+    input_dict = {'anchor': key_fragment, 'neighbours': neighbour_ids, 'solved_pieces': solved_pieces, 'puzzle': "repair_g28"}
 
     select_pl_solver = Thread(target=pl_solver_thread_function, daemon=True)
     select_pl_solver.start()
@@ -240,6 +242,41 @@ def set_select_neighbour_done(boolean):
     select_neighbour_lock.release()
 
 
+def set_select_anchor_running(boolean):
+    global select_anchor_running
+    select_anchor_lock.acquire()
+    select_anchor_running = boolean
+    select_anchor_lock.release()
+
+
+def set_select_anchor_done(boolean):
+    global select_anchor_done
+    select_anchor_lock.acquire()
+    select_anchor_done = boolean
+    select_anchor_lock.release()
+
+
+def set_pl_solver_done(boolean):
+    global pl_solver_done
+    pl_solver_lock.acquire()
+    pl_solver_done = boolean
+    pl_solver_lock.release()
+
+
+def set_select_neighbour_running(boolean):
+    global select_neighbour_running
+    select_neighbour_lock.acquire()
+    select_neighbour_running = boolean
+    select_neighbour_lock.release()
+
+
+def set_pl_solver_running(boolean):
+    global pl_solver_running
+    pl_solver_lock.acquire()
+    pl_solver_running = boolean
+    pl_solver_lock.release()
+
+
 def get_select_anchor_done():
     select_anchor_lock.acquire()
     answer = select_anchor_done
@@ -261,10 +298,6 @@ def scale_solution():
     global pl_solution
     global path_dic
     key_x, key_y, key_rotation = pl_solution[key_fragment]
-    parametrs = path_dic['parameters']
-    with open(parametrs, 'r') as f:
-        data = json.load(f)
-        print(data.keys())
 
     adjusted_solution = {}
 

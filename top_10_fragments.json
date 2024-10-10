@@ -1,18 +1,42 @@
 [
   {
+    "img_name": "piece_0005.png",
+    "score": 0.07635498046875
+  },
+  {
     "img_name": "piece_0008.png",
-    "score": 0.02736663818359375
+    "score": 0.05823516845703125
   },
   {
     "img_name": "piece_0003.png",
-    "score": 0.0217742919921875
+    "score": 0.0562744140625
+  },
+  {
+    "img_name": "piece_0006.png",
+    "score": 0.05237579345703125
+  },
+  {
+    "img_name": "piece_0002.png",
+    "score": 0.04846954345703125
   },
   {
     "img_name": "piece_0001.png",
-    "score": 0.0207977294921875
+    "score": 0.04059600830078125
   },
   {
     "img_name": "piece_0000.png",
-    "score": 0.01924896240234375
+    "score": 0.03934478759765625
+  },
+  {
+    "img_name": "piece_0007.png",
+    "score": 0.02864837646484375
+  },
+  {
+    "img_name": "piece_0004.png",
+    "score": 0.0226287841796875
+  },
+  {
+    "img_name": "piece_0009.png",
+    "score": 0.0216522216796875
   }
 ]
