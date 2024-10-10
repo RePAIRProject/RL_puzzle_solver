@@ -31,6 +31,7 @@ class Segmentator:
     def add_args(parser):
         parser.add_argument('--seg_torch_device', type=str, help='torch device to use')
         # SAM parameters
+        parser.add_argument('--seg_sam_type', type=str, default="mobile-sam", help='type of SAM model to use')
         parser.add_argument('--seg_sam_points_per_side', type=int, default=32, help='SAM points_per_side parameter')
         parser.add_argument('--seg_sam_stability_score_thresh', type=float, default=0.85, help='SAM stability_score_thresh parameter')
         # Save/Load parameters
@@ -73,19 +74,20 @@ class Segmentator:
         ppars['seg_torch_device'] = args.seg_torch_device
 
         ##### SAM
-        ppars['seg_model'] = 'sam_vit_b'
-        from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
-        self.sam = sam_model_registry["vit_b"](checkpoint="../PretrainedModels/SAM/sam_vit_b_01ec64.pth").to(self.device)
-
+        if args.seg_sam_type == 'sam_vit_b':
+            from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
+            self.sam = sam_model_registry["vit_b"](checkpoint="../PretrainedModels/SAM/sam_vit_b_01ec64.pth").to(self.device)
         ##### Mobile SAM
-        # ppars['seg_model'] = 'mobile_sam'
-        # from mobile_sam import SamAutomaticMaskGenerator, sam_model_registry
-        # self.sam = sam_model_registry["vit_h"](checkpoint="../PretrainedModels/MobileSAM/mobile_sam.pt").to(self.device)
-        
+        elif args.seg_sam_type == 'mobile_sam':
+            from mobile_sam import SamAutomaticMaskGenerator, sam_model_registry
+            self.sam = sam_model_registry["vit_t"](checkpoint="../PretrainedModels/MobileSAM/mobile_sam.pt").to(self.device)
+        else:
+            raise Exception(f'seg_sam_type "{args.seg_sam_type}" not recognized')
 
         #### Common
-        ppars['seg_sam_points_per_side'] = args.seg_sam_points_per_side
-        ppars['seg_sam_stability_score_thresh'] = args.seg_sam_stability_score_thresh
+        self.model_name = f'{args.seg_sam_type}_pps{args.seg_sam_points_per_side}_sst{args.seg_sam_stability_score_thresh}'
+        ppars['model_name'] = self.model_name
+
         self.grid = build_point_grid(args.seg_sam_points_per_side)
 
         self.sam_amg = SamAutomaticMaskGenerator(self.sam,
@@ -182,8 +184,8 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
     ### <hack>
     # we know no rotation
-    warnings.warn("Discard all rotation aprt from the 0-th")
-    valid_points_mask[:,:,1:] = 0
+    # warnings.warn("Discard all rotation apart from the 0-th")
+    # valid_points_mask[:,:,1:] = 0
     ### </hack>
 
     ### <hack>
@@ -223,10 +225,20 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
     os.makedirs(seg_folder,exist_ok=True)
 
     for k,(iy,ix,t) in enumerate(valid_points_idx):
+        if verbosity > 0:
+            print(f"processing {idx1}vs{idx2} y{iy} x{ix} r{t} ")
 
-        filename = f'pair_p{idx1}vs{idx2}_y{iy}_x{ix}_r{t}_pps{ppars['seg_sam_points_per_side']}_sst{ppars['seg_sam_stability_score_thresh']}'
+        # setting paths
 
-        filename_img = os.path.join(img_folder,filename + '.png')
+        basename = f'pair_p{idx1}vs{idx2}_y{iy}_x{ix}_r{t}'
+
+        filename_img = os.path.join(img_folder,basename + '.png')
+
+        filename_img_grid = os.path.join(img_folder,f'{basename}_grid.png')
+        filename_img_seg = os.path.join(img_folder,f'{basename}_seg_{segmentator.model_name}' + '.png')
+
+
+        
 
         if verbosity > 1:
             print(f"generating image... ",end='',flush=True)
@@ -248,38 +260,37 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         if verbosity > 1:
             print(f"done in {time.time()-start_img:.2f}s")
 
-        # if verbosity > 1:
-        #     print(".",end='',flush=True)
-
-        #
-        # if not os.path.isfile(filename_img):
-        #     cv2.imwrite(filename_img,cv2.cvtColor(images[k], cv2.COLOR_RGB2BGR))
-        
-
         # if detect_on_crop == True:
         #     img, x0, x1, y0, y1  = crop_to_content(pieces_ij_on_canvas, return_vals=True)
-            
-        # plt.imshow(cv2.cvtColor(images[k], cv2.COLOR_RGB2BGR))
-        # plt.show()
 
-        # Convert images to 8-bit
-        # images = np.uint8(images)
+        if not os.path.isfile(filename_img):
+            cv2.imwrite(filename_img,cv2.cvtColor(img_ij_on_canvas, cv2.COLOR_RGB2BGR))
 
-        #images = torch.from_numpy(images).permute(0,3,2,1) # no need to use .to(device)
-        # if verbosity > 1:
-        #     print("done")
+
+        #### Compute Compatibility ####
+
+        if distance(mask_i,mask_j) > 0:
+            if verbosity > 1:
+                print("pieces are not touching, skipping")
+            R_cost[iy, ix, t] = 0
+            continue
+        # print(f'distance: {distance(mask_i,mask_j)}')
+        # breakpoint()
 
 
         # Setting points
+        #sam_masked_grid_scaled = segmentator.grid
         sam_masked_grid_scaled = segmentator.set_point_grid_mask([mask_i,mask_j],ppars.canvas_size)
-        # plt.imshow(images[k])
-        # plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='white', s=1, marker='o')
-        # #plt.axis('off')
-        # plt.savefig(filename_img)
-        # plt.cla()
-        # continue
 
-        filename_seg = os.path.join(seg_folder,filename + '.npy')
+        plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='m', s=1, marker='o')
+        plt.imshow(img_ij_on_canvas)
+        plt.axis('off')
+        plt.savefig(filename_img_grid)
+        plt.cla()
+
+        # Segmentation
+
+        filename_seg = os.path.join(seg_folder,basename + '.npy')
 
         if ppars['seg_load_from_files']:
             if verbosity > 1:
@@ -294,7 +305,7 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
                 print("computing segmentation... ",end='',flush=True)
                 start_seg = time.time()  
 
-            print(f"feeding SAM with {len(sam_masked_grid_scaled)} points")
+                print(f"feeding SAM with {len(sam_masked_grid_scaled)} points")
 
             if len(sam_masked_grid_scaled) == 0:
                 raise Exception(f'SAM Mask should have some points!')
@@ -318,20 +329,21 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
         # Computing score
 
+        # if iy == 0  and ix == 4 and t == 1:
+        #     breakpoint()
         score = compute_score(mask_i,mask_j,masks)
-        
+    
 
         # Show the image with the segmentation superposed
-        plt.title(f"Masks: {len(masks)} Score: {score}")
+        plt.title(f"{basename}\nMasks: {len(masks)} Score: {score}")
         bw_img = cv2.cvtColor(img_ij_on_canvas,cv2.COLOR_RGB2GRAY)
         #breakpoint()
         bw_img_3c = np.dstack([bw_img,bw_img,bw_img])
         plt.imshow(bw_img_3c)
         #plt.imshow(mask_ij)
         show_anns(masks)
-        #plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='white', s=2, marker='o')
         plt.axis('off')
-        plt.savefig(filename_img)
+        plt.savefig(filename_img_seg)
         plt.cla()
         #breakpoint()
 
@@ -339,18 +351,45 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
     return R_cost
 
-
-def compute_score(mask_i,mask_j,masks):
+#
+def compute_score(mask_i,mask_j,masks,rel_thresh=0.05):
     score = 0
-    threshold = 0.01 * np.min([mask_i.sum(),mask_j.sum()])
+    n = 0
+
+    # the threshold is relative to the minimum between the areas of the pieces
+    threshold = rel_thresh * np.min([mask_i.sum(),mask_j.sum()])
+
+    # try to drop last one
+    # print("****************************DROPPING LAST MASK*************************")
+    # masks = masks[:-1]
 
     for mask_dict in masks:
         mask = mask_dict['segmentation'].astype(np.uint8)
         s1 = np.sum(mask * mask_i)
         s2 = np.sum(mask * mask_j)
+    
         if s1 > threshold and s2 > threshold:
-            score += 0.3
+            n += 1
+    
+    score = n / len(masks)
+
     return score
+
+def distance(mask_i,mask_j):
+
+    def find_contour(mask):
+        contour, _ = cv2.findContours(np.uint8(mask*255), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        return np.array(contour).squeeze()
+
+    contour_i = find_contour(mask_i)
+    contour_j = find_contour(mask_j)
+
+    d = np.min(np.sqrt(np.sum((contour_i[:, np.newaxis, :] - contour_j[np.newaxis, :, :]) ** 2, axis=2)))
+
+    return d
+
+
+
 
 # utility function to draw areas on top of image
 def show_anns(anns):
