@@ -32,13 +32,14 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     if return_solution_as == "nparray":
         - solution: a numpy array (shape: [len(fragments_list), 3] ) with (x, y, theta) values  
     """
+
     anchor_piece = fragments_list['anchor']
 
     neighbours = fragments_list['neighbours']
+    solved_pieces = fragments_list['solved_pieces']
     puzzle = fragments_list['puzzle']
 
-    print("anchor_piece", anchor_piece)
-    print("neighbours", neighbours)
+    print("solved_pieces", solved_pieces)
 
     pieces_folder = path_dic['pieces_path']
 
@@ -94,9 +95,8 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
 
     # print("piece names", pieces_included)
 
-    solution = solve_puzzle(R, anchor, pieces_included, ppars, return_as=return_solution_as)
-
-    print("solution", solution)
+    solution = solve_puzzle(R, anchor, pieces_included, ppars,
+                            return_as=return_solution_as, solved_pieces=solved_pieces)
 
     return solution
     
