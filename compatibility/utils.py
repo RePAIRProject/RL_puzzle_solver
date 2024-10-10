@@ -84,26 +84,26 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
                     print(f"Computing compatibility between Piece {idx1} and Piece {idx2}")
                     if idx2 - idx1 == 1:
                         plt.suptitle(f"COST between Piece {idx1} and Piece {idx2}", fontsize=32)
-                        R_cost = compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
+                        R_cost = compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2,
                                                     mask_ij, ppars, verbosity=verbosity, show=True)
                     else:
-                        R_cost = compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
+                        R_cost = compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                     mask_ij, ppars, verbosity=verbosity, show=False)
                 elif compatibility_cost == 'LAP':
-                    R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
+                    R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                     mask_ij, ppars, verbosity=verbosity)
                 elif compatibility_cost == 'LCI':
-                    R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
+                    R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                             mask_ij, ppars, verbosity=verbosity)
                 elif compatibility_cost == 'LAP2':
-                    R_cost = compute_cost_matrix_LAP_v2(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
+                    R_cost = compute_cost_matrix_LAP_v2(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                             mask_ij, ppars, verbosity=verbosity)
                 elif compatibility_cost == 'LAP3':
-                    R_cost = compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
+                    R_cost = compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                             mask_ij, ppars, verbosity=verbosity)
                 else:
                     print('weird: using {compatibility_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
-                    R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, line_matching_pars,
+                    R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                             mask_ij, ppars)
                 if verbosity > 1:
                     print(f"computed cost matrix for piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} candidate values) ")
