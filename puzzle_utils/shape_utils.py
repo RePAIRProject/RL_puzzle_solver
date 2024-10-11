@@ -478,6 +478,7 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
         # motif_folder = os.path.join(root_folder, fnames.motifs_output_name, method)  #TODO - add method to detection path !!! Yolo5 ect...
         motif_files = os.listdir(motif_folder)
         motif = [line for line in motif_files if line.endswith('.npy')]
+        motif.sort()
         assert len(polygons) == len(motif), f'Error: have {len(polygons)} polygons files and {len(motif)} motif files, they should have the same length!'
 
     for piece in pieces:
