@@ -492,7 +492,7 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
 
         #assert(type(np.load(polygon_path, allow_pickle=True).tolist()) == shapely.Polygon), "The polygon is not a shapely.Polygon! Check the files!"
         if line_based == True:
-            lines_path = os.path.join(lines_folder, f"{piece_ID}.json")
+            lines_path = os.path.join(lines_folder, f"{piece['id']}.json")
             with open(lines_path, 'r') as file:
                 piece['extracted_lines'] = json.load(file)
             drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape, line_thickness, use_color=False)

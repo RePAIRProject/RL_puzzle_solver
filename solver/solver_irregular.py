@@ -357,8 +357,8 @@ def main(args):
         cmp_name = f"motifs_{args.det_method}"
         # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
     elif args.cmp_type == 'color':
-        cmp_name = f"cmp_color"
-        #cmp_name = f"color_border{args.border_len}"
+        #cmp_name = f"cmp_color"
+        cmp_name = f"color_border{args.border_len}"
     else:
         cmp_name = f"cmp_{args.cmp_type}"
 
@@ -591,6 +591,7 @@ if __name__ == '__main__':
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
     parser.add_argument('--p_pts', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
+    parser.add_argument('--k', type=int, default=5, help='keep the best k values (for each pair) in the compatibility')   
     parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo', 'motifs'])
     parser.add_argument('--combo_type', type=str, default='LS',
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\

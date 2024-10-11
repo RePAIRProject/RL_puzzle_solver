@@ -45,7 +45,7 @@ def main(args):
         
         # PARAMETERS
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
-        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
+        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters_v2.json')
         # if os.path.exists(cmp_parameter_path):
         #     print("never tested! remove this comment afterwars (line 53 of comp_irregular.py)")
         #     with open(cmp_parameter_path, 'r') as cp:
@@ -208,72 +208,72 @@ def main(args):
                         RM_lines[:, :, t, j, i] = resized_lines
                         RM_shapes[:, :, t, j, i] = (resized_shape.astype(np.int32) - 1)
 
-                        # if args.DEBUG is True:
-                        #     pdb.set_trace()
-                        #     plt.suptitle(f"Piece {i} against piece {j} on rotation {t}")
-                        #     plt.subplot(631);
-                        #     plt.imshow(piece_i_on_canvas['img']);
-                        #     plt.title("Fixed in the center")
-                        #     plt.subplot(632);
-                        #     plt.imshow(piece_j_on_canvas['img']);
-                        #     plt.title("Moving around")
-                        #     coords = (center_pos + 3 * ppars.xy_step, center_pos - 1 * ppars.xy_step)
-                        #     print(coords)
-                        #     # piece_j_correct = place_on_canvas(pieces[j], coords, ppars.canvas_size, 0)
-                        #     # plt.subplot(633); plt.imshow(piece_i_on_canvas['img'] + piece_j_correct['img'])
-                        #     # plt.subplot(333); plt.imshow(around_borders_trm); plt.title("Borders")
-                        #     # shapes
-                        #     plt.subplot(634)
-                        #     plt.imshow(overlap_shapes)
-                        #     plt.title("Overlap Shapes")
-                        #     # plt.subplot(435); plt.imshow(around_borders_trm); plt.title("Borders")
-                        #     # plt.subplot(435); plt.imshow(thresholded_regions_map); plt.title("Region Map Shapes")
-                        #     plt.subplot(635)
-                        #     plt.imshow(thr_reg_map_comp_range)
-                        #     plt.title("Region Map Shapes (uint8)")
-                        #     plt.subplot(636)
-                        #     plt.imshow(resized_shape)
-                        #     plt.title("Region Map Shapes (resized)")
-                        #     # lines
-                        #     plt.subplot(637)
-                        #     plt.imshow(piece_i_on_canvas['lines_mask'])
-                        #     plt.title(f"Lines Mask {i}")
-                        #     plt.subplot(638)
-                        #     plt.imshow(piece_j_on_canvas['lines_mask'])
-                        #     plt.title(f"Lines Mask {j}")
-                        #     # plt.subplot(639); plt.imshow(resized_lines); plt.title("Overlap Lines (resized)")
-                        #     # lines
-                        #     plt.subplot(6, 3, 10)
-                        #     plt.imshow(overlap_lines)
-                        #     plt.title("Overlap Lines (values)")
-                        #     plt.subplot(6, 3, 11)
-                        #     plt.imshow(binary_overlap_lines)
-                        #     plt.title("Overlap Lines (mask)")
-                        #     plt.subplot(6, 3, 12)
-                        #     plt.imshow(resized_lines)
-                        #     plt.title("Overlap Lines (resized)")
-                        #     # combo
-                        #     plt.subplot(6, 3, 13)
-                        #     plt.imshow(combo)
-                        #     plt.title("Overlap Combo (mask)")
-                        #     plt.subplot(6, 3, 14)
-                        #     plt.imshow(combo_comp_range)
-                        #     plt.title("Overlap Combo (uint8)")
-                        #     plt.subplot(6, 3, 15)
-                        #     plt.imshow(resized_combo)
-                        #     plt.title("Overlap Combo (resized)")
-                        #     # results
-                        #     plt.subplot(6, 3, 16);
-                        #     plt.imshow(RM_lines[:, :, t, j, i]);
-                        #     plt.title("Lines")
-                        #     plt.subplot(6, 3, 17);
-                        #     plt.imshow(RM_shapes[:, :, t, j, i]);
-                        #     plt.title("Shapes")
-                        #     plt.subplot(6, 3, 18);
-                        #     plt.imshow(RM_combo[:, :, t, j, i]);
-                        #     plt.title("Combo")
-                        #     plt.show()
-                        #     pdb.set_trace()
+                        if args.DEBUG is True:
+                            pdb.set_trace()
+                            plt.suptitle(f"Piece {i} against piece {j} on rotation {t}")
+                            plt.subplot(631);
+                            plt.imshow(piece_i_on_canvas['img']);
+                            plt.title("Fixed in the center")
+                            plt.subplot(632);
+                            plt.imshow(piece_j_on_canvas['img']);
+                            plt.title("Moving around")
+                            coords = (center_pos + 3 * ppars.xy_step, center_pos - 1 * ppars.xy_step)
+                            print(coords)
+                            # piece_j_correct = place_on_canvas(pieces[j], coords, ppars.canvas_size, 0)
+                            # plt.subplot(633); plt.imshow(piece_i_on_canvas['img'] + piece_j_correct['img'])
+                            # plt.subplot(333); plt.imshow(around_borders_trm); plt.title("Borders")
+                            # shapes
+                            plt.subplot(634)
+                            plt.imshow(overlap_shapes)
+                            plt.title("Overlap Shapes")
+                            # plt.subplot(435); plt.imshow(around_borders_trm); plt.title("Borders")
+                            # plt.subplot(435); plt.imshow(thresholded_regions_map); plt.title("Region Map Shapes")
+                            plt.subplot(635)
+                            plt.imshow(thr_reg_map_comp_range)
+                            plt.title("Region Map Shapes (uint8)")
+                            plt.subplot(636)
+                            plt.imshow(resized_shape)
+                            plt.title("Region Map Shapes (resized)")
+                            # lines
+                            plt.subplot(637)
+                            plt.imshow(piece_i_on_canvas['lines_mask'])
+                            plt.title(f"Lines Mask {i}")
+                            plt.subplot(638)
+                            plt.imshow(piece_j_on_canvas['lines_mask'])
+                            plt.title(f"Lines Mask {j}")
+                            # plt.subplot(639); plt.imshow(resized_lines); plt.title("Overlap Lines (resized)")
+                            # lines
+                            plt.subplot(6, 3, 10)
+                            plt.imshow(overlap_lines)
+                            plt.title("Overlap Lines (values)")
+                            plt.subplot(6, 3, 11)
+                            plt.imshow(binary_overlap_lines)
+                            plt.title("Overlap Lines (mask)")
+                            plt.subplot(6, 3, 12)
+                            plt.imshow(resized_lines)
+                            plt.title("Overlap Lines (resized)")
+                            # combo
+                            plt.subplot(6, 3, 13)
+                            plt.imshow(combo)
+                            plt.title("Overlap Combo (mask)")
+                            plt.subplot(6, 3, 14)
+                            plt.imshow(combo_comp_range)
+                            plt.title("Overlap Combo (uint8)")
+                            plt.subplot(6, 3, 15)
+                            plt.imshow(resized_combo)
+                            plt.title("Overlap Combo (resized)")
+                            # results
+                            plt.subplot(6, 3, 16);
+                            plt.imshow(RM_lines[:, :, t, j, i]);
+                            plt.title("Lines")
+                            plt.subplot(6, 3, 17);
+                            plt.imshow(RM_shapes[:, :, t, j, i]);
+                            plt.title("Shapes")
+                            plt.subplot(6, 3, 18);
+                            plt.imshow(RM_combo[:, :, t, j, i]);
+                            plt.title("Combo")
+                            plt.show()
+                            pdb.set_trace()
         print("\n")
         print('Done calculating')
         print('#' * 50)
