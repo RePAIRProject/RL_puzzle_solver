@@ -6,7 +6,8 @@ import pdb, os, json
 from scipy.io import loadmat, savemat
 import datetime
 import matplotlib.pyplot as plt 
-import time 
+import time
+from ultralytics import YOLO
 
 
 # internal
@@ -100,16 +101,18 @@ def main(args):
         motif_based = False
         if args.cmp_type == 'motifs':
             motif_based = True
-            if args.det_method == 'yolo-bbox':
-                from ultralytics import YOLOv10 as YOLO
-            elif args.det_method == 'yolo-obb':
-                from ultralytics import YOLO
+            #if args.det_method == 'yolo-bbox':
+                #from ultralytics import YOLOv10 as YOLO
+            #if args.det_method == 'yolo-obb':
+                #from ultralytics import YOLO
             if args.yolo_path == '':
                 raise Exception("You are trying to use yolo-based motif compatibility without specifying the yolo model to be used.\
                     \nPlease set the path with `--yolo_path path_to_the_pt_model` and relaunch")
             yolov8_model_path = args.yolo_path
-            yolov8_obb_detector = YOLO(yolov8_model_path)
             ppars['yolo_path'] = yolov8_model_path
+
+            yolov8_obb_detector = YOLO(yolov8_model_path)
+
         else:
             yolov8_obb_detector = None
         ppars['motif_based'] = motif_based
