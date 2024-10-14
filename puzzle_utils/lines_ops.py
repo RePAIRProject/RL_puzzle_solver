@@ -14,6 +14,7 @@ from scipy.spatial import distance
 from scipy.optimize import linear_sum_assignment
 #from itertools import compress
 import time 
+from .shape_utils import place_on_canvas
 
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
@@ -108,7 +109,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars, pol
         plt.plot(*(piece_j_shape.boundary.xy), linewidth=7, color='orange')
         plt.plot(*(piece_j_trans.boundary.xy), linewidth=5, color='red')
         
-        poly_lines = poly_l.tolist()
+        poly_lines = poly_l.tline_poligon_intersectolist()
         poly_lines_rot = rotate(poly_lines, theta_l, origin=[pars.p_hs, pars.p_hs])
         poly_lines_tra = transform(poly_lines_rot, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
 
@@ -156,6 +157,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
     # check if line crosses the polygon
     # z_p1 = [0,0],  z_l2 = z,
     # z_p2 = z,   z_l1 = [0,0],
+    # plt.ion()
     intersections = []
     useful_lines_s1 = []
     useful_lines_s2 = []
@@ -171,7 +173,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
     # plt.title("Original")
     # plt.plot(*piece_j_shape.boundary.xy)
     # plt.subplot(122) 
-    # plt.title(f"Transformation (z_p: {z_p}, z_l: {z_l})")   
+    # plt.title(f"Transformation (z_p: {z_p}, z_l: {z_l}, theta_p: {theta_p})")   
     # plt.plot(*piece_j_trans.boundary.xy)
     for (p1, p2) in zip(s1, s2):
         
@@ -209,48 +211,128 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
                 intersections.append(False)
                 if return_shapes == True:
                     trans_lines.append(candidate_line_extrap)
+                # canvas_aligned_line = []
+                # for p in candidate_line_extrap.xy: 
+                #     canvas_aligned_line.append(np.asarray(p)+pars.canvas_size // 2)
+                # #breakpoint()
+                # plt.plot(canvas_aligned_line[0], canvas_aligned_line[1], linewidth='3', color="orange")
             else:
                 intersections.append(True)
                 if return_shapes == True:
                     trans_useful_lines.append(candidate_line_extrap)
+                # canvas_aligned_line = []
+                # for p in candidate_line_extrap.xy: 
+                #     canvas_aligned_line.append(np.asarray(p)+pars.canvas_size // 2)
+                # #breakpoint()
+                # plt.plot(canvas_aligned_line[0], canvas_aligned_line[1], linewidth='3', color="blue")
                 # plt.subplot(122)
                 # plt.plot(*candidate_line_trans.xy, linewidth=5, color="red")
                 # plt.plot(*candidate_line_extrap.xy, linewidth=2, color="blue")
-    
+                # print('drawn')
     # plt.plot(*candidate_poly_l_trans.boundary.xy)
     # plt.plot(*candidate_line_trans.xy, linewidth=5, color="red")
-    # plt.plot(*candidate_line_extrap.xy, linewidth=2, color="blue")
+    #breakpoint()
+    
+
+    #plt.plot(*candidate_line_extrap.xy, linewidth=2, color="blue")
     # plt.axis('equal')
-    # plt.show()
-    # pdb.set_trace()
+    # #plt.show()
+    # breakpoint()
+    # plt.cla()
     if return_shapes == True:
         return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2), piece_j_trans, trans_lines, trans_useful_lines
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
 
 def getExtrapoledLine(line, dist, poly, border_tolerance):
 
-    'Creates a line extrapoled in p1->p2 direction'
+    'Creates a line extrapoled'
     p1 = line.coords[0]
     p2 = line.coords[1]
 
     line_importance = distance.euclidean(p1, p2)
     if np.isclose(line_importance, 0):
         pdb.set_trace()
-    dist_ratio = dist / line_importance
+    dist_ratio = dist / line_importance / 4
     if line_importance < border_tolerance*2:
         dist_ratio*=0.1
 
-    if not shapely.is_empty(shapely.intersection(shapely.Point(p1), poly.boundary.buffer(border_tolerance))):
-        a = (p2[0]+dist_ratio*(p1[0]-p2[0]), p2[1]+dist_ratio*(p1[1]-p2[1]))
-    else:
-        a = p1
+    a = p2
+    b = p1
 
+    # if p1 touches the boundary, we move it away from p2!
+    if not shapely.is_empty(shapely.intersection(shapely.Point(p1), poly.boundary.buffer(border_tolerance))):
+        b = (p1[0]+dist_ratio*(p1[0]-p2[0]), p1[1]+dist_ratio*(p1[1]-p2[1]))
+    
+    # if p2 also touches the boundary, we move it away from p1!
     if not shapely.is_empty(shapely.intersection(shapely.Point(p2), poly.boundary.buffer(border_tolerance))):
-        b = (p1[0]+dist_ratio*(p2[0]-p1[0]), p1[1]+dist_ratio*(p2[1]-p1[1]))
-    else:
-        b = p2
+        a = (p2[0]+dist_ratio*(p2[0]-p1[0]), p2[1]+dist_ratio*(p2[1]-p1[1]))
+
+    # # p2 is the final point, move away from p1
+    # if not shapely.is_empty(shapely.intersection(shapely.Point(p1), poly.boundary.buffer(border_tolerance))):
+    #     a = (p2[0]+dist_ratio*(p1[0]-p2[0]), p2[1]+dist_ratio*(p1[1]-p2[1]))
+    # else:
+    #     a = p1
+
+    # if not shapely.is_empty(shapely.intersection(shapely.Point(p2), poly.boundary.buffer(border_tolerance))):
+    #     b = (p1[0]+dist_ratio*(p2[0]-p1[0]), p1[1]+dist_ratio*(p2[1]-p1[1]))
+    # else:
+    #     b = p2
 
     return shapely.LineString([a, b])
+
+
+def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece_j, mask_ij, ppars, verbosity=1):
+
+    alfa1, r1, s11, s12, color1, cat1 = lines_pi
+    alfa2, r2, s21, s22, color2, cat2 = lines_pj
+    R_cost = np.ones((grid_xy.shape[1], grid_xy.shape[1], len(rot))) * (ppars.badmatch_penalty + 1)
+    plt.ion()
+    for t in range(len(rot)):
+        theta = rot[t]
+        theta_rad = rot[t] * np.pi / 180     # np.deg2rad(theta) ?
+        for ix in range(grid_xy.shape[1]): 
+            for iy in range(grid_xy.shape[1]):
+                xy = grid_xy[iy, ix]            # ??? [iy,ix] ??? strange...
+                valid_point = mask_ij[iy, ix, t]
+                if valid_point > 0:
+
+                    center_pos = ppars.canvas_size // 2
+                    piece_i_on_canvas = place_on_canvas(piece_i, (center_pos, center_pos), ppars.canvas_size, 0)
+                    piece_j_on_canvas = place_on_canvas(piece_j, (center_pos + xy[0], center_pos + xy[1]), ppars.canvas_size, theta)
+                    overlap_area = piece_i_on_canvas['mask'] + piece_j_on_canvas['mask']
+                    pieces_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img'] * (np.dstack(((overlap_area < 2), (overlap_area < 2), (overlap_area < 2)))).astype(int)
+                    plt.imshow(pieces_ij_on_canvas)
+                    plt.plot(*piece_i_on_canvas['polygon'].boundary.xy)
+                    plt.plot(*piece_j_on_canvas['polygon'].boundary.xy)
+
+                    intersections1, useful_lines_s11, useful_lines_s12 = \
+                        line_poligon_intersect(xy[::-1], -theta, piece_j['polygon'], [0, 0],  0, \
+                            piece_i['polygon'], s11, s12, ppars, extrapolate=True)
+                    
+                    # return intersections                    
+                    useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
+                    useful_lines_color1 = color1[intersections1]
+                    useful_lines_cat1 = cat1[intersections1]
+                    useful_lines_s11 = useful_lines_s11[intersections1]
+                    useful_lines_s12 = useful_lines_s12[intersections1]
+
+                    # check if line2 crosses the polygon1
+                    intersections2, useful_lines_s21, useful_lines_s22 = \
+                        line_poligon_intersect([0, 0], 0, piece_i['polygon'], xy[::-1], -theta, \
+                            piece_j['polygon'], s21, s22, ppars, extrapolate=True)
+
+                    useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
+                    useful_lines_color2 = color2[intersections2]
+                    useful_lines_cat2 = cat2[intersections2]
+                    useful_lines_s21 = useful_lines_s21[intersections2]
+                    useful_lines_s22 = useful_lines_s22[intersections2]
+
+                    n_lines_f1 = useful_lines_alfa1.shape[0]
+                    n_lines_f2 = useful_lines_alfa2.shape[0]
+
+                    breakpoint()
+                    plt.cla()
+                    
 
 
 def compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, mask_ij, ppars, verbosity=1):

@@ -2,7 +2,7 @@ import numpy as np
 from puzzle_utils.shape_utils import compute_SDF_cost_matrix
 from puzzle_utils.lines_ops import compute_cost_matrix_LAP_debug, compute_cost_matrix_LAP, \
         compute_cost_matrix_LAP_v2, compute_cost_matrix_LAP_v3, compute_cost_matrix_LCI_method, \
-        extract_from
+        extract_from, compute_cost_matrix_LAP_vis
 from compatibility.compatibility_Motifs import compute_cost_using_motifs_compatibility
 from compatibility.compatibility_MGC import compute_cost_using_color_compatibility
 import time
@@ -101,6 +101,12 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
                 elif compatibility_cost == 'LAP3':
                     R_cost = compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                             mask_ij, ppars, verbosity=verbosity)
+                elif compatibility_cost == 'LAPvis':
+                    lines_pi = alfa1, r1, s11, s12, color1, cat1
+                    lines_pj = alfa2, r2, s21, s22, color2, cat2 
+                    piece_i = pieces[idx1]
+                    piece_j = pieces[idx2]
+                    R_cost = compute_cost_matrix_LAP_vis(z_id, rot, lines_pi, lines_pj, piece_i, piece_j, mask_ij, ppars, verbosity=1)
                 else:
                     print('weird: using {compatibility_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
                     R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 

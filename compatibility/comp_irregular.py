@@ -451,7 +451,7 @@ if __name__ == '__main__':
         help='Chooses the cost used to compute compatibility - it depends on the `--cmp_type`\
             \nUse LAP, LAP3 or LCI for lines, YOLO or overlap for motif, SDF for shape, MGC for color', 
         choices=[
-            'LAP', 'LAP3', 'LCI', # line-based 
+            'LAP', 'LAP3', 'LAPvis', 'LCI', # line-based 
             'YOLO_conf', 'overlap', # motif-based
             'SDF', # shape-based
             'MGC' # color-based

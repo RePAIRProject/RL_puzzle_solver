@@ -12,7 +12,48 @@ import shapely
 from shapely import transform
 from shapely.affinity import rotate
 import json
-from puzzle_utils.lines_ops import draw_lines
+def extract_from(lines_dict):
+    """
+    It just unravels the different parts of the extracted line dictionary 
+    """
+    angles = np.asarray(lines_dict['angles'])
+    dists = np.asarray(lines_dict['dists'])
+    p1s = np.asarray(lines_dict['p1s'])
+    p2s = np.asarray(lines_dict['p2s'])
+    # optional but used almost always now
+    if 'categories' in lines_dict.keys():
+        cats = np.asarray(lines_dict['categories'])
+    else:
+        print("Warning, missing categories")
+        cats = []
+    if 'colors' in lines_dict.keys():
+        colors = np.asarray(lines_dict['colors'])
+    else:
+        print("Warning, empty colors in the lines!")
+        colors = []
+    
+    return angles, dists, p1s, p2s, colors, cats
+    
+# from puzzle_utils.lines_ops import draw_lines
+def draw_lines(lines_dict, img_shape, thickness=1, color=255, use_color=False):
+    angles, dists, p1s, p2s, colors, cats = extract_from(lines_dict)
+    if use_color == True:
+        print("WARNING: probably not working! Check the image creation")
+        lines_img = np.zeros(shape=img_shape, dtype=np.uint8)
+        if len(colors) > 0:
+            j = 0
+            assert(len(colors)==len(p1s)), f"different numbers of colors ({len(colors)}) and lines ({len(p1s)}) in the .json file!"
+    lines_img = np.zeros(shape=img_shape[:2], dtype=np.uint8)
+    for p1, p2 in zip(p1s, p2s):
+        if use_color == False:
+            lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(1), thickness=thickness)        
+        else:
+            if len(colors) > 0:
+                color = colors[j]
+                j += 1
+            lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(color), thickness=thickness)        
+    #cv2.imwrite(os.path.join(lin_output, f"{pieces_names[k][:-4]}_l.jpg"), 255-lines_img)
+    return lines_img 
 
 def get_polygon(binary_image):
     bin_img = binary_image.copy()
