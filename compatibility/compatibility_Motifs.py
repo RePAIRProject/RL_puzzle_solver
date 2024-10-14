@@ -90,9 +90,9 @@ def motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, 
                     detected = yolo_obj_detector(img_pil, verbose=False)[0]
                     
                     ### Check Poly-motif-bb intersection
-                    plt.imshow(pieces_ij_on_canvas)
-                    plt.plot(*piece_i_on_canvas['polygon'].boundary.xy)
-                    plt.plot(*piece_j_on_canvas['polygon'].boundary.xy)
+                    # plt.imshow(pieces_ij_on_canvas)
+                    # plt.plot(*piece_i_on_canvas['polygon'].boundary.xy)
+                    # plt.plot(*piece_j_on_canvas['polygon'].boundary.xy)
                     score_sum_conf = 0; cont1 = 0
                     score_sum_overlap = 0; cont2 = 0
                     if det_type == 'yolo-obb':
