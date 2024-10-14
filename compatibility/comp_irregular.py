@@ -124,7 +124,8 @@ def main(args):
                 seg_len = ppars.xy_step
             else:
                 seg_len = args.border_len
-        print("Using border length of {seg_len} pixels")
+        if color_based == True:
+            print(f"Using border length of {seg_len} pixels")
         ppars['color_based'] = color_based
         ppars['seg_len'] = seg_len
         ppars['k'] = args.k

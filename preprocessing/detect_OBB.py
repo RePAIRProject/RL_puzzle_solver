@@ -53,6 +53,7 @@ def main(args):
         motifs_output = f'/home/marina/PycharmProjects/RL_puzzle_solver/output/RePair_new/RPobj_g{obj_num}_o{obj_num:04d}_gt_rot'
     else:
         imgs_folder = os.path.join(args.images, 'pieces')
+        motifs_output = args.images
 
     motifs_output = os.path.join(motifs_output, 'motifs_detection_OBB')
     #motifs_output = os.path.join(args.images, 'motifs_detection_OBB')

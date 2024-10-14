@@ -148,10 +148,12 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
             piece_motif_mask = scipy.ndimage.rotate(piece_motif_mask, theta, reshape=False, mode='constant')
         #piece['cm'] = get_cm(piece_mask)
         if 'polygon' in piece.keys():
-            piece['polygon'] = rotate(piece['polygon'], -theta, origin=half_piece_shift)
-    
+            rotated_poly = rotate(piece['polygon'], -theta, origin=half_piece_shift)
+    else:
+        rotated_poly = piece['polygon']
+        
     if 'polygon' in piece.keys():
-        poly_on_canvas = transform(piece['polygon'], lambda f: f + [x,y] - half_piece_shift)
+        poly_on_canvas = transform(rotated_poly, lambda f: f + [x,y] - half_piece_shift)
 
     if piece['img'].shape[0] % 2 == 0:
         msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
