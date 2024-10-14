@@ -146,12 +146,13 @@ def loop_finalization(solved_list, offset, center):
     theta_step = 360
     with open(parameters, 'r') as f:
         data = json.load(f)
+        if data is not None:
+            xy_step = data['xy_step']
+            theta_step = data['theta_step']
+            print(data['p_hs'])
+            print(data.keys())
 
-    if data is not None:
-        xy_step = data['xy_step']
-        theta_step = data['theta_step']
-        print(data['xy_grid_points'])
-        print(data.keys())
+
     for pieces in solved_list:
         name = pieces[0]
         pos = pieces[1]

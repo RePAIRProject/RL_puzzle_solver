@@ -670,7 +670,8 @@ def setting():  # unified path setting
                                      "\n",
                                      "number_of_anchors: 4",
                                      "\n",
-                                     "dataset_name: RePair_group_28"
+                                     "dataset_name: RePair_group_28",
+                                     "\n"
                                      ])
     os_path = os.getcwd()
     if os.path.exists(setting_path):
@@ -707,6 +708,8 @@ def setting():  # unified path setting
                     number_of_anchors = int(line.split('number_of_anchors: ')[1].strip())
                 elif line.startswith('dataset_name:'):
                     dataset_name = line.split('dataset_name: ')[1].strip()
+                elif line.startswith('solver_parameters:'):
+                    solver_parameters = os_path + line.split('solver_parameters: ')[1].strip()
     cache_path = "/GUI/pieces/"
     cache_path = os_path + cache_path
     path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path, 'comp_path': comp_path,
@@ -714,7 +717,7 @@ def setting():  # unified path setting
                 'rotation_intervals': rotation_intervals, 'ground_truth': ground_truth,
                 'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
                 'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors,
-                'dataset_name': dataset_name, 'cache_path': cache_path}
+                'dataset_name': dataset_name, 'cache_path': cache_path, 'solver_parameters': solver_parameters}
     image_path = image_path
     mask_path = mask_path
     backend_path = backend_path
