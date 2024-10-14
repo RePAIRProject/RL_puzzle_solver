@@ -36,10 +36,11 @@ class Segmentator:
         parser.add_argument('--seg_sam_stability_score_thresh', type=float, default=0.85, help='SAM stability_score_thresh parameter')
         # Save/Load parameters
         parser.add_argument('--seg_load_from_files',action=argparse.BooleanOptionalAction, default=False, help='Load segmentations from files')
-        parser.add_argument('--seg_save_to_files',action=argparse.BooleanOptionalAction, default=True, help='Save segmentations from files')
+        parser.add_argument('--seg_save_to_files',action=argparse.BooleanOptionalAction, default=False, help='Save segmentations to files')
         # Debugging
         parser.add_argument('--seg_break_each_pair',action=argparse.BooleanOptionalAction, default=False, help='Set a breakpoint after each pair')
 
+        parser.add_argument('--seg_save_images',action=argparse.BooleanOptionalAction, default=True, help='Save images')
         
         #parser.add_argument('--seg_sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
         #parser.add_argument('--seg_sam_model_type', type=str, choices=['default','vit_h','vit_l','vit_b'], help='SAM model type')
@@ -53,6 +54,7 @@ class Segmentator:
         ppars['seg_save_to_files'] = args.seg_save_to_files
 
         ppars['seg_break_each_pair'] = args.seg_break_each_pair
+        ppars['seg_save_images'] = args.seg_save_images
 
         #ppars['seg_sam_model_type'] = args.seg_sam_model_type
         #ppars['seg_sam_model_path'] = args.seg_sam_model_path
@@ -209,13 +211,13 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
     valid_points_idx = np.argwhere(valid_points_mask)
 
     if verbosity > 1:
-        print(f"found {len(valid_points_idx)} valid points")
+        print(f"found {len(valid_points_idx)} valid configurations")
 
 
     # One day this will be processed in batches, but that day is not today
     #images = np.zeros((len(valid_points_idx),ppars.canvas_size,ppars.canvas_size,3),dtype=np.uint8)
 
-    folder = os.path.join(ppars['puzzle_root_folder'],f'seg/pairs/{idx1}vs{idx2}')
+    folder = os.path.join(ppars['puzzle_root_folder'],f'segmentation/pairs/{idx1}vs{idx2}')
     img_folder  = os.path.join(folder,'img')
     seg_folder  = os.path.join(folder,'seg')
 
@@ -225,7 +227,7 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
     os.makedirs(seg_folder,exist_ok=True)
 
     for k,(iy,ix,t) in enumerate(valid_points_idx):
-        if verbosity > 0:
+        if verbosity > 1:
             print(f"processing {idx1}vs{idx2} y{iy} x{ix} r{t} ")
 
         # setting paths
@@ -236,6 +238,7 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
         filename_img_grid = os.path.join(img_folder,f'{basename}_grid.png')
         filename_img_seg = os.path.join(img_folder,f'{basename}_seg_{segmentator.model_name}' + '.png')
+        filename_img_masks = os.path.join(img_folder,f'{basename}_seg_{segmentator.model_name}_masks' + '.png')
 
 
         
@@ -253,6 +256,8 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         piece_j_on_canvas = place_on_canvas(pieces[idx2], (x_j_pixel, y_j_pixel), ppars.canvas_size, t * ppars.theta_step)
         img_ij_on_canvas = np.uint8(piece_i_on_canvas['img'] + piece_j_on_canvas['img'])
 
+        img_ij_on_canvas = np.uint8(enhance_img(img_ij_on_canvas))
+
         mask_i = piece_i_on_canvas['mask']
         mask_j = piece_j_on_canvas['mask']
         mask_ij = np.bool(mask_i) | np.bool(mask_j)
@@ -263,17 +268,14 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         # if detect_on_crop == True:
         #     img, x0, x1, y0, y1  = crop_to_content(pieces_ij_on_canvas, return_vals=True)
 
-        if not os.path.isfile(filename_img):
-            cv2.imwrite(filename_img,cv2.cvtColor(img_ij_on_canvas, cv2.COLOR_RGB2BGR))
-
 
         #### Compute Compatibility ####
-
-        if distance(mask_i,mask_j) > 0:
-            if verbosity > 1:
-                print("pieces are not touching, skipping")
-            R_cost[iy, ix, t] = 0
-            continue
+        dist = distance(mask_i,mask_j)
+        # if  dist > 0:
+        #     if verbosity > 1:
+        #         print(f"pieces are not touching (distance {dist}), skipping")
+        #     R_cost[iy, ix, t] = 0
+        #     continue
         # print(f'distance: {distance(mask_i,mask_j)}')
         # breakpoint()
 
@@ -281,14 +283,33 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         # Setting points
         #sam_masked_grid_scaled = segmentator.grid
         sam_masked_grid_scaled = segmentator.set_point_grid_mask([mask_i,mask_j],ppars.canvas_size)
+        
+        save_img = ppars['seg_save_images']
+        skip_seg = False
+        if len(sam_masked_grid_scaled) == 0:
+                warnings.warn(f'{basename}: SAM point grid does not contain any point')
+                skip_seg = True
+                save_img = True
 
-        plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='m', s=1, marker='o')
-        plt.imshow(img_ij_on_canvas)
-        plt.axis('off')
-        plt.savefig(filename_img_grid)
-        plt.cla()
+        #if not os.path.isfile(filename_img):
+        if save_img:
+            cv2.imwrite(filename_img,cv2.cvtColor(img_ij_on_canvas, cv2.COLOR_RGB2BGR))
+
+        if ppars['seg_save_images']:
+            plt.title(f'Distance: {dist:.2f}')
+            plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='m', s=0.1, marker='o')
+            plt.imshow(img_ij_on_canvas)
+            plt.axis('off')
+            plt.savefig(filename_img_grid)
+            plt.cla()
+
 
         # Segmentation
+
+        if skip_seg:
+            print("Skipping segmentation")
+            R_cost[iy, ix, t] = 0
+            continue
 
         filename_seg = os.path.join(seg_folder,basename + '.npy')
 
@@ -301,14 +322,14 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
         else:
             # Compute segmentation
+            
             if verbosity > 1:
                 print("computing segmentation... ",end='',flush=True)
                 start_seg = time.time()  
 
                 print(f"feeding SAM with {len(sam_masked_grid_scaled)} points")
 
-            if len(sam_masked_grid_scaled) == 0:
-                raise Exception(f'SAM Mask should have some points!')
+            
             
             masks = segmentator(img_ij_on_canvas)
 
@@ -334,24 +355,28 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         score = compute_score(mask_i,mask_j,masks)
     
 
-        # Show the image with the segmentation superposed
-        plt.title(f"{basename}\nMasks: {len(masks)} Score: {score}")
-        bw_img = cv2.cvtColor(img_ij_on_canvas,cv2.COLOR_RGB2GRAY)
+        if ppars['seg_save_images']:
+        # Show the black and white image with the segmentation superposed
+            plt.title(f"{basename}\nMasks: {len(masks)} Score: {score}")      
+            plt.imshow(to_grey_scale(img_ij_on_canvas))
+            show_anns(masks)
+            plt.axis('off')
+            plt.savefig(filename_img_seg)
+            plt.cla()
+
         #breakpoint()
-        bw_img_3c = np.dstack([bw_img,bw_img,bw_img])
-        plt.imshow(bw_img_3c)
-        #plt.imshow(mask_ij)
-        show_anns(masks)
-        plt.axis('off')
-        plt.savefig(filename_img_seg)
-        plt.cla()
-        #breakpoint()
+
+        # show_image_with_masks(img_ij_on_canvas,masks)
+        # plt.savefig(filename_img_masks)
+        # plt.cla()
+        # plt.clf()
+
 
         R_cost[iy, ix, t] = score
 
     return R_cost
 
-#
+# computes the score
 def compute_score(mask_i,mask_j,masks,rel_thresh=0.05):
     score = 0
     n = 0
@@ -369,12 +394,13 @@ def compute_score(mask_i,mask_j,masks,rel_thresh=0.05):
         s2 = np.sum(mask * mask_j)
     
         if s1 > threshold and s2 > threshold:
-            n += 1
+            n += 0.2
     
-    score = n / len(masks)
+    score = n #/ len(masks)
 
     return score
 
+# computes the distance between binary maps
 def distance(mask_i,mask_j):
 
     def find_contour(mask):
@@ -406,3 +432,88 @@ def show_anns(anns):
         color_mask = np.concatenate([np.random.random(3), [0.35]])
         img[m] = color_mask
     ax.imshow(img)
+
+
+def to_grey_scale(img,n_channels = 3):
+    bw_img = cv2.cvtColor(img,cv2.COLOR_RGB2GRAY)
+    bw_img_3c = np.dstack([bw_img]*n_channels)
+    return bw_img_3c
+
+
+def show_image_with_masks(image, masks_dict, rows=None, cols=None):
+    """
+    Plots the image with different masks overlaid in subplots.
+
+    Parameters:
+    - image: The original image as a NumPy array (HxWxC for RGB, HxW for grayscale).
+    - masks: A list or array of masks. Each mask should be a NumPy array of the same height and width as the image.
+    - rows: Number of rows in the subplot grid (optional).
+    - cols: Number of columns in the subplot grid (optional).
+    """
+    masks = [mask_dict['segmentation'] for mask_dict in masks_dict]
+    num_masks = len(masks)
+
+    # If rows and cols aren't provided, make a square-ish grid
+    if rows is None or cols is None:
+        cols = int(np.ceil(np.sqrt(num_masks)))
+        rows = int(np.ceil(num_masks / cols))
+
+    # Create the subplots
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*4, rows*4))
+    axes = axes.flatten()  # Flatten to easily iterate through all axes
+
+    for i, mask in enumerate(masks):
+        # Overlay the mask over the image (assumes mask is binary, use mask > 0 if not)
+        masked_image = np.copy(image)
+        
+        # If the image is grayscale (2D), convert it to RGB
+        if len(image.shape) == 2:
+            masked_image = np.stack([image, image, image], axis=-1)
+
+        # Apply the mask with transparency (red overlay on mask areas)
+        red_mask = np.zeros_like(masked_image)
+        red_mask[..., 0] = 255  # Red channel
+
+        # Use the mask as the alpha channel to combine
+        alpha = mask[..., np.newaxis] * 0.5  # Adjust transparency here (0.5 means 50% transparent)
+        masked_image = (1 - alpha) * masked_image + alpha * red_mask
+
+        # Plot the masked image
+        axes[i].imshow(masked_image.astype(np.uint8))
+        axes[i].set_title(f"Mask {i+1}")
+        axes[i].axis('off')
+
+    # Turn off remaining empty axes (if any)
+    for j in range(i+1, len(axes)):
+        axes[j].axis('off')
+
+    plt.tight_layout()
+
+
+def enhance_img(img,sat_factor=3,alpha = 1.3,beta = 0):
+
+    # Convert the image to HSV
+    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+
+    # Split the HSV channels
+    h, s, v = cv2.split(hsv)
+
+    # Increase saturation by a factor of 1.5 (you can adjust this factor)
+    s = cv2.multiply(s, sat_factor)
+
+    # Clip the values to stay within valid range [0, 255]
+    s = np.clip(s, 0, 255).astype(np.uint8)
+
+    # Merge the channels back
+    hsv_boosted = cv2.merge([h, s, v])
+
+    # Convert back to BGR color space
+    img_saturation_boosted = cv2.cvtColor(hsv_boosted, cv2.COLOR_HSV2RGB)
+
+    # Increase contrast using alpha-beta transformation
+    # Alpha > 1 increases contrast, Beta adjusts brightness
+
+
+    img_contrast_boosted = cv2.convertScaleAbs(img_saturation_boosted, alpha=alpha, beta=beta)
+
+    return img_contrast_boosted
