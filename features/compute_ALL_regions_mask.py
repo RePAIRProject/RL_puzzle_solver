@@ -46,17 +46,7 @@ def main(args):
         # PARAMETERS
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
         cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters_v2.json')
-        # if os.path.exists(cmp_parameter_path):
-        #     print("never tested! remove this comment afterwars (line 53 of comp_irregular.py)")
-        #     with open(cmp_parameter_path, 'r') as cp:
-        #         ppars = json.load(cp)
-        # else:
         ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step, args.irregular)
-        # for ppk in ppars.keys():
-        #     if type(ppars[ppk])== np.uint8:
-        #         ppars[ppk] = int(ppars[ppk])
-        #     print(ppk, ":", type(ppars[ppk]))
-        # pdb.set_trace()
         with open(cmp_parameter_path, 'w') as cpj:
             json.dump(ppars, cpj, indent=3)
         print("saved json compatibility_parameters file")
@@ -134,7 +124,8 @@ def main(args):
                         #  LINES case
                         if 'lines_mask' in pieces[i].keys():
                             mask_j = cv2.resize(piece_j_on_canvas['lines_mask'], (grid_size_xy, grid_size_xy))
-                            outside_borders_j = get_outside_borders(mask_j, borders_width=1)
+                            outside_borders_j = get_outside_borders(mask_j, borders_width=int(
+                                                                    ppars.borders_regions_width_outside * ppars.xy_step))
                             overlap_lines = cv2.filter2D(piece_i_on_canvas['lines_mask'], -1, piece_j_on_canvas['lines_mask'])
                             binary_overlap_lines = (overlap_lines > ppars.threshold_overlap_lines).astype(np.int32)
                             resized_lines = np.array(Image.fromarray(binary_overlap_lines).resize((grid_size_xy, grid_size_xy), Image.Resampling.NEAREST))
@@ -151,8 +142,14 @@ def main(args):
                         #  MOTIFS case
                         if 'motif_mask' in pieces[i].keys():
                             mask_j = cv2.resize(piece_j_on_canvas['motif_mask'], (grid_size_xy, grid_size_xy))
-                            outside_borders_j = get_outside_borders(mask_j, borders_width=1)  # is not used ???
-
+                            outside_borders_j = get_outside_borders(mask_j, borders_width=int(
+                                                                    ppars.borders_regions_width_outside * ppars.xy_step))  # is not used ???
+                            # plt.subplot(121)
+                            # plt.imshow(np.sum(mask_j, axis=2))
+                            # plt.subplot(122)
+                            # plt.imshow(np.sum(outside_borders_j, axis=2))
+                            # plt.show()
+                            # breakpoint()
                             # check FILTER !!! - probably IS the same as ???:
                             # overlap_motifs = cv2.filter2D(piece_i_on_canvas['motif_mask'], -1, piece_j_on_canvas['motif_mask'])
 
@@ -170,6 +167,9 @@ def main(args):
 
                             overlap_motifs = np.sum(mask_mt, 2)
                             binary_overlap_motifs = (overlap_motifs > ppars.threshold_overlap_motifs).astype(np.int32)  # CHECK !!!
+                            binary_overlap_motifs = get_outside_borders(binary_overlap_motifs.astype(np.uint8), borders_width=int(
+                                                                    ppars.borders_regions_width_outside * ppars.xy_step))
+                            print("\n\n\nDILATE\n\n\n")
                             resized_motifs = np.array(Image.fromarray(binary_overlap_motifs).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
 
                             # COMBO for MOTIFS case
@@ -309,9 +309,9 @@ if __name__ == '__main__':
                         help='puzzle to work on - leave empty to generate for the whole dataset')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
-    parser.add_argument('--lines', type=bool, default=False, help='use line-based regions')
-    parser.add_argument('--motif', type=bool, default=False, help='use motif-based regions')
-    parser.add_argument('--irregular', type=bool, default=False, help='use irregular parameters')
+    parser.add_argument('--lines', type=int, default=0, help='use line-based regions')
+    parser.add_argument('--motif', type=int, default=0, help='use motif-based regions')
+    parser.add_argument('--irregular', type=int, default=0, help='use irregular parameters')
     parser.add_argument('--save_visualization', type=bool, default=True,
                         help='save an image that showes the matrices color-coded')
     parser.add_argument('-np', '--num_pieces', type=int, default=0,

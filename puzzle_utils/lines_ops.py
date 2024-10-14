@@ -307,7 +307,7 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
 
                     intersections1, useful_lines_s11, useful_lines_s12 = \
                         line_poligon_intersect(xy[::-1], -theta, piece_j['polygon'], [0, 0],  0, \
-                            piece_i['polygon'], s11, s12, ppars, extrapolate=True)
+                            piece_i['polygon'], s11, s12, ppars, extrapolate=False)
                     
                     # return intersections                    
                     useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
@@ -319,7 +319,7 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                     # check if line2 crosses the polygon1
                     intersections2, useful_lines_s21, useful_lines_s22 = \
                         line_poligon_intersect([0, 0], 0, piece_i['polygon'], xy[::-1], -theta, \
-                            piece_j['polygon'], s21, s22, ppars, extrapolate=True)
+                            piece_j['polygon'], s21, s22, ppars, extrapolate=False)
 
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
                     useful_lines_color2 = color2[intersections2]

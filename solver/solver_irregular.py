@@ -540,7 +540,7 @@ def main(args):
     f_pay = np.array(f_pay)
     plt.figure(figsize=(6, 6))
     plt.plot(f_pay, 'r', linewidth=1)
-    plt.tight_layout()git
+    plt.tight_layout()
     plt.savefig(alc_path)
 
     if args.save_frames is True:

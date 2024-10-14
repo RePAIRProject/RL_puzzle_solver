@@ -33,7 +33,7 @@ def extract_from(lines_dict):
         colors = []
     
     return angles, dists, p1s, p2s, colors, cats
-    
+
 # from puzzle_utils.lines_ops import draw_lines
 def draw_lines(lines_dict, img_shape, thickness=1, color=255, use_color=False):
     angles, dists, p1s, p2s, colors, cats = extract_from(lines_dict)
@@ -536,7 +536,7 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
         elif method == 'yolo-bbox':
             motif_subfolder = f"{fnames.motifs_output_name}_BB"
         else:
-            print(f'No method, just reading from {fnames.motifs_output_name}')
+            print(f'###\n\nWARNING:\nNo method, just reading from {fnames.motifs_output_name}\n\n###')
             motif_subfolder = fnames.motifs_output_name
         motif_folder = os.path.join(root_folder, motif_subfolder)
         # motif_folder = os.path.join(root_folder, fnames.motifs_output_name, method)  #TODO - add method to detection path !!! Yolo5 ect...
