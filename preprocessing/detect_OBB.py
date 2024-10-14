@@ -23,6 +23,9 @@ def read_PIL_image(image_path):
 
 def main(args):
 
+    gr_num = 29
+    obj_num = 29
+
     if args.classes_names == '':
         det_classes_file = 'preprocessing/det_classes.yaml'
     else:
@@ -44,13 +47,15 @@ def main(args):
     else:
         yolov8_model_path = args.yolo_model
     if args.images == "":
-        imgs_folder = '/home/marina/PycharmProjects/RL_puzzle_solver/output/repair/red_rp_o0037_no_rot/pieces'
+        imgs_folder = f'/home/marina/PycharmProjects/RL_puzzle_solver/output/RePair_new/RPobj_g{gr_num}_o{obj_num:04d}_gt_rot/pieces'
         #imgs_folder = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
         #motifs_output = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/motif_OBB'
+        motifs_output = f'/home/marina/PycharmProjects/RL_puzzle_solver/output/RePair_new/RPobj_g{obj_num}_o{obj_num:04d}_gt_rot'
     else:
         imgs_folder = os.path.join(args.images, 'pieces')
 
-    motifs_output = os.path.join(args.images, 'motifs_detection_OBB_tuned')
+    motifs_output = os.path.join(motifs_output, 'motifs_detection_OBB')
+    #motifs_output = os.path.join(args.images, 'motifs_detection_OBB')
     os.makedirs(motifs_output, exist_ok=True)
     
     indent_spaces = 3
@@ -62,7 +67,9 @@ def main(args):
     obb_colormap = mpl.colormaps['jet'].resampled(12)
     vis_output_dir = os.path.join(motifs_output, 'visualization')
     os.makedirs(vis_output_dir, exist_ok=True)
-    for img_p in os.listdir(imgs_folder):
+    list_names = os.listdir(imgs_folder)
+    list_names.sort()
+    for img_p in (list_names):
         img_name = img_p[:-4]
 
         img_fp = os.path.join(imgs_folder, img_p)
