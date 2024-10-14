@@ -390,6 +390,9 @@ class PuzzleGenerator:
         they are centered on one of the squares of the polyominos!
         """
         pieces = []
+        square_side = self.img.shape[0]
+        if square_side // 2 == 0:
+            square_side += 1
         bg_mat = np.zeros_like(self.img)
         h_max = 0
         w_max = 0
@@ -397,14 +400,23 @@ class PuzzleGenerator:
         padding = 3 #np.min(self.img.shape[:2]) // 30
         for i in range(start_from, self.region_cnt):
             mask_i = self.region_mat == i
+            # breakpoint()
+            # plt.subplot(221)
+            # plt.imshow(self.region_mat)
+            # plt.subplot(222)
+            # plt.imshow(mask_i)
+            # plt.subplot(223)
+            # plt.imshow(self.img)
+            # plt.subplot(224)
+            # plt.imshow(self.region_mat - mask_i.astype(int)*i)
+            # plt.show()
+            # breakpoint()
             if len(self.img.shape) > 2: 
                 image_i = self.img * np.repeat(mask_i, self.img.shape[2]).reshape(self.img.shape)
             else:
                 image_i = np.where(mask_i, self.img, bg_mat)
             poly_i = get_polygon(mask_i)
-            #cm_i = get_cm(mask_i)[::-1]
-            # breakpoint()
-            cm_i = self.pieces_centers[f"{i}"][::-1]
+            cm_i = np.asarray(self.pieces_centers[f"{i}"][::-1]) + 1
             coords = np.argwhere(mask_i)
             y0, x0 = coords.min(axis=0)
             y1, x1 = coords.max(axis=0) + 1
@@ -420,10 +432,11 @@ class PuzzleGenerator:
                 w_max = w_i     
 
             ## centering
-            centered_img = np.zeros_like(self.img)
-            centered_mask = np.zeros_like(mask_i)
+            centered_img = np.zeros((square_side, square_side, 3))
+            centered_mask = np.zeros((square_side, square_side))
             center_i = np.asarray([self.img.shape[0] / 2, self.img.shape[1] / 2])
             shift2center = (center_i - cm_i)#[::1]
+            # print(f"{i}:{shift2center}")
             x0c = np.round(x0+shift2center[1]).astype(int)
             x1c = np.round(x0c + w_i).astype(int)
             y0c = np.round(y0+shift2center[0]).astype(int)
@@ -431,6 +444,11 @@ class PuzzleGenerator:
             centered_img[y0c:y1c, x0c:x1c] = image_i[y0:y1, x0:x1]
             centered_mask[y0c:y1c, x0c:x1c] = mask_i[y0:y1, x0:x1]
             centered_poly = get_polygon(centered_mask)
+            # plt.title(f"{y0c}, {y1c}, {x0c}, {x1c} // {y0}, {y1}, {x0}, {x1}")
+            # plt.imshow(centered_img)
+            # plt.plot(*(centered_poly.boundary.xy))
+            # plt.show()
+            # breakpoint()
             pieces.append({
                 'mask': mask_i,
                 'centered_mask': centered_mask,

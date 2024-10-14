@@ -117,7 +117,7 @@ def motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, 
                         else:
                             obb_shapely_points = [(point[0], point[1]) for point in do_pts]
                         obb_poly = shapely.Polygon(obb_shapely_points)
-                        # plt.plot(*obb_poly.boundary.xy)
+                        plt.plot(*obb_poly.boundary.xy)
 
                         inters_poly_i = shapely.intersection(obb_poly, piece_i_on_canvas['polygon'])
                         inters_poly_j = shapely.intersection(obb_poly, piece_j_on_canvas['polygon'])
@@ -147,9 +147,9 @@ def motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, 
                             if np.sum(sum_ij_obb_mask) > 0:
                                 overlap_score = np.sum(sum_ij_obb_mask*im_ij_obb_mask)/np.sum(sum_ij_obb_mask)
 
-                            # print('sum * ', np.sum(sum_ij_obb_mask*im_ij_obb_mask))
-                            # print(' /sum', np.sum(sum_ij_obb_mask))
-                            # print('ovrelap score', overlap_score)
+                            print('sum * ', np.sum(sum_ij_obb_mask*im_ij_obb_mask))
+                            print(' /sum', np.sum(sum_ij_obb_mask))
+                            print('ovrelap score', overlap_score)
                             score_sum_overlap = score_sum_overlap + overlap_score
                             cont2 = 1 + cont2
 
@@ -163,9 +163,9 @@ def motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, 
                         motif_overlap_score = score_sum_overlap / cont2
                     # print("motif overlap", motif_overlap_score)
 
-                    # plt.title(f"Score: {motif_overlap_score}")
-                    # plt.show()
-                    # breakpoint()
+                    plt.title(f"Score: {motif_overlap_score}")
+                    plt.show()
+                    breakpoint()
                     R_cost_conf[iy, ix, t] = motif_conf_score
                     R_cost_overlap[iy, ix, t] = motif_overlap_score
 

@@ -694,7 +694,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
 
 # compute cost matrix NEW version
 def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, \
-    mask_ij, pars, verbosity=1):
+    mask_ij, ppars, verbosity=1):
     """
     Compute the cost using the Line-Confidence-Importance method (LCI), which weights the contribution of each line 
     (positive or negative) using the confidence (at the moment binary) and the importance (the length of the line).
@@ -713,7 +713,7 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                     # check if line1 crosses the polygon2
                     intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2,
                                                                                                 [0, 0], 0, poly1, s11, s12,
-                                                                                                pars)
+                                                                                                ppars)
                     # return intersections
                     useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
                     useful_lines_color1 = color1[intersections1]
@@ -724,7 +724,7 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                     # check if line2 crosses the polygon1
                     intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1,
                                                                                                 z[::-1], -theta, poly2, s21,
-                                                                                                s22, pars)
+                                                                                                s22, ppars)
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad  # the rotation!
                     useful_lines_color2 = color2[intersections2]
                     useful_lines_cat2 = cat2[intersections2]

@@ -19,12 +19,33 @@ def get_polygon(binary_image):
     bin_img = cv2.dilate(bin_img.astype(np.uint8), np.ones((2,2)), iterations=1)
     contours, _ = cv2.findContours(bin_img.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contour_points = contours[0]
-    shapely_points = [(point[0][0], point[0][1]) for point in contour_points]  # Shapely expects points in the format (x, y)
+    # should we remove 0.5 or it's just visualization?
+    #shapely_points = [(point[0][0]-0.5, point[0][1]-0.5) for point in contour_points]  # Shapely expects points in the format (x, y)
+    shapely_points = [(point[0][0]-0.5, point[0][1]-0.5) for point in contour_points]  # Shapely expects points in the format (x, y)
     if len(shapely_points) < 4:
         print('we have a problem, too few points', shapely_points)
         raise ValueError('\nWe have fewer than 4 points on the polygon, so we cannot create a Shapely polygon out of this points! Maybe something went wrong with the mask?')
     polygon = shapely.Polygon(shapely_points)
     return polygon
+
+def create_grid_v3(ppars):
+    step = ppars['xy_step']
+    canvas_size = ppars['canvas_size']
+    #breakpoint()
+    largest_val = ppars['piece_size'] * 2 #step*pts
+    # create a regularly spaced grid (the center value should be the center of th epiece)
+    axis_grid = np.arange(0, largest_val, step)
+    num_points = len(axis_grid)
+    #print(f"grid will have {num_points}x{num_points} points")
+    ppars['xy_grid_points'] = num_points
+    zero_aligned_axis_grid = axis_grid - axis_grid[np.floor(len(axis_grid) // 2).astype(int)]
+    # align to the canvas
+    canvas_alignment = canvas_size // 2 # - largest_val - step) / 2
+    pieces_grid = np.zeros((len(axis_grid), len(axis_grid), 2))
+    for b in range(len(axis_grid)):
+        for g in range(len(axis_grid)):
+            pieces_grid[g, b] = (axis_grid[g]+canvas_alignment, axis_grid[b]+canvas_alignment)
+    return pieces_grid.astype(int), ppars
 
 def create_grid_v2(ppars):
     step = ppars['xy_step']
@@ -489,9 +510,8 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
             shapely_points = [(point[0], point[1]) for point in piece['polygon'][0]]
             piece['polygon'] = shapely.Polygon(shapely_points)
 
-        #assert(type(np.load(polygon_path, allow_pickle=True).tolist()) == shapely.Polygon), "The polygon is not a shapely.Polygon! Check the files!"
         if line_based == True:
-            lines_path = os.path.join(lines_folder, f"{piece['id']}.json")
+            lines_path = os.path.join(lines_folder, f"{piece['name']}.json")
             with open(lines_path, 'r') as file:
                 piece['extracted_lines'] = json.load(file)
             drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape, line_thickness, use_color=False)
