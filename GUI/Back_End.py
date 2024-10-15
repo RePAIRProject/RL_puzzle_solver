@@ -81,6 +81,16 @@ def pl_solver_thread_function():
     set_pl_solver_done(True)
 
 
+def puzzle_solver_test_function(last_loop_solution):
+    global input_dict
+    global pl_solution
+    global path_dic
+    input_dict.update({'solved_pieces': last_loop_solution})
+    print(input_dict)
+    pl_solution = puzzle_solver.assemble(input_dict, path_dic)
+    print(pl_solution)
+
+
 def get_next_neighbour(image_id):
     global path_dic
     global sorted_neighbour_images
@@ -140,30 +150,35 @@ def extract_lists(main_list):
 
 def loop_finalization(solved_list, offset, center):
     parameters = path_dic['parameters']
-    print("parameters")
+    # print("parameters")
     data = None
     xy_step = 1
     theta_step = 360
+    final_solution = []
     with open(parameters, 'r') as f:
         data = json.load(f)
         if data is not None:
             xy_step = data['xy_step']
             theta_step = data['theta_step']
-            print(data['p_hs'])
-            print(data.keys())
+            # print(data['p_hs'])
+            # print(data.keys())
 
 
     for pieces in solved_list:
         name = pieces[0]
         pos = pieces[1]
-        print(pos)
+        # print(pos)
 
         pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
-        print(pos)
+        # print(pos)
 
         pos = scale_to_solver(xy_step, theta_step, pos)
-        print(name, pos)
-        solved_pieces.append(pieces)
+        # print(name, pos)
+        pieces[1][0] = pos[0]
+        pieces[1][1] = pos[1]
+        pieces[1][2] = pos[2]
+        final_solution.append(pieces)
+    return final_solution
 
 
 def scale_to_solver(xy_step, theta_step, position):

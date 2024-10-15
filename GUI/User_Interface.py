@@ -291,7 +291,6 @@ class GUIApp(MDApp):
                     # r = np.array([1,1])
                     grabbed_image.translate(mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
                     # grabbed_image.update(x_y, r, 0)
-                    print(grabbed_image.get_real_pos())
                     if solution_applied:
                         grabbed_image
 
@@ -359,7 +358,9 @@ class GUIApp(MDApp):
         else:
             solved_pieces = build_meta_fragment()
             center = [Window.size[0] / 2, Window.size[1] / 2]
-            back_end.loop_finalization(solved_pieces, image_offset, center)
+            final_solution = back_end.loop_finalization(solved_pieces, image_offset, center)
+            print(final_solution)
+            back_end.puzzle_solver_test_function(final_solution)
 
     @mainthread
     def show_images(self, *args, **kwargs):
@@ -393,12 +394,8 @@ class GUIApp(MDApp):
         center = [Window.size[0] / 2, Window.size[1] / 2]
         # center = [0, 0]
         bank_offset = image_offset
-        print()
         for image in current_image_list:
             positions = np.array(image.position_memory)
-
-            print(image.get_id(), image.position_memory)
-            print(image.get_id(), image.get_real_pos())
 
             positions = [positions[0] - bank_offset[0],
                          positions[1] - bank_offset[1],
@@ -442,13 +439,11 @@ class GUIApp(MDApp):
                 # centering the anchor and moving others, image.parent (it's canvas) is responsible for positioning
                 image_offset = update_image_offset(image, center)
 
-                print("solved Pos",image.get_id(), position)
                 # ratio will apply in update_positions function
                 new_positions = np.array(
                     [position[0] + image_offset[0], position[1] + image_offset[1]])
 
                 image.update_positions(new_positions, positions[2])
-                print("after move pos", image.get_id(), [image.position_memory[0]-image_offset[0], image.position_memory[1]-image_offset[1], image.position_memory[2]])
 
     def checking_clock(self, *args, **kwargs):
         global selected_pic
