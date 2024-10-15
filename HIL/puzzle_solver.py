@@ -39,8 +39,6 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     solved_pieces = fragments_list['solved_pieces']
     puzzle = fragments_list['puzzle']
 
-    print("solved_pieces", solved_pieces)
-
     pieces_folder = path_dic['pieces_path']
 
     cmp_parameter_path = path_dic['comp_path']
@@ -66,8 +64,8 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
             to_include = True
         if to_include is True:
             pieces_to_include.append(k)
+    print("anchor number", anchor)
 
-    print("piece to include", pieces_to_include)
     # extract from R matrix
     # THIS IS HARDCODED WE NEED TO CHANGE LATER
     comp_folder = path_dic['comp_folder']
@@ -75,8 +73,6 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     # print(comp_name)
     # comp_name = eval("f'{}'".format(comp_name))
     mat = loadmat(os.path.join(comp_folder, comp_name)) # load the new compatibility matrix
-    print(mat.__class__)
-    print(mat)
 
     R = mat[path_dic['comp_format']]
 
@@ -86,6 +82,7 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
     R = R[:, :, 0:4, :, pieces_to_include]  # 0:4 works best for group 28 token check
 
+    print("pieces to include", pieces_to_include)
     anchor = pieces_to_include.index(anchor)
 
     pieces_included = []

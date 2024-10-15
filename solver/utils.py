@@ -22,6 +22,8 @@ def solve_puzzle(R, anchor, pieces_names, ppars, return_as='dict', solved_pieces
     if solved_pieces is None:
         solved_pieces = []
 
+    print("solved_pieces", solved_pieces)
+
     p_initial, init_pos, x0, y0, z0 = initialization(R, anchor) # we do not pass p_size so it chooses automatically
     num_anchors = 1
     cfg = default_cfg()
@@ -72,8 +74,6 @@ def initialization(R, anc, p_size=0):
     p[y0, x0, :, :] = 0
     p[y0, x0, z0, anc] = 1
     init_pos[anc, :] = ([y0, x0, z0])
-
-    print("p", p)
 
     return p, init_pos, x0, y0, z0
 
