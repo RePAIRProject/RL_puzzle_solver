@@ -40,6 +40,7 @@ image_offset = [0, 0]
 rotation_interval = 0.5
 
 showed_image_list = []
+final_solution = []
 current_image_list = []
 neighbour_ids = []
 buttons = []
@@ -349,6 +350,7 @@ class GUIApp(MDApp):
         global current_image_list
         global image_is_set
         global image_offset
+        global final_solution
         if not solution_applied:
             boolean, next_neighbours = back_end.get_next_neighbour(click_label.text)
             if boolean:
@@ -360,7 +362,10 @@ class GUIApp(MDApp):
             center = [Window.size[0] / 2, Window.size[1] / 2]
             final_solution = back_end.loop_finalization(solved_pieces, image_offset, center)
             print(final_solution)
-            back_end.puzzle_solver_test_function(final_solution)
+
+            neighbour_test = ['piece_0006.png']
+
+            back_end.puzzle_solver_test_function(final_solution, neighbour_test)
 
     @mainthread
     def show_images(self, *args, **kwargs):

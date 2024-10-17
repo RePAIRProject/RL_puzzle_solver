@@ -81,14 +81,14 @@ def pl_solver_thread_function():
     set_pl_solver_done(True)
 
 
-def puzzle_solver_test_function(last_loop_solution):
+def puzzle_solver_test_function(last_loop_solution, neighbour_test):
     global input_dict
     global pl_solution
     global path_dic
     input_dict.update({'solved_pieces': last_loop_solution})
-    print(input_dict)
+    input_dict.update({'neighbours': neighbour_test})
+
     pl_solution = puzzle_solver.assemble(input_dict, path_dic)
-    print(pl_solution)
 
 
 def get_next_neighbour(image_id):
