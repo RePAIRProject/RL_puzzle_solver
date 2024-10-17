@@ -259,7 +259,6 @@ def select_neighbour(path_dic, key_fragments):
 
     set_backend_path(back_path, path, path_bw)
 
-    print("lenght key framents", len(key_fragments))
     top_k_images = sorted_by_score[:(len(sorted_by_score) - len(key_fragments))]  # to remove anchor
 
     set_backend_path(back_path, path, path_bw)
