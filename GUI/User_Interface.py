@@ -138,7 +138,7 @@ class GUIApp(MDApp):
         anchor_button.size_hint_x = 0.5
 
         show_button = Button(text="Next")
-        show_button.bind(on_press=self.get_next_neighbour)
+        show_button.bind(on_press=get_next_neighbour)
         show_button.size_hint_x = 0.5
 
         neighbour_button = Button(text="Neighbour")
@@ -350,29 +350,6 @@ class GUIApp(MDApp):
         self.resize_event = None
 
     @mainthread
-    def get_next_neighbour(self, *args, **kwargs):
-        global next_neighbour_requested
-        global current_image_list
-        global image_is_set
-        global image_offset
-        global final_solution
-        if not solution_applied:
-            boolean, next_neighbours = back_end.get_next_neighbour(click_label.text)
-            if boolean:
-                image_is_set = False
-                current_image_list = []
-                next_neighbour_requested = True
-        else:
-            solved_pieces = build_meta_fragment()
-            center = [Window.size[0] / 2, Window.size[1] / 2]
-            final_solution = back_end.loop_finalization(solved_pieces, image_offset, center)
-            print(final_solution)
-
-            neighbour_test = ['piece_0006.png']
-
-            back_end.puzzle_solver_test_function(final_solution, neighbour_test)
-
-    @mainthread
     def show_images(self, *args, **kwargs):
         global showed_image_list
         global current_image_list
@@ -499,8 +476,9 @@ class GUIApp(MDApp):
             self.apply_solution()
             solution_applied = True
             self.widget_dict['pl_solver_button'].disabled = True
-            self.widget_dict['show_button'].disabled = True
-            self.widget_dict['neighbour_button'].disabled = False
+            self.widget_dict['show_button'].text = 'Next Loop'
+            self.widget_dict['show_button'].disabled = False
+            self.widget_dict['neighbour_button'].disabled = True
         communicate_thread_lock.release()
 
     def toolbar_changes(self, color):
@@ -533,17 +511,23 @@ def start_select_neighbour(self):
     global current_image_list
     global image_is_set
     global key_fragment_id
-
+    key_fragments = [key_fragment_id]
+    for piece in final_solution:
+        if piece[0] != key_fragment_id:
+            key_fragments.append(piece[0])
+    print(key_fragments)
     back_end.key_fragment = key_fragment_id
     image_is_set = False
     current_image_list = []
-    back_end.start_neighbour_thread()
+    back_end.start_neighbour_thread(key_fragments)
 
 
 def start_pl_solver(self):
     global current_image_list
     global image_is_set
     global neighbour_ids
+
+    GUIApp.widget_dict['show_button'].disabled = True
 
     for i in range(0, len(current_image_list)):
         if not (current_image_list[i].get_id() == key_image.get_id()):
@@ -552,6 +536,35 @@ def start_pl_solver(self):
     # image_is_set = False
     # current_image_list = []
     back_end.start_pl_solver_thread()
+
+
+def get_next_neighbour(self, *args, **kwargs):
+    global next_neighbour_requested
+    global current_image_list
+    global image_is_set
+    global image_offset
+    global final_solution
+    if not solution_applied:
+        boolean, next_neighbours = back_end.get_next_neighbour(click_label.text)
+        if boolean:
+            image_is_set = False
+            current_image_list = []
+            next_neighbour_requested = True
+    else:
+        loop_finalization()
+        GUIApp.widget_dict['show_button'].disabled = True
+        GUIApp.widget_dict['neighbour_button'].disabled = False
+
+
+def loop_finalization():
+    global final_solution
+    global image_offset
+    solved_pieces = build_meta_fragment()
+    center = [Window.size[0] / 2, Window.size[1] / 2]
+    final_solution = back_end.loop_finalization(solved_pieces, image_offset, center)
+    print(final_solution)
+    neighbour_test = ['piece_0006.png']
+    # back_end.puzzle_solver_test_function(final_solution, neighbour_test)
 
 
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd

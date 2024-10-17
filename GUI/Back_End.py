@@ -20,6 +20,7 @@ pl_solver_lock = Lock()
 
 anchor_images = []
 neighbour_images = []
+key_fragments = []
 
 image_names = []
 image_scores = []
@@ -123,9 +124,11 @@ def select_neighbour_thread_function():
     global path_bw
     global path_dic
     global sorted_neighbour_images
+    global key_fragments
+
     set_select_neighbour_running(True)
 
-    sorted_neighbour_images = select_anchor_RePAIR.select_neighbour(path_dic, key_fragment)
+    sorted_neighbour_images = select_anchor_RePAIR.select_neighbour(path_dic, key_fragments)
 
     neighbour_numbers = path_dic['number_of_neighbours']
     neighbour_images = sorted_neighbour_images[:neighbour_numbers]
@@ -200,8 +203,10 @@ def start_anchor_thread():
     select_anchor_thread.start()
 
 
-def start_neighbour_thread():
+def start_neighbour_thread(fragments):
     global select_neighbour_thread
+    global key_fragments
+    key_fragments = fragments
     select_neighbour_thread = Thread(target=select_neighbour_thread_function, daemon=True)
     select_neighbour_thread.start()
 

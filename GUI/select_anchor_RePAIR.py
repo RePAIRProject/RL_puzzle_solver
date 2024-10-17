@@ -205,7 +205,7 @@ def extract_number_from_image_name(image_name):
     return int(match.group()) if match else 0
 
 
-def select_neighbour(path_dic, anchor_id):
+def select_neighbour(path_dic, key_fragments):
     global images_folder
     global fg_folder
 
@@ -218,30 +218,49 @@ def select_neighbour(path_dic, anchor_id):
     images = []
     k = 0
 
+    # Load image names and initialize images list
     images_names = [img_name for img_name in os.listdir(images_folder)]
     sorted_images_names = sorted(images_names, key=extract_number_from_image_name)
 
     for img_name in sorted_images_names:
-        if anchor_id == img_name:
-            anchor_id = k
-        images.append((img_name, k, -3))
+        images.append((img_name, k, -float('inf')))  # Initialize each image with a default score of -inf
         k += 1
 
+    # Load the compatibility matrix from .mat file
     mat = loadmat(os.path.join(comp_folder, comp_name))
-
     R = mat[path_dic['comp_format']]
 
-    for i in range(R.shape[len(R.shape) - 1]):
-        if images[i][1] == anchor_id:
-            images[i] = (images[i][0], images[i][1], -3)
-        else:
-            images[i] = (images[i][0], images[i][1], np.max(R[:, :, :, anchor_id, i]))
+    # Extract the anchor IDs from the list of key fragments
+    anchor_ids = key_fragments
+    anchor_indices = []
 
+    # Get indices of anchor fragments
+    for anchor_id in anchor_ids:
+        for i, img in enumerate(images):
+            if img[0] == anchor_id:
+                anchor_indices.append(i)
+
+    # Calculate the maximum score for each fragment
+    for i in range(R.shape[len(R.shape) - 1]):
+        if i not in anchor_indices:  # Only calculate for non-anchor fragments
+            max_score = -float('inf')
+
+            # Compare each fragment with all anchors
+            for anchor_idx in anchor_indices:
+                score = np.max(R[:, :, :, anchor_idx, i])
+                if score > max_score:
+                    max_score = score
+
+            # Update the score of the fragment
+            images[i] = (images[i][0], images[i][1], max_score)
+
+    # Sort fragments based on their maximum score in descending order
     sorted_by_score = sorted(images, key=lambda x: x[2], reverse=True)
 
-    neighbour_numbers = path_dic['number_of_neighbours']
+    set_backend_path(back_path, path, path_bw)
 
-    top_k_images = sorted_by_score[:(len(sorted_by_score)-1)]  # to remove anchor
+    print("lenght key framents", len(key_fragments))
+    top_k_images = sorted_by_score[:(len(sorted_by_score) - len(key_fragments))]  # to remove anchor
 
     set_backend_path(back_path, path, path_bw)
 
@@ -250,6 +269,7 @@ def select_neighbour(path_dic, anchor_id):
     for top in top_k_images:
         neighbour_fragments.append((top[0], top[2]))
 
+    print(neighbour_fragments)
     return neighbour_fragments
 
 
