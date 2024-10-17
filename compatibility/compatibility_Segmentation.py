@@ -5,15 +5,8 @@ import os
 import configs.folder_names as fnames
 from PIL import Image
 import time
-import torch
 
-import shapely
-from shapely import transform
-from shapely import intersection, segmentize
-from shapely.affinity import rotate
 from matplotlib import pyplot as plt
-from sklearn.cluster import DBSCAN
-from matplotlib import cm
 import cv2
 import warnings
 
@@ -37,10 +30,14 @@ class Segmentator:
         # Save/Load parameters
         parser.add_argument('--seg_load_from_files',action=argparse.BooleanOptionalAction, default=False, help='Load segmentations from files')
         parser.add_argument('--seg_save_to_files',action=argparse.BooleanOptionalAction, default=False, help='Save segmentations to files')
-        # Debugging
-        parser.add_argument('--seg_break_each_pair',action=argparse.BooleanOptionalAction, default=False, help='Set a breakpoint after each pair')
+        
 
         parser.add_argument('--seg_save_images',action=argparse.BooleanOptionalAction, default=True, help='Save images')
+
+        # Debugging
+        parser.add_argument('--seg_debug_break_after_each',action=argparse.BooleanOptionalAction, default=False, help='Set a breakpoint after each pair')
+
+        parser.add_argument('--seg_only_pieces',nargs="*",type=int,default=[], help='Only work with these pieces')
         
         #parser.add_argument('--seg_sam_model_path', type=str, help='SAM checkpoint path (.pt file)')
         #parser.add_argument('--seg_sam_model_type', type=str, choices=['default','vit_h','vit_l','vit_b'], help='SAM model type')
@@ -53,8 +50,9 @@ class Segmentator:
         ppars['seg_load_from_files'] = args.seg_load_from_files
         ppars['seg_save_to_files'] = args.seg_save_to_files
 
-        ppars['seg_break_each_pair'] = args.seg_break_each_pair
+        ppars['seg_debug_break_after_each'] = args.seg_debug_break_after_each
         ppars['seg_save_images'] = args.seg_save_images
+        ppars['seg_only_pieces'] = args.seg_only_pieces
 
         #ppars['seg_sam_model_type'] = args.seg_sam_model_type
         #ppars['seg_sam_model_path'] = args.seg_sam_model_path
@@ -159,16 +157,26 @@ def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, p
     m = ppars['m']
     rot = ppars['rot']
 
+    only_pieces = set(ppars['seg_only_pieces'])
+
+    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
+
     if idx1 == idx2:
         # set compatibility to -1:
-        R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
-    else:
-        print(f"computing cost matrix for piece {idx1} vs piece {idx2}")
-        R_cost  = segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, segmentator, verbosity=verbosity)
-        print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
+        return R_cost
+    
+    if len(only_pieces) > 0:
+        if not idx1 in ppars['seg_only_pieces'] or not idx2 in ppars['seg_only_pieces']:
+            print(f"Considering only pieces {ppars['seg_only_pieces']}. Skipping")
+            return R_cost
+        
+    print(f"computing cost matrix for piece {idx1} vs piece {idx2}")
+    R_cost  = segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, segmentator, verbosity=verbosity)
+    print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
+            
     
     # for debugging purposes
-    if ppars['seg_break_each_pair']:
+    if ppars['seg_debug_break_after_each'] or len(only_pieces) > 0:
         breakpoint()
     
     return R_cost
@@ -254,13 +262,22 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
         # Place on canvas pairs of pieces given position
         piece_i_on_canvas = place_on_canvas(pieces[idx1], (center_pos, center_pos), ppars.canvas_size, 0)
         piece_j_on_canvas = place_on_canvas(pieces[idx2], (x_j_pixel, y_j_pixel), ppars.canvas_size, t * ppars.theta_step)
-        img_ij_on_canvas = np.uint8(piece_i_on_canvas['img'] + piece_j_on_canvas['img'])
-
-        img_ij_on_canvas = np.uint8(enhance_img(img_ij_on_canvas))
 
         mask_i = piece_i_on_canvas['mask']
         mask_j = piece_j_on_canvas['mask']
         mask_ij = np.bool(mask_i) | np.bool(mask_j)
+
+        overlap = np.bool(mask_i) & np.bool(mask_j)
+
+        #breakpoint()
+
+        img_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
+        img_ij_on_canvas[overlap] = piece_i_on_canvas['img'][overlap]
+
+        img_ij_on_canvas = np.uint8(img_ij_on_canvas)
+
+        # enhance imag
+        img_ij_on_canvas = np.uint8(enhance_img(img_ij_on_canvas))
 
         if verbosity > 1:
             print(f"done in {time.time()-start_img:.2f}s")
@@ -271,12 +288,12 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
         #### Compute Compatibility ####
         dist = distance(mask_i,mask_j)
-        # if  dist > 0:
-        #     if verbosity > 1:
-        #         print(f"pieces are not touching (distance {dist}), skipping")
-        #     R_cost[iy, ix, t] = 0
-        #     continue
-        # print(f'distance: {distance(mask_i,mask_j)}')
+        if  dist > 0:
+            if verbosity > 1:
+                print(f"pieces are not touching (distance {dist}), skipping")
+            R_cost[iy, ix, t] = 0
+            continue
+        print(f'distance: {distance(mask_i,mask_j)}')
         # breakpoint()
 
 
@@ -297,7 +314,8 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
 
         if ppars['seg_save_images']:
             plt.title(f'Distance: {dist:.2f}')
-            plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='m', s=0.1, marker='o')
+            if len(sam_masked_grid_scaled) > 0:
+                plt.scatter(sam_masked_grid_scaled[:, 0], sam_masked_grid_scaled[:, 1], color='m', s=0.1, marker='o')
             plt.imshow(img_ij_on_canvas)
             plt.axis('off')
             plt.savefig(filename_img_grid)
