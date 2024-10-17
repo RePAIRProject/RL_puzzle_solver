@@ -217,86 +217,73 @@ def start_pl_solver_thread():
 
 
 def get_select_anchor_running():
-    select_anchor_lock.acquire()
-    answer = select_anchor_running
-    select_anchor_lock.release()
+    with select_anchor_lock:
+        answer = select_anchor_running
     return answer
 
 
 def get_select_neighbour_done():
-    select_neighbour_lock.acquire()
-    answer = select_neighbour_done
-    select_neighbour_lock.release()
+    with select_anchor_lock:
+        answer = select_neighbour_done
     return answer
 
 
 def get_select_neighbour_running():
-    select_neighbour_lock.acquire()
-    answer = select_anchor_running
-    select_neighbour_lock.release()
+    with select_neighbour_lock:
+        answer = select_anchor_running
     return answer
 
 
 def get_pl_solver_running():
-    pl_solver_lock.acquire()
-    answer = pl_solver_running
-    pl_solver_lock.release()
+    with pl_solver_lock:
+        answer = pl_solver_running
     return answer
 
 
 def get_pl_solver_done():
-    pl_solver_lock.acquire()
-    answer = pl_solver_done
-    pl_solver_lock.release()
+    with pl_solver_lock:
+        answer = pl_solver_done
     return answer
 
 
 def set_select_neighbour_done(boolean):
     global select_neighbour_done
-    select_neighbour_lock.acquire()
-    select_neighbour_done = boolean
-    select_neighbour_lock.release()
+    with select_neighbour_lock:
+        select_neighbour_done = boolean
 
 
 def set_select_anchor_running(boolean):
     global select_anchor_running
-    select_anchor_lock.acquire()
-    select_anchor_running = boolean
-    select_anchor_lock.release()
-
+    with select_anchor_lock:
+        select_anchor_running = boolean
 
 def set_select_anchor_done(boolean):
     global select_anchor_done
-    select_anchor_lock.acquire()
-    select_anchor_done = boolean
-    select_anchor_lock.release()
+    with select_anchor_lock:
+        select_anchor_done = boolean
 
 
 def set_pl_solver_done(boolean):
     global pl_solver_done
-    pl_solver_lock.acquire()
-    pl_solver_done = boolean
-    pl_solver_lock.release()
+    with pl_solver_lock:
+        pl_solver_done = boolean
 
 
 def set_select_neighbour_running(boolean):
     global select_neighbour_running
-    select_neighbour_lock.acquire()
-    select_neighbour_running = boolean
-    select_neighbour_lock.release()
+    with select_neighbour_lock:
+        select_neighbour_running = boolean
 
 
 def set_pl_solver_running(boolean):
     global pl_solver_running
-    pl_solver_lock.acquire()
-    pl_solver_running = boolean
-    pl_solver_lock.release()
+    with pl_solver_lock:
+        pl_solver_running = boolean
 
 
 def get_select_anchor_done():
-    select_anchor_lock.acquire()
-    answer = select_anchor_done
-    select_anchor_lock.release()
+    with select_anchor_lock:
+        answer = select_anchor_done
     return answer
 
 

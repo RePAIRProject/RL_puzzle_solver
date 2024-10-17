@@ -171,7 +171,6 @@ class GUIApp(MDApp):
         main_layout.add_widget(grid_layout)
         main_layout.add_widget(click_label)
 
-        neighbour_button.disabled = True
         the_layout.add_widget(main_layout)
         self.widget_list.append(toolbar)  # 0 toolbar
         self.widget_list.append(anchor_button)  # 1 anchor_button
@@ -185,6 +184,12 @@ class GUIApp(MDApp):
         self.widget_dict.update({'show_button': show_button})
         self.widget_dict.update({'neighbour_button': neighbour_button})
         self.widget_dict.update({'main_layout': main_layout})
+        self.widget_dict.update({'pl_solver_button': pl_solver_button})
+
+        anchor_button.disabled = False
+        show_button.disabled = True
+        neighbour_button.disabled = True
+        pl_solver_button.disabled = True
 
         Clock.schedule_interval(self.checking_clock, graphic_freq)  # Graphic Internal Thread to communicate
         return the_layout
@@ -458,12 +463,14 @@ class GUIApp(MDApp):
         global solution_applied
         global pl_solution
         global next_neighbour_requested
+        global select_anchor_done
         communicate_thread_lock.acquire()
         self.toolbar_changes(toolbar_color)
 
         clicked = self.clicked
+
         if (clicked.isdigit()) & (selected_pic == 0):
-            self.widget_list[4].disabled = False
+            self.widget_dict['neighbour_button'].disabled = False
             selected_pic = int(clicked)
         if clicked.isdigit():
             selected_pic = int(clicked)
@@ -472,11 +479,15 @@ class GUIApp(MDApp):
                 self.set_images(1)
                 self.show_images(self)
                 anchor_showed = True
+                self.widget_dict['anchor_button'].disabled = True
         elif ((back_end.get_select_anchor_done()) & (len(current_image_list) == 0) &
               (back_end.get_select_neighbour_done()) & (not neighbour_showed)):
             self.set_images(1)
             self.show_images(self)
             neighbour_showed = True
+            self.widget_dict['neighbour_button'].disabled = True
+            self.widget_dict['show_button'].disabled = False
+            self.widget_dict['pl_solver_button'].disabled = False
         elif ((back_end.get_select_anchor_done()) & (len(current_image_list) == 0) &
               (back_end.get_select_neighbour_done()) & neighbour_showed & next_neighbour_requested):
             self.set_images(1)
@@ -487,6 +498,9 @@ class GUIApp(MDApp):
             pl_solution = back_end.get_pl_solution()
             self.apply_solution()
             solution_applied = True
+            self.widget_dict['pl_solver_button'].disabled = True
+            self.widget_dict['show_button'].disabled = True
+            self.widget_dict['neighbour_button'].disabled = False
         communicate_thread_lock.release()
 
     def toolbar_changes(self, color):
@@ -494,19 +508,14 @@ class GUIApp(MDApp):
             case 0:
                 if self.toolbar_bg != 0:
                     self.widget_list[0].md_bg_color = (0.678431373, 0.847058824, 0.901960784, 1)  # Set Toolbar Blue
-                    self.widget_list[2].disabled = True
                     self.toolbar_bg = 0
             case -1:
                 if self.toolbar_bg != -1:
                     self.widget_list[0].md_bg_color = (0.545098039, 0, 0, 1)  # Set Toolbar Red
-                    self.widget_list[1].disabled = True
-                    self.widget_list[2].disabled = True
                     self.toolbar_bg = -1
             case 1:
                 if self.toolbar_bg != 1:
                     self.widget_list[0].md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
-                    self.widget_list[1].disabled = True
-                    self.widget_list[2].disabled = False  # todo find sth else for this...
                     self.toolbar_bg = 1
 
     def callback(self):
