@@ -22,9 +22,7 @@ def solve_puzzle(R, anchor, pieces_names, ppars, return_as='dict', solved_pieces
     if solved_pieces is None:
         solved_pieces = []
 
-    print("solved_pieces", solved_pieces)
-
-    p_initial, init_pos, x0, y0, z0 = initialization(R, anchor) # we do not pass p_size so it chooses automatically
+    p_initial, init_pos, x0, y0, z0 = initialization(R, anchor, solved_pieces, pieces_names) # we do not pass p_size so it chooses automatically
     num_anchors = 1
     cfg = default_cfg()
     all_pay, all_sol, all_anc, p_final, eps, iter, num_anchors = RePairPuzz(R, p_initial, num_anchors, cfg)
@@ -46,13 +44,13 @@ def solve_puzzle(R, anchor, pieces_names, ppars, return_as='dict', solved_pieces
         return fin_sol
 
 
-def initialization(R, anc, p_size=0):
+def initialization(R, anc, solved_pieces, pieces_names, p_size=0):
     z0 = 0  # rotation for anchored patch
     # Initialize reconstruction plan
     no_grid_points = R.shape[0]
     no_patches = R.shape[3]
     no_rotations = R.shape[2]
-    
+
     if p_size > 0:
         Y = p_size 
         X = Y 
@@ -73,6 +71,15 @@ def initialization(R, anc, p_size=0):
     p[:, :, :, anc] = 0
     p[y0, x0, :, :] = 0
     p[y0, x0, z0, anc] = 1
+    for piece in solved_pieces:
+        b = pieces_names.index(piece[0])
+        pos = (piece[1][0], piece[1][1], piece[1][2])
+
+        pos = (round(pos[0]), round(pos[1]), round(pos[2]))
+        p[:, :, :, b] = 0
+        p[pos[0], pos[1], pos[2], b] = 1
+        init_pos[b, :] = pos
+
     init_pos[anc, :] = ([y0, x0, z0])
 
     return p, init_pos, x0, y0, z0

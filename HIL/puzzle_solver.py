@@ -61,10 +61,14 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
             to_include = True
         if p_name in neighbours:
             neighbours_as_list.append(k)
+            print("neighbour", k, ":", p_name)
             to_include = True
+        if len(solved_pieces) > 0:
+            if p_name in solved_pieces[0]:
+                print("solved_pieces", k, ":", p_name)
+                to_include = True
         if to_include is True:
             pieces_to_include.append(k)
-    print("anchor number", anchor)
 
     # extract from R matrix
     # THIS IS HARDCODED WE NEED TO CHANGE LATER
@@ -82,7 +86,6 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
     R = R[:, :, 0:4, :, pieces_to_include]  # 0:4 works best for group 28 token check
 
-    print("pieces to include", pieces_to_include)
     anchor = pieces_to_include.index(anchor)
 
     pieces_included = []
