@@ -293,7 +293,6 @@ def segmentation_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, p
                 print(f"pieces are not touching (distance {dist}), skipping")
             R_cost[iy, ix, t] = 0
             continue
-        print(f'distance: {distance(mask_i,mask_j)}')
         # breakpoint()
 
 
