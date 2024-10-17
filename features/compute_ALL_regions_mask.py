@@ -13,7 +13,7 @@ from PIL import Image
 from configs import folder_names as fnames
 
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid_v2, create_grid_v3, get_outside_borders, \
-        place_on_canvas, get_borders_around, include_shape_info
+        place_on_canvas, get_borders_around, include_shape_info, dilate
 # from puzzle_utils.shape_utils import prepare_pieces, shape_pairwise_compatibility
 from puzzle_utils.pieces_utils import calc_parameters_v2
 from puzzle_utils.visualization import save_vis
@@ -167,9 +167,9 @@ def main(args):
 
                             overlap_motifs = np.sum(mask_mt, 2)
                             binary_overlap_motifs = (overlap_motifs > ppars.threshold_overlap_motifs).astype(np.int32)  # CHECK !!!
-                            binary_overlap_motifs = get_outside_borders(binary_overlap_motifs.astype(np.uint8), borders_width=int(
-                                                                    ppars.borders_regions_width_outside * ppars.xy_step))
-                            print("\n\n\nDILATE\n\n\n")
+                            binary_overlap_motifs = dilate(binary_overlap_motifs.astype(np.uint8), width=np.floor(
+                                                                    ppars.borders_regions_width_outside * ppars.xy_step).astype(int))
+                            # print("\n\n\nDILATE\n\n\n")
                             resized_motifs = np.array(Image.fromarray(binary_overlap_motifs).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
 
                             # COMBO for MOTIFS case

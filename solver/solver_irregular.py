@@ -592,7 +592,7 @@ if __name__ == '__main__':
     parser.add_argument('--p_pts', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
     parser.add_argument('--k', type=int, default=5, help='keep the best k values (for each pair) in the compatibility')   
-    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo', 'motifs'])
+    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo', 'motifs', 'seg'])
     parser.add_argument('--combo_type', type=str, default='LS',
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
             \nThe capital letters are used (L=lines, M=motif, S=shape, C=color)\

@@ -278,6 +278,12 @@ def mask2sdf(mask, q=1):
         sdf = (sdf // q) * q
     return sdf
 
+def dilate(mask, width=3):
+    kernel_size = width*2+1
+    kernel = np.ones((kernel_size, kernel_size))
+    dilated_mask = cv2.dilate(mask, kernel)
+    return dilated_mask 
+
 def get_outside_borders(mask, borders_width=3):
     """
     Get the borders outside of the mask contour (borders_width) 
