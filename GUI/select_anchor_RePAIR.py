@@ -268,7 +268,6 @@ def select_neighbour(path_dic, key_fragments):
     for top in top_k_images:
         neighbour_fragments.append((top[0], top[2]))
 
-    print(neighbour_fragments)
     return neighbour_fragments
 
 

@@ -49,6 +49,7 @@ file_names = []
 pl_solution = {}
 
 key_fragment_id = ""
+key_fragments = []
 
 image_is_set = False
 anchor_showed = False
@@ -201,6 +202,7 @@ class GUIApp(MDApp):
         global current_image_list
         global initial_image_updates
         global key_image
+        global key_fragments
 
         scores = back_end.image_scores
         current_image_list = []
@@ -208,11 +210,16 @@ class GUIApp(MDApp):
         backend_path = backend_path
         file_names = back_end.image_names
 
-        if key_image is not None:
-            scores.append("Anchor")
-            file_names.append(key_image.get_id())
-            back_end.image_numbers += 1
-            scores.append(0)
+        if key_fragments is not []:
+            for i, fragment in enumerate(reversed(key_fragments)):
+                scores.append(str(len(key_fragments) - i) + "-Anchor")
+                file_names.append(fragment)
+                back_end.image_numbers += 1
+                # scores.append(0)
+
+            # file_names.append(key_image.get_id())
+            # back_end.image_numbers += 1
+            # scores.append(0)
         for i in range(back_end.image_numbers):
             image = image_reader(i, scores[i], has_score)
             # image.fit_mode = "contain"
@@ -511,6 +518,7 @@ def start_select_neighbour(self):
     global current_image_list
     global image_is_set
     global key_fragment_id
+    global key_fragments
     key_fragments = [key_fragment_id]
     for piece in final_solution:
         if piece[0] != key_fragment_id:
@@ -520,12 +528,15 @@ def start_select_neighbour(self):
     image_is_set = False
     current_image_list = []
     back_end.start_neighbour_thread(key_fragments)
+    GUIApp.widget_dict['show_button'].disabled = True
+    GUIApp.widget_dict['neighbour_button'].disabled = True
 
 
 def start_pl_solver(self):
     global current_image_list
     global image_is_set
     global neighbour_ids
+    global final_solution
 
     GUIApp.widget_dict['show_button'].disabled = True
 
@@ -535,7 +546,7 @@ def start_pl_solver(self):
     back_end.neighbour_ids = neighbour_ids
     # image_is_set = False
     # current_image_list = []
-    back_end.start_pl_solver_thread()
+    back_end.start_pl_solver_thread(last_loop_solution=final_solution)
 
 
 def get_next_neighbour(self, *args, **kwargs):
@@ -544,6 +555,8 @@ def get_next_neighbour(self, *args, **kwargs):
     global image_is_set
     global image_offset
     global final_solution
+    global solution_applied
+    global neighbour_showed
     if not solution_applied:
         boolean, next_neighbours = back_end.get_next_neighbour(click_label.text)
         if boolean:
@@ -554,6 +567,9 @@ def get_next_neighbour(self, *args, **kwargs):
         loop_finalization()
         GUIApp.widget_dict['show_button'].disabled = True
         GUIApp.widget_dict['neighbour_button'].disabled = False
+        neighbour_showed = False
+        back_end.set_pl_solver_done(False)
+        solution_applied = False
 
 
 def loop_finalization():

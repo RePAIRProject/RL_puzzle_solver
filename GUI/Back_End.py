@@ -133,7 +133,10 @@ def select_neighbour_thread_function():
     neighbour_numbers = path_dic['number_of_neighbours']
     neighbour_images = sorted_neighbour_images[:neighbour_numbers]
 
+    print("neighbour_images", neighbour_images)
+
     extract_lists(neighbour_images)
+    print("image_names", image_names)
     set_select_neighbour_running(False)
     set_select_neighbour_done(True)
 
@@ -211,12 +214,12 @@ def start_neighbour_thread(fragments):
     select_neighbour_thread.start()
 
 
-def start_pl_solver_thread():
+def start_pl_solver_thread(last_loop_solution):
     global pl_solver_thread
     global input_dict
 
     input_dict = {'anchor': key_fragment, 'neighbours': neighbour_ids, 'solved_pieces': solved_pieces, 'puzzle': "repair_g28"}
-
+    input_dict.update({'solved_pieces': last_loop_solution})
     select_pl_solver = Thread(target=pl_solver_thread_function, daemon=True)
     select_pl_solver.start()
 
