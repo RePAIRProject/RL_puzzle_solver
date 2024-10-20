@@ -394,8 +394,7 @@ def main(args):
         elif args.combo_type == 'MS':
             print("combining shape and motifs..")
             cmp_name = "combo_MS"
-            # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
-            mat_motifs = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_motifs'))
+            mat_motifs = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"motifs_{args.det_method}"))
             mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
             # breakpoint()
             R_motif = mat_motifs['R']
