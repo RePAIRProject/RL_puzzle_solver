@@ -609,9 +609,9 @@ if __name__ == '__main__':
     parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo', 'motifs', 'seg'])
     parser.add_argument('--combo_type', type=str, default='LS',
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
-            \nThe capital letters are used (L=lines, M=motif, S=shape, C=color)\
-            \nFor example, MS is motif+shape, LS is lines+shape', 
-        choices=['LS', 'MS', 'CS', 'CLMS'])   
+            \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
+            \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation', 
+        choices=['SH-SEG', 'SH-MOT', 'SH-LIN'])   
     parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')
 
     args = parser.parse_args()
