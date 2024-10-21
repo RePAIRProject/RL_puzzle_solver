@@ -378,8 +378,8 @@ def main(args):
             mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}'))
             mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
             #breakpoint()
-            R_lines = mat_lines['R_line']
-            R_shape = mat_shape['R_line']
+            R_lines = mat_lines['R']
+            R_shape = mat_shape['R']
             negative_region_map = R_lines < 0
 
             # only positive values
