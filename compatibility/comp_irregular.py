@@ -15,6 +15,7 @@ from configs import folder_names as fnames
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, encode_boundary_segments
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
+from puzzle_utils.regions import combine_region_masks
 from utils import compute_cost_wrapper, calc_computation_parameters
 
 def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
@@ -85,7 +86,7 @@ def main(args):
             ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
         additional_cmp_pars = calc_computation_parameters(ppars, cmp_type=args.cmp_type, \
-            cmp_cost=args.cmp_cost, det_method=args.det_method)
+            cmp_cost=args.cmp_cost, lines_det_method=args.lines_det_method, motif_det_method=args.motif_det_method)
 
         for parkey in additional_cmp_pars.keys():
             ppars[parkey] = additional_cmp_pars[parkey]
@@ -139,15 +140,28 @@ def main(args):
         with open(computation_parameters_path, 'w') as lmpj:
             json.dump(ppars, lmpj, indent=3)
         print("saved json compatibility parameters file")
-
         
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, \
-            line_based=line_based, sdf=calc_sdf, motif_based=motif_based)
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, lines_det_method=args.lines_det_method, \
+            motif_det_method=args.motif_det_method, line_based=line_based, sdf=calc_sdf, motif_based=motif_based)
         if color_based == True:
             pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=seg_len,
                                          boundary_thickness=2)
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
-        region_mask = region_mask_mat['RM']
+        shape_RM = region_mask_mat['RM_shapes']
+        if line_based == True and motif_based == False:
+            lines_RM = region_mask_mat['RM_lines']
+            region_mask = combine_region_masks([shape_RM, lines_RM])
+            #region_mask = lines_RM * shape_RM
+        elif line_based == False and motif_based == True:
+            motif_RM = region_mask_mat['RM_motifs']
+            region_mask = combine_region_masks([shape_RM, motif_RM])
+        elif line_based == True and motif_based == True:
+            lines_RM = region_mask_mat['RM_lines']
+            motif_RM = region_mask_mat['RM_motifs']
+            region_mask = combine_region_masks([shape_RM, motif_RM, lines_RM])
+        else: # line_based == False and motif_based == False:
+            region_mask = shape_RM
+        
         
         # parameters and grid
         p = [ppars.p_hs, ppars.p_hs]    # center of piece [125,125] - ref.point for lines
@@ -376,11 +390,11 @@ def main(args):
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
         if args.cmp_type == 'lines':
-            cmp_name = f"linesdet_{args.det_method}_cost_{args.cmp_cost}"
+            cmp_name = f"linesdet_{args.lines_det_method}_cost_{args.cmp_cost}"
         elif args.cmp_type == 'shape':
             cmp_name = "shape"
         elif args.cmp_type == 'motifs':
-            cmp_name = f"motifs_{args.det_method}"
+            cmp_name = f"motifs_{args.motif_det_method}"
         elif args.cmp_type == 'color':
             cmp_name = f"color_border{seg_len}"
         else:
@@ -391,7 +405,8 @@ def main(args):
                     "label": "label", 
                     "cmp_type":args.cmp_type, 
                     "cmp_cost":args.cmp_cost, 
-                    "det_method":args.det_method, 
+                    "lines_det_method":args.lines_det_method, 
+                    "motif_det_method":args.motif_det_method, 
                     "xy_step": ppars.xy_step, 
                     "xy_grid_points": ppars.xy_grid_points, 
                     "theta_step": ppars.theta_step
@@ -461,9 +476,12 @@ if __name__ == '__main__':
             \nThe capital letters are used (L=lines, M=motif, S=shape, C=color)\
             \nFor example, MS is motif+shape, LS is lines+shape', 
         choices=['LS', 'MS', 'CS', 'CLMS'])   
-    parser.add_argument('--det_method', type=str, default='exact', 
+    parser.add_argument('--lines_det_method', type=str, default='deeplsd', 
         help='method for the feature detection (usually lines or motif)',
-        choices=['exact', 'deeplsd', 'manual', 'yolo-obb', 'yolo-bbox', 'yolo-seg'])  
+        choices=['exact', 'deeplsd', 'manual'])  
+    parser.add_argument('--motif_det_method', type=str, default='yolo-obb', 
+        help='method for the feature detection (usually lines or motif)',
+        choices=['yolo-obb', 'yolo-bbox', 'yolo-seg'])  
     parser.add_argument('--yolo_path', type=str, default='/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt', help='yolo path (.pt model)')
     parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')   
     parser.add_argument('--k', type=int, default=5, help='keep the best k values (for given gamma transformation) in the compatibility')   

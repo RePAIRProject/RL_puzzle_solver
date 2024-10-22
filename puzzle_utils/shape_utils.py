@@ -278,6 +278,12 @@ def mask2sdf(mask, q=1):
         sdf = (sdf // q) * q
     return sdf
 
+def dilate(mask, width=3):
+    kernel_size = width*2+1
+    kernel = np.ones((kernel_size, kernel_size))
+    dilated_mask = cv2.dilate(mask, kernel)
+    return dilated_mask 
+
 def get_outside_borders(mask, borders_width=3):
     """
     Get the borders outside of the mask contour (borders_width) 
@@ -518,22 +524,22 @@ def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, 
         piece['boundary_seg'] = borders_segments
     return pieces
 
-def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1, line_based=True, sdf=False, motif_based=True):
+def include_shape_info(fnames, pieces, dataset, puzzle, lines_det_method, motif_det_method, line_thickness=1, line_based=True, sdf=False, motif_based=True):
 
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle)
     polygons_folder = os.path.join(root_folder, fnames.polygons_folder)
     polygons = os.listdir(polygons_folder)
     if line_based == True:
-        lines_folder = os.path.join(root_folder, fnames.lines_output_name, method)
+        lines_folder = os.path.join(root_folder, fnames.lines_output_name, lines_det_method)
         lines_files = os.listdir(lines_folder)
         lines = [line for line in lines_files if line.endswith('.json')]
         assert len(polygons) == len(lines), f'Error: have {len(polygons)} polygons files and {len(lines)} lines files, they should have the same length!'
 
     ## NEW MOTIVE PART
     if motif_based == True:
-        if method == 'yolo-obb':
+        if motif_det_method == 'yolo-obb':
             motif_subfolder = f"{fnames.motifs_output_name}_OBB"
-        elif method == 'yolo-bbox':
+        elif motif_det_method == 'yolo-bbox':
             motif_subfolder = f"{fnames.motifs_output_name}_BB"
         else:
             print(f'###\n\nWARNING:\nNo method, just reading from {fnames.motifs_output_name}\n\n###')

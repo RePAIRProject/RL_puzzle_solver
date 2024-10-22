@@ -372,14 +372,14 @@ def main(args):
     pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.pieces_folder}")
     # check if we are combining!
     if args.cmp_type == 'combo':
-        if args.combo_type == "LS":
-            cmp_name = "combo_LS"
+        cmp_name = f"combo_{args.combo_type}"
+        if args.combo_type == "SH-LIN":
             print("combining shape and lines..")
             mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}'))
             mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
             #breakpoint()
-            R_lines = mat_lines['R_line']
-            R_shape = mat_shape['R_line']
+            R_lines = mat_lines['R']
+            R_shape = mat_shape['R']
             negative_region_map = R_lines < 0
 
             # only positive values
@@ -391,11 +391,9 @@ def main(args):
             # negative values set to -1
             R[negative_region_map] = -1
 
-        elif args.combo_type == 'MS':
+        elif args.combo_type == 'SH-MOT':
             print("combining shape and motifs..")
-            cmp_name = "combo_MS"
-            # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
-            mat_motifs = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_motifs'))
+            mat_motifs = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.det_method}"))
             mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
             # breakpoint()
             R_motif = mat_motifs['R']
@@ -404,6 +402,21 @@ def main(args):
 
             # only positive values
             R = (np.clip(R_motif, 0, 1) * np.clip(R_shape, 0, 1))
+            R /= np.max(R)
+            # negative values set to -1
+            R[negative_region_map] = -1
+
+        elif args.combo_type == 'SH-SEG':
+            print("combining shape and motifs..")
+            mat_seg = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_cmp_seg"))
+            mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+            # breakpoint()
+            R_seg = mat_seg['R']
+            R_shape = mat_shape['R']
+            negative_region_map = R_seg < 0
+
+            # only positive values
+            R = (np.clip(R_seg, 0, 1) * np.clip(R_shape, 0, 1))
             R /= np.max(R)
             # negative values set to -1
             R[negative_region_map] = -1
@@ -523,6 +536,7 @@ def main(args):
     plt.imsave(f"{final_solution[:-4]}_bordered.png", np.clip(fin_im1_brd, 0, 1))
     clean_img = fin_im1 * (fin_im1 > 0.1)
     plt.imsave(f"{final_solution[:-4]}_cropped.png", crop_to_content(clean_img * 255).astype(np.uint8))
+    plt.imsave(f"{final_solution[:-4]}_bordered_cropped.png", crop_to_content(np.clip(fin_im1_brd, 0, 1) * 255).astype(np.uint8))
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, Z, pieces_dict, ppars, use_RGB=True)
     # final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
     # if np.max(fin_im_v2) > 1:
@@ -605,12 +619,12 @@ if __name__ == '__main__':
     parser.add_argument('--p_pts', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
     parser.add_argument('--k', type=int, default=5, help='keep the best k values (for each pair) in the compatibility')   
-    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo', 'motifs'])
+    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo', 'motifs', 'seg'])
     parser.add_argument('--combo_type', type=str, default='LS',
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
-            \nThe capital letters are used (L=lines, M=motif, S=shape, C=color)\
-            \nFor example, MS is motif+shape, LS is lines+shape', 
-        choices=['LS', 'MS', 'CS', 'CLMS'])   
+            \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
+            \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation', 
+        choices=['SH-SEG', 'SH-MOT', 'SH-LIN'])   
     parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')
 
     args = parser.parse_args()
