@@ -421,7 +421,8 @@ def main(args):
             mdic = {
                         "All_cost": All_cost, 
                         "label": "label", 
-                        "method":args.det_method, 
+                        "motif_det_method":args.motif_det_method, 
+                        "lines_det_method":args.lines_det_method, 
                         "cost":args.cmp_cost, 
                         "xy_step": ppars.xy_step, 
                         "xy_grid_points": ppars.xy_grid_points, 
