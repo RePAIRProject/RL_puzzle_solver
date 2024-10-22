@@ -3,6 +3,16 @@ import numpy as np
 import scipy
 import pdb 
 
+def combine_region_masks(RMs):
+
+    neg_reg = RMs[0] < 0
+    combined_pos = RMs[0] * (RMs[0] > 0).astype(int)
+    for i in range(1, len(RMs)):
+        combined_pos *= RMs[i] * (RMs[i] > 0).astype(int)
+    combined = combined_pos - neg_reg
+
+    return combined
+
 def read_region_masks(pzl_cfg, pzl_name, mat_file_path=''):
 
     if len(mat_file_path) == 0:

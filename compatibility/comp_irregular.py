@@ -15,6 +15,7 @@ from configs import folder_names as fnames
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, encode_boundary_segments
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
+from puzzle_utils.regions import combine_region_masks
 from utils import compute_cost_wrapper, calc_computation_parameters
 
 def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
@@ -139,7 +140,6 @@ def main(args):
         with open(computation_parameters_path, 'w') as lmpj:
             json.dump(ppars, lmpj, indent=3)
         print("saved json compatibility parameters file")
-
         
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, \
             line_based=line_based, sdf=calc_sdf, motif_based=motif_based)
@@ -147,7 +147,21 @@ def main(args):
             pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=seg_len,
                                          boundary_thickness=2)
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
-        region_mask = region_mask_mat['RM']
+        shape_RM = region_mask_mat['RM_shapes']
+        if line_based == True and motif_based == False:
+            lines_RM = region_mask_mat['RM_lines']
+            region_mask = combine_region_masks([shape_RM, lines_RM])
+            #region_mask = lines_RM * shape_RM
+        elif line_based == False and motif_based == True:
+            motif_RM = region_mask_mat['RM_motifs']
+            region_mask = combine_region_masks([shape_RM, motif_RM])
+        elif line_based == True and motif_based == True:
+            lines_RM = region_mask_mat['RM_lines']
+            motif_RM = region_mask_mat['RM_motifs']
+            region_mask = combine_region_masks([shape_RM, motif_RM, lines_RM])
+        else: # line_based == False and motif_based == False:
+            region_mask = shape_RM
+        
         
         # parameters and grid
         p = [ppars.p_hs, ppars.p_hs]    # center of piece [125,125] - ref.point for lines
