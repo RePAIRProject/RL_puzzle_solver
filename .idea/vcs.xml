@@ -2,5 +2,9 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/DeepLSD" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/DeepLSD/line_refinement/pybind11" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/DeepLSD/third_party/homography_est" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/DeepLSD/third_party/progressive-x" vcs="Git" />
   </component>
 </project>

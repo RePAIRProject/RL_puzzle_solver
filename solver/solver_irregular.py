@@ -357,8 +357,8 @@ def main(args):
         cmp_name = f"motifs_{args.det_method}"
         # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
     elif args.cmp_type == 'color':
-        #cmp_name = f"cmp_color"
-        cmp_name = f"color_border{args.border_len}"
+        cmp_name = f"cmp_color"
+        #cmp_name = f"color_border{args.border_len}"
     else:
         cmp_name = f"cmp_{args.cmp_type}"
 
@@ -457,6 +457,19 @@ def main(args):
             r_val = np.where(r_temp < a, 0, r_temp)
             R[:, :, :, j, i] = r_zer + r_val
 
+    ## esclude if incompatible
+    Rnew = R
+    for i in range(np.shape(R)[4]):
+        r_temp = R[:, :, :, :, i]
+        m = np.max(r_temp)
+        if m <= 0:
+            Rnew = np.delete(Rnew, i, 4)
+            Rnew = np.delete(Rnew, i, 3)
+            anc=anc-1
+
+    R = Rnew
+    anc = np.max(anc,0)
+    #####
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts)  # (R, anc, anc_rot, nh, nw)
     # print(p_initial.shape)

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap as lsc
 import torch
 import h5py
-import json 
+import json
 import shapely
 from sklearn.cluster import KMeans
 
