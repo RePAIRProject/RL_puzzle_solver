@@ -52,8 +52,8 @@ def main(args):
         print("saved json compatibility_parameters file")
 
         # INCLUDE SHAPE
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, \
-            line_based=args.lines, line_thickness=3, motif_based=args.motif)
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, lines_det_method=args.lines_det_method, \
+            motif_det_method=args.motif_det_method, line_based=args.lines, line_thickness=3, motif_based=args.motif)
         if 'lines' not in pieces[0].keys():
             print("-" * 50)
             print("\nWARNING:\nno lines found, line-based region will be empty!\n")
@@ -307,10 +307,11 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='repair', help='dataset (name of the folders)')
     parser.add_argument('--puzzle', type=str, default='',
                         help='puzzle to work on - leave empty to generate for the whole dataset')
-    parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
     parser.add_argument('--lines', type=int, default=0, help='use line-based regions')
+    parser.add_argument('--lines_det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--motif', type=int, default=0, help='use motif-based regions')
+    parser.add_argument('--motif_det_method', type=str, default='exact', help='method motif detection')  # exact, manual, deeplsd=
     parser.add_argument('--irregular', type=int, default=0, help='use irregular parameters')
     parser.add_argument('--save_visualization', type=bool, default=True,
                         help='save an image that showes the matrices color-coded')

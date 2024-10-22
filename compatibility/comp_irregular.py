@@ -86,7 +86,7 @@ def main(args):
             ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
         additional_cmp_pars = calc_computation_parameters(ppars, cmp_type=args.cmp_type, \
-            cmp_cost=args.cmp_cost, det_method=args.det_method)
+            cmp_cost=args.cmp_cost, lines_det_method=args.lines_det_method, motif_det_method=args.motif_det_method)
 
         for parkey in additional_cmp_pars.keys():
             ppars[parkey] = additional_cmp_pars[parkey]
@@ -141,8 +141,8 @@ def main(args):
             json.dump(ppars, lmpj, indent=3)
         print("saved json compatibility parameters file")
         
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, \
-            line_based=line_based, sdf=calc_sdf, motif_based=motif_based)
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, lines_det_method=args.lines_det_method, \
+            motif_det_method=args.motif_det_method, line_based=line_based, sdf=calc_sdf, motif_based=motif_based)
         if color_based == True:
             pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=seg_len,
                                          boundary_thickness=2)
@@ -390,11 +390,11 @@ def main(args):
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
         if args.cmp_type == 'lines':
-            cmp_name = f"linesdet_{args.det_method}_cost_{args.cmp_cost}"
+            cmp_name = f"linesdet_{args.lines_det_method}_cost_{args.cmp_cost}"
         elif args.cmp_type == 'shape':
             cmp_name = "shape"
         elif args.cmp_type == 'motifs':
-            cmp_name = f"motifs_{args.det_method}"
+            cmp_name = f"motifs_{args.motif_det_method}"
         elif args.cmp_type == 'color':
             cmp_name = f"color_border{seg_len}"
         else:
@@ -405,7 +405,8 @@ def main(args):
                     "label": "label", 
                     "cmp_type":args.cmp_type, 
                     "cmp_cost":args.cmp_cost, 
-                    "det_method":args.det_method, 
+                    "lines_det_method":args.lines_det_method, 
+                    "motif_det_method":args.motif_det_method, 
                     "xy_step": ppars.xy_step, 
                     "xy_grid_points": ppars.xy_grid_points, 
                     "theta_step": ppars.theta_step
@@ -475,9 +476,12 @@ if __name__ == '__main__':
             \nThe capital letters are used (L=lines, M=motif, S=shape, C=color)\
             \nFor example, MS is motif+shape, LS is lines+shape', 
         choices=['LS', 'MS', 'CS', 'CLMS'])   
-    parser.add_argument('--det_method', type=str, default='exact', 
+    parser.add_argument('--lines_det_method', type=str, default='deeplsd', 
         help='method for the feature detection (usually lines or motif)',
-        choices=['exact', 'deeplsd', 'manual', 'yolo-obb', 'yolo-bbox', 'yolo-seg'])  
+        choices=['exact', 'deeplsd', 'manual'])  
+    parser.add_argument('--motif_det_method', type=str, default='yolo-obb', 
+        help='method for the feature detection (usually lines or motif)',
+        choices=['yolo-obb', 'yolo-bbox', 'yolo-seg'])  
     parser.add_argument('--yolo_path', type=str, default='/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt', help='yolo path (.pt model)')
     parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')   
     parser.add_argument('--k', type=int, default=5, help='keep the best k values (for given gamma transformation) in the compatibility')   

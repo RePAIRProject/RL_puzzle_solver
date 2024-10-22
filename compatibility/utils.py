@@ -11,13 +11,14 @@ import time
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
-def calc_computation_parameters(parameters, cmp_type, cmp_cost, det_method):
+def calc_computation_parameters(parameters, cmp_type, cmp_cost, lines_det_method, motif_det_method):
 
     cmp_pars = CfgParameters()
 
     cmp_pars['cmp_type'] = cmp_type 
     cmp_pars['cmp_cost'] = cmp_cost 
-    cmp_pars['det_method'] = det_method 
+    cmp_pars['lines_det_method'] = lines_det_method 
+    cmp_pars['motif_det_method'] = motif_det_method 
     if cmp_type == 'lines':
         cmp_pars['thr_coef'] = 0.13
         #lm_pars['max_dist'] = 0.70*parameters.xy_step ## changed *0.7
@@ -33,7 +34,8 @@ def calc_computation_parameters(parameters, cmp_type, cmp_cost, det_method):
         cmp_pars['k'] = 3
     elif cmp_type == 'shape':
         cmp_pars['dilation_size'] = 35
-    #elif cmp_type == 'motifs': #nothing needed it seems
+    #elif cmp_type == 'motifs':
+        #elif cmp_type == 'motifs': #nothing needed it seems
 
     return cmp_pars
 
@@ -54,7 +56,8 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
     n = len(pieces)
     compatibility_type = ppars['cmp_type']
     compatibility_cost = ppars['cmp_cost']
-    det_type = ppars['det_method']
+    lines_det_method = ppars['lines_det_method']
+    motif_det_method = ppars['motif_det_method']
     
     if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
@@ -78,7 +81,6 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
                 R_cost = np.zeros((m.shape[1], m.shape[1], len(rot))) + ppars.mismatch_penalty
             else:
                 #print('values!')
-                
                 t1 = time.time()
                 if compatibility_cost == 'DEBUG':
                     print(f"Computing compatibility between Piece {idx1} and Piece {idx2}")
@@ -120,8 +122,8 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
             R_cost = compute_SDF_cost_matrix(pieces[idx1], pieces[idx2], ids_to_score, ppars, verbosity=verbosity)
             #breakpoint()
         elif compatibility_type == 'motifs':
-            assert ( (det_type == "yolo-obb") | (det_type == "yolo-bbox")), f"Unkown detection method for motifs!\nWe know `yolo-obb` and `yolo-bbox`, given `{det_type}`\nRe-run specifying `--det_method`"
-            R_cost = compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=det_type, verbosity=verbosity)
+            assert ( (motif_det_method == "yolo-obb") | (motif_det_method == "yolo-bbox")), f"Unkown detection method for motifs!\nWe know `yolo-obb` and `yolo-bbox`, given `{motif_det_method}`\nRe-run specifying `--det_method`"
+            R_cost = compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=motif_det_method, verbosity=verbosity)
         elif compatibility_type == 'color':
             R_cost = compute_cost_using_color_compatibility(idx1, idx2, pieces, mask_ij, ppars, seg_len=seg_len, verbosity=1)
         else: # other compatibilities!
