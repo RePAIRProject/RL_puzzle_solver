@@ -151,7 +151,6 @@ def main(args):
         if line_based == True and motif_based == False:
             lines_RM = region_mask_mat['RM_lines']
             region_mask = combine_region_masks([shape_RM, lines_RM])
-            #region_mask = lines_RM * shape_RM
         elif line_based == False and motif_based == True:
             motif_RM = region_mask_mat['RM_motifs']
             region_mask = combine_region_masks([shape_RM, motif_RM])
@@ -161,6 +160,8 @@ def main(args):
             region_mask = combine_region_masks([shape_RM, motif_RM, lines_RM])
         else: # line_based == False and motif_based == False:
             region_mask = shape_RM
+        plt.imshow(region_mask[:,:,0,1,2])
+        breakpoint()
         
         
         # parameters and grid
@@ -216,7 +217,7 @@ def main(args):
             #with parallel_backend('threading', n_jobs=args.jobs):
             costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, ppars, compatibility_type=args.cmp_type, verbosity=args.verbosity) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
             #costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
-            All_cost, All_norm_cost = reshape_list2mat_and_normalize(costs_list, n=n, norm_value=computation_parameters.rmax)
+            All_cost, All_norm_cost = reshapAll_coste_list2mat_and_normalize(costs_list, n=n, norm_value=computation_parameters.rmax)
         else:
             for i in range(n):  # select fixed fragment
                 for j in range(n):
@@ -421,7 +422,8 @@ def main(args):
             mdic = {
                         "All_cost": All_cost, 
                         "label": "label", 
-                        "method":args.det_method, 
+                        "motif_det_method":args.motif_det_method, 
+                        "lines_det_method":args.lines_det_method, 
                         "cost":args.cmp_cost, 
                         "xy_step": ppars.xy_step, 
                         "xy_grid_points": ppars.xy_grid_points, 
