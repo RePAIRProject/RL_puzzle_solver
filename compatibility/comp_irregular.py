@@ -35,6 +35,7 @@ def main(args):
 
     if args.puzzle == '':  
         puzzles = os.listdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset))
+        puzzles.sort()
         puzzles = [puz for puz in puzzles if os.path.isdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset,puz)) is True]
     else:
         puzzles = [args.puzzle]
@@ -159,10 +160,7 @@ def main(args):
             motif_RM = region_mask_mat['RM_motifs']
             region_mask = combine_region_masks([shape_RM, motif_RM, lines_RM])
         else: # line_based == False and motif_based == False:
-            region_mask = shape_RM
-        plt.imshow(region_mask[:,:,0,1,2])
-        breakpoint()
-        
+            region_mask = shape_RM        
         
         # parameters and grid
         p = [ppars.p_hs, ppars.p_hs]    # center of piece [125,125] - ref.point for lines
