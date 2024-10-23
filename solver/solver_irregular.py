@@ -427,7 +427,7 @@ def main(args):
     else:
         print("loading", os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
         mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
-        # R = mat['R_line']
+        # R = mat['R_line'] ## temp
         R = mat['R']
 
     pieces_files = os.listdir(pieces_folder)
@@ -471,17 +471,17 @@ def main(args):
             R[:, :, :, j, i] = r_zer + r_val
 
     ## esclude if incompatible
-    Rnew = R
-    for i in range(np.shape(R)[4]):
-        r_temp = R[:, :, :, :, i]
-        m = np.max(r_temp)
-        if m <= 0:
-            Rnew = np.delete(Rnew, i, 4)
-            Rnew = np.delete(Rnew, i, 3)
-            anc=anc-1
-
-    R = Rnew
-    anc = np.max(anc,0)
+    # Rnew = R
+    # for i in range(np.shape(R)[4]):
+    #     r_temp = R[:, :, :, :, i]
+    #     m = np.max(r_temp)
+    #     if m <= 0:
+    #         Rnew = np.delete(Rnew, i, 4)
+    #         Rnew = np.delete(Rnew, i, 3)
+    #         anc=anc-1
+    #
+    # R = Rnew
+    # anc = np.max(anc,0)
     #####
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts)  # (R, anc, anc_rot, nh, nw)
@@ -604,8 +604,8 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne', help='dataset folder')
-    parser.add_argument('--puzzle', type=str, default='image_00000_1', help='puzzle folder')
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch2', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='RPobj_g1_o0001_gt_rot', help='puzzle folder')
     parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')  # LAP, LCI
     parser.add_argument('--anchor', type=int, default=2, help='anchor piece (index)')
@@ -619,8 +619,8 @@ if __name__ == '__main__':
     parser.add_argument('--p_pts', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
     parser.add_argument('--k', type=int, default=5, help='keep the best k values (for each pair) in the compatibility')   
-    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo', 'motifs', 'seg'])
-    parser.add_argument('--combo_type', type=str, default='LS',
+    parser.add_argument('--cmp_type', type=str, default='shape', help='which compatibility to use!', choices=['combo', 'lines', 'shape', 'color',  'motifs', 'seg'])
+    parser.add_argument('--combo_type', type=str, default='SH-MOT',
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
             \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
             \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation', 
