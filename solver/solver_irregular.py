@@ -428,7 +428,7 @@ def main(args):
     else:
         print("loading", os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
         mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
-        # R = mat['R_line']
+        # R = mat['R_line'] ## temp
         R = mat['R']
 
     pieces_files = os.listdir(pieces_folder)
@@ -623,8 +623,8 @@ if __name__ == '__main__':
     parser.add_argument('--p_pts', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
     parser.add_argument('--k', type=int, default=5, help='keep the best k values (for each pair) in the compatibility')   
-    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo', 'motifs', 'seg'])
-    parser.add_argument('--combo_type', type=str, default='LS',
+    parser.add_argument('--cmp_type', type=str, default='shape', help='which compatibility to use!', choices=['combo', 'lines', 'shape', 'color',  'motifs', 'seg'])
+    parser.add_argument('--combo_type', type=str, default='SH-MOT',
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
             \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
             \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation', 
