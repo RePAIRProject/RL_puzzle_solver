@@ -297,7 +297,8 @@ def main(args):
     #print(os.getcwd())
     dataset_name = args.dataset
     puzzle_name = args.puzzle
-    method = args.det_method
+    lines_det_method = args.lines_det_method
+    motif_det_method = args.motif_det_method
 
     print()
     print("-" * 50)
@@ -348,13 +349,13 @@ def main(args):
     # ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
     if args.cmp_type == 'lines':
-        cmp_name = f"linesdet_{args.det_method}_cost_{args.cmp_cost}"
+        cmp_name = f"linesdet_{args.lines_det_method}_cost_{args.cmp_cost}"
     elif args.cmp_type == 'shape':
         cmp_name = "shape"
     elif args.cmp_type == 'combo':
         cmp_name = f"cmp_combo{args.combo_type}"
     elif args.cmp_type == 'motifs':
-        cmp_name = f"motifs_{args.det_method}"
+        cmp_name = f"motifs_{args.motif_det_method}"
         # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
     elif args.cmp_type == 'color':
         cmp_name = f"cmp_color"
@@ -375,7 +376,7 @@ def main(args):
         cmp_name = f"combo_{args.combo_type}"
         if args.combo_type == "SH-LIN":
             print("combining shape and lines..")
-            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}'))
+            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.lines_det_method}_cost_{args.cmp_cost}'))
             mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
             #breakpoint()
             R_lines = mat_lines['R']
@@ -393,7 +394,7 @@ def main(args):
 
         elif args.combo_type == 'SH-MOT':
             print("combining shape and motifs..")
-            mat_motifs = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.det_method}"))
+            mat_motifs = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.motif_det_method}"))
             mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
             # breakpoint()
             R_motif = mat_motifs['R']
@@ -471,17 +472,18 @@ def main(args):
             R[:, :, :, j, i] = r_zer + r_val
 
     ## esclude if incompatible
-    # Rnew = R
-    # for i in range(np.shape(R)[4]):
-    #     r_temp = R[:, :, :, :, i]
-    #     m = np.max(r_temp)
-    #     if m <= 0:
-    #         Rnew = np.delete(Rnew, i, 4)
-    #         Rnew = np.delete(Rnew, i, 3)
-    #         anc=anc-1
-    #
-    # R = Rnew
-    # anc = np.max(anc,0)
+    if args.exclude == True:
+        Rnew = R
+        for i in range(np.shape(R)[4]):
+            r_temp = R[:, :, :, :, i]
+            m = np.max(r_temp)
+            if m <= 0:
+                Rnew = np.delete(Rnew, i, 4)
+                Rnew = np.delete(Rnew, i, 3)
+                anc=anc-1
+
+        R = Rnew
+        anc = np.max(anc,0)
     #####
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts)  # (R, anc, anc_rot, nh, nw)
@@ -604,12 +606,14 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch2', help='dataset folder')
-    parser.add_argument('--puzzle', type=str, default='RPobj_g1_o0001_gt_rot', help='puzzle folder')
-    parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
+    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='image_00000_1', help='puzzle folder')
+    parser.add_argument('--lines_det_method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
+    parser.add_argument('--motif_det_method', type=str, default='yolo-obb', help='method motif detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')  # LAP, LCI
     parser.add_argument('--anchor', type=int, default=2, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
+    parser.add_argument('--exclude', default=False, action='store_true', help='use to exclude pieces without compatibility (used for some partial compatibilities, not fully tested!)')
     parser.add_argument('--verbosity', type=int, default=2, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
     parser.add_argument('--tfirst', type=int, default=750, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
