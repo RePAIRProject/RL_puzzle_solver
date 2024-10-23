@@ -461,7 +461,8 @@ def main(args):
     print(f"Using anchor the piece with id: {anc}")
 
     ## K-sparsification
-    k = 10
+    #k = 10
+    k = args.k
     for i in range(np.shape(R)[4]):
         for j in range(np.shape(R)[4]):
             r_temp = R[:, :, :, j, i]
@@ -606,8 +607,8 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne', help='dataset folder')
-    parser.add_argument('--puzzle', type=str, default='image_00000_1', help='puzzle folder')
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch2', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='RPobj_g1_o0001_gt_rot', help='puzzle folder')
     parser.add_argument('--lines_det_method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--motif_det_method', type=str, default='yolo-obb', help='method motif detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')  # LAP, LCI
@@ -622,7 +623,7 @@ if __name__ == '__main__':
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
     parser.add_argument('--p_pts', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
-    parser.add_argument('--k', type=int, default=5, help='keep the best k values (for each pair) in the compatibility')   
+    parser.add_argument('--k', type=int, default=10, help='keep the best k values (for each pair) in the compatibility')
     parser.add_argument('--cmp_type', type=str, default='shape', help='which compatibility to use!', choices=['combo', 'lines', 'shape', 'color',  'motifs', 'seg'])
     parser.add_argument('--combo_type', type=str, default='SH-MOT',
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
