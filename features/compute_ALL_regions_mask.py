@@ -22,6 +22,7 @@ from puzzle_utils.visualization import save_vis
 def main(args):
     if args.puzzle == '':
         puzzles = os.listdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset))
+        puzzles.sort()
         puzzles = [puz for puz in puzzles if
                    os.path.isdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puz)) is True]
     else:
