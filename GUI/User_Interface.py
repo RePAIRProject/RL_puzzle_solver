@@ -678,6 +678,7 @@ def setting():  # unified path setting
     apply_gt = False
     number_of_neighbours = 3
     number_of_anchors = 4
+    solver_parameters = ""
     setting_dir = os.path.join(os.getcwd(), "GUI")
     setting_path = os.path.join(setting_dir, "setting.txt")
     if not os.path.exists(setting_path):
@@ -814,13 +815,18 @@ def transparent(img):
 
     tmp = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
 
-    _, alpha = cv2.threshold(tmp, 0, 255, cv2.THRESH_BINARY)
+    _, alpha = cv2.threshold(tmp, 15, 255, cv2.THRESH_BINARY)
 
     b, g, r = cv2.split(src)
 
     rgba = [b, g, r, alpha]
 
     dst = cv2.merge(rgba, 4)
+
+    # kernel_size = 3
+    # dst = cv2.medianBlur(dst, kernel_size)
+
+    # dst = cv2.medianBlur(dst, kernel_size)
 
     return dst
 
@@ -945,7 +951,7 @@ if __name__ == '__main__':
 
     read_ground_truth()
 
-    # transparent_path = os.getcwd() + "/GUI/pieces/"
+    # transparent_path = os.getcwd() + "/GUI/pieces_2/"
     # transparent_data(transparent_path)
 
     # erode_data()

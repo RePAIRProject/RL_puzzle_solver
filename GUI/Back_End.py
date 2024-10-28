@@ -1,4 +1,8 @@
+import os
 from threading import Thread, Event, Lock
+
+from scipy.io import loadmat
+
 import select_anchor_RePAIR
 import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
 import json
@@ -133,10 +137,8 @@ def select_neighbour_thread_function():
     neighbour_numbers = path_dic['number_of_neighbours']
     neighbour_images = sorted_neighbour_images[:neighbour_numbers]
 
-    print("neighbour_images", neighbour_images)
-
     extract_lists(neighbour_images)
-    print("image_names", image_names)
+
     set_select_neighbour_running(False)
     set_select_neighbour_done(True)
 
@@ -156,7 +158,7 @@ def extract_lists(main_list):
 
 def loop_finalization(solved_list, offset, center):
     parameters = path_dic['parameters']
-    # print("parameters")
+
     data = None
     xy_step = 1
     theta_step = 360
@@ -166,20 +168,18 @@ def loop_finalization(solved_list, offset, center):
         if data is not None:
             xy_step = data['xy_step']
             theta_step = data['theta_step']
-            # print(data['p_hs'])
-            # print(data.keys())
+    print("xy_step", xy_step)
+    print("theta_step", theta_step)
 
 
     for pieces in solved_list:
         name = pieces[0]
         pos = pieces[1]
-        # print(pos)
 
         pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
-        # print(pos)
 
         pos = scale_to_solver(xy_step, theta_step, pos)
-        # print(name, pos)
+
         pieces[1][0] = pos[0]
         pieces[1][1] = pos[1]
         pieces[1][2] = pos[2]
@@ -188,6 +188,7 @@ def loop_finalization(solved_list, offset, center):
 
 
 def scale_to_solver(xy_step, theta_step, position):
+    global path_dic
     y, x, rotation = position
     x = -1 * x / xy_step
     y = y / xy_step
@@ -195,8 +196,17 @@ def scale_to_solver(xy_step, theta_step, position):
     y = round(y) # should I?
     rotation = rotation / theta_step
 
+    comp_folder = path_dic['comp_folder']
+    comp_name = path_dic['comp_name']
+
+    # print(comp_name)
+    # comp_name = eval("f'{}'".format(comp_name))
+    mat = loadmat(os.path.join(comp_folder, comp_name))  # load the new compatibility matrix
+
+    R = mat[path_dic['comp_format']]
+    bias = R.shape[0] + 1
     # centralizing in solution how can I get 16 from?! #ask LUCA
-    position = [x + 16, y + 16, rotation]
+    position = [x + bias, y + bias, rotation]
     return position
 
 
@@ -306,7 +316,7 @@ def get_pl_solution():
 
 
 def scale_solution():
-    global pl_solution
+    global pl_solutionf
     global path_dic
     key_x, key_y, key_rotation = pl_solution[key_fragment]
 
