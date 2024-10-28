@@ -48,6 +48,7 @@ def initialization(R, anc, solved_pieces, pieces_names, p_size=0):
     z0 = 0  # rotation for anchored patch
     # Initialize reconstruction plan
     no_grid_points = R.shape[0]
+    print("no_grid_points", no_grid_points)
     no_patches = R.shape[3]
     no_rotations = R.shape[2]
 
