@@ -63,6 +63,7 @@ class MovableImage(Image):
 
         self.ratio = np.array([1, 1])
         self.update_ratio()
+        self.is_anchor = False
 
         with self.canvas.before:
             PushMatrix()

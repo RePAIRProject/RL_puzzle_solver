@@ -1,17 +1,33 @@
 import os
+import re
 
 from kivy import Config
 from kivy.clock import Clock, mainthread
+from kivy.uix.scatter import Scatter
 from kivymd.app import MDApp
 import numpy as np
 import math
+from screeninfo import get_monitors
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.checkbox import CheckBox
+from kivy.uix.togglebutton import ToggleButton
+from kivy.uix.bubble import Bubble
+from kivy.uix.textinput import TextInput
 
 from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.toolbar import MDTopAppBar
+from kivymd.uix.menu import MDDropdownMenu
+from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.card import MDCard
+from kivymd.uix.relativelayout import MDRelativeLayout
+from kivy.uix.screenmanager import ScreenManager, Screen
+
+from kivymd.uix.snackbar import MDSnackbar
 
 from kivy.core.window import Window
 
@@ -116,8 +132,14 @@ class GUIApp(MDApp):
 
     def build(self):
 
+        for m in get_monitors():
+            if m == get_monitors()[0]:
+                print(m)
+                Window.left = m.x
+                Window.top = m.y
+                Window.size = (m.width, m.height)
         the_app = self
-        the_layout = MDBoxLayout(md_bg_color=(0, 0, 0, 1))
+        self.the_layout = MDFloatLayout(md_bg_color=(0, 0, 0, 1))
         # the_layout = Scatter()
         main_layout = MainLayout()
         main_layout.cols = 1
@@ -129,10 +151,10 @@ class GUIApp(MDApp):
         main_layout.padding = [0, 0, 0, 0]
         main_layout.spacing = [0, 0]
 
-        toolbar = MDTopAppBar()
-        toolbar.orientation = "horizontal"
+        self.toolbar = MDTopAppBar()
+        self.toolbar.orientation = "horizontal"
 
-        main_layout.add_widget(toolbar)
+        main_layout.add_widget(self.toolbar)
 
         anchor_button = Button(text="Select Anchor")
         anchor_button.bind(on_press=start_select_anchor)
@@ -146,16 +168,18 @@ class GUIApp(MDApp):
         neighbour_button.bind(on_press=start_select_neighbour)
         neighbour_button.size_hint_x = 0.5
 
+        # the_layout.add_widget(snackbar)
+
         pl_solver_button = Button(text="PL Solver")
         pl_solver_button.bind(on_press=start_pl_solver)
         pl_solver_button.size_hint_x = 0.5
 
-        toolbar.left_action_items.append(["menu", lambda x: the_app.callback()])
+        self.toolbar.left_action_items.append(["menu", lambda x: the_app.callback()])
 
-        toolbar.add_widget(pl_solver_button)
-        toolbar.add_widget(neighbour_button)
-        toolbar.add_widget(anchor_button)
-        toolbar.add_widget(show_button)
+        self.toolbar.add_widget(pl_solver_button)
+        self.toolbar.add_widget(neighbour_button)
+        self.toolbar.add_widget(anchor_button)
+        self.toolbar.add_widget(show_button)
 
         main_layout.minimum_height = 1
 
@@ -172,20 +196,54 @@ class GUIApp(MDApp):
         main_layout.add_widget(grid_layout)
         main_layout.add_widget(click_label)
 
-        the_layout.add_widget(main_layout)
-        self.widget_list.append(toolbar)  # 0 toolbar
+        self.the_layout.add_widget(main_layout)
+        self.widget_list.append(self.toolbar)  # 0 toolbar
         self.widget_list.append(anchor_button)  # 1 anchor_button
         self.widget_list.append(show_button)  # 2 show_button
         self.widget_list.append(grid_layout)  # 3 image_view
         self.widget_list.append(neighbour_button)  # 4 neighbour_button
 
         self.widget_dict.update({'grid_layout': grid_layout})
-        self.widget_dict.update({'toolbar': toolbar})
+        self.widget_dict.update({'toolbar': self.toolbar})
         self.widget_dict.update({'anchor_button': anchor_button})
         self.widget_dict.update({'show_button': show_button})
         self.widget_dict.update({'neighbour_button': neighbour_button})
         self.widget_dict.update({'main_layout': main_layout})
         self.widget_dict.update({'pl_solver_button': pl_solver_button})
+
+        # toggle_button = MDRaisedButton(text="Toggle Sidebar", size_hint=(None, None), size=(200, 50))
+        # toggle_button.bind(on_release=self.toggle_sidebar)
+
+        # Sidebar layout
+        self.sidebar = MDCard(size_hint=(None, None), size=(64, Window.size[1]-64), pos_hint={"right": 1, "down": 1}, md_bg_color=(0.1, 0.1, 0.1, 1))
+        self.sidebar.image_name = Label(text="", size_hint=(None, None), size=(64, 32))
+        self.sidebar.main_grid = MDGridLayout()
+        self.sidebar.main_grid.cols = 1
+        self.sidebar.main_grid.rows = 4
+        self.sidebar.col_grid = MDGridLayout()
+        self.sidebar.col_grid.cols = 2
+        self.sidebar.col_grid.rows = 1
+        self.sidebar.col_grid.add_widget(Label(text="anchor", size_hint=(None, None), size=(44, 32)))
+        self.sidebar.image_checkbox = CheckBox(size_hint=(None, None), size=(20, 32))
+        self.sidebar.image_checkbox.color = (0.6,0.6,0.6,1)
+        self.sidebar.image_checkbox.group = "image_properties"
+
+        self.sidebar.image_checkbox.bind(active=self.on_checkbox_active)
+
+
+        self.sidebar.col_grid.add_widget(self.sidebar.image_checkbox)
+        self.sidebar.main_grid.add_widget(self.sidebar.image_name)
+        self.sidebar.main_grid.add_widget(self.sidebar.col_grid)
+        self.sidebar.add_widget(self.sidebar.main_grid)
+        self.sidebar.image_checkbox.state = "normal"  # False
+        self.sidebar.image_checkbox.state = "down"  # True
+        # self.sidebar.add_widget(MDRaisedButton(text="Option 1"))
+        # self.sidebar.add_widget(MDRaisedButton(text="Option 2"))
+        # self.sidebar.add_widget(MDRaisedButton(text="Option 3"))
+        self.sidebar.opacity = 0  # Initially hidden
+
+        # the_layout.add_widget(toggle_button)
+        self.the_layout.add_widget(self.sidebar)
 
         anchor_button.disabled = False
         show_button.disabled = True
@@ -193,7 +251,7 @@ class GUIApp(MDApp):
         pl_solver_button.disabled = True
 
         Clock.schedule_interval(self.checking_clock, graphic_freq)  # Graphic Internal Thread to communicate
-        return the_layout
+        return self.the_layout
 
     @mainthread
     def set_images(self, has_score, *args, **kwargs):
@@ -225,6 +283,22 @@ class GUIApp(MDApp):
             # image.fit_mode = "contain"
             current_image_list.append(image)
         initial_image_updates = False
+
+    def on_checkbox_active(self, checkbox, value):
+        global grabbed_image
+        if grabbed_image is not None:
+            grabbed_image.is_anchor = value
+
+    def toggle_sidebar(self, on_off, true_false):
+        # Toggle sidebar visibility
+        if on_off:
+            self.sidebar.opacity = 1
+        else:
+            self.sidebar.opacity = 0
+        if true_false:
+            self.sidebar.image_checkbox.state = "down"
+        else:
+            self.sidebar.image_checkbox.state = "normal"
 
     @mainthread
     def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener
@@ -267,11 +341,14 @@ class GUIApp(MDApp):
                 none_counter += 1  # weird input recognition from KIVY
         window_size = Window.size
         mouse_pos = (window_size[0] * touch.spos[0], window_size[1] * touch.spos[1])
-
         if touch.button == 'right':
-            grabbed_image = None
+            # grabbed_image = None
+            self.toggle_sidebar(False, False)
 
         if touch.button == 'left':
+            if touch.is_double_tap:
+                if not hasattr(touch, 'double_tapped') or not touch.double_tapped:
+                    touch.double_tapped = True
             if not hold_left:
                 checked_border = False
                 for image in current_image_list:
@@ -289,6 +366,7 @@ class GUIApp(MDApp):
                                 if image.check_mask(pixel):
                                     grabbed_image = image
                                     grabbed_image.update_translate()
+
                                     checked_border = True  # /todo
                                     break
                 if not checked_border:
@@ -313,6 +391,12 @@ class GUIApp(MDApp):
                     # click_label.text = str(grabbed_image.get_number() + 1)
                     click_label.text = str(grabbed_image.get_name())
                     self.clicked = str(grabbed_image.get_number() + 1)
+                    if hasattr(touch, 'double_tapped'):
+                        if touch.double_tapped:
+                            temp_text = grabbed_image.get_name()
+                            numbers = re.findall(r'\d+', temp_text)
+                            self.sidebar.image_name.text = '_'.join(numbers)
+                            self.toggle_sidebar(True, grabbed_image.is_anchor)
                 else:
                     if self.is_grabbing_window:  # left shift
                         grid_layout = self.widget_dict['grid_layout']
@@ -346,6 +430,7 @@ class GUIApp(MDApp):
 
     @mainthread
     def on_resize(self, *args):
+        self.sidebar.size = (64, Window.size[1] - self.toolbar.size[1])
         if (select_anchor_done is not None) & (select_neighbour_done is not None) & (pl_solver_done is not None):
             if select_anchor_done & select_neighbour_done & pl_solver_done:
                 if self.resize_event is None:
@@ -448,6 +533,7 @@ class GUIApp(MDApp):
         global pl_solution
         global next_neighbour_requested
         global select_anchor_done
+
         communicate_thread_lock.acquire()
         self.toolbar_changes(toolbar_color)
 

@@ -6,7 +6,7 @@ pieces_path: /GUI/DataBase/new_Repair/RPobj_g37_o0037/RPobj_g37_o0037_gt_rot/pie
 comp_folder: /GUI/DataBase/new_Repair/RPobj_g37_o0037/RPobj_g37_o0037_gt_rot/compatibility_matrix/
 comp_name: CM_motifs_yolo-obb.mat
 Rotation_Intervals: 90
-number_of_neighbours: 4
+number_of_neighbours: 3
 number_of_anchors: 30
 comp_format: R
 apply_gt: False
