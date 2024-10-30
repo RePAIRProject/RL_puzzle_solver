@@ -49,8 +49,6 @@ from MoveableImage import MovableImage
 Window.clearcolor = (0, 0, 0, 0)
 
 backend_path = os.getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
-image_path = ""
-mask_path = ""
 path_dic = None
 image_offset = [0, 0]
 rotation_interval = 0.5
@@ -80,7 +78,6 @@ test_thread_started = True
 communicate_thread_lock = threading.Lock()
 click_label = Label()
 
-grabbed_image = None
 key_image = None
 sorted_image_scores = None
 
@@ -134,11 +131,10 @@ class GUIApp(MDApp):
 
         for m in get_monitors():
             if m == get_monitors()[0]:
-                print(m)
                 Window.left = m.x
                 Window.top = m.y
                 Window.size = (m.width, m.height)
-        the_app = self
+        self.the_app = self
         self.the_layout = MDFloatLayout(md_bg_color=(0, 0, 0, 1))
         # the_layout = Scatter()
         main_layout = MainLayout()
@@ -285,9 +281,8 @@ class GUIApp(MDApp):
         initial_image_updates = False
 
     def on_checkbox_active(self, checkbox, value):
-        global grabbed_image
-        if grabbed_image is not None:
-            grabbed_image.is_anchor = value
+        if hasattr(self, 'grabbed_image'):
+            self.grabbed_image.is_anchor = value
 
     def toggle_sidebar(self, on_off, true_false):
         # Toggle sidebar visibility
@@ -303,7 +298,6 @@ class GUIApp(MDApp):
     @mainthread
     def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener
         global click_label
-        global grabbed_image
         global hold_left
         global checked_border
         global none_counter
@@ -317,11 +311,11 @@ class GUIApp(MDApp):
             self.is_grabbing_window = True
         if keyboard_input == 305:
             if touch.button == 'scrollup':  # scroll up is scrolling down :|
-                if grabbed_image is not None:
-                    grabbed_image.rotate(-1 * rotation_interval)  # its  2x God knows why
+                if self.grabbed_image is not None:
+                    self.grabbed_image.rotate(-1 * rotation_interval)  # its  2x God knows why
             elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
-                if grabbed_image is not None:
-                    grabbed_image.rotate(+1 * rotation_interval)  # its  2x God knows why
+                if self.grabbed_image is not None:
+                    self.grabbed_image.rotate(+1 * rotation_interval)  # its  2x God knows why
 
         if 'button' in touch.profile:  # may cause bug in different systems -_- /todo
             if not hasattr(touch, 'prev_mouse') or not (touch.prev_mouse == touch.button):
@@ -342,7 +336,7 @@ class GUIApp(MDApp):
         window_size = Window.size
         mouse_pos = (window_size[0] * touch.spos[0], window_size[1] * touch.spos[1])
         if touch.button == 'right':
-            # grabbed_image = None
+            # self.grabbed_image = None
             self.toggle_sidebar(False, False)
 
         if touch.button == 'left':
@@ -364,39 +358,39 @@ class GUIApp(MDApp):
                                                             image.angle)
 
                                 if image.check_mask(pixel):
-                                    grabbed_image = image
-                                    grabbed_image.update_translate()
+                                    self.grabbed_image = image
+                                    self.grabbed_image.update_translate()
 
                                     checked_border = True  # /todo
                                     break
                 if not checked_border:
-                    grabbed_image = None
+                    self.grabbed_image = None
             else:
-                if grabbed_image is not None and checked_border:
+                if self.grabbed_image is not None and checked_border:
                     if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
                         # Store the offset between touch position and widget position
-                        touch.offset_x = mouse_pos[0] - grabbed_image.get_real_pos()[0]
-                        touch.offset_y = mouse_pos[1] - grabbed_image.get_real_pos()[1]
-                        # grabbed_image.translate(touch.offset_x, touch.offset_y)
+                        touch.offset_x = mouse_pos[0] - self.grabbed_image.get_real_pos()[0]
+                        touch.offset_y = mouse_pos[1] - self.grabbed_image.get_real_pos()[1]
+                        # self.grabbed_image.translate(touch.offset_x, touch.offset_y)
                     # x_y = (mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
                     # r = np.array([1,1])
-                    grabbed_image.translate(mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
-                    # grabbed_image.update(x_y, r, 0)
+                    self.grabbed_image.translate(mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
+                    # self.grabbed_image.update(x_y, r, 0)
                     if solution_applied:
-                        grabbed_image
+                        self.grabbed_image
 
                     if (not select_anchor_running) and (not select_neighbour_running) and (not select_neighbour_done):
-                        key_fragment_id = str(grabbed_image.get_id())
-                        key_image = grabbed_image
-                    # click_label.text = str(grabbed_image.get_number() + 1)
-                    click_label.text = str(grabbed_image.get_name())
-                    self.clicked = str(grabbed_image.get_number() + 1)
+                        key_fragment_id = str(self.grabbed_image.get_id())
+                        key_image = self.grabbed_image
+                    # click_label.text = str(self.grabbed_image.get_number() + 1)
+                    click_label.text = str(self.grabbed_image.get_name())
+                    self.clicked = str(self.grabbed_image.get_number() + 1)
                     if hasattr(touch, 'double_tapped'):
                         if touch.double_tapped:
-                            temp_text = grabbed_image.get_name()
+                            temp_text = self.grabbed_image.get_name()
                             numbers = re.findall(r'\d+', temp_text)
                             self.sidebar.image_name.text = '_'.join(numbers)
-                            self.toggle_sidebar(True, grabbed_image.is_anchor)
+                            self.toggle_sidebar(True, self.grabbed_image.is_anchor)
                 else:
                     if self.is_grabbing_window:  # left shift
                         grid_layout = self.widget_dict['grid_layout']
@@ -609,7 +603,7 @@ def start_select_neighbour(self):
     for piece in final_solution:
         if piece[0] != key_fragment_id:
             key_fragments.append(piece[0])
-    print(key_fragments)
+
     back_end.key_fragment = key_fragment_id
     image_is_set = False
     current_image_list = []
@@ -650,7 +644,12 @@ def get_next_neighbour(self, *args, **kwargs):
             current_image_list = []
             next_neighbour_requested = True
     else:
-        loop_finalization()
+        solved_pieces = get_solved_pieces()
+
+        build_meta_fragment(solved_pieces)
+
+        loop_finalization(solved_pieces)
+
         GUIApp.widget_dict['show_button'].disabled = True
         GUIApp.widget_dict['neighbour_button'].disabled = False
         neighbour_showed = False
@@ -658,14 +657,13 @@ def get_next_neighbour(self, *args, **kwargs):
         solution_applied = False
 
 
-def loop_finalization():
+def loop_finalization(solved_pieces):
     global final_solution
     global image_offset
-    solved_pieces = build_meta_fragment()
     center = [Window.size[0] / 2, Window.size[1] / 2]
-    final_solution = back_end.loop_finalization(solved_pieces, image_offset, center)
-    print(final_solution)
-    neighbour_test = ['piece_0006.png']
+    final_solution = back_end.loop_finalization(solved_pieces, image_offset)
+    print('Final Solution:', final_solution)
+    # neighbour_test = ['piece_0006.png']
     # back_end.puzzle_solver_test_function(final_solution, neighbour_test)
 
 
@@ -725,6 +723,8 @@ def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_hei
 def image_reader(image_number, score, has_score):
     name = file_names[image_number]
     click_label.color = (1, 0, 1, 1)
+    image_path = path_dic['image_path']
+    mask_path = path_dic['mask_path']
     image = MovableImage(image_path, mask_path, click_label, score, image_number, has_score, name, 0)
 
     return image
@@ -749,11 +749,11 @@ def eroding(directory_path):
 
 
 def setting():  # unified path setting
-    global image_path
-    global mask_path
     global backend_path
     global path_dic
     global rotation_interval
+    image_path = ""
+    mask_path = ""
     comp_path = ""
     pieces_path = ""
     comp_folder = ""
@@ -843,8 +843,6 @@ def setting():  # unified path setting
                 'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
                 'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors,
                 'dataset_name': dataset_name, 'cache_path': cache_path, 'solver_parameters': solver_parameters}
-    image_path = image_path
-    mask_path = mask_path
     backend_path = backend_path
     rotation_interval = float(rotation_intervals) / 2
 
@@ -971,9 +969,22 @@ def calculate_canvas_size():
     return int(canvas_width), int(canvas_height), int(min_x), int(min_y)
 
 
-def build_meta_fragment(canvas_size=(1000, 1000)):
-    global current_image_list, path_dic, key_image
+def get_solved_pieces():
+    global current_image_list
     solved_pieces = []
+
+    for image in current_image_list:
+        image_id = image.get_id()
+        position = image.position_memory
+        x, y, rotation = int(position[0]), int(position[1]), int(position[2])
+        y = y  # Invert y-axis
+        solved_pieces.append((image_id, [x, y, rotation]))
+
+    return solved_pieces
+
+
+def build_meta_fragment(solved_pieces, canvas_size=(1000, 1000)):
+    global current_image_list, path_dic, key_image
     cache = path_dic['cache_path']
 
     canvas_width, canvas_height, offset_x, offset_y = calculate_canvas_size()
@@ -981,13 +992,12 @@ def build_meta_fragment(canvas_size=(1000, 1000)):
 
     name = '_'
 
-    for image in current_image_list:
-        image_id = image.get_id()
+    for image in solved_pieces:
+        image_id = image[0]
         img_path = image_id
         name = name + img_path[:-4] + "_"
         img_path = os.path.join(cache, img_path)
-        position = image.position_memory
-        x, y, rotation = int(position[0]), int(position[1]), int(position[2])
+        x, y, rotation = image[1][0], image[1][1], image[1][2]
         y = -1 * y  # Invert y-axis
 
         # Open the puzzle piece
@@ -1003,12 +1013,10 @@ def build_meta_fragment(canvas_size=(1000, 1000)):
 
         # Paste the rotated piece onto the canvas
         canvas.paste(rotated_piece, paste_position, rotated_piece)
-        solved_pieces.append((image_id, [x, -1 * y, rotation]))
         # remove_image_from_cache(image.get_id())
     name = name + ".png"
     output_path = cache + name
     canvas.save(output_path)
-    return solved_pieces
 
 
 def remove_image_from_cache(image_id):

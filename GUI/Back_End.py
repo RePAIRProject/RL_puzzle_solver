@@ -156,7 +156,7 @@ def extract_lists(main_list):
         image_numbers += 1
 
 
-def loop_finalization(solved_list, offset, center):
+def loop_finalization(solved_list, offset):
     parameters = path_dic['parameters']
 
     data = None
@@ -170,7 +170,6 @@ def loop_finalization(solved_list, offset, center):
             theta_step = data['theta_step']
     print("xy_step", xy_step)
     print("theta_step", theta_step)
-
 
     for pieces in solved_list:
         name = pieces[0]
