@@ -12,7 +12,7 @@ from PIL import Image
 import os
 import configs.folder_names as fnames
 import argparse
-#from compatibility.line_matching_NEW_segments import read_info
+from compatibility.utils import normalize_CM
 #import configs.solver_cfg as cfg
 from puzzle_utils.pieces_utils import calc_parameters_v2, crop_to_content
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas
@@ -421,6 +421,55 @@ def main(args):
             R /= np.max(R)
             # negative values set to -1
             R[negative_region_map] = -1
+        
+        elif args.combo_type == 'SLM_v1':
+            print("trying to combine three compatibilities (ShapeLinesMotifs)")
+            mat_motif = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.motif_det_method}"))
+            mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.lines_det_method}_cost_{args.cmp_cost}'))
+            
+            R_shape = mat_shape['R']
+            norm_R_shape = normalize_CM(R_shape)
+            R_lines = mat_lines['R']
+            norm_R_lines = normalize_CM(R_lines)
+            R_motif = mat_motif['R']
+            norm_R_motif = normalize_CM(R_motif)
+
+            negative_region_map = R_shape < 0
+            positive_region_map = R_shape > 0
+
+            lines_avg_val = np.mean(norm_R_lines > 0)
+            motif_avg_val = np.mean(norm_R_motif > 0)
+
+            breakpoint()
+            R = np.zeros_like(R_shape)
+            prm = positive_region_map.astype(int)
+            shape_basis = R_shape * prm
+            motif_contrib = shape_basis * (norm_R_motif / motif_avg_val * prm)
+            lines_contrib = shape_basis * (norm_R_lines / lines_avg_val * prm)
+            R = shape_basis + motif_contrib + lines_contrib
+            
+            R += -1 * negative_region_map.astype(int)
+
+            # only positive values
+            R = normalize_CM(R)
+
+            plt.subplot(241)
+            plt.imshow(R_shape[:,:,0,1,2])
+            plt.subplot(242)
+            plt.imshow(R_motif[:,:,0,1,2])
+            plt.subplot(243)
+            plt.imshow(R_lines[:,:,0,1,2])
+            plt.subplot(244)
+            plt.imshow(R[:,:,0,1,2])
+            plt.subplot(245)
+            plt.imshow(shape_basis[:,:,0,1,2])
+            plt.subplot(246)
+            plt.imshow(motif_contrib[:,:,0,1,2])
+            plt.subplot(247)
+            plt.imshow(lines_contrib[:,:,0,1,2])
+            plt.show()
+            breakpoint()
 
         else:
             raise Exception(f"Please select another combo type, this ({args.combo_type}) has not been implemented yet")
@@ -629,7 +678,7 @@ if __name__ == '__main__':
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
             \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
             \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation', 
-        choices=['SH-SEG', 'SH-MOT', 'SH-LIN'])   
+        choices=['SH-SEG', 'SH-MOT', 'SH-LIN', 'SLM_v1'])   
     parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')
 
     args = parser.parse_args()
