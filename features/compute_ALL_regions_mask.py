@@ -55,7 +55,7 @@ def main(args):
         # INCLUDE SHAPE
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, lines_det_method=args.lines_det_method, \
             motif_det_method=args.motif_det_method, line_based=args.lines, line_thickness=3, motif_based=args.motif)
-        if 'lines' not in pieces[0].keys():
+        if 'detected_lines' not in pieces[0].keys():
             print("-" * 50)
             print("\nWARNING:\nno lines found, line-based region will be empty!\n")
         if 'motif_mask' not in pieces[0].keys():
@@ -275,16 +275,16 @@ if __name__ == '__main__':
                         help='puzzle to work on - leave empty to generate for the whole dataset')
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
     parser.add_argument('--lines', type=int, default=0, help='use line-based regions')
-    parser.add_argument('--lines_det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
+    parser.add_argument('--lines_det_method', type=str, default='deeplsd', help='method line detection', choices=['exact', 'deeplsd', 'manual']) # exact, manual, deeplsd
     parser.add_argument('--motif', type=int, default=0, help='use motif-based regions')
-    parser.add_argument('--motif_det_method', type=str, default='exact', help='method motif detection')  # exact, manual, deeplsd=
+    parser.add_argument('--motif_det_method', type=str, default='yolo-obb', help='method motif detection', choices=['yolo-obb', 'yolo-bbox', 'yolo-seg']) # exact', 'deeplsd', 'manual']
     parser.add_argument('--irregular', type=int, default=0, help='use irregular parameters')
     parser.add_argument('--save_visualization', type=bool, default=True,
                         help='save an image that showes the matrices color-coded')
     parser.add_argument('-np', '--num_pieces', type=int, default=0,
                         help='number of pieces (per side) - use 0 (default value) for synthetic pieces')  # 8
-    parser.add_argument('--xy_step', type=int, default=10, help='the step (in pixels) between each grid point')
-    parser.add_argument('--xy_grid_points', type=int, default=51,
+    parser.add_argument('--xy_step', type=int, default=3, help='the step (in pixels) between each grid point')
+    parser.add_argument('--xy_grid_points', type=int, default=121,
                         help='the number of points in the grid (for each axis, total number will be the square of what is given)')
     parser.add_argument('--theta_step', type=int, default=90, help='degrees of each rotation')
     parser.add_argument('--DEBUG', action='store_true', default=False,

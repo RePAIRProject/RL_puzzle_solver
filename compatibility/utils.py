@@ -161,3 +161,25 @@ def normalize_cost_matrix(cost_matrix, line_matching_parameters, cmp_cost='LAP')
         All_norm_cost = cost_matrix # / np.max(cost_matrix) #
     # if zeros_as_negative == True:
     return All_norm_cost
+
+def normalize_CM(R, norm_method=''):
+    """
+    It normalizes a compatibility matrix with a known structure (-1, 0, positive values) 
+    """
+    if norm_method == '': # standard
+        # since 0 means "far away" we leave lower values 
+        # min_val = np.min(R[R > 0])
+        # R[R > 0] -= min_val # moved min val to zero
+        prm = (R > 0).astype(int)
+        max_val = np.max(R[R > 0])
+        scaling_factor = np.ones_like(R) * prm * max_val
+        import matplotlib.pyplot as plt 
+        plt.subplot(121)
+        plt.imshow(R[:,:,0,1,2])
+        plt.subplot(122)
+        plt.imshow(scaling_factor[:,:,0,1,2])
+        plt.show()
+        breakpoint()
+        R /= scaling_factor
+    
+    return R
