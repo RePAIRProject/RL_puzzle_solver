@@ -1,8 +1,8 @@
 
 import numpy as np
 import cv2 as cv
-import matplotlib
-matplotlib.use('TkAgg')
+#import matplotlib
+#matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import cv2
@@ -387,7 +387,7 @@ def main(args):
             R = (np.clip(R_lines, 0, 1) * np.clip(R_shape, 0, 1))
             R /= np.max(R)
             # test
-            R *= 2
+            R *= 2   ### !!!!! CHECK !?
 
             # negative values set to -1
             R[negative_region_map] = -1
