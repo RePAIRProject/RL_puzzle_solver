@@ -24,7 +24,7 @@ class Segmentator:
     def add_args(parser):
         parser.add_argument('--seg_torch_device', type=str, help='torch device to use')
         # SAM parameters
-        parser.add_argument('--seg_sam_type', type=str, default="mobile-sam", help='type of SAM model to use')
+        parser.add_argument('--seg_sam_type', type=str, default="mobile_sam", help='type of SAM model to use')
         parser.add_argument('--seg_sam_points_per_side', type=int, default=32, help='SAM points_per_side parameter')
         parser.add_argument('--seg_sam_stability_score_thresh', type=float, default=0.85, help='SAM stability_score_thresh parameter')
         # Save/Load parameters
@@ -32,7 +32,7 @@ class Segmentator:
         parser.add_argument('--seg_save_to_files',action=argparse.BooleanOptionalAction, default=False, help='Save segmentations to files')
         
 
-        parser.add_argument('--seg_save_images',action=argparse.BooleanOptionalAction, default=True, help='Save images')
+        parser.add_argument('--seg_save_images',action=argparse.BooleanOptionalAction, default=False, help='Save images')
 
         # Debugging
         parser.add_argument('--seg_debug_break_after_each',action=argparse.BooleanOptionalAction, default=False, help='Set a breakpoint after each pair')
