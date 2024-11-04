@@ -99,7 +99,8 @@ def motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, 
                         det_objs = detected.obb
                     elif det_type == 'yolo-bbox':
                         det_objs = detected.boxes
-                        
+                    
+                    #print(f"detected {len(det_objs)} objects")
                     for det_obb in det_objs:
 
                         if det_type == 'yolo-obb':

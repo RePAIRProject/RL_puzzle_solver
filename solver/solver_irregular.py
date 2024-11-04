@@ -21,10 +21,12 @@ import pdb
 import time 
 import json 
 from puzzle_utils.visualization import save_vis
+import copy
+
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
-def initialization(R, anc, p_size=0):
+def initialization(R, anc, p_size=0, p_size_x=0):
     z0 = 0  # rotation for anchored patch
     # Initialize reconstruction plan
     no_grid_points = R.shape[0]
@@ -33,7 +35,10 @@ def initialization(R, anc, p_size=0):
 
     if p_size > 0:
         Y = p_size 
-        X = Y 
+        if p_size_x == 0:
+            X = Y
+        else:
+            X = p_size_x 
     else:
         Y = round(no_grid_points * np.sqrt(no_patches)) # + no_patches)
         #Y = round(no_grid_points * 2 + 1) 
@@ -384,10 +389,10 @@ def main(args):
             negative_region_map = R_lines < 0
 
             # only positive values
-            R = (np.clip(R_lines, 0, 1) * np.clip(R_shape, 0, 1))
-            R /= np.max(R)
+            R = (np.clip(R_lines, 0, 1) + np.clip(R_shape, 0, 1)) / 2
+            #R /= np.max(R)
             # test
-            R *= 2
+            #R *= 2
 
             # negative values set to -1
             R[negative_region_map] = -1
@@ -402,10 +407,21 @@ def main(args):
             negative_region_map = R_motif < 0
 
             # only positive values
-            R = (np.clip(R_motif, 0, 1) * np.clip(R_shape, 0, 1))
-            R /= np.max(R)
+            R = copy.deepcopy(R_shape)
+            positive_motif_ids = np.where(R_motif > 0)
+            R[positive_motif_ids] = (np.clip(R_motif[positive_motif_ids], 0, 1) + np.clip(R_shape[positive_motif_ids], 0, 1)) / 2
+            #R /= np.max(R)
             # negative values set to -1
             R[negative_region_map] = -1
+            # plt.subplot(131)
+            # plt.imshow(R_motif[:,:,0,1,2], cmap='RdYlGn', vmin=0, vmax=1)
+            # plt.subplot(132)
+            # plt.imshow(R_shape[:,:,0,1,2], cmap='RdYlGn', vmin=0, vmax=1)
+            # plt.subplot(133)
+            # plt.imshow(R[:,:,0,1,2], cmap='RdYlGn', vmin=0, vmax=1)
+            # plt.show()
+            # breakpoint()
+            
 
         elif args.combo_type == 'SH-SEG':
             print("combining shape and motifs..")
@@ -486,7 +502,7 @@ def main(args):
         anc = np.max(anc,0)
     #####
 
-    p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts)  # (R, anc, anc_rot, nh, nw)
+    p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts, args.p_pts_x)  # (R, anc, anc_rot, nh, nw)
     # print(p_initial.shape)
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity, decimals=args.decimals)
@@ -621,6 +637,7 @@ if __name__ == '__main__':
     parser.add_argument('--tmax', type=int, default=1000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
     parser.add_argument('--p_pts', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
+    parser.add_argument('--p_pts_x', type=int, default=0, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
     parser.add_argument('--k', type=int, default=5, help='keep the best k values (for each pair) in the compatibility')   
     parser.add_argument('--cmp_type', type=str, default='shape', help='which compatibility to use!', choices=['combo', 'lines', 'shape', 'color',  'motifs', 'seg'])

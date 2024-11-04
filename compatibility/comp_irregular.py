@@ -228,9 +228,9 @@ def main(args):
                     All_cost[:, :, :, j, i] = ji_mat
                     
                     # DEBUG
-                    if i == 0 and j == 1 and args.DEBUG is True:
+                    if i == 2 and j == 3 and args.DEBUG is True:
                         rotation_idx = 0
-                        plt.suptitle(f"COST WITH {args.cmp_cost}", fontsize=45)
+                        plt.suptitle(f"CM: `{args.cmp_type}` (cost `{args.cmp_cost}`)", fontsize=45)
                         plt.subplot(541); plt.imshow(pieces[i]['img']); plt.title(f"piece {i}")
                         plt.subplot(542); plt.imshow(pieces[j]['img']); plt.title(f"piece {j}")
                         plt.subplot(545); plt.imshow(region_mask[:,:,0,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 0")
@@ -362,7 +362,7 @@ def main(args):
             if max_cost < 0.1:
                 breakpoint()
             only_negative_region = np.clip(region_mask, -1, 0)
-            All_norm_cost = (np.clip(All_cost, 0, max_cost))/max_cost
+            All_norm_cost = (np.clip(All_cost, 0, max_cost)) / max_cost
         else:
             only_negative_region =  np.minimum(region_mask, 0)  # recover overlap (negative) areas
 
