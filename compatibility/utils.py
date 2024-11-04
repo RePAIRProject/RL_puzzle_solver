@@ -170,16 +170,25 @@ def normalize_CM(R, norm_method=''):
         # since 0 means "far away" we leave lower values 
         # min_val = np.min(R[R > 0])
         # R[R > 0] -= min_val # moved min val to zero
+        R = np.maximum(-1, R)
         prm = (R > 0).astype(int)
         max_val = np.max(R[R > 0])
         scaling_factor = np.ones_like(R) * prm * max_val
-        import matplotlib.pyplot as plt 
-        plt.subplot(121)
+        # R /= scaling_factor
+        scaling_factor2 = scaling_factor + (1 - prm)
+        R_norm = R/scaling_factor2
+
+        import matplotlib.pyplot as plt
+        plt.subplot(141)
         plt.imshow(R[:,:,0,1,2])
-        plt.subplot(122)
+        plt.subplot(142)
         plt.imshow(scaling_factor[:,:,0,1,2])
+        plt.subplot(143)
+        plt.imshow(R_norm[:, :, 0, 1, 2])
+        R_dist = R_norm - R
+        plt.subplot(144)
+        plt.imshow(R_dist[:, :, 0, 1, 2])
         plt.show()
-        breakpoint()
-        R /= scaling_factor
-    
-    return R
+        #breakpoint()
+
+    return R_norm

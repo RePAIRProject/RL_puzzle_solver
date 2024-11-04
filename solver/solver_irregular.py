@@ -455,38 +455,74 @@ def main(args):
             negative_region_map = R_shape < 0
             positive_region_map = R_shape > 0
 
-            lines_avg_val = np.mean(norm_R_lines > 0)
-            motif_avg_val = np.mean(norm_R_motif > 0)
+            lines_avg_val1 = np.mean(norm_R_lines > 0)
+            motif_avg_val1 = np.mean(norm_R_motif > 0)
 
-            breakpoint()
+            lines_avg_val = 0.5   # fix level ???
+            motif_avg_val = 0.5
+
+            #breakpoint()
             R = np.zeros_like(R_shape)
             prm = positive_region_map.astype(int)
             shape_basis = R_shape * prm
-            motif_contrib = shape_basis * (norm_R_motif / motif_avg_val * prm)
-            lines_contrib = shape_basis * (norm_R_lines / lines_avg_val * prm)
-            R = shape_basis + motif_contrib + lines_contrib
+            shape_basis = np.abs(shape_basis)  # delete -0.0
+
+            #motif_contrib = shape_basis * (norm_R_motif / motif_avg_val * prm)
+            #lines_contrib = shape_basis * (norm_R_lines / lines_avg_val * prm)
+
+            prm_motif = (norm_R_motif > 0).astype(int) ## positive in RM instead !!!
+            prm_lines = (norm_R_lines > 0).astype(int) ## positive in RM instead !!!
+
+            motif_contrib = prm_motif * ((norm_R_motif / motif_avg_val)-1)
+            lines_contrib = prm_lines * ((norm_R_lines / lines_avg_val)-1)
+
+            tot_contrib2 = shape_basis * motif_contrib + shape_basis * lines_contrib
+            tot_contrib = shape_basis * (motif_contrib+lines_contrib)
+
+            R2 = shape_basis + tot_contrib2
+            R  = shape_basis + tot_contrib
+
+            import matplotlib.pyplot as plt
+            plt.subplot(331)
+            plt.imshow(prm[:, :, 0, 1, 2])
+            plt.subplot(332)
+            plt.imshow(prm_motif[:, :, 0, 1, 2])
+            plt.subplot(333)
+            plt.imshow(prm_lines[:, :, 0, 1, 2])
+            plt.subplot(334)
+            plt.imshow(shape_basis[:, :, 0, 1, 2])
+            plt.subplot(335)
+            plt.imshow(motif_contrib[:, :, 0, 1, 2])
+            plt.subplot(336)
+            plt.imshow(lines_contrib[:, :, 0, 1, 2])
+            plt.subplot(338)
+            plt.imshow(R2[:, :, 0, 1, 2])
+            plt.subplot(339)
+            plt.imshow(R[:, :, 0, 1, 2])
+            plt.show()
+            #breakpoint()
 
             R += -1 * negative_region_map.astype(int)
 
             # only positive values
             R = normalize_CM(R)
 
-            plt.subplot(241)
-            plt.imshow(R_shape[:,:,0,1,2])
-            plt.subplot(242)
-            plt.imshow(R_motif[:,:,0,1,2])
-            plt.subplot(243)
-            plt.imshow(R_lines[:,:,0,1,2])
-            plt.subplot(244)
-            plt.imshow(R[:,:,0,1,2])
-            plt.subplot(245)
-            plt.imshow(shape_basis[:,:,0,1,2])
-            plt.subplot(246)
-            plt.imshow(motif_contrib[:,:,0,1,2])
-            plt.subplot(247)
-            plt.imshow(lines_contrib[:,:,0,1,2])
-            plt.show()
-            breakpoint()
+            # plt.subplot(241)
+            # plt.imshow(R_shape[:,:,0,1,2])
+            # plt.subplot(242)
+            # plt.imshow(R_motif[:,:,0,1,2])
+            # plt.subplot(243)
+            # plt.imshow(R_lines[:,:,0,1,2])
+            # plt.subplot(244)
+            # plt.imshow(R[:,:,0,1,2])
+            # plt.subplot(245)
+            # plt.imshow(shape_basis[:,:,0,1,2])
+            # plt.subplot(246)
+            # plt.imshow(motif_contrib[:,:,0,1,2])
+            # plt.subplot(247)
+            # plt.imshow(lines_contrib[:,:,0,1,2])
+            # plt.show()
+            # breakpoint()
 
         else:
             raise Exception(f"Please select another combo type, this ({args.combo_type}) has not been implemented yet")
