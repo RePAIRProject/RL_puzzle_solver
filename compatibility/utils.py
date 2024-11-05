@@ -178,17 +178,17 @@ def normalize_CM(R, norm_method=''):
         scaling_factor2 = scaling_factor + (1 - prm)
         R_norm = R/scaling_factor2
 
-        import matplotlib.pyplot as plt
-        plt.subplot(141)
-        plt.imshow(R[:,:,0,1,2])
-        plt.subplot(142)
-        plt.imshow(scaling_factor[:,:,0,1,2])
-        plt.subplot(143)
-        plt.imshow(R_norm[:, :, 0, 1, 2])
-        R_dist = R_norm - R
-        plt.subplot(144)
-        plt.imshow(R_dist[:, :, 0, 1, 2])
-        plt.show()
-        #breakpoint()
+        # import matplotlib.pyplot as plt
+        # plt.subplot(141)
+        # plt.imshow(R[:,:,0,1,2])
+        # plt.subplot(142)
+        # plt.imshow(scaling_factor[:,:,0,1,2])
+        # plt.subplot(143)
+        # plt.imshow(R_norm[:, :, 0, 1, 2])
+        # R_dist = R_norm - R
+        # plt.subplot(144)
+        # plt.imshow(R_dist[:, :, 0, 1, 2])
+        # plt.show()
+        # #breakpoint()
 
     return R_norm
