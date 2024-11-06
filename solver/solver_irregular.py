@@ -27,6 +27,29 @@ import copy
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
+def initialization_from_GT(R, args, gt_grid):
+
+    z0 = 0  # rotation for anchored patch
+    no_patches = R.shape[3]
+    no_rotations = R.shape[2]
+
+    #1. load GT_grid
+
+
+    #2. calculate optimal grid
+
+    #3. create p_natrix (optimal_grid+border_points)
+
+    #4. fix anchor in his GT_position+0.5*border_points
+
+    #5. output
+
+
+
+    return p, init_pos, x0, y0, z0
+
+
+
 def initialization(R, anc, p_size_y=0, p_size_x=0, anc_pos=0):
     z0 = 0  # rotation for anchored patch
     # Initialize reconstruction plan
@@ -498,9 +521,9 @@ def main(args):
         R = mat['R']
 
     # ## load_GT - NEW part - TODO !!!
-    # import pandas as pd
-    # gt_file = os.path.join(puzzle_root_folder, f'GT/gt_grid3.txt')
-    # df = pd.read_csv(gt_file, sep=',', header=None)
+    import pandas as pd
+    gt_file = os.path.join(puzzle_root_folder, f'gt_grid3.txt')
+    df = pd.read_csv(gt_file, sep=',', header=None)
     # gt_positions = []
 
     pieces_files = os.listdir(pieces_folder)
@@ -560,6 +583,8 @@ def main(args):
     #####
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts_y, args.p_pts_x)  # (R, anc, anc_rot, nh, nw)
+    p_initial, init_pos, x0, y0, z0 = initialization_from_GT(args)  # (R, anc, anc_rot, nh, nw)
+
     # print(p_initial.shape)
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity, decimals=args.decimals)
