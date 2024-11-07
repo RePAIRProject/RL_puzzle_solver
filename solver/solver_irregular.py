@@ -499,8 +499,8 @@ def main(args):
             total_contrib = shape_basis * (motif_contrib + lines_contrib)
             R = shape_basis + total_contrib
             R += -1 * negative_region_map.astype(int)
-            R_norm_positive = normalize_CM(R)      # only positive values
-            R_norm_negative = normalize_CM(-R)    # only negative values
+            R = normalize_CM(R)
+            R = np.maximum(-1, R)
 
             # import matplotlib.pyplot as plt
             # plt.subplot(331)
@@ -558,9 +558,10 @@ def main(args):
             if i!=j:
                 r_temp = R[:, :, :, j, i]
                 a = np.min(np.partition(np.ravel(r_temp), -k)[-k:])
-                r_zer = np.where(r_temp > -1, 0, -1)
+                #r_neg = np.where(r_temp > -1, 0, -1)
+                r_neg = np.where(r_temp < 0, r_temp, 0)
                 r_val = np.where(r_temp < a, 0, r_temp)
-                R[:, :, :, j, i] = r_zer + r_val
+                R[:, :, :, j, i] = r_neg + r_val
 
                 best_scores_0rot[j, i] = np.max(r_temp[:,:,0])
                 best_scores[j, i] = np.max(r_temp)
