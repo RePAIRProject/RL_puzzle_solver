@@ -605,7 +605,7 @@ def main(args):
     print("-" * 50)
 
     num_rot = p_initial.shape[2]
-    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}')
+    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}_gt{args.use_GT}')
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
 
