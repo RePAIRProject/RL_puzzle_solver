@@ -550,7 +550,7 @@ def main(args):
 
     ## K-sparsification
     k = args.k
-    k = 20
+    k = 5
     best_scores_0rot = np.zeros((np.shape(R)[4],np.shape(R)[4]))
     best_scores = np.zeros((np.shape(R)[4], np.shape(R)[4]))
     for i in range(np.shape(R)[4]):
