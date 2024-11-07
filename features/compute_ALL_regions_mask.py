@@ -270,7 +270,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')
-    parser.add_argument('--dataset', type=str, default='repair', help='dataset (name of the folders)')
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch2', help='dataset (name of the folders)')
     parser.add_argument('--puzzle', type=str, default='',
                         help='puzzle to work on - leave empty to generate for the whole dataset')
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
