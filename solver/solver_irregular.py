@@ -580,8 +580,12 @@ def main(args):
     #     anc = np.max(anc,0)
     # #####
 
-    p_initial, init_pos, x0, y0, z0 = initialization_from_GT(R, anc, puzzle_root_folder)
-    #p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts_y, args.p_pts_x)
+    if args.use_GT == True:
+        print('Using ground truth to calculate the grid')
+        p_initial, init_pos, x0, y0, z0 = initialization_from_GT(R, anc, puzzle_root_folder)
+    else:
+        print(f'Using a grid of {args.p_pts_x}x{args.p_pts_y} points!')
+        p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts_y, args.p_pts_x)
 
     # print(p_initial.shape)
     na = 1
@@ -625,7 +629,7 @@ def main(args):
     # breakpoint()
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')
-    plt.show()
+    #plt.show()
 
     #plt.figure(figsize=(16, 16))
     #plt.title("Final solution including all piece")
@@ -709,6 +713,8 @@ if __name__ == '__main__':
     parser.add_argument('--lines_det_method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--motif_det_method', type=str, default='yolo-obb', help='method motif detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')  # LAP, LCI
+    parser.add_argument('--use_GT', default=False, action='store_true',
+        help='uses the ground truth (requires gt txt file!)')
     parser.add_argument('--anchor', type=int, default=2, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
     parser.add_argument('--exclude', default=False, action='store_true', help='use to exclude pieces without compatibility (used for some partial compatibilities, not fully tested!)')
