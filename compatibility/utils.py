@@ -1,6 +1,6 @@
 import numpy as np 
 from puzzle_utils.shape_utils import compute_SDF_cost_matrix
-from puzzle_utils.lines_ops import compute_cost_matrix_LAP_debug, compute_cost_matrix_LAP, \
+from puzzle_utils.lines_ops import compute_cost_matrix_LAP_debug, compute_line_based_CM_LAP, \
         compute_cost_matrix_LAP_v2, compute_cost_matrix_LAP_v3, compute_cost_matrix_LCI_method, \
         extract_from, compute_cost_matrix_LAP_vis
 from compatibility.compatibility_Motifs import compute_cost_using_motifs_compatibility
@@ -92,16 +92,10 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
                         R_cost = compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                     mask_ij, ppars, verbosity=verbosity, show=False)
                 elif compatibility_cost == 'LAP':
-                    R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
+                    R_cost = compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                     mask_ij, ppars, verbosity=verbosity)
                 elif compatibility_cost == 'LCI':
-                    R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
-                                                            mask_ij, ppars, verbosity=verbosity)
-                elif compatibility_cost == 'LAP2':
-                    R_cost = compute_cost_matrix_LAP_v2(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
-                                                            mask_ij, ppars, verbosity=verbosity)
-                elif compatibility_cost == 'LAP3':
-                    R_cost = compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
+                    R_cost = compute_line_based_CM_LCI(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                             mask_ij, ppars, verbosity=verbosity)
                 elif compatibility_cost == 'LAPvis':
                     lines_pi = alfa1, r1, s11, s12, color1, cat1
@@ -143,8 +137,17 @@ def normalize_CM(R, region_mask=None, parameters=None):
     """
     It normalizes a compatibility matrix with a known structure (-1, 0, positive values) 
     """
+    # if normalize_negative == False:
+    #     negative_region = np.clip(region_mask, -1, 0)
+    # else:
+    #     # normalize negative
+    #     print('normalize negative (not done yet)')
+
     if not parameters or 'cmp_type' not in parameters.keys(): # standard
         # since 0 means "far away" we leave lower values 
+        # min_val = np.min(R[R > 0])
+        # R[R > 0] -= min_val # moved min val to zero
+
         R = np.maximum(-1, R)
         prm = (R > 0).astype(int)
         max_val = np.max(R[R > 0])
@@ -153,31 +156,31 @@ def normalize_CM(R, region_mask=None, parameters=None):
         scaling_factor2 = scaling_factor + (1 - prm)
         normalized_R = R/scaling_factor2
 
-    # normalization methods for compatibility
-    ##LINES
-
     else:
+        negative_region = np.minimum(region_mask, 0)
         if parameters['cmp_type'] == 'lines':
             if parameters['cmp_cost'] == 'LCI':
-                print("LCI is already normalized over each piece!")
-            elif parameters['cmp_cost'] == 'LAP3':
-                min_vals = []
-                for j in range(R.shape[3]):
-                    for i in range(R.shape[4]):
-                        min_val = np.min(R[:, :, :, j, i])
-                        min_vals.append(min_val)
-                kmin_cut_val = np.max(min_vals) + 1
-                normalized_R = np.maximum(1 - R / kmin_cut_val, 0)
+                breakpoint()
+                # TODO:
+                # values between 0 and positive (length of pieces)
+                normalized_R = R / np.max(R)
 
-            elif parameters['cmp_cost'] == 'LAP2':
-                clipping_val = parameters.max_dist + (parameters.badmatch_penalty - parameters.max_dist) / 3
-                R = np.clip(R, 0, clipping_val)
-                normalized_R = 1 - R / clipping_val
+            elif parameters['cmp_cost'] == 'LAP':
+                # values between 0 and parameters.badmatch_penalty
+                normalized_R = R / np.max(R)
+                #     min_vals = []
+                #     for j in range(R.shape[3]):
+                #         for i in range(R.shape[4]):
+                #             min_val = np.min(R[:, :, :, j, i])
+                #             min_vals.append(min_val)
+                #     kmin_cut_val = np.max(min_vals) + 1
+                #     normalized_R = np.maximum(1 - R / kmin_cut_val, 0)
+
             else:
+                print(f"What are you doing? Unknown cost: {parameters['cmp_cost']}")
                 normalized_R = R  # / np.max(R) #
 
         elif parameters['cmp_type'] == 'color':
-
             # normalization
             k = parameters['k']
             R_cut = np.zeros((R.shape))
@@ -204,12 +207,11 @@ def normalize_CM(R, region_mask=None, parameters=None):
             # normalized_R = np.where(normalized_R < 0, 0, normalized_R)   # only for colors
             normalized_R = np.where(normalized_R <= 0, -1, normalized_R)  ## NEW idea di Prof.Pelillo
             # normalized_R /= np.max(normalized_R)
-
         elif parameters['cmp_type'] == 'motifs':
-
             max_cost = np.max(R)
             if max_cost < 0.1:
                 breakpoint()
+            # normalized_R = R / np.max(R)
             normalized_R = (np.clip(R, 0, max_cost)) / max_cost
         else:
             print("\n\n### WARNING\nNo normalization used!\n\n")
