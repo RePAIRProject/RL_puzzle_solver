@@ -550,7 +550,7 @@ def main(args):
 
     ## K-sparsification
     k = args.k
-    #k = 4
+    k = 20
     best_scores_0rot = np.zeros((np.shape(R)[4],np.shape(R)[4]))
     best_scores = np.zeros((np.shape(R)[4], np.shape(R)[4]))
     for i in range(np.shape(R)[4]):
@@ -558,8 +558,8 @@ def main(args):
             if i!=j:
                 r_temp = R[:, :, :, j, i]
                 a = np.min(np.partition(np.ravel(r_temp), -k)[-k:])
-                #r_neg = np.where(r_temp > -1, 0, -1)
-                r_neg = np.where(r_temp < 0, r_temp, 0)
+                r_neg = np.where(r_temp > -1, 0, -1)
+                #r_neg = np.where(r_temp < 0, r_temp, 0)
                 r_val = np.where(r_temp < a, 0, r_temp)
                 R[:, :, :, j, i] = r_neg + r_val
 
