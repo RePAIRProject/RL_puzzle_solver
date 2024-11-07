@@ -20,34 +20,50 @@ from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_ca
 import datetime
 import pdb 
 import time 
-import json 
+import json
+from puzzle_utils.regions import combine_region_masks
 from puzzle_utils.visualization import save_vis
 import copy
 
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
-def initialization_from_GT(R, args, gt_grid):
+def initialization_from_GT(R, anc, puzzle_root_folder):
 
-    z0 = 0  # rotation for anchored patch
+    border_points = 5     # xy_grid_points//10 ???
+
+    no_grid_points = R.shape[0]
     no_patches = R.shape[3]
     no_rotations = R.shape[2]
+    init_pos = np.zeros((no_patches, 3)).astype(int)
+    gt_grid = np.zeros((no_patches, 3))
 
     #1. load GT_grid
+    import pandas as pd
+    df = pd.read_csv(os.path.join(puzzle_root_folder, f'GT/gt_grid3.txt'))
+    gt_grid[:, 0] = (df.loc[:, 'x'].values).astype(int)
+    gt_grid[:, 1] = (df.loc[:, 'y'].values).astype(int)
+    #gt_grid[:, 2] = (df.loc[:, 'rot'].values)
 
+    # 3. anchor position in GT_position+0.5*border_points
+    x0 = (gt_grid[anc, 0] + border_points).astype(int)
+    y0 = (gt_grid[anc, 1] + border_points).astype(int)
+    z0 = 0
 
-    #2. calculate optimal grid
+    #2. calculate optimal grid - p_matrix
+    X = (np.max(gt_grid[:, 0]) + 2*border_points).astype(int)
+    Y = (np.max(gt_grid[:, 1]) + 2*border_points).astype(int)
+    Z = no_rotations
 
-    #3. create p_natrix (optimal_grid+border_points)
+    #3. create p_matrix (optimal_grid+border_points)
+    p = np.ones((Y, X, Z, no_patches))/ (Y * X * Z)
+    p[:, :, :, anc] = 0
+    p[y0, x0, :, :] = 0
+    p[y0, x0, z0, anc] = 1
+    init_pos[anc, :] = ([y0, x0, z0])
 
-    #4. fix anchor in his GT_position+0.5*border_points
-
-    #5. output
-
-
-
+    print("P:", p.shape)
     return p, init_pos, x0, y0, z0
-
 
 
 def initialization(R, anc, p_size_y=0, p_size_x=0, anc_pos=0):
@@ -69,16 +85,12 @@ def initialization(R, anc, p_size_y=0, p_size_x=0, anc_pos=0):
     Z = no_rotations
 
     # initialize assignment matrix
-    p = np.ones((Y, X, Z, no_patches)) / (Y * X)  # uniform
+    p = np.ones((Y, X, Z, no_patches)) / (Y * X * Z)  # uniform
     init_pos = np.zeros((no_patches, 3)).astype(int)
 
     # place anchored patch (center)
-    if anc_pos == 0:
-        y0 = round(Y / 2)
-        x0 = round(X / 2)
-    else:
-        y0 = anc_pos[1]
-        x0 = anc_pos[0]
+    y0 = round(Y / 2)
+    x0 = round(X / 2)
 
     p[:, :, :, anc] = 0
     p[y0, x0, :, :] = 0
@@ -456,41 +468,39 @@ def main(args):
             mat_motif = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.motif_det_method}"))
             mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
             mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.lines_det_method}_cost_{args.cmp_cost}'))
+            region_mask_mat = loadmat(os.path.join(puzzle_root_folder, fnames.rm_output_name, f'RM_{args.puzzle}.mat'))
 
             R_shape = mat_shape['R']
-            norm_R_shape = normalize_CM(R_shape)
             R_lines = mat_lines['R']
-            norm_R_lines = normalize_CM(R_lines)
             R_motif = mat_motif['R']
+            lines_RM = region_mask_mat['RM_lines']
+            motif_RM = region_mask_mat['RM_motifs']
+            shape_RM = region_mask_mat['RM_shapes']
+
+            norm_R_shape = normalize_CM(R_shape)
+            norm_R_lines = normalize_CM(R_lines)
             norm_R_motif = normalize_CM(R_motif)
 
             negative_region_map = R_shape < 0
-            positive_region_map = R_shape > 0
+            region_motif = combine_region_masks([shape_RM, motif_RM])
+            region_lines = combine_region_masks([shape_RM, lines_RM])
 
-            lines_avg_val1 = np.mean(norm_R_lines > 0)
-            motif_avg_val1 = np.mean(norm_R_motif > 0)
-            lines_avg_val = 0.5   # fix level ???
-            motif_avg_val = 0.5
+            prm_motif = (region_motif> 0).astype(int)  ## positive in RM
+            prm_lines = (region_lines> 0).astype(int)  ## positive in RM
+            prm_shape = (shape_RM > 0).astype(int)
+            shape_basis = norm_R_shape * prm_shape
 
-            #breakpoint()
-            R = np.zeros_like(R_shape)
-            prm = positive_region_map.astype(int)
-            shape_basis = norm_R_shape * prm
-            shape_basis = np.abs(shape_basis)  # delete -0.0
-
-            #motif_contrib = shape_basis * (norm_R_motif / motif_avg_val * prm)
-            #lines_contrib = shape_basis * (norm_R_lines / lines_avg_val * prm)
-            prm_motif = (norm_R_motif > 0).astype(int) ## positive in RM instead !!!
-            prm_lines = (norm_R_lines > 0).astype(int) ## positive in RM instead !!!
-
+            lines_avg_val = 0.5  # fix level ???  # lines_avg_val1 = np.mean(norm_R_lines > 0)
+            motif_avg_val = 0.5                   # motif_avg_val1 = np.mean(norm_R_motif > 0)
             motif_contrib = prm_motif * ((norm_R_motif / motif_avg_val)-1)
             lines_contrib = prm_lines * ((norm_R_lines / lines_avg_val)-1)
 
-            #tot_contrib = shape_basis * motif_contrib + shape_basis * lines_contrib  # option
-            tot_contrib = shape_basis * (motif_contrib+lines_contrib)
-            R  = shape_basis + tot_contrib
+            R = np.zeros_like(R_shape)
+            total_contrib = shape_basis * (motif_contrib + lines_contrib)
+            R = shape_basis + total_contrib
             R += -1 * negative_region_map.astype(int)
-            R = normalize_CM(R)  # only positive values
+            R = normalize_CM(R)
+            R = np.maximum(-1, R)
 
             # import matplotlib.pyplot as plt
             # plt.subplot(331)
@@ -520,23 +530,10 @@ def main(args):
         # R = mat['R_line'] ## temp
         R = mat['R']
 
-    # ## load_GT - NEW part - TODO !!!
-    import pandas as pd
-    gt_file = os.path.join(puzzle_root_folder, f'gt_grid3.txt')
-    df = pd.read_csv(gt_file, sep=',', header=None)
-    # gt_positions = []
-
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
-    # print(pieces_files)
-    pieces_excl = []
-    # pieces_excl = np.array([3,4,7,8,11,15]);
-    all_pieces = np.arange(len(pieces_files))
-    pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
-
-    # pieces_incl = [p for p in np.arange(0, len(all_pieces)) if p not in pieces_excl]
-    # R = R[:, :, :, pieces_incl, :]  # re-arrange R-matrix
-    # R = R[:, :, :, :, pieces_incl]
+    n_pieces = len(pieces_files)
+    pieces = np.arange(len(pieces_files))
 
     if args.few_rotations > 0:
         n_rot = R.shape[2]
@@ -546,7 +543,7 @@ def main(args):
 
     # HERE THE LINES WERE USED
     if args.anchor < 0:
-        anc = np.random.choice(len(all_pieces))  # select_anchor(detect_output)
+        anc = np.random.choice(len(pieces))  # select_anchor(detect_output)
     else:
         anc = args.anchor
     print(f"Using anchor the piece with id: {anc}")
@@ -561,29 +558,30 @@ def main(args):
             if i!=j:
                 r_temp = R[:, :, :, j, i]
                 a = np.min(np.partition(np.ravel(r_temp), -k)[-k:])
-                r_zer = np.where(r_temp > -1, 0, -1)
+                #r_neg = np.where(r_temp > -1, 0, -1)
+                r_neg = np.where(r_temp < 0, r_temp, 0)
                 r_val = np.where(r_temp < a, 0, r_temp)
-                R[:, :, :, j, i] = r_zer + r_val
+                R[:, :, :, j, i] = r_neg + r_val
 
                 best_scores_0rot[j, i] = np.max(r_temp[:,:,0])
                 best_scores[j, i] = np.max(r_temp)
 
-    ## esclude if incompatible
-    if args.exclude == True:
-        Rnew = R
-        for i in range(np.shape(R)[4]):
-            r_temp = R[:, :, :, :, i]
-            m = np.max(r_temp)
-            if m <= 0:
-                Rnew = np.delete(Rnew, i, 4)
-                Rnew = np.delete(Rnew, i, 3)
-                anc=anc-1
-        R = Rnew
-        anc = np.max(anc,0)
-    #####
+    # ## esclude if incompatible
+    # if args.exclude == True:
+    #     Rnew = R
+    #     for i in range(np.shape(R)[4]):
+    #         r_temp = R[:, :, :, :, i]
+    #         m = np.max(r_temp)
+    #         if m <= 0:
+    #             Rnew = np.delete(Rnew, i, 4)
+    #             Rnew = np.delete(Rnew, i, 3)
+    #             anc=anc-1
+    #     R = Rnew
+    #     anc = np.max(anc,0)
+    # #####
 
-    p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts_y, args.p_pts_x)  # (R, anc, anc_rot, nh, nw)
-    p_initial, init_pos, x0, y0, z0 = initialization_from_GT(args)  # (R, anc, anc_rot, nh, nw)
+    p_initial, init_pos, x0, y0, z0 = initialization_from_GT(R, anc, puzzle_root_folder)
+    #p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts_y, args.p_pts_x)
 
     # print(p_initial.shape)
     na = 1
