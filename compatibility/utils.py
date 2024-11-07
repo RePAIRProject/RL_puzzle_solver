@@ -133,7 +133,7 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
         
     return R_cost
 
-def normalize_CM(R, region_mask=None, parameters=None, normalize_negative=False):
+def normalize_CM(R, region_mask=None, parameters=None):
     """
     It normalizes a compatibility matrix with a known structure (-1, 0, positive values) 
     """
@@ -157,23 +157,29 @@ def normalize_CM(R, region_mask=None, parameters=None, normalize_negative=False)
         normalized_R = R/scaling_factor2
 
     else:
+        negative_region = np.minimum(region_mask, 0)
         if parameters['cmp_type'] == 'lines':
             if parameters['cmp_cost'] == 'LCI':
-                print("LCI is already normalized over each piece!")
-            elif parameters['cmp_cost'] == 'LAP3':
-                min_vals = []
-                for j in range(R.shape[3]):
-                    for i in range(R.shape[4]):
-                        min_val = np.min(R[:, :, :, j, i])
-                        min_vals.append(min_val)
-                kmin_cut_val = np.max(min_vals) + 1
-                normalized_R = np.maximum(1 - R / kmin_cut_val, 0)
-            elif parameters['cmp_cost'] == 'LAP2':
-                clipping_val = parameters.max_dist + (parameters.badmatch_penalty - parameters.max_dist) / 3
-                R = np.clip(R, 0, clipping_val)
-                normalized_R = 1 - R / clipping_val
+                breakpoint()
+                # TODO:
+                # values between 0 and positive (length of pieces)
+                normalized_R = R / np.max(R)
+
+            elif parameters['cmp_cost'] == 'LAP':
+                # values between 0 and parameters.badmatch_penalty
+                normalized_R = R / np.max(R)
+                #     min_vals = []
+                #     for j in range(R.shape[3]):
+                #         for i in range(R.shape[4]):
+                #             min_val = np.min(R[:, :, :, j, i])
+                #             min_vals.append(min_val)
+                #     kmin_cut_val = np.max(min_vals) + 1
+                #     normalized_R = np.maximum(1 - R / kmin_cut_val, 0)
+
             else:
+                print(f"What are you doing? Unknown cost: {parameters['cmp_cost']}")
                 normalized_R = R  # / np.max(R) #
+
         elif parameters['cmp_type'] == 'color':
             # normalization
             k = parameters['k']
@@ -205,6 +211,7 @@ def normalize_CM(R, region_mask=None, parameters=None, normalize_negative=False)
             max_cost = np.max(R)
             if max_cost < 0.1:
                 breakpoint()
+            # normalized_R = R / np.max(R)
             normalized_R = (np.clip(R, 0, max_cost)) / max_cost
         else:
             print("\n\n### WARNING\nNo normalization used!\n\n")

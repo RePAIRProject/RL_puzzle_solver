@@ -587,7 +587,7 @@ def compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s1
 
 def compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, \
     color1, color2, cat1, cat2, mask_ij, ppars, verbosity=1, guglielmo=3):
-    compatibility_matrix = np.ones((m.shape[1], m.shape[1], len(rot))) * (ppars.badmatch_penalty + 1)
+    compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) 
     #for t in range(1):
     for t in range(len(rot)):
         #theta = -rot[t] * np.pi / 180      # rotation of F2
