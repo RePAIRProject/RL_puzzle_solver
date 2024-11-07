@@ -315,6 +315,7 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                     useful_lines_cat1 = cat1[intersections1]
                     useful_lines_s11 = useful_lines_s11[intersections1]
                     useful_lines_s12 = useful_lines_s12[intersections1]
+                    plt.plot(useful_lines_s11, useful_lines_s12)
 
                     # check if line2 crosses the polygon1
                     intersections2, useful_lines_s21, useful_lines_s22 = \
