@@ -139,21 +139,12 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
         
     return R_cost
 
-def normalize_CM(R, region_mask=None, parameters=None, normalize_negative=False):
+def normalize_CM(R, region_mask=None, parameters=None):
     """
     It normalizes a compatibility matrix with a known structure (-1, 0, positive values) 
     """
-    # if normalize_negative == False:
-    #     negative_region = np.clip(region_mask, -1, 0)
-    # else:
-    #     # normalize negative
-    #     print('normalize negative (not done yet)')
-
     if not parameters or 'cmp_type' not in parameters.keys(): # standard
         # since 0 means "far away" we leave lower values 
-        # min_val = np.min(R[R > 0])
-        # R[R > 0] -= min_val # moved min val to zero
-
         R = np.maximum(-1, R)
         prm = (R > 0).astype(int)
         max_val = np.max(R[R > 0])
@@ -161,6 +152,9 @@ def normalize_CM(R, region_mask=None, parameters=None, normalize_negative=False)
         # R /= scaling_factor
         scaling_factor2 = scaling_factor + (1 - prm)
         normalized_R = R/scaling_factor2
+
+    # normalization methods for compatibility
+    ##LINES
 
     else:
         if parameters['cmp_type'] == 'lines':
@@ -174,13 +168,16 @@ def normalize_CM(R, region_mask=None, parameters=None, normalize_negative=False)
                         min_vals.append(min_val)
                 kmin_cut_val = np.max(min_vals) + 1
                 normalized_R = np.maximum(1 - R / kmin_cut_val, 0)
+
             elif parameters['cmp_cost'] == 'LAP2':
                 clipping_val = parameters.max_dist + (parameters.badmatch_penalty - parameters.max_dist) / 3
                 R = np.clip(R, 0, clipping_val)
                 normalized_R = 1 - R / clipping_val
             else:
                 normalized_R = R  # / np.max(R) #
+
         elif parameters['cmp_type'] == 'color':
+
             # normalization
             k = parameters['k']
             R_cut = np.zeros((R.shape))
@@ -207,7 +204,9 @@ def normalize_CM(R, region_mask=None, parameters=None, normalize_negative=False)
             # normalized_R = np.where(normalized_R < 0, 0, normalized_R)   # only for colors
             normalized_R = np.where(normalized_R <= 0, -1, normalized_R)  ## NEW idea di Prof.Pelillo
             # normalized_R /= np.max(normalized_R)
+
         elif parameters['cmp_type'] == 'motifs':
+
             max_cost = np.max(R)
             if max_cost < 0.1:
                 breakpoint()
