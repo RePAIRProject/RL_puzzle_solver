@@ -139,47 +139,202 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
         
     return R_cost
 
-def normalize_cost_matrix(cost_matrix, line_matching_parameters, cmp_cost='LAP'):
-
-    if cmp_cost == 'LCI':
-        print("WARNING: normalized over each piece!")
-        #All_norm_cost = cost_matrix/np.max(cost_matrix)  # normalize to max value TODO !!!
-    elif cmp_cost == 'LAP3':
-        min_vals = []
-        for j in range(cost_matrix.shape[3]):
-            for i in range(cost_matrix.shape[4]):
-                min_val = np.min(cost_matrix[:, :, :, j, i])
-                min_vals.append(min_val)
-        kmin_cut_val = np.max(min_vals) + 1
-        All_norm_cost = np.maximum(1 - cost_matrix/ kmin_cut_val, 0)
-    elif cmp_cost == 'LAP2':
-        clipping_val = line_matching_parameters.max_dist + (line_matching_parameters.badmatch_penalty - line_matching_parameters.max_dist) / 3
-        cost_matrix = np.clip(cost_matrix, 0, clipping_val)
-        All_norm_cost = 1 - cost_matrix / clipping_val
-    else:  # args.cmp_cost == 'LAP':
-        #All_norm_cost = np.maximum(1 - cost_matrix / line_matching_parameters.rmax, 0)
-        All_norm_cost = cost_matrix # / np.max(cost_matrix) #
-    # if zeros_as_negative == True:
-    return All_norm_cost
-
-def normalize_CM(R, norm_method=''):
+def normalize_CM(R, region_mask, parameters=None, normalize_negative=False):
     """
     It normalizes a compatibility matrix with a known structure (-1, 0, positive values) 
     """
-    if norm_method == '': # standard
+    if normalize_negative == False:
+        negative_region = np.clip(region_mask, -1, 0)
+    else:
+        # normalize negative
+        print('normalize negative (not done yet)')
+    if not parameters or 'cmp_type' not in parameters.keys(): # standard
         # since 0 means "far away" we leave lower values 
         # min_val = np.min(R[R > 0])
         # R[R > 0] -= min_val # moved min val to zero
         prm = (R > 0).astype(int)
         max_val = np.max(R[R > 0])
         scaling_factor = np.ones_like(R) * prm * max_val
-        import matplotlib.pyplot as plt 
-        plt.subplot(121)
-        plt.imshow(R[:,:,0,1,2])
-        plt.subplot(122)
-        plt.imshow(scaling_factor[:,:,0,1,2])
-        plt.show()
-        breakpoint()
-        R /= scaling_factor
+        # import matplotlib.pyplot as plt 
+        # plt.subplot(121)
+        # plt.imshow(R[:,:,0,1,2])
+        # plt.subplot(122)
+        # plt.imshow(scaling_factor[:,:,0,1,2])
+        # plt.show()
+        # breakpoint()
+        normalized_R = R / scaling_factor
+    elif parameters['cmp_type'] == 'lines':
+        if parameters['cmp_cost'] == 'LCI':
+            print("LCI is already normalized over each piece!")
+        elif parameters['cmp_cost'] == 'LAP3':
+            min_vals = []
+            for j in range(R.shape[3]):
+                for i in range(R.shape[4]):
+                    min_val = np.min(R[:, :, :, j, i])
+                    min_vals.append(min_val)
+            kmin_cut_val = np.max(min_vals) + 1
+            normalized_R = np.maximum(1 - R/ kmin_cut_val, 0)
+        elif parameters['cmp_cost'] == 'LAP2':
+            clipping_val = parameters.max_dist + (parameters.badmatch_penalty - parameters.max_dist) / 3
+            R = np.clip(R, 0, clipping_val)
+            normalized_R = 1 - R / clipping_val
+        else: 
+            normalized_R = R # / np.max(R) #
+    elif parameters['cmp_type'] == 'color':
+        # normalization
+        k = parameters['k']
+        R_cut = np.zeros((R.shape))
+        a_ks = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
+        a_min = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
+        for i in range(n):
+            a_cost_i = R[:, :, :, :, i]
+            for x in range(a_cost_i.shape[0]):
+                for y in range(a_cost_i.shape[1]):
+                    a_xy = a_cost_i[x, y, :, :]
+                    a_all = np.array(np.unique(a_xy))
+                    a = a_all[np.minimum(k, len(a_all) - 1)]
+                    a_xy = np.where(a_xy > a, -1, a_xy)
+                    a_cost_i[x, y, :, :] = a_xy
+                    a_ks[x, y, i] = a
+                    if len(a_all) > 1:
+                        a_min[x, y, i] = a_all[1]
+            print(a_ks[:, :, i])
+            R_cut[:, :, :, :, i] = a_cost_i
+
+        norm_term = np.max(a_ks)/(2*k)
+        normalized_R = 2 - R_cut / norm_term  # only for colors
+        normalized_R = np.where(normalized_R > 2, 0, normalized_R)    # only for colors
+        #normalized_R = np.where(normalized_R < 0, 0, normalized_R)   # only for colors
+        normalized_R = np.where(normalized_R <= 0, -1, normalized_R)  ## NEW idea di Prof.Pelillo
+        #normalized_R /= np.max(normalized_R)
+    elif parameters['cmp_type'] == 'motifs':
+        max_cost = np.max(R)
+        if max_cost < 0.1:
+            breakpoint()
+        normalized_R = (np.clip(R, 0, max_cost)) / max_cost
+    else:
+        print("\n\n### WARNING\nNo normalization used!\n\n")
+        normalized_R = R
+        negative_region =  np.minimum(region_mask, 0)  # recover overlap (negative) areas
+
+    normalized_R = normalized_R + negative_region  # insert negative regions to cost matrix
+    return normalized_R
+
+def reshape_list2mat(comp_as_list, n):
+    first_element = comp_as_list[0]
+    cost_matrix = np.zeros((first_element.shape[0], first_element.shape[1], first_element.shape[2], n, n))
+    for i in range(n):
+        for j in range(n):
+            cost_matrix[:,:,:,j,i] = comp_as_list[i*n + j]
+    return cost_matrix
+
+def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
+    """
+    Old code, should not be used, 
+    preferrable to use:
+    - reshape_list2mat() and then 
+    - normalize_CM() 
+    """
+    first_element = comp_as_list[0]
+    cost_matrix = np.zeros((first_element.shape[0], first_element.shape[1], first_element.shape[2], n, n))
+    norm_cost_matrix = np.zeros((first_element.shape[0], first_element.shape[1], first_element.shape[2], n, n))
+    for i in range(n):
+        for j in range(n):
+            cost_matrix[:,:,:,j,i] = comp_as_list[i*n + j]
+            norm_cost_matrix[:,:,:,j,i] = np.maximum(1 - cost_matrix[:,:,:,j,i] / norm_value, 0)
+    return cost_matrix, norm_cost_matrix
+
+
+def show_debug_visualization(pieces, i, j, args, R, region_mask, ppars):
+    import matplotlib.pyplot as plt
+    rotation_idx = 0
+    plt.suptitle(f"CM: `{args.cmp_type}` (cost `{args.cmp_cost}`)", fontsize=45)
+    plt.subplot(541); plt.imshow(pieces[i]['img']); plt.title(f"piece {i}"); plt.colorbar()
+    plt.subplot(542); plt.imshow(pieces[j]['img']); plt.title(f"piece {j}"); plt.colorbar()
+    plt.subplot(545); plt.imshow(region_mask[:,:,0,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 0"); plt.colorbar()
+    if region_mask.shape[2] > 1:
+        plt.subplot(546); plt.imshow(region_mask[:,:,1,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 1"); plt.colorbar()
+        plt.subplot(547); plt.imshow(region_mask[:,:,2,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 2"); plt.colorbar()
+        plt.subplot(548); plt.imshow(region_mask[:,:,3,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 3"); plt.colorbar()
+    # plt.subplot(546); plt.imshow(R[:,:,rotation_idx], cmap='RdYlGn'); plt.title("cost")
+    # if args.cmp_cost == 'LCI':
+    #     norm_cmp = R[:,:,0] / np.max(R[:,:,0]) #np.maximum(1 - R[:,:,0] / parameters.rmax, 0)
+    #     plt.subplot(547); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
+    #     plt.subplot(548); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,rotation_idx,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
+    # else:
+    #     norm_cmp = np.maximum(1 - R[:,:,0] / parameters.rmax, 0)
+    #     plt.subplot(547); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
+    #     plt.subplot(548); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,rotation_idx,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
     
-    return R
+    plt.subplot(549); plt.title("COST ROTATION 0")
+    plt.imshow(R[:,:,0], cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar() 
+    if R.shape[2] > 1:
+        plt.subplot(5,4,10); plt.title("COST ROTATION 1")
+        plt.imshow(R[:,:,1], cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar() 
+        plt.subplot(5,4,11); plt.title("COST ROTATION 2")
+        plt.imshow(R[:,:,2], cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar() 
+        plt.subplot(5,4,12); plt.title("COST ROTATION 3")
+        plt.imshow(R[:,:,3], cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar() 
+
+    if args.cmp_cost == 'LAP':
+        R[R > ppars.badmatch_penalty] = ppars.badmatch_penalty
+        ji_unique_values = np.unique(R)
+        k = min(ppars.k, len(ji_unique_values))
+        kmin_cut_val = np.sort(ji_unique_values)[-k]
+        if kmin_cut_val == 0:
+            kmin_cut_val = np.min(ji_unique_values[ji_unique_values > 0])
+        plt.subplot(5,4,13); plt.title(f"COST KMINCUT ({kmin_cut_val:.2f}) ROTATION  0"); 
+        plt.imshow(np.maximum(1 - R[:,:,0] / kmin_cut_val, 0), cmap='RdYlGn'); plt.colorbar()
+        plt.subplot(5,4,14); plt.title(f"COST KMINCUT ({kmin_cut_val:.2f}) ROTATION  1")
+        plt.imshow(np.maximum(1 - R[:,:,1] / kmin_cut_val, 0), cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar()
+        plt.subplot(5,4,15); plt.title(f"COST KMINCUT ({kmin_cut_val:.2f}) ROTATION  2")
+        plt.imshow(np.maximum(1 - R[:,:,2] / kmin_cut_val, 0), cmap='RdYlGn', vmin=-1, vmax=1) ; plt.colorbar()
+        plt.subplot(5,4,16); plt.title(f"COST KMINCUT ({kmin_cut_val:.2f}) ROTATION  3")
+        plt.imshow(np.maximum(1 - R[:,:,3] / kmin_cut_val, 0), cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar()
+        plt.subplot(5,4,17); 
+        plt.title("EXP ROTATION 0")
+        sigma = 76 # why?
+        plt.imshow(np.exp(-R[:,:,0]/sigma), cmap='RdYlGn'); plt.colorbar() 
+        if R.shape[2] > 1:
+            plt.subplot(5,4,18); plt.title("EXP ROTATION 1")
+            plt.imshow(np.exp(-R[:,:,1]/sigma), cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar() 
+            #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,1,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+            plt.subplot(5,4,19); plt.title("EXP ROTATION 2")
+            plt.imshow(np.exp(-R[:,:,2]/sigma), cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar() 
+            #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,2,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+            plt.subplot(5,4,20); plt.title("EXP ROTATION 3")
+            plt.imshow(np.exp(-R[:,:,3]/sigma), cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar() 
+        #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,3,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+    
+    if args.cmp_cost == 'LAP2':
+        clipping_val = ppars.max_dist + (ppars.badmatch_penalty - ppars.max_dist) / 3
+        R = np.clip(R, 0, clipping_val)
+        R_normalized = 1 - R / clipping_val
+        plt.subplot(5,4,13); plt.title("compatibility normalized")
+        plt.imshow(R_normalized, cmap='RdYlGn'); plt.colorbar()
+        plt.subplot(5,4,14); plt.title(f"COST KMINCUT ({kmin_cut_val:.2f}) ROTATION  1")
+        plt.imshow(np.maximum(1 - R[:,:,1] / kmin_cut_val, 0), cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar()
+        plt.subplot(5,4,15); plt.title(f"COST KMINCUT ({kmin_cut_val:.2f}) ROTATION  2")
+        plt.imshow(np.maximum(1 - R[:,:,2] / kmin_cut_val, 0), cmap='RdYlGn', vmin=-1, vmax=1) ; plt.colorbar()
+        plt.subplot(5,4,16); plt.title(f"COST KMINCUT ({kmin_cut_val:.2f}) ROTATION  3")
+        plt.imshow(np.maximum(1 - R[:,:,3] / kmin_cut_val, 0), cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar()
+        #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,0,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+        plt.subplot(5,4,18); plt.title("EXP ROTATION 1")
+        plt.imshow(np.exp(-R[:,:,1]/sigma), cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar() 
+        #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,1,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+        plt.subplot(5,4,19); plt.title("EXP ROTATION 2")
+        plt.imshow(np.exp(-R[:,:,2]/sigma), cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar() 
+        #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,2,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+        plt.subplot(5,4,20); plt.title("EXP ROTATION 3")
+        plt.imshow(np.exp(-R[:,:,3]/sigma), cmap='RdYlGn', vmin=-1, vmax=1); plt.colorbar() 
+        #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,3,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
+    if args.cmp_cost == 'LAP2':
+        clipping_val = ppars.max_dist + (ppars.badmatch_penalty - ppars.max_dist) / 3
+        R = np.clip(R, 0, clipping_val)
+        R_normalized = 1 - R / clipping_val
+        plt.subplot(5,4,13); plt.title("compatibility normalized")
+        plt.imshow(R_normalized, cmap='RdYlGn'); plt.colorbar()
+    
+    plt.show()
+    breakpoint()
+    return 0

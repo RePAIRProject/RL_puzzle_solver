@@ -56,7 +56,7 @@ def main(args):
     # '/home/lucap/code/RL_puzzle_solver/data/manual_lines/pieces'
     dataset_folder_pieces = os.path.join(os.getcwd(), f'output', args.dataset) #'pieces')
     border_tolerance = 5
-    filter_lines = True
+    filter_lines = False
     output_folder = dataset_folder_pieces #os.path.join(root_folder, f'output_{num_pieces}x{num_pieces}', args.dataset)
     # output_folder = '/home/lucap/code/RL_puzzle_solver/output/manual_lines'
     
@@ -117,8 +117,8 @@ def main(args):
                 pieces_list[:,:,j] = gray_img
                 rgb_pieces_list[:,:,:,j] = orig_img / 255
                 pieces_names.append(img_name)
-                polygon = np.load(os.path.join(cur_puzzle_polygons_folder, f"{img_name[:-4]}.npy"), allow_pickle=True)
-                polygons.append(polygon)
+                # polygon = np.load(os.path.join(cur_puzzle_polygons_folder, f"{img_name[:-4]}.npy"), allow_pickle=True)
+                # polygons.append(polygon)
 
 
             for k in range(len(imgs_names)):

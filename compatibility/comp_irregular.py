@@ -16,23 +16,17 @@ from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_sha
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
 from puzzle_utils.regions import combine_region_masks
-from utils import compute_cost_wrapper, calc_computation_parameters
+from utils import compute_cost_wrapper, calc_computation_parameters, normalize_CM, reshape_list2mat,\
+    show_debug_visualization
 
-def reshape_list2mat_and_normalize(comp_as_list, n, norm_value):
-    first_element = comp_as_list[0]
-    cost_matrix = np.zeros((first_element.shape[0], first_element.shape[1], first_element.shape[2], n, n))
-    norm_cost_matrix = np.zeros((first_element.shape[0], first_element.shape[1], first_element.shape[2], n, n))
-    for i in range(n):
-        for j in range(n):
-            ji_mat = comp_as_list[i*n + j]
-            cost_matrix[:,:,:,j,i] = ji_mat
-            norm_cost_matrix[:,:,:,j,i] = np.maximum(1 - ji_mat / norm_value, 0)
-    return cost_matrix, norm_cost_matrix
 
 def main(args):
 
     print("Compatibility log\nSearch for `CMP_START_TIME` or `CMP_END_TIME` if you want to see which images are done")
 
+    ###########################
+    #   ONE PUZZLE OR MULTIPLE
+    ########################### 
     if args.puzzle == '':  
         puzzles = os.listdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset))
         puzzles.sort()
@@ -44,13 +38,13 @@ def main(args):
     for puzzle in puzzles:
 
         time_start_puzzle = time.time()
-        ######
-        # PREPARE PIECES AND GRIDS
-        # 
+        #################################
+        #   PREPARE PIECES AND GRIDS
         # pieces is a list of dictionaries with the pieces (and mask, cm, id)
         # img_parameters contains the size of the image and of the pieces
         # ppars contains all the values needed for computing stuff (p_hs, comp_range..)
         # ppars is a dict but can be accessed by pieces_paramters.property!
+        ################################# 
         print()
         print("-" * 60)
         print("-- CMP_START_TIME -- ")
@@ -68,6 +62,9 @@ def main(args):
         
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
         cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters_v2.json')
+        #################################
+        #   PARAMETERS (from .json file)
+        #################################
         if os.path.exists(cmp_parameter_path):
             ppars = CfgParameters()
             with open(cmp_parameter_path, 'r') as cp:
@@ -86,6 +83,9 @@ def main(args):
             print("\n" * 3)
             ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
+        ###########################
+        #   ADDITIONAL PARAMETERS
+        ########################### 
         additional_cmp_pars = calc_computation_parameters(ppars, cmp_type=args.cmp_type, \
             cmp_cost=args.cmp_cost, lines_det_method=args.lines_det_method, motif_det_method=args.motif_det_method)
 
@@ -103,18 +103,12 @@ def main(args):
         motif_based = False
         if args.cmp_type == 'motifs':
             motif_based = True
-            #if args.det_method == 'yolo-bbox':
-                #from ultralytics import YOLOv10 as YOLO
-            #if args.det_method == 'yolo-obb':
-                #from ultralytics import YOLO
             if args.yolo_path == '':
                 raise Exception("You are trying to use yolo-based motif compatibility without specifying the yolo model to be used.\
                     \nPlease set the path with `--yolo_path path_to_the_pt_model` and relaunch")
             yolov8_model_path = args.yolo_path
             ppars['yolo_path'] = yolov8_model_path
-
             yolov8_obb_detector = YOLO(yolov8_model_path)
-
         else:
             yolov8_obb_detector = None
         ppars['motif_based'] = motif_based
@@ -142,11 +136,17 @@ def main(args):
             json.dump(ppars, lmpj, indent=3)
         print("saved json compatibility parameters file")
         
+        ################################
+        #   SHAPE INFORMATION (reading)
+        ################################
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, lines_det_method=args.lines_det_method, \
             motif_det_method=args.motif_det_method, line_based=line_based, sdf=calc_sdf, motif_based=motif_based)
         if color_based == True:
             pieces = encode_boundary_segments(pieces, fnames, args.dataset, puzzle, boundary_seg_len=seg_len,
                                          boundary_thickness=2)
+        ###########################
+        #   REGION MASK (reading)
+        ########################### 
         region_mask_mat = loadmat(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle, fnames.rm_output_name, f'RM_{puzzle}.mat'))
         shape_RM = region_mask_mat['RM_shapes']
         if line_based == True and motif_based == False:
@@ -162,9 +162,11 @@ def main(args):
         else: # line_based == False and motif_based == False:
             region_mask = shape_RM        
         
-        # parameters and grid
-        p = [ppars.p_hs, ppars.p_hs]    # center of piece [125,125] - ref.point for lines
-        m_size = ppars.xy_grid_points   # 101X101 grid
+        ###########################
+        #   PARAMETERS AND GRID
+        ############################ 
+        p = [ppars.p_hs, ppars.p_hs]    
+        m_size = ppars.xy_grid_points  
         m = np.zeros((m_size, m_size, 2))
         m2, m1 = np.meshgrid(np.linspace(-1, 1, m_size), np.linspace(-1, 1, m_size))
         m[:, :, 0] = m1
@@ -180,16 +182,16 @@ def main(args):
         ppars['z_id'] = z_id
         ppars['m'] = m
         ppars['rot'] = rot
-        # cmp_parameters = (p, z_id, m, rot, ppars)
         n = len(pieces)
 
-        # COST MATRICES 
+        ###########################
+        #   COST MATRICES INIT
+        ########################### 
         All_cost = np.zeros((m.shape[1], m.shape[1], len(rot), n, n))
-        All_norm_cost = np.zeros((m.shape[1], m.shape[1], len(rot), n, n))
         
         # check sizes
-        if region_mask.shape[2] != All_norm_cost.shape[2]:
-            step = region_mask.shape[2] / All_norm_cost.shape[2] 
+        if region_mask.shape[2] != All_cost.shape[2]:
+            step = region_mask.shape[2] / All_cost.shape[2] 
             if np.abs(step - int(step)) > 0:
                 print('WRONG THETA STEP')
                 print("SKIPPING")
@@ -200,23 +202,16 @@ def main(args):
                 region_mask = region_mask[:,:,::step,:,:]
                 print("now region mask shape is:", region_mask.shape)
                 
-
-        # TO BE PARALLELIZED
-        if args.jobs > 1:
-            print("##" * 50)
-            print("##" * 50)
-            print("PROBABLY NOT WORKING NOW WITH NEW COMPATIBILITY, RE-RUN with jobs = 0!")
-            print("##" * 50)
-            print("##" * 50)
-
+        ################################
+        #   COMPATIBILITY COMPUTATION
+        ################################
+        if args.jobs > 1: # parallelized version!
+            print("### WARNING ###\nIn case of issues, re-run with `jobs 0` (default) to avoid parallel jobs!")
             print(f'running {args.jobs} parallel jobs with multiprocessing')
-            #pool = multiprocessing.Pool(args.jobs)
-            #costs_list = zip(*pool.map(compute_cost_matrix_LAP, [(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n)]))
-            #with parallel_backend('threading', n_jobs=args.jobs):
             costs_list = Parallel(n_jobs=args.jobs, prefer="threads")(delayed(compute_cost_wrapper)(i, j, pieces, region_mask, ppars, compatibility_type=args.cmp_type, verbosity=args.verbosity) for i in range(n) for j in range(n)) ## is something change replacing j and i ???
-            #costs_list = Parallel(n_jobs=args.jobs)(delayed(compute_cost_matrix_LAP)(i, j, pieces, region_mask, cmp_parameters, ppars) for j in range(n) for i in range(n))
-            All_cost, All_norm_cost = reshapAll_coste_list2mat_and_normalize(costs_list, n=n, norm_value=computation_parameters.rmax)
+            All_cost = reshape_list2mat(costs_list, n=n)
         else:
+            # standard (for-loop) version
             for i in range(n):  # select fixed fragment
                 for j in range(n):
                     if args.verbosity == 1:
@@ -226,153 +221,19 @@ def main(args):
                         verbosity=args.verbosity)
                     
                     All_cost[:, :, :, j, i] = ji_mat
-                    
-                    # DEBUG
-                    if i == 2 and j == 3 and args.DEBUG is True:
-                        rotation_idx = 0
-                        plt.suptitle(f"CM: `{args.cmp_type}` (cost `{args.cmp_cost}`)", fontsize=45)
-                        plt.subplot(541); plt.imshow(pieces[i]['img']); plt.title(f"piece {i}")
-                        plt.subplot(542); plt.imshow(pieces[j]['img']); plt.title(f"piece {j}")
-                        plt.subplot(545); plt.imshow(region_mask[:,:,0,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 0")
-                        if region_mask.shape[2] > 1:
-                            plt.subplot(546); plt.imshow(region_mask[:,:,1,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 1")
-                            plt.subplot(547); plt.imshow(region_mask[:,:,2,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 2")
-                            plt.subplot(548); plt.imshow(region_mask[:,:,3,j,i], vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("region map 3")
-                        # plt.subplot(546); plt.imshow(ji_mat[:,:,rotation_idx], cmap='RdYlGn'); plt.title("cost")
-                        # if args.cmp_cost == 'LCI':
-                        #     norm_cmp = ji_mat[:,:,0] / np.max(ji_mat[:,:,0]) #np.maximum(1 - ji_mat[:,:,0] / computation_parameters.rmax, 0)
-                        #     plt.subplot(547); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
-                        #     plt.subplot(548); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,rotation_idx,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
-                        # else:
-                        #     norm_cmp = np.maximum(1 - ji_mat[:,:,0] / computation_parameters.rmax, 0)
-                        #     plt.subplot(547); plt.imshow(norm_cmp, vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("compatibility")
-                        #     plt.subplot(548); plt.imshow(norm_cmp + np.minimum(region_mask[:,:,rotation_idx,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); plt.title("final cmp")
-                        
-                        plt.subplot(549); plt.title("COST ROTATION 0")
-                        plt.imshow(ji_mat[:,:,0], cmap='RdYlGn'); 
-                        if ji_mat.shape[2] > 1:
-                            plt.subplot(5,4,10); plt.title("COST ROTATION 1")
-                            plt.imshow(ji_mat[:,:,1], cmap='RdYlGn'); 
-                            plt.subplot(5,4,11); plt.title("COST ROTATION 2")
-                            plt.imshow(ji_mat[:,:,2], cmap='RdYlGn'); 
-                            plt.subplot(5,4,12); plt.title("COST ROTATION 3")
-                            plt.imshow(ji_mat[:,:,3], cmap='RdYlGn'); 
 
-                        
-                        if args.cmp_cost == 'LAP':
-                            ji_mat[ji_mat > computation_parameters.badmatch_penalty] = computation_parameters.badmatch_penalty
-                            ji_unique_values = np.unique(ji_mat)
-                            k = min(computation_parameters.k, len(ji_unique_values))
-                            kmin_cut_val = np.sort(ji_unique_values)[-k]
-                            plt.subplot(5,4,13); plt.title("COST ROTATION KMINCUT 0")
-                            plt.imshow(np.maximum(1 - ji_mat[:,:,0] / kmin_cut_val, 0), cmap='RdYlGn'); 
-                            plt.subplot(5,4,17); plt.title("EXP ROTATION 0")
-                            plt.imshow(np.exp(-ji_mat[:,:,0]/76), cmap='RdYlGn'); 
-                            if ji_mat.shape[2] > 1:
-                                plt.subplot(5,4,14); plt.title("COST ROTATION KMINCUT 1")
-                                plt.imshow(np.maximum(1 - ji_mat[:,:,1] / kmin_cut_val, 0), cmap='RdYlGn')
-                                plt.subplot(5,4,15); plt.title("COST ROTATION KMINCUT 2")
-                                plt.imshow(np.maximum(1 - ji_mat[:,:,2] / kmin_cut_val, 0), cmap='RdYlGn') 
-                                plt.subplot(5,4,16); plt.title("COST ROTATION KMINCUT 3")
-                                plt.imshow(np.maximum(1 - ji_mat[:,:,3] / kmin_cut_val, 0), cmap='RdYlGn')
+                    if i > 1 and i != j and args.DEBUG == True:
+                        show_debug_visualization(pieces, i, j, args, ji_mat, region_mask, ppars)
 
-                                #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,0,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
-                                plt.subplot(det_method5,4,18); plt.title("EXP ROTATION 1")
-                                plt.imshow(np.exp(-ji_mat[:,:,1]/76), cmap='RdYlGn'); 
-                                #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,1,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
-                                plt.subplot(5,4,19); plt.title("EXP ROTATION 2")
-                                plt.imshow(np.exp(-ji_mat[:,:,2]/76), cmap='RdYlGn'); 
-                                #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,2,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
-                                plt.subplot(5,4,20); plt.title("EXP ROTATION 3")
-                                plt.imshow(np.exp(-ji_mat[:,:,3]/76), cmap='RdYlGn'); 
-                            #plt.imshow(norm_cmp + np.minimum(region_mask[:,:,3,i,j], 0), vmin=-1, vmax=1, cmap='RdYlGn'); 
-                        if args.cmp_cost == 'LAP2':
-                            clipping_val = computation_parameters.max_dist + (computation_parameters.badmatch_penalty - computation_parameters.max_dist) / 3
-                            ji_mat = np.clip(ji_mat, 0, clipping_val)
-                            ji_mat_normalized = 1 - ji_mat / clipping_val
-                            plt.subplot(5,4,13); plt.title("compatibility normalized")
-                            plt.imshow(ji_mat_normalized, cmap='RdYlGn'); 
-                        
-                        plt.show()
-                        breakpoint()
+        ###########################
+        #   NORMALIZATION
+        ###########################
+        # here we have the full matrix and we normalize it
+        R = normalize_CM(All_cost, region_mask, ppars)            
 
-        if args.cmp_type == 'lines':
-            if args.cmp_cost == 'LCI':
-                print("WARNING: normalized over each piece!")
-                #All_norm_cost = All_cost/np.max(All_cost)  # normalize to max value TODO !!!
-            elif args.cmp_cost == 'LAP3':
-                min_vals = []
-                for j in range(All_cost.shape[3]):
-                    for i in range(All_cost.shape[4]):
-                        min_val = np.min(All_cost[:, :, :, j, i])
-                        min_vals.append(min_val)
-                kmin_cut_val = np.max(min_vals) + 1
-                All_norm_cost = np.maximum(1 - All_cost/ kmin_cut_val, 0)
-            elif args.cmp_cost == 'LAP2':
-                clipping_val = computation_parameters.max_dist + (computation_parameters.badmatch_penalty - computation_parameters.max_dist) / 3
-                All_cost = np.clip(All_cost, 0, clipping_val)
-                All_norm_cost = 1 - All_cost / clipping_val
-            else: 
-                #max_cost = np.max(All_cost)
-                #All_norm_cost = np.maximum(1 - All_cost / computation_parameters.rmax, 0)
-                All_norm_cost = All_cost # / np.max(All_cost) #
-        elif args.cmp_type == 'color':
-            # breakpoint()
-            # normalization
-            k = ppars['k']
-            All_cost_cut = np.zeros((All_cost.shape))
-            a_ks = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
-            a_min = np.zeros((region_mask.shape[0], region_mask.shape[1], n))
-            for i in range(n):
-                a_cost_i = All_cost[:, :, :, :, i]
-                for x in range(a_cost_i.shape[0]):
-                    for y in range(a_cost_i.shape[1]):
-                        a_xy = a_cost_i[x, y, :, :]
-                        a_all = np.array(np.unique(a_xy))
-                        a = a_all[np.minimum(k, len(a_all) - 1)]
-                        a_xy = np.where(a_xy > a, -1, a_xy)
-                        a_cost_i[x, y, :, :] = a_xy
-                        a_ks[x, y, i] = a
-                        if len(a_all) > 1:
-                            a_min[x, y, i] = a_all[1]
-                #breakpoint()
-                print(a_ks[:, :, i])
-                All_cost_cut[:, :, :, :, i] = a_cost_i
-
-            # norm_term = 100
-            # norm_term = np.max(a_min)/(3*k)
-            norm_term = np.max(a_ks)/(2*k)
-
-            All_norm_cost = 2 - All_cost_cut / norm_term  # only for colors
-
-            All_norm_cost = np.where(All_norm_cost > 2, 0, All_norm_cost)    # only for colors
-            #All_norm_cost = np.where(All_norm_cost < 0, 0, All_norm_cost)   # only for colors
-            All_norm_cost = np.where(All_norm_cost <= 0, -1, All_norm_cost)  ## NEW idea di Prof.Pelillo
-            #All_norm_cost /= np.max(All_norm_cost)
-        else:
-            All_norm_cost = All_cost
-
-                    
-            # only_negative_region = np.clip(region_mask, -1, 0)
-            # All_cost = (np.clip(All_cost, 0, max_cost))/max_cost
-
-        if args.cmp_type == 'motifs':
-            max_cost = np.max(All_cost)
-            print(max_cost)
-            if max_cost < 0.1:
-                breakpoint()
-            only_negative_region = np.clip(region_mask, -1, 0)
-            All_norm_cost = (np.clip(All_cost, 0, max_cost)) / max_cost
-        else:
-            only_negative_region =  np.minimum(region_mask, 0)  # recover overlap (negative) areas
-
-        R = All_norm_cost + only_negative_region  # insert negative regions to cost matrix
-
-        # it should not be needed
-        # R_line = (All_norm_cost * region_mask) * 2
-        # R_line[R_line < 0] = -1
-        # for jj in range(n):
-        #     R_line[:, :, :, jj, jj] = -1
+        ###########################
+        #   TIMING
+        ###########################                    
         print("-" * 60)
         time_in_seconds = time.time()-time_start_puzzle
         if time_in_seconds > 60:
@@ -385,7 +246,10 @@ def main(args):
         else:
             print(f"Compatibility for this puzzle took {time_in_seconds:.0f} seconds")
         print("-" * 60)
-        # save output
+        
+        ###########################
+        #   OUTPUT
+        ###########################
         output_folder = os.path.join(fnames.output_dir, args.dataset, puzzle, fnames.cm_output_name)
         os.makedirs(output_folder, exist_ok=True)
         if args.cmp_type == 'lines':
@@ -430,6 +294,9 @@ def main(args):
             savemat(f'{filename}.mat', mdic)
             np.save(filename, All_cost)
         
+        ###########################
+        #   VISUALIZATION
+        ###########################
         vis_folder = os.path.join(output_folder, fnames.visualization_folder_name)
         os.makedirs(vis_folder, exist_ok=True)
         if args.save_visualization is True:
