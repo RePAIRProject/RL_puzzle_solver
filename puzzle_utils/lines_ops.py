@@ -153,7 +153,66 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, s1, s2, pars, pol
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
 """
 
-def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, pars, extrapolate=True, return_shapes=False):
+def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, pars, extrapolate=True, \
+                            return_shapes=False):
+    # check if line crosses the polygon
+    # z_p1 = [0,0],  z_l2 = z,
+    # z_p2 = z,   z_l1 = [0,0],
+    intersections = []
+    useful_lines_s1 = []
+    useful_lines_s2 = []
+    piece_j_shape = poly_p #.tolist() #shapely.polygons(poly_p)
+    piece_j_rotate = rotate(piece_j_shape, theta_p, origin=[pars.p_hs, pars.p_hs])
+    piece_j_trans = transform(piece_j_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_p)
+
+    if return_shapes == True:
+        trans_lines = []
+        trans_useful_lines = []
+
+    for (p1, p2) in zip(s1, s2):
+        
+        candidate_line_shapely0 = shapely.LineString((p1, p2))
+        candidate_line_rotate = rotate(candidate_line_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
+        candidate_line_trans = transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] - z_l)
+
+        # append to the useful lines
+        ps1 = np.array(candidate_line_trans.coords)[0]
+        ps2 = np.array(candidate_line_trans.coords)[-1]
+        useful_lines_s1.append(ps1)
+        useful_lines_s2.append(ps2)
+        # print(f"Before: p1: {p1}, p2: {p2}")
+        # print(f"After: p1: {ps1}, p2: {ps2}")
+        # print(f"Transf: - {pars.p_hs} + {z_l}")
+        # pdb.set_trace()
+        if np.isclose(distance.euclidean(ps1, ps2), 0):
+            intersections.append(False)
+            # print("point/line")
+        else:
+            dist_centers = distance.euclidean(z_p,z_l)
+            candidate_poly_l_shapely0 = poly_l #.tolist()
+            candidate_poly_l_rotate = rotate(candidate_poly_l_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
+            candidate_poly_l_trans = transform(candidate_poly_l_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
+
+            if extrapolate == True:
+                candidate_line_extrap = getExtrapoledLine(candidate_line_trans, dist_centers, candidate_poly_l_trans, pars.border_tolerance)
+            else:
+                candidate_line_extrap = candidate_line_trans
+
+            if shapely.is_empty(shapely.intersection(candidate_line_extrap, piece_j_trans.boundary)):
+                intersections.append(False)
+                if return_shapes == True:
+                    trans_lines.append(candidate_line_extrap)
+            else:
+                intersections.append(True)
+                if return_shapes == True:
+                    trans_useful_lines.append(candidate_line_extrap)
+
+    if return_shapes == True:
+        return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2), piece_j_trans, trans_lines, trans_useful_lines
+    return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
+
+def line_poligon_intersect_vis(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, pars, extrapolate=True, \
+                            return_shapes=False, draw_lines=False, draw_polygon=False, drawing_col='blue'):
     # check if line crosses the polygon
     # z_p1 = [0,0],  z_l2 = z,
     # z_p2 = z,   z_l1 = [0,0],
@@ -164,7 +223,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
     piece_j_shape = poly_p #.tolist() #shapely.polygons(poly_p)
     piece_j_rotate = rotate(piece_j_shape, theta_p, origin=[pars.p_hs, pars.p_hs])
     piece_j_trans = transform(piece_j_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_p)
-
+    
     if return_shapes == True:
         trans_lines = []
         trans_useful_lines = []
@@ -201,12 +260,19 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
             candidate_poly_l_shapely0 = poly_l #.tolist()
             candidate_poly_l_rotate = rotate(candidate_poly_l_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
             candidate_poly_l_trans = transform(candidate_poly_l_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
-
+            
+            if draw_polygon == True:
+                plt.plot(*candidate_poly_l_trans.boundary.xy, linewidth=7, color=drawing_col)
+            
             if extrapolate == True:
                 candidate_line_extrap = getExtrapoledLine(candidate_line_trans, dist_centers, candidate_poly_l_trans, pars.border_tolerance)
             else:
                 candidate_line_extrap = candidate_line_trans
 
+            if draw_lines == True:
+                plt.plot(*candidate_line_extrap.xy, linewidth='3', color=drawing_col)
+
+            # breakpoint()
             if shapely.is_empty(shapely.intersection(candidate_line_extrap, piece_j_trans.boundary)):
                 intersections.append(False)
                 if return_shapes == True:
@@ -214,8 +280,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
                 # canvas_aligned_line = []
                 # for p in candidate_line_extrap.xy: 
                 #     canvas_aligned_line.append(np.asarray(p)+pars.canvas_size // 2)
-                # #breakpoint()
-                # plt.plot(canvas_aligned_line[0], canvas_aligned_line[1], linewidth='3', color="orange")
+                    
             else:
                 intersections.append(True)
                 if return_shapes == True:
@@ -223,8 +288,8 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
                 # canvas_aligned_line = []
                 # for p in candidate_line_extrap.xy: 
                 #     canvas_aligned_line.append(np.asarray(p)+pars.canvas_size // 2)
-                # #breakpoint()
-                # plt.plot(canvas_aligned_line[0], canvas_aligned_line[1], linewidth='3', color="blue")
+                # if draw_lines == True:
+                #     plt.plot(canvas_aligned_line, canvas_aligned_line, linewidth='5', color=drawing_col)
                 # plt.subplot(122)
                 # plt.plot(*candidate_line_trans.xy, linewidth=5, color="red")
                 # plt.plot(*candidate_line_extrap.xy, linewidth=2, color="blue")
@@ -239,6 +304,9 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
     # #plt.show()
     # breakpoint()
     # plt.cla()
+    plt.axis('equal')
+    plt.xlim([-300, 300])
+    plt.ylim([-300, 300])
     if return_shapes == True:
         return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2), piece_j_trans, trans_lines, trans_useful_lines
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
@@ -301,13 +369,14 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                     piece_j_on_canvas = place_on_canvas(piece_j, (center_pos + xy[0], center_pos + xy[1]), ppars.canvas_size, theta)
                     overlap_area = piece_i_on_canvas['mask'] + piece_j_on_canvas['mask']
                     pieces_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img'] * (np.dstack(((overlap_area < 2), (overlap_area < 2), (overlap_area < 2)))).astype(int)
-                    plt.imshow(pieces_ij_on_canvas)
-                    plt.plot(*piece_i_on_canvas['polygon'].boundary.xy)
-                    plt.plot(*piece_j_on_canvas['polygon'].boundary.xy)
+                    # plt.imshow(pieces_ij_on_canvas)
+                    # plt.plot(*piece_i_on_canvas['polygon'].boundary.xy)
+                    # plt.plot(*piece_j_on_canvas['polygon'].boundary.xy)
 
                     intersections1, useful_lines_s11, useful_lines_s12 = \
-                        line_poligon_intersect(xy[::-1], -theta, piece_j['polygon'], [0, 0],  0, \
-                            piece_i['polygon'], s11, s12, ppars, extrapolate=False)
+                        line_poligon_intersect_vis(xy[::-1], -theta, piece_j['polygon'], [0, 0],  0, \
+                            piece_i['polygon'], s11, s12, ppars, extrapolate=False, draw_lines=True, \
+                                draw_polygon=True, drawing_col='blue')
                     
                     # return intersections                    
                     useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
@@ -315,57 +384,14 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                     useful_lines_cat1 = cat1[intersections1]
                     useful_lines_s11 = useful_lines_s11[intersections1]
                     useful_lines_s12 = useful_lines_s12[intersections1]
-                    plt.plot(useful_lines_s11, useful_lines_s12)
 
                     # check if line2 crosses the polygon1
                     intersections2, useful_lines_s21, useful_lines_s22 = \
-                        line_poligon_intersect([0, 0], 0, piece_i['polygon'], xy[::-1], -theta, \
-                            piece_j['polygon'], s21, s22, ppars, extrapolate=False)
+                        line_poligon_intersect_vis([0, 0], 0, piece_i['polygon'], xy[::-1], -theta, \
+                            piece_j['polygon'], s21, s22, ppars, extrapolate=False, draw_lines=True, \
+                                draw_polygon=True, drawing_col='orange')
 
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
-                    useful_lines_color2 = color2[intersections2]
-                    useful_lines_cat2 = cat2[intersections2]
-                    useful_lines_s21 = useful_lines_s21[intersections2]
-                    useful_lines_s22 = useful_lines_s22[intersections2]
-
-                    n_lines_f1 = useful_lines_alfa1.shape[0]
-                    n_lines_f2 = useful_lines_alfa2.shape[0]
-
-                    breakpoint()
-                    plt.cla()
-                    
-
-
-def compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, mask_ij, ppars, verbosity=1):
-    R_cost = np.ones((m.shape[1], m.shape[1], len(rot))) * (ppars.badmatch_penalty + 1)
-    #for t in range(1):
-    for t in range(len(rot)):
-        #theta = -rot[t] * np.pi / 180      # rotation of F2
-        t_rot = time.time()
-        theta = rot[t]
-        theta_rad = theta * np.pi / 180     # np.deg2rad(theta) ?
-        for ix in range(m.shape[1]):        # (z_id.shape[0]):
-            t_x = time.time()
-            for iy in range(m.shape[1]):    # (z_id.shape[0]):
-                t_y = time.time()
-                z = z_id[iy, ix]            # ??? [iy,ix] ??? strange...
-                valid_point = mask_ij[iy, ix, t]
-                if valid_point > 0:
-                    # print([iy, ix, t])
-                    # check if line1 crosses the polygon2                  
-                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0],  0, poly1, s11, s12, ppars, extrapolate=False)
-
-                    # return intersections                    
-                    useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
-                    useful_lines_color1 = color1[intersections1]
-                    useful_lines_cat1 = cat1[intersections1]
-                    useful_lines_s11 = useful_lines_s11[intersections1]
-                    useful_lines_s12 = useful_lines_s12[intersections1]
-
-                    # check if line2 crosses the polygon1
-                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, poly2, s21, s22, ppars, extrapolate=False)
-                    useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
-
                     useful_lines_color2 = color2[intersections2]
                     useful_lines_cat2 = cat2[intersections2]
                     useful_lines_s21 = useful_lines_s21[intersections2]
@@ -376,7 +402,7 @@ def compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, 
 
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
                         #tot_cost = ppars.max_dist * 2  
-                        tot_cost = ppars.badmatch_penalty / 5          
+                        tot_cost = ppars.badmatch_penalty / 3                   # accept with some cost
 
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
@@ -413,129 +439,18 @@ def compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, 
                         row_ind, col_ind = linear_sum_assignment(dist_matrix)
                         tot_cost = dist_matrix[row_ind, col_ind].sum()
                         #print([tot_cost])
+                        #print("#" * 50)
+                        #print(dist_matrix)
                         
                         # # penalty
                         penalty = np.abs(n_lines_f1 - n_lines_f2) * ppars.mismatch_penalty  # no matches penalty
                         tot_cost = (tot_cost + penalty)
                         tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
-                    
-                    R_cost[iy, ix, t] = tot_cost
-                if verbosity > 4:
-                    print(f"comp on y took {(time.time()-t_y):.02f} seconds")
-            if verbosity > 3:
-                print(f"comp on x,y took {(time.time()-t_x):.02f} seconds")
-        if verbosity > 2:
-            print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
-    
-    # R_cost[R_cost > ppars.badmatch_penalty] = ppars.badmatch_penalty
-    # len_unique = len(np.unique(R_cost))
-    # kmin_cut_val = np.sort(np.unique(R_cost))[::-1][-min(len_unique,ppars.k)]
-    # norm_R_cost = np.maximum(1 - R_cost / kmin_cut_val, 0)
-    
-    return R_cost #norm_R_cost
+                        #print(tot_cost)
 
-
-def compute_cost_matrix_LAP_v2(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, mask_ij, pars, verbosity=1):
-    """ 
-    LAP 2 returns a cost (lower is better)
-    Everything above "max_dist + (badmatch-max_dist) / 3" will be later cut
-    max_dist is the maximum we could accept if the "correct" match is very bad due to grid or noise
-    """ 
-    
-    max_val = ppars.max_dist + (ppars.badmatch_penalty-ppars.max_dist) / 3
-    perc_cost_of_empty_sides = 0.75
-
-    R_cost = np.ones((m.shape[1], m.shape[1], len(rot))) * max_val
-    #for t in range(1):
-    for t in range(len(rot)):
-        #theta = -rot[t] * np.pi / 180      # rotation of F2
-        t_rot = time.time()
-        theta = rot[t]
-        theta_rad = theta * np.pi / 180     # np.deg2rad(theta) ?
-        for ix in range(m.shape[1]):        # (z_id.shape[0]):
-            t_x = time.time()
-            for iy in range(m.shape[1]):    # (z_id.shape[0]):
-                t_y = time.time()
-                z = z_id[iy, ix]            # ??? [iy,ix] ??? strange...
-                valid_point = mask_ij[iy, ix, t]
-                if valid_point > 0:
-                    # print([iy, ix, t])
-                    # check if line1 crosses the polygon2                  
-                    intersections1, useful_lines_s11, useful_lines_s12 = line_poligon_intersect(z[::-1], -theta, poly2, [0, 0],  0, poly1, s11, s12, pars, extrapolate=False)
-
-                    # return intersections                    
-                    useful_lines_alfa1 = alfa1[intersections1]  # no rotation here!
-                    useful_lines_color1 = color1[intersections1]
-                    useful_lines_cat1 = cat1[intersections1]
-                    useful_lines_s11 = useful_lines_s11[intersections1]
-                    useful_lines_s12 = useful_lines_s12[intersections1]
-
-                    # check if line2 crosses the polygon1
-                    intersections2, useful_lines_s21, useful_lines_s22 = line_poligon_intersect([0, 0], 0, poly1, z[::-1], -theta, poly2, s21, s22, pars, extrapolate=False)
-                    useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
-
-                    useful_lines_color2 = color2[intersections2]
-                    useful_lines_cat2 = cat2[intersections2]
-                    useful_lines_s21 = useful_lines_s21[intersections2]
-                    useful_lines_s22 = useful_lines_s22[intersections2]
-
-                    n_lines_f1 = useful_lines_alfa1.shape[0]
-                    n_lines_f2 = useful_lines_alfa2.shape[0]
-
-                    if n_lines_f1 == 0 and n_lines_f2 == 0:
-                        #tot_cost = ppars.max_dist * 2  
-                        tot_cost = ppars.max_dist * perc_cost_of_empty_sides            # accept with some cost
-
-                    elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
-                        n_lines = (np.max([n_lines_f1, n_lines_f2]))
-                        tot_cost = ppars.mismatch_penalty * n_lines
-
-                    else:
-                        # Compute cost_matrix, LAP, penalty, normalize
-                        dist_matrix0 = np.zeros((n_lines_f1, n_lines_f2))
-                        dist_matrix = np.zeros((n_lines_f1, n_lines_f2))
-                        gamma_matrix = np.zeros((n_lines_f1, n_lines_f2))
-                        color_matrix = np.zeros((n_lines_f1, n_lines_f2))
-                        cat_matrix = np.zeros((n_lines_f1, n_lines_f2))
-
-                        for i in range(n_lines_f1):
-                            for j in range(n_lines_f2):
-                                # new
-                                color_matrix[i, j] = np.all(useful_lines_color1[i, :] == useful_lines_color2[j, :])
-                                cat_matrix[i, j] = np.all(useful_lines_cat1[i] == useful_lines_cat2[j])
-                                gamma = useful_lines_alfa1[i] - useful_lines_alfa2[j]
-                                gamma_matrix[i, j] = np.abs(np.sin(gamma))
-
-                                d1 = distance.euclidean(useful_lines_s11[i], useful_lines_s21[j])
-                                d2 = distance.euclidean(useful_lines_s11[i], useful_lines_s22[j])
-                                d3 = distance.euclidean(useful_lines_s12[i], useful_lines_s21[j])
-                                d4 = distance.euclidean(useful_lines_s12[i], useful_lines_s22[j])
-
-                                dist_matrix[i, j] = np.min([d1, d2, d3, d4])
-
-                        dist_matrix[gamma_matrix > ppars.thr_coef] = ppars.badmatch_penalty
-                        dist_matrix[dist_matrix > ppars.max_dist] = ppars.badmatch_penalty
-                        dist_matrix[cat_matrix < 1] = ppars.badmatch_penalty  ## Check if works !!!
-
-                        # # LAP
-                        row_ind, col_ind = linear_sum_assignment(dist_matrix)
-                        tot_cost = dist_matrix[row_ind, col_ind].sum()
-                        # print([tot_cost])
-                        
-                        # penalty
-                        penalty = np.abs(n_lines_f1 - n_lines_f2) * ppars.mismatch_penalty  # no matches penalty
-                        tot_cost = (tot_cost + penalty)
-                        tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
-                    
-                    R_cost[iy, ix, t] = tot_cost
-                if verbosity > 4:
-                    print(f"comp on y took {(time.time()-t_y):.02f} seconds")
-            if verbosity > 3:
-                print(f"comp on x,y took {(time.time()-t_x):.02f} seconds")
-        if verbosity > 2:
-            print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
-    
-    return R_cost
+                    plt.title(f"Cost: {tot_cost} = {dist_matrix[row_ind, col_ind].sum()} + {penalty}")
+                    breakpoint()
+                    plt.cla()
 
 def compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, mask_ij, pars, verbosity=1, show=False):
     # ppars is the old cfg (with the parameters)
@@ -670,8 +585,9 @@ def compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s1
     return norm_R_cost
 
 
-def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, mask_ij, ppars, verbosity=1):
-    R_cost = np.ones((m.shape[1], m.shape[1], len(rot))) * (ppars.badmatch_penalty + 1)
+def compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, \
+    color1, color2, cat1, cat2, mask_ij, ppars, verbosity=1, guglielmo=3):
+    compatibility_matrix = np.ones((m.shape[1], m.shape[1], len(rot))) * (ppars.badmatch_penalty + 1)
     #for t in range(1):
     for t in range(len(rot)):
         #theta = -rot[t] * np.pi / 180      # rotation of F2
@@ -711,7 +627,7 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
 
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
                         #tot_cost = ppars.max_dist * 2  
-                        tot_cost = ppars.badmatch_penalty / 3                   # accept with some cost
+                        tot_cost = ppars.badmatch_penalty / guglielmo # accept with some cost
 
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
@@ -756,8 +672,9 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
                         tot_cost = (tot_cost + penalty)
                         tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
                         #print(tot_cost)
-
-                    R_cost[iy, ix, t] = tot_cost
+                        
+                    compatibility_score = np.clip(ppars.badmatch_penalty - tot_cost, 0, ppars.badmatch_penalty)
+                    compatibility_matrix[iy, ix, t] = compatibility_score
                 if verbosity > 4:
                     print(f"comp on y took {(time.time()-t_y):.02f} seconds")
             if verbosity > 3:
@@ -765,24 +682,24 @@ def compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21
         if verbosity > 2:
             print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
     
-    #print(R_cost)
-    R_cost[R_cost > ppars.badmatch_penalty] = ppars.badmatch_penalty
-    len_unique = len(np.unique(R_cost))
-    kmin_cut_val = np.sort(np.unique(R_cost))[::-1][-min(len_unique,ppars.k)]
-    norm_R_cost = np.maximum(1 - R_cost / kmin_cut_val, 0)
-    #print(norm_R_cost)
+    # #print(R_cost)
+    # R_cost[R_cost > ppars.badmatch_penalty] = ppars.badmatch_penalty
+    # len_unique = len(np.unique(R_cost))
+    # kmin_cut_val = np.sort(np.unique(R_cost))[::-1][-min(len_unique,ppars.k)]
+    # norm_R_cost = np.maximum(1 - R_cost / kmin_cut_val, 0)
+    # #print(norm_R_cost)
     
-    return norm_R_cost
+    return compatibility_matrix
 
 
 # compute cost matrix NEW version
-def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, \
+def compute_line_based_CM_LCI(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, \
     mask_ij, ppars, verbosity=1):
     """
     Compute the cost using the Line-Confidence-Importance method (LCI), which weights the contribution of each line 
     (positive or negative) using the confidence (at the moment binary) and the importance (the length of the line).
     """
-    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+    compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot)))
 
     # for t in range(1):
     for t in range(len(rot)):
@@ -830,7 +747,6 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
 
                     ######################################
                     # 1. Gamma, Distance, Confidence
-                    cont_confidence = -1
                     cont_conf_f1 = -1
                     cont_conf_f2 = -1
 
@@ -865,32 +781,29 @@ def compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s
                         cont_conf_f1 = np.max(cont_confidence, 1)  # confidence vector (-1/1) for lines of A
                         cont_conf_f2 = np.max(cont_confidence, 0)  # confidence vector (-1/1) for lines of B
 
-                    cost_f1 = np.sum(cont_conf_f1 * line_importance_f1)
-                    cost_f2 = np.sum(cont_conf_f2 * line_importance_f2)
+                    score_f1 = np.sum(cont_conf_f1 * line_importance_f1)
+                    score_f2 = np.sum(cont_conf_f2 * line_importance_f2)
 
                     # sum of confident lines - sum of non-confident lines
-                    if cost_f1 > 0 and cost_f2 > 0:
+                    if score_f1 > 0 and score_f2 > 0:
                         # if n_lines_f1 > 0 and n_lines_f2 > 0:
                         #     print(f"Gamma Matrix: {np.transpose(gamma_matrix)}")
                         #     print(f"Dist Matrix: {np.transpose(dist_matrix)}")
                         #     print(f"Category Matrix: {np.transpose(cat_matrix)}")
                         #     print(f"Conf Matrix: {np.transpose(cont_confidence)}")
-                        # print(f"cost {cost_f1 + cost_f2} // cost for pieces {cost_f1} and {cost_f2} in {[iy, ix, t]}")
+                        # print(f"cost {score_f1 + score_f2} // cost for pieces {score_f1} and {score_f2} in {[iy, ix, t]}")
                         # print("\n\n")
-                        tot_cost = cost_f1 + cost_f2
+                        compatibility_score = score_f1 + score_f2
                         if verbosity > 2:
-                            print(f"cost {cost_f1 + cost_f2} // cost for pieces {cost_f1} and {cost_f2} in {[iy, ix, t]}")
-
-                    tot_cost = cost_f1 + cost_f2
+                            print(f"cost {score_f1 + score_f2} // cost for pieces {score_f1} and {score_f2} in {[iy, ix, t]}")
+                    else:
+                        compatibility_score = 0 #score_f1 + score_f2
                     #ind = np.argpartition(line_importance_f2, -n_lines_f1)[-:]
                     #tot_cost=tot_cost/(np.sum(line_importance_f1)+np_sum(np.kmax)
-                    R_cost[iy, ix, t] = tot_cost
+                    compatibility_matrix[iy, ix, t] = compatibility_score
 
-    rrr = np.max(R_cost)
-    if verbosity > 2:
-        print(f"max R value {rrr}")
-    R_cost = np.maximum(R_cost, 0)
-    return R_cost
+    #R_cost = np.maximum(R_cost, 0)
+    return compatibility_matrix
 
 # warning! moved to comp_utils.py!
 # def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, cmp_parameters, ppars, compatibility_type='lines', verbosity=1):

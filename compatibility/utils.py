@@ -1,6 +1,6 @@
 import numpy as np 
 from puzzle_utils.shape_utils import compute_SDF_cost_matrix
-from puzzle_utils.lines_ops import compute_cost_matrix_LAP_debug, compute_cost_matrix_LAP, \
+from puzzle_utils.lines_ops import compute_cost_matrix_LAP_debug, compute_line_based_CM_LAP, \
         compute_cost_matrix_LAP_v2, compute_cost_matrix_LAP_v3, compute_cost_matrix_LCI_method, \
         extract_from, compute_cost_matrix_LAP_vis
 from compatibility.compatibility_Motifs import compute_cost_using_motifs_compatibility
@@ -92,16 +92,10 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
                         R_cost = compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                     mask_ij, ppars, verbosity=verbosity, show=False)
                 elif compatibility_cost == 'LAP':
-                    R_cost = compute_cost_matrix_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
+                    R_cost = compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                     mask_ij, ppars, verbosity=verbosity)
                 elif compatibility_cost == 'LCI':
-                    R_cost = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
-                                                            mask_ij, ppars, verbosity=verbosity)
-                elif compatibility_cost == 'LAP2':
-                    R_cost = compute_cost_matrix_LAP_v2(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
-                                                            mask_ij, ppars, verbosity=verbosity)
-                elif compatibility_cost == 'LAP3':
-                    R_cost = compute_cost_matrix_LAP_v3(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
+                    R_cost = compute_line_based_CM_LCI(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
                                                             mask_ij, ppars, verbosity=verbosity)
                 elif compatibility_cost == 'LAPvis':
                     lines_pi = alfa1, r1, s11, s12, color1, cat1
