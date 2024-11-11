@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap as lsc
 import torch
 import h5py
-import json 
+import json
 import shapely
 from sklearn.cluster import KMeans
 
@@ -56,10 +56,9 @@ def main(args):
     # '/home/lucap/code/RL_puzzle_solver/data/manual_lines/pieces'
     dataset_folder_pieces = os.path.join(os.getcwd(), f'output', args.dataset) #'pieces')
     border_tolerance = 5
-    filter_lines = True
+    filter_lines = False
     output_folder = dataset_folder_pieces #os.path.join(root_folder, f'output_{num_pieces}x{num_pieces}', args.dataset)
     # output_folder = '/home/lucap/code/RL_puzzle_solver/output/manual_lines'
-    
     
     # Model config
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -118,8 +117,8 @@ def main(args):
                 pieces_list[:,:,j] = gray_img
                 rgb_pieces_list[:,:,:,j] = orig_img / 255
                 pieces_names.append(img_name)
-                polygon = np.load(os.path.join(cur_puzzle_polygons_folder, f"{img_name[:-4]}.npy"), allow_pickle=True)
-                polygons.append(polygon)
+                # polygon = np.load(os.path.join(cur_puzzle_polygons_folder, f"{img_name[:-4]}.npy"), allow_pickle=True)
+                # polygons.append(polygon)
 
 
             for k in range(len(imgs_names)):
@@ -155,11 +154,17 @@ def main(args):
 
                         if filter_lines is True:
                             line_shp = shapely.LineString((p1, p2))
-                            polygon = polygons[k]
-                            polygon_boundary = polygon.tolist().boundary
+                            polygon = polygons[k].tolist()
                             
-                            #pdb.set_trace()
-                            if not shapely.is_empty(shapely.intersection(line_shp, polygon_boundary.buffer(border_tolerance))):
+                            #breakpoint()
+                            #if not shapely.is_empty(shapely.intersection(line_shp, polygon.buffer(border_tolerance))):
+                            # plt.plot(*(line_shp.xy), color='blue')
+                            # plt.plot(*(polygon.boundary.xy), color='orange')
+                            # titlef = f'cross: {shapely.crosses(line_shp, polygon.buffer(-2))}\nint: {not shapely.is_empty(shapely.intersection(line_shp, polygon.buffer(-2)))}'
+                            # plt.title(titlef)
+                            # plt.show()
+                            # breakpoint()
+                            if shapely.crosses(line_shp, polygon.buffer(-2)):
                                 rhofld, thetafld = line_cart2pol(p1, p2)
                                 angles_lsd.append(thetafld)
                                 dists_lsd.append(rhofld)
@@ -198,7 +203,7 @@ def main(args):
                     plt.title(f'keep {len(p1s_lsd)} segments for compatibility')
                     plt.imshow(img)
                     for p1, p2 in zip(p1s_lsd, p2s_lsd):
-                        plt.plot((p1[0], p2[0]), (p1[1], p2[1]), color='red', linewidth=1)        
+                        plt.plot((p1[0], p2[0]), (p1[1], p2[1]), color='red', linewidth=3)        
                     plt.savefig(os.path.join(vis_output, f"{pieces_names[k][:-4]}_filtered_dlsd.jpg"))
                     plt.close()
 
@@ -231,35 +236,44 @@ def main(args):
                 #plot_images([img], [f'DeepLSD {len(pred_lines)} lines'], cmaps='gray')
                 #plot_lines([pred_lines], indices=range(1))
         print(f"finished image {imgs_names[k]}")
-        fcl = np.asarray(full_colors_list)
-        km = KMeans(args.km_clusters)
-        pdb.set_trace()
-        labels = km.fit_predict(fcl)
-        len_detected_lines = 0 
-        for det_dict in full_detection_list:
-            len_detected_lines += len(det_dict['angles'])
-        print(f"We have {len(labels)} labels and {len_detected_lines} detections!")
-        assert len(labels) == len_detected_lines, "they do not match!"
         
-        
-        line_counter = 0
-        for k, det_dict in enumerate(full_detection_list):
-            categories = []
-            for j in range(len(det_dict['angles'])):
-                categories.append(int(labels[line_counter + j]))
-            det_dict['categories'] = categories
-            line_counter += j
-            with open(os.path.join(lines_output_folder, f"{pieces_names[k][:-4]}.json"), 'w') as lj:
-                json.dump(det_dict, lj, indent=3)
-
+        if args.use_categories == True:
+            fcl = np.asarray(full_colors_list)
+            km = KMeans(args.km_clusters)
+            labels = km.fit_predict(fcl)
+            len_detected_lines = 0 
+            for det_dict in full_detection_list:
+                len_detected_lines += len(det_dict['angles'])
+            print(f"We have {len(labels)} labels and {len_detected_lines} detections!")
+            assert len(labels) == len_detected_lines, "they do not match!"
+            
+            
+            line_counter = 0
+            for k, det_dict in enumerate(full_detection_list):
+                categories = []
+                for j in range(len(det_dict['angles'])):
+                    categories.append(int(labels[line_counter + j]))
+                det_dict['categories'] = categories
+                line_counter += j
+                with open(os.path.join(lines_output_folder, f"{pieces_names[k][:-4]}.json"), 'w') as lj:
+                    json.dump(det_dict, lj, indent=3)
+        else:
+            print("Not using categories, assigning always one")
+            line_counter = 0
+            for k, det_dict in enumerate(full_detection_list):
+                detected_lines = len(det_dict['angles'])
+                categories = np.ones(detected_lines).tolist()
+                det_dict['categories'] = categories
+                line_counter += detected_lines
+                with open(os.path.join(lines_output_folder, f"{pieces_names[k][:-4]}.json"), 'w') as lj:
+                    json.dump(det_dict, lj, indent=3)
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Prepare the data')
-    # parser.add_argument('-rf', '--root_folder', type=str, default='/media/lucap/big_data/datasets/repair/puzzle2D', help='data folder')
     parser.add_argument('-d', '--dataset', type=str, default='/media/lucap/big_data/datasets/repair/puzzle2D', help='data folder')
     parser.add_argument('-w', '--weights', type=str, default='../weights/deeplsd_wireframe.tar', help='pre-trained weights')
     parser.add_argument('-k', '--km_clusters', type=int, default=5, help='number of clusters (kmeans) for semantic category')
-
+    parser.add_argument('-ucat', '--use_categories', type=int, default=1, help='whether or not to use categories (use 0 or 1)')
     args = parser.parse_args()
     main(args)

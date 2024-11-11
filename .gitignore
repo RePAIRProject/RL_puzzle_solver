@@ -41,4 +41,11 @@ seg
 .ipynb_checkpoints
 *.ipynb
 
+# stuff
+runs/
+derech_results/
+detectors/
+yolov5/best.pt
+yolov8n-seg.pt
+
 

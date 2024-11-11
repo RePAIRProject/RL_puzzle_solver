@@ -17,7 +17,7 @@ from puzzle_utils.shape_utils import get_cm, get_polygon
 
 class PuzzleGenerator:
 
-    def __init__(self, img, img_name):
+    def __init__(self, img, img_name, pieces_centers=None):
 
         self.img = img
         self.img_size = self.img.shape[:2] # Height, Width, Channel
@@ -28,6 +28,8 @@ class PuzzleGenerator:
         # name of the file without extension
         self.name = img_name
 
+        if pieces_centers is not None:
+            self.pieces_centers = pieces_centers
         # self.raw_regions = 'data/raw_regions/'
         # if not os.path.exists(self.raw_regions):
         #     os.mkdir(self.raw_regions)
@@ -288,7 +290,7 @@ class PuzzleGenerator:
         puzzle_mask = cv2.dilate(puzzle_mask, np.ones((5,5)))
         if len(self.img.shape) == 2:
             cut_puzzle_img = puzzle_mask * self.img
-            plt.imsave(os.path.join(regions_path, 'orig_image_cut.jpg'), cut_puzzle_img, cmap='gray')
+            cv2.imwrite(os.path.join(regions_path, 'orig_image_cut.jpg'), cut_puzzle_img, cmap='gray')
         else:
             if skip_bg == True:
                 puzzle_mask = (puzzle_mask > 0).astype(int)
@@ -353,6 +355,112 @@ class PuzzleGenerator:
                 'shift2center': shift2center
             })
 
+        # put pieces inside a square 
+        diam_dist_cm = int(dist_cm_max * 2)
+        sq_size = max(h_max, w_max, diam_dist_cm) + padding
+        # it should always be dist_cm_max which is the maximum radius from the center of mass 
+        # and is the radius of the circle where the piece can be included. Using this as the 
+        # size of the image guarantees that the piece does not go out of the square even during rotation
+        if sq_size % 2 > 0:
+            sq_size += 1 # keep square size even! :)
+        hsq = sq_size // 2
+        # remember center ordering!
+        from_idx = np.round(center_i-hsq).astype(int)
+        to_idx = np.round(center_i+hsq).astype(int)
+        for i in range(len(pieces)):
+            squared_img = np.zeros((sq_size, sq_size, 3))
+            squared_img = pieces[i]['centered_image'][from_idx[0]:to_idx[0], from_idx[1]:to_idx[1]]
+            squared_mask = pieces[i]['centered_mask'][from_idx[0]:to_idx[0], from_idx[1]:to_idx[1]]
+            # we remove the offset in the centered polygon to get it aligned
+            xoffset = - (self.img.shape[1]-sq_size) / 2   # half of the distance from the square to the shape of the image!
+            yoffset = - (self.img.shape[0]-sq_size) / 2
+            squared_poly = shapely.affinity.translate(pieces[i]['centered_polygon'], xoff=xoffset, yoff=yoffset)
+            pieces[i]['squared_image'] = squared_img
+            pieces[i]['squared_mask'] = squared_mask
+            pieces[i]['squared_polygon'] = squared_poly
+            pieces[i]['shift2square'] = np.asarray([xoffset, yoffset])
+
+        return pieces, sq_size
+
+    def get_polyomino_pieces_from_puzzle(self, start_from=0):
+        """
+        This is very similar to the `get_pieces_from_puzzle_v2` method, but it uses the centers 
+        (which were previously set when initializing the puzzle generator object)
+        and centers the pieces there. It's not in the cneter of mass of the piece,
+        they are centered on one of the squares of the polyominos!
+        """
+        pieces = []
+        square_side = self.img.shape[0]
+        if square_side // 2 == 0:
+            square_side += 1
+        bg_mat = np.zeros_like(self.img)
+        h_max = 0
+        w_max = 0
+        dist_cm_max = 0
+        padding = 3 #np.min(self.img.shape[:2]) // 30
+        for i in range(start_from, self.region_cnt):
+            mask_i = self.region_mat == i
+            # breakpoint()
+            # plt.subplot(221)
+            # plt.imshow(self.region_mat)
+            # plt.subplot(222)
+            # plt.imshow(mask_i)
+            # plt.subplot(223)
+            # plt.imshow(self.img)
+            # plt.subplot(224)
+            # plt.imshow(self.region_mat - mask_i.astype(int)*i)
+            # plt.show()
+            # breakpoint()
+            if len(self.img.shape) > 2: 
+                image_i = self.img * np.repeat(mask_i, self.img.shape[2]).reshape(self.img.shape)
+            else:
+                image_i = np.where(mask_i, self.img, bg_mat)
+            poly_i = get_polygon(mask_i)
+            cm_i = np.asarray(self.pieces_centers[f"{i}"][::-1]) + 1
+            coords = np.argwhere(mask_i)
+            y0, x0 = coords.min(axis=0)
+            y1, x1 = coords.max(axis=0) + 1
+            h_i = y1-y0 
+            w_i = x1-x0 
+            
+            dists_from_cm = np.linalg.norm(np.array(cm_i[::-1]) - np.array(poly_i.exterior.coords[:]), axis=1)
+            if np.max(dists_from_cm) > dist_cm_max:
+                dist_cm_max = np.max(dists_from_cm)
+            if h_i > h_max:
+                h_max = h_i 
+            if w_i > w_max:
+                w_max = w_i     
+
+            ## centering
+            centered_img = np.zeros((square_side, square_side, 3))
+            centered_mask = np.zeros((square_side, square_side))
+            center_i = np.asarray([self.img.shape[0] / 2, self.img.shape[1] / 2])
+            shift2center = (center_i - cm_i)#[::1]
+            # print(f"{i}:{shift2center}")
+            x0c = np.round(x0+shift2center[1]).astype(int)
+            x1c = np.round(x0c + w_i).astype(int)
+            y0c = np.round(y0+shift2center[0]).astype(int)
+            y1c = np.round(y0c + h_i).astype(int)
+            centered_img[y0c:y1c, x0c:x1c] = image_i[y0:y1, x0:x1]
+            centered_mask[y0c:y1c, x0c:x1c] = mask_i[y0:y1, x0:x1]
+            centered_poly = get_polygon(centered_mask)
+            # plt.title(f"{y0c}, {y1c}, {x0c}, {x1c} // {y0}, {y1}, {x0}, {x1}")
+            # plt.imshow(centered_img)
+            # plt.plot(*(centered_poly.boundary.xy))
+            # plt.show()
+            # breakpoint()
+            pieces.append({
+                'mask': mask_i,
+                'centered_mask': centered_mask,
+                'image': image_i,
+                'centered_image': centered_img,
+                'polygon': poly_i,
+                'centered_polygon': centered_poly,
+                'center_of_mass': cm_i,
+                'height': h_i,
+                'width': w_i,
+                'shift2center': shift2center
+            })
         # put pieces inside a square 
         diam_dist_cm = int(dist_cm_max * 2)
         sq_size = max(h_max, w_max, diam_dist_cm) + padding

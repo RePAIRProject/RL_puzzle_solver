@@ -7,9 +7,15 @@ from puzzle_utils.shape_utils import get_mask, get_polygon
 import matplotlib.pyplot as plt 
 
 target_shape = 251
-obj_num = 37
-dataset = f'/media/lucap/big_data/datasets/repair/2D_dataset/RPobj_g{obj_num}_o{obj_num:04d}'
-output = f'/media/lucap/big_data/datasets/repair/2D_dataset/RPobj_g{obj_num}_o{obj_num:04d}_gt_rot'
+gr_num = 90
+obj_num = 114
+
+#dataset = f'/media/lucap/big_data/datasets/repair/2D_dataset/RPobj_g{obj_num}_o{obj_num:04d}'
+#output = f'/media/lucap/big_data/datasets/repair/2D_dataset/RPobj_g{obj_num}_o{obj_num:04d}_gt_rot'
+
+dataset = f'/home/marina/PycharmProjects/RL_puzzle_solver/output/RePair_new/RPobj_g{gr_num}_o{obj_num:04d}'
+output = f'/home/marina/PycharmProjects/RL_puzzle_solver/output/RePair_new/RPobj_g{gr_num}_o{obj_num:04d}_gt_rot'
+
 output_pieces = os.path.join(output, 'pieces')
 output_masks = os.path.join(output, 'masks')
 output_poly = os.path.join(output, 'polygons')
@@ -18,7 +24,9 @@ os.makedirs(output_masks, exist_ok=True)
 os.makedirs(output_poly, exist_ok=True)
 files = os.listdir(dataset)
 
-gt_path = f'/home/lucap/Downloads/RPobj_g{obj_num}_o{obj_num:04d}.txt'
+#gt_path = f'/home/lucap/Downloads/RPobj_g{obj_num}_o{obj_num:04d}.txt'
+gt_path = f'/home/marina/PycharmProjects/RL_puzzle_solver/output/RePair_new2/2D_Ground_Truth/RPobj_g{gr_num}_o{obj_num:04d}.txt'
+
 gt = pd.read_csv(gt_path)
 
 for file in files:

@@ -12,19 +12,81 @@ import shapely
 from shapely import transform
 from shapely.affinity import rotate
 import json
-from puzzle_utils.lines_ops import draw_lines
+def extract_from(lines_dict):
+    """
+    It just unravels the different parts of the extracted line dictionary 
+    """
+    angles = np.asarray(lines_dict['angles'])
+    dists = np.asarray(lines_dict['dists'])
+    p1s = np.asarray(lines_dict['p1s'])
+    p2s = np.asarray(lines_dict['p2s'])
+    # optional but used almost always now
+    if 'categories' in lines_dict.keys():
+        cats = np.asarray(lines_dict['categories'])
+    else:
+        print("Warning, missing categories")
+        cats = []
+    if 'colors' in lines_dict.keys():
+        colors = np.asarray(lines_dict['colors'])
+    else:
+        print("Warning, empty colors in the lines!")
+        colors = []
+    
+    return angles, dists, p1s, p2s, colors, cats
+
+# from puzzle_utils.lines_ops import draw_lines
+def draw_lines(lines_dict, img_shape, thickness=1, color=255, use_color=False):
+    angles, dists, p1s, p2s, colors, cats = extract_from(lines_dict)
+    if use_color == True:
+        print("WARNING: probably not working! Check the image creation")
+        lines_img = np.zeros(shape=img_shape, dtype=np.uint8)
+        if len(colors) > 0:
+            j = 0
+            assert(len(colors)==len(p1s)), f"different numbers of colors ({len(colors)}) and lines ({len(p1s)}) in the .json file!"
+    lines_img = np.zeros(shape=img_shape[:2], dtype=np.uint8)
+    for p1, p2 in zip(p1s, p2s):
+        if use_color == False:
+            lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(1), thickness=thickness)        
+        else:
+            if len(colors) > 0:
+                color = colors[j]
+                j += 1
+            lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(color), thickness=thickness)        
+    #cv2.imwrite(os.path.join(lin_output, f"{pieces_names[k][:-4]}_l.jpg"), 255-lines_img)
+    return lines_img 
 
 def get_polygon(binary_image):
     bin_img = binary_image.copy()
     bin_img = cv2.dilate(bin_img.astype(np.uint8), np.ones((2,2)), iterations=1)
     contours, _ = cv2.findContours(bin_img.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contour_points = contours[0]
-    shapely_points = [(point[0][0], point[0][1]) for point in contour_points]  # Shapely expects points in the format (x, y)
+    # should we remove 0.5 or it's just visualization?
+    #shapely_points = [(point[0][0]-0.5, point[0][1]-0.5) for point in contour_points]  # Shapely expects points in the format (x, y)
+    shapely_points = [(point[0][0]-0.5, point[0][1]-0.5) for point in contour_points]  # Shapely expects points in the format (x, y)
     if len(shapely_points) < 4:
         print('we have a problem, too few points', shapely_points)
         raise ValueError('\nWe have fewer than 4 points on the polygon, so we cannot create a Shapely polygon out of this points! Maybe something went wrong with the mask?')
     polygon = shapely.Polygon(shapely_points)
     return polygon
+
+def create_grid_v3(ppars):
+    step = ppars['xy_step']
+    canvas_size = ppars['canvas_size']
+    #breakpoint()
+    largest_val = ppars['piece_size'] * 2 #step*pts
+    # create a regularly spaced grid (the center value should be the center of th epiece)
+    axis_grid = np.arange(0, largest_val, step)
+    num_points = len(axis_grid)
+    #print(f"grid will have {num_points}x{num_points} points")
+    ppars['xy_grid_points'] = num_points
+    zero_aligned_axis_grid = axis_grid - axis_grid[np.floor(len(axis_grid) // 2).astype(int)]
+    # align to the canvas
+    canvas_alignment = canvas_size // 2 # - largest_val - step) / 2
+    pieces_grid = np.zeros((len(axis_grid), len(axis_grid), 2))
+    for b in range(len(axis_grid)):
+        for g in range(len(axis_grid)):
+            pieces_grid[g, b] = (axis_grid[g]+canvas_alignment, axis_grid[b]+canvas_alignment)
+    return pieces_grid.astype(int), ppars
 
 def create_grid_v2(ppars):
     step = ppars['xy_step']
@@ -127,10 +189,12 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
             piece_motif_mask = scipy.ndimage.rotate(piece_motif_mask, theta, reshape=False, mode='constant')
         #piece['cm'] = get_cm(piece_mask)
         if 'polygon' in piece.keys():
-            piece['polygon'] = rotate(piece['polygon'], -theta, origin=half_piece_shift)
-    
+            rotated_poly = rotate(piece['polygon'], -theta, origin=half_piece_shift)
+    else:
+        rotated_poly = piece['polygon']
+        
     if 'polygon' in piece.keys():
-        poly_on_canvas = transform(piece['polygon'], lambda f: f + [x,y] - half_piece_shift)
+        poly_on_canvas = transform(rotated_poly, lambda f: f + [x,y] - half_piece_shift)
 
     if piece['img'].shape[0] % 2 == 0:
         msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
@@ -213,6 +277,12 @@ def mask2sdf(mask, q=1):
     if q > 1: #quantize (stepwise sdf)
         sdf = (sdf // q) * q
     return sdf
+
+def dilate(mask, width=3):
+    kernel_size = width*2+1
+    kernel = np.ones((kernel_size, kernel_size))
+    dilated_mask = cv2.dilate(mask, kernel)
+    return dilated_mask 
 
 def get_outside_borders(mask, borders_width=3):
     """
@@ -454,30 +524,31 @@ def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, 
         piece['boundary_seg'] = borders_segments
     return pieces
 
-def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1, line_based=True, sdf=False, motif_based=True):
+def include_shape_info(fnames, pieces, dataset, puzzle, lines_det_method, motif_det_method, line_thickness=1, line_based=True, sdf=False, motif_based=True):
 
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle)
     polygons_folder = os.path.join(root_folder, fnames.polygons_folder)
     polygons = os.listdir(polygons_folder)
     if line_based == True:
-        lines_folder = os.path.join(root_folder, fnames.lines_output_name, method)
+        lines_folder = os.path.join(root_folder, fnames.lines_output_name, lines_det_method)
         lines_files = os.listdir(lines_folder)
         lines = [line for line in lines_files if line.endswith('.json')]
         assert len(polygons) == len(lines), f'Error: have {len(polygons)} polygons files and {len(lines)} lines files, they should have the same length!'
 
     ## NEW MOTIVE PART
     if motif_based == True:
-        if method == 'yolo-obb':
+        if motif_det_method == 'yolo-obb':
             motif_subfolder = f"{fnames.motifs_output_name}_OBB"
-        elif method == 'yolo-bbox':
+        elif motif_det_method == 'yolo-bbox':
             motif_subfolder = f"{fnames.motifs_output_name}_BB"
         else:
-            print(f'No method, just reading from {fnames.motifs_output_name}')
+            print(f'###\n\nWARNING:\nNo method, just reading from {fnames.motifs_output_name}\n\n###')
             motif_subfolder = fnames.motifs_output_name
         motif_folder = os.path.join(root_folder, motif_subfolder)
         # motif_folder = os.path.join(root_folder, fnames.motifs_output_name, method)  #TODO - add method to detection path !!! Yolo5 ect...
         motif_files = os.listdir(motif_folder)
         motif = [line for line in motif_files if line.endswith('.npy')]
+        motif.sort()
         assert len(polygons) == len(motif), f'Error: have {len(polygons)} polygons files and {len(motif)} motif files, they should have the same length!'
 
     for piece in pieces:
@@ -489,9 +560,8 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
             shapely_points = [(point[0], point[1]) for point in piece['polygon'][0]]
             piece['polygon'] = shapely.Polygon(shapely_points)
 
-        #assert(type(np.load(polygon_path, allow_pickle=True).tolist()) == shapely.Polygon), "The polygon is not a shapely.Polygon! Check the files!"
         if line_based == True:
-            lines_path = os.path.join(lines_folder, f"{piece_ID}.json")
+            lines_path = os.path.join(lines_folder, f"{piece['name']}.json")
             with open(lines_path, 'r') as file:
                 piece['extracted_lines'] = json.load(file)
             drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape, line_thickness, use_color=False)
@@ -644,7 +714,7 @@ def process_region_map(region_map, perc_min=0.01):
     # pdb.set_trace()
     return rmap, rc-1
 
-def compute_SDF_cost_matrix(piece_i, piece_j, ids_to_score, ppars, verbosity=1):
+def compute_SDF_CM_matrix(piece_i, piece_j, ids_to_score, ppars, verbosity=1):
     """ 
     It computes SDF-based cost matrix between piece_i and piece_j
     """

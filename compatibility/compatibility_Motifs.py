@@ -18,7 +18,7 @@ import cv2
 from puzzle_utils.shape_utils import place_on_canvas
 from puzzle_utils.pieces_utils import crop_to_content
 
-def compute_cost_using_motifs_compatibility(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector, det_type='yolo-obb', verbosity=1):
+def compute_CM_using_motifs(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector, det_type='yolo-obb', verbosity=1):
 
     p = ppars['p']
     z_id = ppars['z_id']
@@ -70,11 +70,14 @@ def motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, 
                     center_pos = ppars.canvas_size // 2
                     piece_i_on_canvas = place_on_canvas(pieces[idx1], (center_pos, center_pos), ppars.canvas_size, 0)
                     piece_j_on_canvas = place_on_canvas(pieces[idx2], (x_j_pixel, y_j_pixel), ppars.canvas_size, t * ppars.theta_step)
-                    pieces_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
+                    overlap_area = piece_i_on_canvas['mask'] + piece_j_on_canvas['mask']
+                    pieces_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img'] * (np.dstack(((overlap_area < 2), (overlap_area < 2), (overlap_area < 2)))).astype(int)
+                    # pieces_ij_on_canvas *= (np.dstack(((overlap_area < 2), (overlap_area < 2), (overlap_area < 2)))).astype(int)
+                    
                     #mask_ij_on_canvas = piece_i_on_canvas['mask'] + piece_j_on_canvas['mask']
                     #pieces_ij_on_canvas/= np.clip(mask_ij_on_canvas,1,2).astype(float)
                     #plt.imshow(pieces_ij_on_canvas)
-
+                    # plt.ion()
                     
                     if detect_on_crop == True:
                         cropped_img, x0, x1, y0, y1  = crop_to_content(pieces_ij_on_canvas, return_vals=True)
@@ -96,7 +99,8 @@ def motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, 
                         det_objs = detected.obb
                     elif det_type == 'yolo-bbox':
                         det_objs = detected.boxes
-                        
+                    
+                    #print(f"detected {len(det_objs)} objects")
                     for det_obb in det_objs:
 
                         if det_type == 'yolo-obb':
@@ -116,15 +120,15 @@ def motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, 
                             obb_shapely_points = [(point[0]+x0, point[1]+y0) for point in do_pts]
                         else:
                             obb_shapely_points = [(point[0], point[1]) for point in do_pts]
-                        obb_poly = shapely.Polygon(obb_shapely_points)
-                        # plt.plot(*obb_poly.boundary.xy)
+                        det_obb_poly = shapely.Polygon(obb_shapely_points)
+                        # plt.plot(*det_obb_poly.boundary.xy)
 
-                        inters_poly_i = shapely.intersection(obb_poly, piece_i_on_canvas['polygon'])
-                        inters_poly_j = shapely.intersection(obb_poly, piece_j_on_canvas['polygon'])
+                        inters_poly_i = shapely.intersection(det_obb_poly, piece_i_on_canvas['polygon'])
+                        inters_poly_j = shapely.intersection(det_obb_poly, piece_j_on_canvas['polygon'])
                         # breakpoint()
 
-                        if (inters_poly_j.area / obb_poly.area > area_ratio) and \
-                            (inters_poly_i.area / obb_poly.area > area_ratio):
+                        if (inters_poly_j.area / det_obb_poly.area > area_ratio) and \
+                            (inters_poly_i.area / det_obb_poly.area > area_ratio):
                             bb_score = det_obb.conf.item()
                             # print(bb_score)
                             score_sum_conf = score_sum_conf + bb_score
@@ -163,9 +167,14 @@ def motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, 
                         motif_overlap_score = score_sum_overlap / cont2
                     # print("motif overlap", motif_overlap_score)
 
-                    # plt.title(f"Score: {motif_overlap_score}")
-                    # plt.show()
-                    # breakpoint()
+                    # if motif_overlap_score > -1:
+                    #     plt.title(f"Score: {motif_overlap_score}")
+                    #     plt.show()
+                    #     breakpoint()
+                    #     plt.cla()
+                    # else:
+                    #     print(f'score 0 ({motif_overlap_score})')
+                    #     plt.cla()
                     R_cost_conf[iy, ix, t] = motif_conf_score
                     R_cost_overlap[iy, ix, t] = motif_overlap_score
 

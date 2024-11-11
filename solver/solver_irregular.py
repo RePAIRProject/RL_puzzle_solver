@@ -1,8 +1,8 @@
 
 import numpy as np
 import cv2 as cv
-# import matplotlib
-# matplotlib.use('TkAgg')
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import cv2
@@ -13,36 +13,79 @@ import os
 import configs.folder_names as fnames
 import argparse
 #from compatibility.line_matching_NEW_segments import read_info
+from compatibility.utils import normalize_CM
 #import configs.solver_cfg as cfg
 from puzzle_utils.pieces_utils import calc_parameters_v2, crop_to_content
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas
 import datetime
 import pdb 
 import time 
-import json 
+import json
+from puzzle_utils.regions import combine_region_masks
 from puzzle_utils.visualization import save_vis
+import copy
+
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
-def initialization(R, anc, p_size=0):
+def initialization_from_GT(R, anc, puzzle_root_folder):
+
+    border_points = 5     # xy_grid_points//10 ???
+
+    no_grid_points = R.shape[0]
+    no_patches = R.shape[3]
+    no_rotations = R.shape[2]
+    init_pos = np.zeros((no_patches, 3)).astype(int)
+    gt_grid = np.zeros((no_patches, 3))
+
+    #1. load GT_grid
+    import pandas as pd
+    df = pd.read_csv(os.path.join(puzzle_root_folder, f'GT/gt_grid3.txt'))
+    gt_grid[:, 0] = (df.loc[:, 'x'].values).astype(int)
+    gt_grid[:, 1] = (df.loc[:, 'y'].values).astype(int)
+    #gt_grid[:, 2] = (df.loc[:, 'rot'].values)
+
+    # 3. anchor position in GT_position+0.5*border_points
+    x0 = (gt_grid[anc, 0] + border_points).astype(int)
+    y0 = (gt_grid[anc, 1] + border_points).astype(int)
+    z0 = 0
+
+    #2. calculate optimal grid - p_matrix
+    X = (np.max(gt_grid[:, 0]) + 2*border_points).astype(int)
+    Y = (np.max(gt_grid[:, 1]) + 2*border_points).astype(int)
+    Z = no_rotations
+
+    #3. create p_matrix (optimal_grid+border_points)
+    p = np.ones((Y, X, Z, no_patches))/ (Y * X * Z)
+    p[:, :, :, anc] = 0
+    p[y0, x0, :, :] = 0
+    p[y0, x0, z0, anc] = 1
+    init_pos[anc, :] = ([y0, x0, z0])
+
+    print("P:", p.shape)
+    return p, init_pos, x0, y0, z0
+
+
+def initialization(R, anc, p_size_y=0, p_size_x=0, anc_pos=0):
     z0 = 0  # rotation for anchored patch
     # Initialize reconstruction plan
     no_grid_points = R.shape[0]
     no_patches = R.shape[3]
     no_rotations = R.shape[2]
 
-    if p_size > 0:
-        Y = p_size 
-        X = Y 
+    if p_size_y > 0:
+        Y = p_size_y
+        if p_size_x == 0:
+            X = Y
+        else:
+            X = p_size_x
     else:
         Y = round(no_grid_points * np.sqrt(no_patches)) # + no_patches)
-        #Y = round(no_grid_points * 2 + 1) 
-        # Y = round(0.5 * (no_grid_points - 1) * (no_patches + 1) + 1)
         X = Y
     Z = no_rotations
 
     # initialize assignment matrix
-    p = np.ones((Y, X, Z, no_patches)) / (Y * X)  # uniform
+    p = np.ones((Y, X, Z, no_patches)) / (Y * X * Z)  # uniform
     init_pos = np.zeros((no_patches, 3)).astype(int)
 
     # place anchored patch (center)
@@ -79,10 +122,10 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
         if na_new > na:
             na = na_new
             faze += 1
-            p = np.ones((Y, X, Z, noPatches)) / (Y * X)
-
+            p = np.ones((Y, X, Z, noPatches)) / (Y*X*Z)  # OPTIONAL !!!
             for jj in range(noPatches):
-                if new_anc[jj, 0] != 0:
+                #if new_anc[jj, 0] != 0:
+                if a[jj, 0] == 1:
                     y = new_anc[jj, 0]
                     x = new_anc[jj, 1]
                     z = new_anc[jj, 2]
@@ -90,20 +133,11 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
                     p[y, x, :, :] = 0
                     p[y, x, z, jj] = 1
 
-                    ## NEW: Re-normalization of R after anchoring
-        #             for jj_anc in range(noPatches):
-        #                 if new_anc[jj_anc, 0] != 0:
-        #                     R_new[:, :, : , jj_anc, jj] = 0
-        #
-        # R_renorm = R_new / np.max(R_new)
-        # R_new = np.where((R_new > 0), R_renorm*1.5, R_new)
-
         if faze == 0:
             T = cfg.Tfirst
         else:
             T = cfg.Tnext
 
-        #pdb.set_trace()
         p, payoff, eps, iter = solver_rot_puzzle(R_new, R, p, T, iter, 0, verbosity=verbosity, decimals=decimals)
         
         I = np.zeros((noPatches, 1))
@@ -181,7 +215,7 @@ def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
                         c1[:, :, zj, j] = cc
 
                 q1 = np.sum(c1, axis=(2, 3))
-                # q2 = (q1 != 0) * (q1 + no_patches * no_rotations * 0.5) ## new_experiment
+                #q2 = (q1 != 0) * (q1 + no_patches * no_rotations) ## new_experiment
                 q2 = (q1 + no_patches * no_rotations * 1)
                 q[:, :, zi, i] = q2
 
@@ -297,7 +331,8 @@ def main(args):
     #print(os.getcwd())
     dataset_name = args.dataset
     puzzle_name = args.puzzle
-    method = args.det_method
+    lines_det_method = args.lines_det_method
+    motif_det_method = args.motif_det_method
 
     print()
     print("-" * 50)
@@ -315,7 +350,7 @@ def main(args):
     cfg['Tnext'] = args.tnext
     cfg['Tmax'] = args.tmax
     cfg['anc_fix_tresh'] = args.thresh
-    cfg['p_matrix_shape'] = args.p_pts
+    cfg['p_matrix_shape'] = args.p_pts_x  # ??????? Unused ???
     cfg['cmp_type'] = args.cmp_type
     cfg['cmp_cost'] = args.cmp_cost
     cfg['combo_type'] = args.combo_type
@@ -348,16 +383,17 @@ def main(args):
     # ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
 
     if args.cmp_type == 'lines':
-        cmp_name = f"linesdet_{args.det_method}_cost_{args.cmp_cost}"
+        cmp_name = f"linesdet_{args.lines_det_method}_cost_{args.cmp_cost}"
     elif args.cmp_type == 'shape':
         cmp_name = "shape"
     elif args.cmp_type == 'combo':
         cmp_name = f"cmp_combo{args.combo_type}"
     elif args.cmp_type == 'motifs':
-        cmp_name = f"motifs_{args.det_method}"
+        cmp_name = f"motifs_{args.motif_det_method}"
         # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
     elif args.cmp_type == 'color':
-        cmp_name = f"color_border{args.border_len}"
+        cmp_name = f"cmp_color"
+        #cmp_name = f"color_border{args.border_len}"
     else:
         cmp_name = f"cmp_{args.cmp_type}"
 
@@ -367,34 +403,29 @@ def main(args):
     #     mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
     # else:
     
-    
     pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.pieces_folder}")
     # check if we are combining!
     if args.cmp_type == 'combo':
-        if args.combo_type == "LS":
-            cmp_name = "combo_LS"
+        cmp_name = f"combo_{args.combo_type}"
+        if args.combo_type == "SH-LIN":
             print("combining shape and lines..")
-            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.det_method}_cost_{args.cmp_cost}'))
+            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.lines_det_method}_cost_{args.cmp_cost}'))
             mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
             #breakpoint()
-            R_lines = mat_lines['R_line']
-            R_shape = mat_shape['R_line']
+            R_lines = mat_lines['R']
+            R_shape = mat_shape['R']
             negative_region_map = R_lines < 0
 
             # only positive values
-            R = (np.clip(R_lines, 0, 1) * np.clip(R_shape, 0, 1))
-            R /= np.max(R)
-            # test
-            R *= 2
+            R = (np.clip(R_lines, 0, 1) + np.clip(R_shape, 0, 1)) / 2
+            #R /= np.max(R)
 
             # negative values set to -1
             R[negative_region_map] = -1
 
-        elif args.combo_type == 'MS':
+        elif args.combo_type == 'SH-MOT':
             print("combining shape and motifs..")
-            cmp_name = "combo_MS"
-            # cmp_name = f"motifs_{args.det_method}_cost_{args.cmp_cost}"
-            mat_motifs = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_motifs'))
+            mat_motifs = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.motif_det_method}"))
             mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
             # breakpoint()
             R_motif = mat_motifs['R']
@@ -402,31 +433,107 @@ def main(args):
             negative_region_map = R_motif < 0
 
             # only positive values
-            R = (np.clip(R_motif, 0, 1) * np.clip(R_shape, 0, 1))
+            R = copy.deepcopy(R_shape)
+            positive_motif_ids = np.where(R_motif > 0)
+            R[positive_motif_ids] = (np.clip(R_motif[positive_motif_ids], 0, 1) + np.clip(R_shape[positive_motif_ids], 0, 1)) / 2
+            #R /= np.max(R)
+            # negative values set to -1
+            R[negative_region_map] = -1
+            # plt.subplot(131)
+            # plt.imshow(R_motif[:,:,0,1,2], cmap='RdYlGn', vmin=0, vmax=1)
+            # plt.subplot(132)
+            # plt.imshow(R_shape[:,:,0,1,2], cmap='RdYlGn', vmin=0, vmax=1)
+            # plt.subplot(133)
+            # plt.imshow(R[:,:,0,1,2], cmap='RdYlGn', vmin=0, vmax=1)
+            # plt.show()
+            # breakpoint()
+
+        elif args.combo_type == 'SH-SEG':
+            print("combining shape and motifs..")
+            mat_seg = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_cmp_seg"))
+            mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+            # breakpoint()
+            R_seg = mat_seg['R']
+            R_shape = mat_shape['R']
+            negative_region_map = R_seg < 0
+
+            # only positive values
+            R = (np.clip(R_seg, 0, 1) * np.clip(R_shape, 0, 1))
             R /= np.max(R)
             # negative values set to -1
             R[negative_region_map] = -1
 
+        elif args.combo_type == 'SLM_v1':
+            print("trying to combine three compatibilities (ShapeLinesMotifs)")
+            mat_motif = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.motif_det_method}"))
+            mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.lines_det_method}_cost_{args.cmp_cost}'))
+            region_mask_mat = loadmat(os.path.join(puzzle_root_folder, fnames.rm_output_name, f'RM_{args.puzzle}.mat'))
+
+            R_shape = mat_shape['R']
+            R_lines = mat_lines['R']
+            R_motif = mat_motif['R']
+            lines_RM = region_mask_mat['RM_lines']
+            motif_RM = region_mask_mat['RM_motifs']
+            shape_RM = region_mask_mat['RM_shapes']
+
+            norm_R_shape = normalize_CM(R_shape)
+            norm_R_lines = normalize_CM(R_lines)
+            norm_R_motif = normalize_CM(R_motif)
+
+            negative_region_map = R_shape < 0
+            region_motif = combine_region_masks([shape_RM, motif_RM])
+            region_lines = combine_region_masks([shape_RM, lines_RM])
+
+            prm_motif = (region_motif> 0).astype(int)  ## positive in RM
+            prm_lines = (region_lines> 0).astype(int)  ## positive in RM
+            prm_shape = (shape_RM > 0).astype(int)
+            shape_basis = norm_R_shape * prm_shape
+
+            lines_avg_val = 0.5  # fix level ???  # lines_avg_val1 = np.mean(norm_R_lines > 0)
+            motif_avg_val = 0.5                   # motif_avg_val1 = np.mean(norm_R_motif > 0)
+            motif_contrib = prm_motif * ((norm_R_motif / motif_avg_val)-1)
+            lines_contrib = prm_lines * ((norm_R_lines / lines_avg_val)-1)
+
+            R = np.zeros_like(R_shape)
+            total_contrib = shape_basis * (motif_contrib + lines_contrib)
+            R = shape_basis + total_contrib
+            R += -1 * negative_region_map.astype(int)
+            R = normalize_CM(R)
+            R = np.maximum(-1, R)
+
+            # import matplotlib.pyplot as plt
+            # plt.subplot(331)
+            # plt.imshow(prm[:, :, 0, 1, 2])
+            # plt.subplot(332)
+            # plt.imshow(prm_motif[:, :, 0, 1, 2])
+            # plt.subplot(333)
+            # plt.imshow(prm_lines[:, :, 0, 1, 2])
+            # plt.subplot(334)
+            # plt.imshow(shape_basis[:, :, 0, 1, 2])
+            # plt.subplot(335)
+            # plt.imshow(motif_contrib[:, :, 0, 1, 2])
+            # plt.subplot(336)
+            # plt.imshow(lines_contrib[:, :, 0, 1, 2])
+            # plt.subplot(338)
+            # plt.imshow(R2[:, :, 0, 1, 2])
+            # plt.subplot(339)
+            # plt.imshow(R[:, :, 0, 1, 2])
+            # plt.show()
+            #breakpoint()
         else:
             raise Exception(f"Please select another combo type, this ({args.combo_type}) has not been implemented yet")
 
     else:
         print("loading", os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
         mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
-        # R = mat['R_line']
+        # R = mat['R_line'] ## temp
         R = mat['R']
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
-    # print(pieces_files)
-    pieces_excl = []
-    # pieces_excl = np.array([3,4,7,8,11,15]);
-    all_pieces = np.arange(len(pieces_files))
-    pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
-
-    # pieces_incl = [p for p in np.arange(0, len(all_pieces)) if p not in pieces_excl]
-    # R = R[:, :, :, pieces_incl, :]  # re-arrange R-matrix
-    # R = R[:, :, :, :, pieces_incl]
+    n_pieces = len(pieces_files)
+    pieces = np.arange(len(pieces_files))
 
     if args.few_rotations > 0:
         n_rot = R.shape[2]
@@ -436,12 +543,50 @@ def main(args):
 
     # HERE THE LINES WERE USED
     if args.anchor < 0:
-        anc = np.random.choice(len(all_pieces))  # select_anchor(detect_output)
+        anc = np.random.choice(len(pieces))  # select_anchor(detect_output)
     else:
         anc = args.anchor
     print(f"Using anchor the piece with id: {anc}")
 
-    p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts)  # (R, anc, anc_rot, nh, nw)
+    ## K-sparsification
+    k = args.k
+    k = 20
+    best_scores_0rot = np.zeros((np.shape(R)[4],np.shape(R)[4]))
+    best_scores = np.zeros((np.shape(R)[4], np.shape(R)[4]))
+    for i in range(np.shape(R)[4]):
+        for j in range(np.shape(R)[4]):
+            if i!=j:
+                r_temp = R[:, :, :, j, i]
+                a = np.min(np.partition(np.ravel(r_temp), -k)[-k:])
+                r_neg = np.where(r_temp > -1, 0, -1)
+                #r_neg = np.where(r_temp < 0, r_temp, 0)
+                r_val = np.where(r_temp < a, 0, r_temp)
+                R[:, :, :, j, i] = r_neg + r_val
+
+                best_scores_0rot[j, i] = np.max(r_temp[:,:,0])
+                best_scores[j, i] = np.max(r_temp)
+
+    # ## esclude if incompatible
+    # if args.exclude == True:
+    #     Rnew = R
+    #     for i in range(np.shape(R)[4]):
+    #         r_temp = R[:, :, :, :, i]
+    #         m = np.max(r_temp)
+    #         if m <= 0:
+    #             Rnew = np.delete(Rnew, i, 4)
+    #             Rnew = np.delete(Rnew, i, 3)
+    #             anc=anc-1
+    #     R = Rnew
+    #     anc = np.max(anc,0)
+    # #####
+
+    if args.use_GT == True:
+        print('Using ground truth to calculate the grid')
+        p_initial, init_pos, x0, y0, z0 = initialization_from_GT(R, anc, puzzle_root_folder)
+    else:
+        print(f'Using a grid of {args.p_pts_x}x{args.p_pts_y} points!')
+        p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts_y, args.p_pts_x)
+
     # print(p_initial.shape)
     na = 1
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity, decimals=args.decimals)
@@ -460,7 +605,7 @@ def main(args):
     print("-" * 50)
 
     num_rot = p_initial.shape[2]
-    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}')
+    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}_gt{args.use_GT}')
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
 
@@ -484,6 +629,8 @@ def main(args):
     # breakpoint()
     os.makedirs(solution_folder, exist_ok=True)
     final_solution = os.path.join(solution_folder, f'final_using_anchor{anc}.png')
+    #plt.show()
+
     #plt.figure(figsize=(16, 16))
     #plt.title("Final solution including all piece")
     plt.imshow((fin_im1 * 255).astype(np.uint8))
@@ -493,6 +640,7 @@ def main(args):
     plt.imsave(f"{final_solution[:-4]}_bordered.png", np.clip(fin_im1_brd, 0, 1))
     clean_img = fin_im1 * (fin_im1 > 0.1)
     plt.imsave(f"{final_solution[:-4]}_cropped.png", crop_to_content(clean_img * 255).astype(np.uint8))
+    plt.imsave(f"{final_solution[:-4]}_bordered_cropped.png", crop_to_content(np.clip(fin_im1_brd, 0, 1) * 255).astype(np.uint8))
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, Z, pieces_dict, ppars, use_RGB=True)
     # final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
     # if np.max(fin_im_v2) > 1:
@@ -560,27 +708,33 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='synthetic_pattern_pieces_from_DS_5_Dafne', help='dataset folder')
-    parser.add_argument('--puzzle', type=str, default='image_00000_1', help='puzzle folder')
-    parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch2', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='RPobj_g1_o0001_gt_rot', help='puzzle folder')
+    parser.add_argument('--lines_det_method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
+    parser.add_argument('--motif_det_method', type=str, default='yolo-obb', help='method motif detection')  # exact, manual, deeplsd
     parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')  # LAP, LCI
+    parser.add_argument('--use_GT', default=False, action='store_true',
+        help='uses the ground truth (requires gt txt file!)')
     parser.add_argument('--anchor', type=int, default=2, help='anchor piece (index)')
     parser.add_argument('--save_frames', default=False, action='store_true', help='use to save all frames of the reconstructions')
+    parser.add_argument('--exclude', default=False, action='store_true', help='use to exclude pieces without compatibility (used for some partial compatibilities, not fully tested!)')
     parser.add_argument('--verbosity', type=int, default=2, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
     parser.add_argument('--tfirst', type=int, default=750, help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
     parser.add_argument('--tnext', type=int, default=250, help='the step for multi-phase (each tnext reset)')
     parser.add_argument('--tmax', type=int, default=1000, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.75, help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
-    parser.add_argument('--p_pts', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
+    parser.add_argument('--p_pts_y', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
+    parser.add_argument('--p_pts_x', type=int, default=0, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
-    parser.add_argument('--cmp_type', type=str, default='lines', help='which compatibility to use!', choices=['lines', 'shape', 'color', 'combo', 'motifs','seg'])
-    parser.add_argument('--combo_type', type=str, default='LS', 
+    parser.add_argument('--k', type=int, default=10, help='keep the best k values (for each pair) in the compatibility')
+    parser.add_argument('--cmp_type', type=str, default='shape', help='which compatibility to use!', choices=['combo', 'lines', 'shape', 'color',  'motifs', 'seg'])
+    parser.add_argument('--combo_type', type=str, default='SH-MOT',
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
-            \nThe capital letters are used (L=lines, M=motif, S=shape, C=color)\
-            \nFor example, MS is motif+shape, LS is lines+shape', 
-        choices=['LS', 'MS', 'CS', 'CLMS'])   
-    parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')   
+            \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
+            \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation', 
+        choices=['SH-SEG', 'SH-MOT', 'SH-LIN', 'SLM_v1'])
+    parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')
 
     args = parser.parse_args()
 

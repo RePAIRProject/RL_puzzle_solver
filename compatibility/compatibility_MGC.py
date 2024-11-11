@@ -120,15 +120,18 @@ def colors_compatibility_measure_for_irregular(p, z_id, m, rot, poly1, poly2, bo
                                 border_i_inv = np.flip(border_i, (0, 1))
                                 # border_i_inv = rotate(border_i, 180, reshape=False, mode='constant')  # option - check
                                 comp_scores_matrix[i, j] = MCG_for_irregular(border_i_inv, border_j)
-
-                    MGC_scores = np.mean(comp_scores_matrix[np.where(comp_scores_matrix >= 0)])  # sum of the scores of all matching borders (This is a Distance!!!)
+                    
+                    # sum of the scores of all matching borders (This is a Distance!!!)
+                    MGC_scores = np.mean(comp_scores_matrix[np.where(comp_scores_matrix >= 0)])  
                     #MGC_scores = np.nanmax(comp_scores_matrix[np.where(comp_scores_matrix >= 0)])   # TEST !!!
 
                     # print('score for all segments')
                     #print(MGC_scores)
                     if not (np.isnan(MGC_scores)):
                         R_cost[iy, ix, t] = MGC_scores
-
+    # invert 
+    # compatibility_matrix = np.max(R_cost) - R_cost
+    print("\n\n\nWARNING this is cost, finish checking\n\n\n")
     return R_cost
 
 # auxiliary function to pairwise_compatibility_measure

@@ -12,8 +12,8 @@ from PIL import Image
 # from configs import repair_cfg as cfg
 from configs import folder_names as fnames
 
-from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, create_grid_v2, get_outside_borders, \
-        place_on_canvas, get_borders_around, include_shape_info
+from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid_v2, create_grid_v3, get_outside_borders, \
+        place_on_canvas, get_borders_around, include_shape_info, dilate
 # from puzzle_utils.shape_utils import prepare_pieces, shape_pairwise_compatibility
 from puzzle_utils.pieces_utils import calc_parameters_v2
 from puzzle_utils.visualization import save_vis
@@ -22,6 +22,7 @@ from puzzle_utils.visualization import save_vis
 def main(args):
     if args.puzzle == '':
         puzzles = os.listdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset))
+        puzzles.sort()
         puzzles = [puz for puz in puzzles if
                    os.path.isdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puz)) is True]
     else:
@@ -45,36 +46,27 @@ def main(args):
         
         # PARAMETERS
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
-        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
-        # if os.path.exists(cmp_parameter_path):
-        #     print("never tested! remove this comment afterwars (line 53 of comp_irregular.py)")
-        #     with open(cmp_parameter_path, 'r') as cp:
-        #         ppars = json.load(cp)
-        # else:
-        ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step)
-        # for ppk in ppars.keys():
-        #     if type(ppars[ppk])== np.uint8:
-        #         ppars[ppk] = int(ppars[ppk])
-        #     print(ppk, ":", type(ppars[ppk]))
-        # pdb.set_trace()
+        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters_v2.json')
+        ppars = calc_parameters_v2(img_parameters, args.xy_step, args.xy_grid_points, args.theta_step, args.irregular)
         with open(cmp_parameter_path, 'w') as cpj:
             json.dump(ppars, cpj, indent=3)
         print("saved json compatibility_parameters file")
 
         # INCLUDE SHAPE
-        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, args.det_method, \
-            line_based=args.lines, line_thickness=3, motif_based=args.motif)
-        if 'lines' not in pieces[0].keys():
+        pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, lines_det_method=args.lines_det_method, \
+            motif_det_method=args.motif_det_method, line_based=args.lines, line_thickness=3, motif_based=args.motif)
+        if 'detected_lines' not in pieces[0].keys():
             print("-" * 50)
             print("\nWARNING:\nno lines found, line-based region will be empty!\n")
         if 'motif_mask' not in pieces[0].keys():
             print("-" * 50)
             print("\nWARNING:\nno motifs found, motifs-based region will be empty!\n")
         print("-" * 50)
-        grid_size_xy = ppars.comp_matrix_shape[0]
-        grid_size_rot = ppars.comp_matrix_shape[2]
+
         # grid, grid_step_size = create_grid(grid_size_xy, ppars.p_hs, ppars.canvas_size)
-        grid, grid_step_size = create_grid_v2(ppars)
+        grid, xy_step = create_grid_v2(ppars)
+        grid_size_xy = ppars.xy_grid_points
+        grid_size_rot = ppars.theta_grid_points
 
         print()
         print('#' * 50)
@@ -108,13 +100,6 @@ def main(args):
                     center_pos = ppars.canvas_size // 2
                     piece_i_on_canvas = place_on_canvas(pieces[i], (center_pos, center_pos), ppars.canvas_size, 0)
 
-                    if 'lines_mask' in pieces[i].keys():
-                        mask_i = cv2.resize(piece_i_on_canvas['lines_mask'], (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
-                        outside_borders_i = get_outside_borders(mask_i, borders_width=1)
-                    if 'motif_mask' in pieces[i].keys():
-                        mask_i = cv2.resize(piece_i_on_canvas['motif_mask'], (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
-                        outside_borders_i = get_outside_borders(mask_i, borders_width=1)
-
                     for t in range(grid_size_rot):
                         piece_j_on_canvas = place_on_canvas(pieces[j], (center_pos, center_pos), ppars.canvas_size, t * ppars.theta_step)
 
@@ -130,31 +115,30 @@ def main(args):
                         thresholded_regions_map += 2 * (around_borders_trm > 0)
                         thresholded_regions_map = np.clip(thresholded_regions_map, -1, 1)
 
+                        # we convert the matrix to resize the image without losing the values
+                        thr_reg_map_shape_uint = (thresholded_regions_map + 1).astype(np.uint8)
+                        thr_reg_map_comp_range = thr_reg_map_shape_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
+                        resized_shape = np.array(Image.fromarray(thr_reg_map_comp_range).resize((grid_size_xy, grid_size_xy), Image.Resampling.NEAREST))
+
                         #  LINES case
                         if 'lines_mask' in pieces[i].keys():
-                            mask_j = cv2.resize(piece_j_on_canvas['lines_mask'], (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
-                            outside_borders_j = get_outside_borders(mask_j, borders_width=1)
                             overlap_lines = cv2.filter2D(piece_i_on_canvas['lines_mask'], -1, piece_j_on_canvas['lines_mask'])
-                            binary_overlap_lines = (overlap_lines > ppars.threshold_overlap_lines).astype(np.int32)
-                            resized_lines = np.array(Image.fromarray(binary_overlap_lines).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
+                            dilated_overlap_lines = dilate(overlap_lines, width=np.floor(
+                                                                    ppars.borders_regions_width_outside * ppars.xy_step).astype(int))
+                            binary_overlap_lines = (dilated_overlap_lines > ppars.threshold_overlap_lines).astype(np.int32)
+                            binary_overlap_lines_no_pad = binary_overlap_lines[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
+                            resized_lines = np.array(Image.fromarray(binary_overlap_lines_no_pad).resize((grid_size_xy, grid_size_xy), Image.Resampling.NEAREST))
 
                             # COMBO for LINES-case
                             combo = thresholded_regions_map * binary_overlap_lines
                             combo[thresholded_regions_map < 0] = -1  # enforce -1 in the overlapping areas
-                            # ??? overlap lines is calculate independently from line-category ???
-                            # IF we calculate separately overlap of different category, will it improve results ??
                         else:
                             
-                            resized_lines = np.zeros((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                            resized_lines = np.zeros((grid_size_xy, grid_size_xy))
 
                         #  MOTIFS case
                         if 'motif_mask' in pieces[i].keys():
-                            mask_j = cv2.resize(piece_j_on_canvas['motif_mask'], (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
-                            outside_borders_j = get_outside_borders(mask_j, borders_width=1)  # is not used ???
-
-                            # check FILTER !!! - probably IS the same as ???:
-                            # overlap_motifs = cv2.filter2D(piece_i_on_canvas['motif_mask'], -1, piece_j_on_canvas['motif_mask'])
-
+                     
                             n_motifs = piece_i_on_canvas['motif_mask'].shape[2]
                             mask_mt = np.zeros((piece_i_on_canvas['motif_mask'].shape[0], piece_i_on_canvas['motif_mask'].shape[1], n_motifs))
                             for mt in range(n_motifs):
@@ -162,45 +146,28 @@ def main(args):
                                 b = piece_j_on_canvas['motif_mask'][:, :, mt]
                                 if np.sum(a) > 0 and np.sum(b) > 0:
                                     mask_mt[:, :, mt] = cv2.filter2D(a, -1, b)
-                                    #plt.subplot(1,3,1); plt.imshow(a)
-                                    #plt.subplot(1,3,2); plt.imshow(b)
-                                    #plt.subplot(1,3,3); plt.imshow(mask_mt[:, :, mt])
-                                    #plt.show()
 
                             overlap_motifs = np.sum(mask_mt, 2)
                             binary_overlap_motifs = (overlap_motifs > ppars.threshold_overlap_motifs).astype(np.int32)  # CHECK !!!
-                            resized_motifs = np.array(Image.fromarray(binary_overlap_motifs).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
+                            binary_overlap_motifs = dilate(binary_overlap_motifs.astype(np.uint8), width=np.floor(
+                                                                    ppars.borders_regions_width_outside * ppars.xy_step).astype(int))
+                            # print("\n\n\nDILATE\n\n\n")
+                            binary_overlap_motifs_no_pad = binary_overlap_motifs[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
+                            resized_motifs = np.array(Image.fromarray(binary_overlap_motifs_no_pad).resize((grid_size_xy, grid_size_xy), Image.Resampling.NEAREST))
 
                             # COMBO for MOTIFS case
                             combo = thresholded_regions_map * binary_overlap_motifs
                             combo[thresholded_regions_map < 0] = -1  # enforce -1 in the overlapping areas
                         else:
-                            resized_motifs = np.zeros((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                            resized_motifs = np.zeros((grid_size_xy, grid_size_xy))
 
-                        # we convert the matrix to resize the image without losing the values
-                        thr_reg_map_shape_uint = (thresholded_regions_map + 1).astype(np.uint8)
-                        thr_reg_map_comp_range = thr_reg_map_shape_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
-                        resized_shape = np.array(Image.fromarray(thr_reg_map_comp_range).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
-
+                      
                         if 'motif_mask' in pieces[i].keys() or 'lines_mask' in pieces[i].keys():
                             combo_uint = (combo + 1).astype(np.uint8)
                             combo_comp_range = combo_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
-                            resized_combo = np.array(Image.fromarray(combo_comp_range).resize((ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), Image.Resampling.NEAREST))
+                            resized_combo = np.array(Image.fromarray(combo_comp_range).resize((grid_size_xy, grid_size_xy), Image.Resampling.NEAREST))
                         else:
-                            resized_combo = resized_shape
-                        #resized_lines2 = cv2.resize(binary_overlap_lines.astype(np.uint8), (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
-                        #resized_motifs2 = cv2.resize(binary_overlap_motifs.astype(np.uint8), (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
-                        #resized_shape2 = cv2.resize(thr_reg_map_comp_range, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
-                        #resized_combo2 = cv2.resize(combo_comp_range, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
-
-                        # PAIR OVERLAP VISUALIZATION
-                        # plt.subplot(321); plt.imshow(piece_i_on_canvas['img'])
-                        # plt.subplot(322); plt.imshow(piece_j_on_canvas['img'])
-                        # plt.subplot(323); plt.imshow(binary_overlap_motifs)
-                        # plt.subplot(324); plt.imshow(overlap_shapes)
-                        # plt.subplot(325); plt.imshow(resized_motifs)
-                        # plt.subplot(326); plt.imshow(resized_combo)
-                        # plt.show()
+                            resized_combo = resized_shape               
 
                         # These are the matrices
                         RM_combo[:, :, t, j, i] = (resized_combo.astype(np.int32) - 1)
@@ -208,72 +175,72 @@ def main(args):
                         RM_lines[:, :, t, j, i] = resized_lines
                         RM_shapes[:, :, t, j, i] = (resized_shape.astype(np.int32) - 1)
 
-                        # if args.DEBUG is True:
-                        #     pdb.set_trace()
-                        #     plt.suptitle(f"Piece {i} against piece {j} on rotation {t}")
-                        #     plt.subplot(631);
-                        #     plt.imshow(piece_i_on_canvas['img']);
-                        #     plt.title("Fixed in the center")
-                        #     plt.subplot(632);
-                        #     plt.imshow(piece_j_on_canvas['img']);
-                        #     plt.title("Moving around")
-                        #     coords = (center_pos + 3 * ppars.xy_step, center_pos - 1 * ppars.xy_step)
-                        #     print(coords)
-                        #     # piece_j_correct = place_on_canvas(pieces[j], coords, ppars.canvas_size, 0)
-                        #     # plt.subplot(633); plt.imshow(piece_i_on_canvas['img'] + piece_j_correct['img'])
-                        #     # plt.subplot(333); plt.imshow(around_borders_trm); plt.title("Borders")
-                        #     # shapes
-                        #     plt.subplot(634)
-                        #     plt.imshow(overlap_shapes)
-                        #     plt.title("Overlap Shapes")
-                        #     # plt.subplot(435); plt.imshow(around_borders_trm); plt.title("Borders")
-                        #     # plt.subplot(435); plt.imshow(thresholded_regions_map); plt.title("Region Map Shapes")
-                        #     plt.subplot(635)
-                        #     plt.imshow(thr_reg_map_comp_range)
-                        #     plt.title("Region Map Shapes (uint8)")
-                        #     plt.subplot(636)
-                        #     plt.imshow(resized_shape)
-                        #     plt.title("Region Map Shapes (resized)")
-                        #     # lines
-                        #     plt.subplot(637)
-                        #     plt.imshow(piece_i_on_canvas['lines_mask'])
-                        #     plt.title(f"Lines Mask {i}")
-                        #     plt.subplot(638)
-                        #     plt.imshow(piece_j_on_canvas['lines_mask'])
-                        #     plt.title(f"Lines Mask {j}")
-                        #     # plt.subplot(639); plt.imshow(resized_lines); plt.title("Overlap Lines (resized)")
-                        #     # lines
-                        #     plt.subplot(6, 3, 10)
-                        #     plt.imshow(overlap_lines)
-                        #     plt.title("Overlap Lines (values)")
-                        #     plt.subplot(6, 3, 11)
-                        #     plt.imshow(binary_overlap_lines)
-                        #     plt.title("Overlap Lines (mask)")
-                        #     plt.subplot(6, 3, 12)
-                        #     plt.imshow(resized_lines)
-                        #     plt.title("Overlap Lines (resized)")
-                        #     # combo
-                        #     plt.subplot(6, 3, 13)
-                        #     plt.imshow(combo)
-                        #     plt.title("Overlap Combo (mask)")
-                        #     plt.subplot(6, 3, 14)
-                        #     plt.imshow(combo_comp_range)
-                        #     plt.title("Overlap Combo (uint8)")
-                        #     plt.subplot(6, 3, 15)
-                        #     plt.imshow(resized_combo)
-                        #     plt.title("Overlap Combo (resized)")
-                        #     # results
-                        #     plt.subplot(6, 3, 16);
-                        #     plt.imshow(RM_lines[:, :, t, j, i]);
-                        #     plt.title("Lines")
-                        #     plt.subplot(6, 3, 17);
-                        #     plt.imshow(RM_shapes[:, :, t, j, i]);
-                        #     plt.title("Shapes")
-                        #     plt.subplot(6, 3, 18);
-                        #     plt.imshow(RM_combo[:, :, t, j, i]);
-                        #     plt.title("Combo")
-                        #     plt.show()
-                        #     pdb.set_trace()
+                        if args.DEBUG is True:
+                            pdb.set_trace()
+                            plt.suptitle(f"Piece {i} against piece {j} on rotation {t}")
+                            plt.subplot(631)
+                            plt.imshow(piece_i_on_canvas['img']);
+                            plt.title("Fixed in the center")
+                            plt.subplot(632)
+                            plt.imshow(piece_j_on_canvas['img']);
+                            plt.title("Moving around")
+                            coords = (center_pos + 3 * ppars.xy_step, center_pos - 1 * ppars.xy_step)
+                            print(coords)
+                            # piece_j_correct = place_on_canvas(pieces[j], coords, ppars.canvas_size, 0)
+                            # plt.subplot(633); plt.imshow(piece_i_on_canvas['img'] + piece_j_correct['img'])
+                            # plt.subplot(333); plt.imshow(around_borders_trm); plt.title("Borders")
+                            # shapes
+                            plt.subplot(634)
+                            plt.imshow(overlap_shapes)
+                            plt.title("Overlap Shapes")
+                            # plt.subplot(435); plt.imshow(around_borders_trm); plt.title("Borders")
+                            # plt.subplot(435); plt.imshow(thresholded_regions_map); plt.title("Region Map Shapes")
+                            plt.subplot(635)
+                            plt.imshow(thr_reg_map_comp_range)
+                            plt.title("Region Map Shapes (uint8)")
+                            plt.subplot(636)
+                            plt.imshow(resized_shape)
+                            plt.title("Region Map Shapes (resized)")
+                            # lines
+                            plt.subplot(637)
+                            plt.imshow(piece_i_on_canvas['lines_mask'])
+                            plt.title(f"Lines Mask {i}")
+                            plt.subplot(638)
+                            plt.imshow(piece_j_on_canvas['lines_mask'])
+                            plt.title(f"Lines Mask {j}")
+                            # plt.subplot(639); plt.imshow(resized_lines); plt.title("Overlap Lines (resized)")
+                            # lines
+                            plt.subplot(6, 3, 10)
+                            plt.imshow(overlap_lines)
+                            plt.title("Overlap Lines (values)")
+                            plt.subplot(6, 3, 11)
+                            plt.imshow(binary_overlap_lines)
+                            plt.title("Overlap Lines (mask)")
+                            plt.subplot(6, 3, 12)
+                            plt.imshow(resized_lines)
+                            plt.title("Overlap Lines (resized)")
+                            # combo
+                            plt.subplot(6, 3, 13)
+                            plt.imshow(combo)
+                            plt.title("Overlap Combo (mask)")
+                            plt.subplot(6, 3, 14)
+                            plt.imshow(combo_comp_range)
+                            plt.title("Overlap Combo (uint8)")
+                            plt.subplot(6, 3, 15)
+                            plt.imshow(resized_combo)
+                            plt.title("Overlap Combo (resized)")
+                            # results
+                            plt.subplot(6, 3, 16);
+                            plt.imshow(RM_lines[:, :, t, j, i]);
+                            plt.title("Lines")
+                            plt.subplot(6, 3, 17);
+                            plt.imshow(RM_shapes[:, :, t, j, i]);
+                            plt.title("Shapes")
+                            plt.subplot(6, 3, 18);
+                            plt.imshow(RM_combo[:, :, t, j, i]);
+                            plt.title("Combo")
+                            plt.show()
+                            pdb.set_trace()
         print("\n")
         print('Done calculating')
         print('#' * 50)
@@ -303,19 +270,21 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')
-    parser.add_argument('--dataset', type=str, default='repair', help='dataset (name of the folders)')
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch2', help='dataset (name of the folders)')
     parser.add_argument('--puzzle', type=str, default='',
                         help='puzzle to work on - leave empty to generate for the whole dataset')
-    parser.add_argument('--det_method', type=str, default='exact', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
-    parser.add_argument('--lines', type=bool, default=False, help='use line-based regions')
-    parser.add_argument('--motif', type=bool, default=False, help='use motif-based regions')
+    parser.add_argument('--lines', type=int, default=0, help='use line-based regions')
+    parser.add_argument('--lines_det_method', type=str, default='deeplsd', help='method line detection', choices=['exact', 'deeplsd', 'manual']) # exact, manual, deeplsd
+    parser.add_argument('--motif', type=int, default=0, help='use motif-based regions')
+    parser.add_argument('--motif_det_method', type=str, default='yolo-obb', help='method motif detection', choices=['yolo-obb', 'yolo-bbox', 'yolo-seg']) # exact', 'deeplsd', 'manual']
+    parser.add_argument('--irregular', type=int, default=0, help='use irregular parameters')
     parser.add_argument('--save_visualization', type=bool, default=True,
                         help='save an image that showes the matrices color-coded')
     parser.add_argument('-np', '--num_pieces', type=int, default=0,
                         help='number of pieces (per side) - use 0 (default value) for synthetic pieces')  # 8
-    parser.add_argument('--xy_step', type=int, default=10, help='the step (in pixels) between each grid point')
-    parser.add_argument('--xy_grid_points', type=int, default=51,
+    parser.add_argument('--xy_step', type=int, default=3, help='the step (in pixels) between each grid point')
+    parser.add_argument('--xy_grid_points', type=int, default=121,
                         help='the number of points in the grid (for each axis, total number will be the square of what is given)')
     parser.add_argument('--theta_step', type=int, default=90, help='degrees of each rotation')
     parser.add_argument('--DEBUG', action='store_true', default=False,

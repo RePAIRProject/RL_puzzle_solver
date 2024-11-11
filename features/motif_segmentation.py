@@ -4,7 +4,7 @@ import os
 import cv2 
 import numpy as np
 import pdb 
-from configs import rp_cfg as cfg
+from configs import repair_cfg as cfg
 from configs import folder_names as fnames
 
 def main(args):
