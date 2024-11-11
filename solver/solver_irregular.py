@@ -45,18 +45,20 @@ def initialization_from_GT(R, anc, puzzle_root_folder):
     gt_grid[:, 1] = (df.loc[:, 'y'].values).astype(int)
     #gt_grid[:, 2] = (df.loc[:, 'rot'].values)
 
+    # 2. calculate optimal grid - p_matrix
+    X = (np.max(gt_grid[:, 0]) + 2 * border_points).astype(int)
+    Y = (np.max(gt_grid[:, 1]) + 2 * border_points).astype(int)
+    Z = no_rotations
+
+    # 3. create p_matrix (optimal_grid+border_points)
+    p = np.ones((Y, X, Z, no_patches)) / (Y * X * Z)
+
     # 3. anchor position in GT_position+0.5*border_points
+    #for anc in range(0, no_patches):
     x0 = (gt_grid[anc, 0] + border_points).astype(int)
     y0 = (gt_grid[anc, 1] + border_points).astype(int)
     z0 = 0
 
-    #2. calculate optimal grid - p_matrix
-    X = (np.max(gt_grid[:, 0]) + 2*border_points).astype(int)
-    Y = (np.max(gt_grid[:, 1]) + 2*border_points).astype(int)
-    Z = no_rotations
-
-    #3. create p_matrix (optimal_grid+border_points)
-    p = np.ones((Y, X, Z, no_patches))/ (Y * X * Z)
     p[:, :, :, anc] = 0
     p[y0, x0, :, :] = 0
     p[y0, x0, z0, anc] = 1
@@ -210,7 +212,7 @@ def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
                     for zj in range(no_rotations):
                         rj_z = rr[:, :, zj, j]
                         pj_z = p[:, :, zj, j]
-                        # cc = cv.filter2D(pj_z, -1, np.rot90(rj_z, 2)) # solves in inverse order !?!
+                        #cc = cv.filter2D(pj_z, -1, np.rot90(rj_z, 2)) # solves in inverse order !?!
                         cc = cv.filter2D(pj_z, -1, rj_z)
                         c1[:, :, zj, j] = cc
 
@@ -260,13 +262,14 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, Z, pieces, ppars, use_RGB=True
 
     return canvas_image
                     
-def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars, show_borders=False):
+def reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=False):
     step = np.ceil(ppars.xy_step)
     #ang = ppars.theta_step # 360 / Z    
     ang = 360 / Z
     z_rot = np.arange(0, 360, ang)
     pos = fin_sol
     fin_im = np.zeros(((Y * step + (ppars.p_hs+1) * 2).astype(int), (X * step + (ppars.p_hs+1) * 2).astype(int), 3))
+    borders_cmap = mpl.colormaps['jet'].resampled(len(pieces))
     if show_borders == True:
         # plt.ion()
         borders_cmap = mpl.colormaps['jet'].resampled(len(pieces))
@@ -284,21 +287,34 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, pp
         Im = Im[:, :, 0:3]
 
         cc = ppars.p_hs
-        ids = (pos[i, :2] * step + cc).astype(int)
-        if pos.shape[1] == 3:
-            rot = z_rot[pos[i, 2]]
-            Im = rotate(Im, rot, reshape=False, mode='constant')
-            if show_borders == True:
-                mask = (Im > 0.05).astype(np.uint8)
-                em = cv2.erode(mask, np.ones((5,5)))
-                bordered_im = Im * em + (mask-em) * borders_cmap(i)[:3]
-                Im = bordered_im
-        if ppars.p_hs*2 < ppars.piece_size:
-            fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
-                                                                                       ids[0] - cc:ids[0] + cc + 1,
-                                                                                       ids[1] - cc:ids[1] + cc + 1, :]
-        else:
-            fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :] = Im+fin_im[ids[0]-cc:ids[0]+cc, ids[1]-cc:ids[1]+cc, :]
+
+        if np.sum(pos[i, :2])>0:
+
+            ids = (pos[i, :2] * step + cc).astype(int)
+            if pos.shape[1] == 3:
+                rot = z_rot[pos[i, 2]]
+                Im = rotate(Im, rot, reshape=False, mode='constant')
+
+                if i == anc:
+                    mask = (Im > 0.05).astype(np.uint8)
+                    em = cv2.erode(mask, np.ones((5, 5)))
+                    bordered_im = Im * em + (mask - em) * borders_cmap(i)[:3]
+                    Im = bordered_im
+
+                if show_borders == True:
+                    mask = (Im > 0.05).astype(np.uint8)
+                    em = cv2.erode(mask, np.ones((5, 5)))
+                    bordered_im = Im * em + (mask - em) * borders_cmap(i)[:3]
+                    Im = bordered_im
+            if ppars.p_hs * 2 < ppars.piece_size:
+                fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
+                                                                                           ids[0] - cc:ids[0] + cc + 1,
+                                                                                           ids[1] - cc:ids[1] + cc + 1,
+                                                                                           :]
+            else:
+                fin_im[ids[0] - cc:ids[0] + cc, ids[1] - cc:ids[1] + cc, :] = Im + fin_im[ids[0] - cc:ids[0] + cc,
+                                                                                   ids[1] - cc:ids[1] + cc, :]
+
         # if show_borders == True:
         #     plt.imshow(fin_im)
         #     breakpoint()
@@ -619,7 +635,7 @@ def main(args):
 
     ## K-sparsification
     k = args.k
-    k = 5
+    #k = 5
     best_scores_0rot = np.zeros((np.shape(R)[4],np.shape(R)[4]))
     best_scores = np.zeros((np.shape(R)[4], np.shape(R)[4]))
     for i in range(np.shape(R)[4]):
@@ -674,7 +690,7 @@ def main(args):
     print("-" * 50)
 
     num_rot = p_initial.shape[2]
-    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}_gt{args.use_GT}')
+    solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}_gt{args.use_GT}_k{args.k}')
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
 
@@ -689,8 +705,8 @@ def main(args):
     Y, X, Z, _ = p_final.shape
     fin_sol = all_sol[f-1]
     # pdb.set_trace()
-    fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars, show_borders=False)
-    fin_im1_brd = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars, show_borders=True)
+    fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=False)
+    fin_im1_brd = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=True)
     
     # fin_im_v3 = reconstruct_puzzle_vis(fin_sol, pieces_folder, ppars, suffix='')
     # alternative method for reconstruction (with transparency on overlap because of b/w image)
@@ -721,7 +737,7 @@ def main(args):
 
     f = len(all_anc)
     fin_sol = all_anc[f-1]
-    fin_im2 = reconstruct_puzzle(fin_sol, Y, X, Z, pieces, pieces_files, pieces_folder, ppars)
+    fin_im2 = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars)
 
     final_solution_anchor = os.path.join(solution_folder, f'final_only_anchor_using_anchor{anc}.png')
     plt.figure(figsize=(16, 16))
@@ -751,7 +767,7 @@ def main(args):
         for ff in range(f):
             frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
             cur_sol = all_sol[ff]
-            im_rec = reconstruct_puzzle(cur_sol, Y, X, Z, pieces, pieces_files, pieces_folder)
+            im_rec = reconstruct_puzzle(cur_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder)
             im_rec = np.clip(im_rec, 0, 1)
             plt.imsave(frame_path, im_rec)
 
@@ -761,7 +777,7 @@ def main(args):
         for ff in range(f):
             frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
             cur_sol = all_anc[ff]
-            im_rec = reconstruct_puzzle(cur_sol, Y, X, Z, pieces, pieces_files, pieces_folder)
+            im_rec = reconstruct_puzzle(cur_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder)
             im_rec = np.clip(im_rec, 0, 1)
             plt.imsave(frame_path, im_rec)
     
