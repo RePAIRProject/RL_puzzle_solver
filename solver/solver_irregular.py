@@ -521,6 +521,75 @@ def main(args):
             # plt.imshow(R[:, :, 0, 1, 2])
             # plt.show()
             #breakpoint()
+
+        elif args.combo_type == 'SLMS_v2':
+            print("trying to combine three compatibilities (ShapeLinesMotifs)")
+            mat_motif = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.motif_det_method}"))
+            mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.lines_det_method}_cost_{args.cmp_cost}'))
+            mat_seg = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_seg'))
+            region_mask_mat = loadmat(os.path.join(puzzle_root_folder, fnames.rm_output_name, f'RM_{args.puzzle}.mat'))
+
+            R_shape = mat_shape['R']
+            R_lines = mat_lines['R']
+            R_motif = mat_motif['R']
+            R_seg = mat_seg['R']
+            lines_RM = region_mask_mat['RM_lines']
+            motif_RM = region_mask_mat['RM_motifs']
+            seg_RM = region_mask_mat['RM_motifs']
+            shape_RM = region_mask_mat['RM_shapes']
+
+            norm_R_shape = normalize_CM(R_shape)
+            norm_R_lines = normalize_CM(R_lines)
+            norm_R_motif = normalize_CM(R_motif)
+            norm_R_seg = normalize_CM(R_seg)
+
+            negative_region_map = R_shape < 0
+            region_motif = combine_region_masks([shape_RM, motif_RM])
+            region_lines = combine_region_masks([shape_RM, lines_RM])
+            region_seg = combine_region_masks([shape_RM, seg_RM])
+
+            prm_motif = (region_motif> 0).astype(int)  ## positive in RM
+            prm_lines = (region_lines> 0).astype(int)  ## positive in RM
+            prm_seg = (region_seg > 0).astype(int)  ## positive in RM
+            prm_shape = (shape_RM > 0).astype(int)
+            shape_basis = norm_R_shape * prm_shape
+
+            lines_avg_val = 0.5  # fix level ???  # lines_avg_val1 = np.mean(norm_R_lines > 0)
+            motif_avg_val = 0.5                   # motif_avg_val1 = np.mean(norm_R_motif > 0)
+            seg_avg_val = 0.5
+            motif_contrib = prm_motif * ((norm_R_motif / motif_avg_val)-1)
+            lines_contrib = prm_lines * ((norm_R_lines / lines_avg_val)-1)
+            seg_contrib = prm_seg * ((norm_R_seg / seg_avg_val)-1)
+
+            R = np.zeros_like(R_shape)
+            total_contrib = shape_basis * (motif_contrib + lines_contrib + seg_contrib)
+            #total_contrib = shape_basis * (lines_contrib + np.max(seg_contrib, motif_contrib))  # option
+            R = shape_basis + total_contrib
+            R += -1 * negative_region_map.astype(int)
+            R = normalize_CM(R)
+            R = np.maximum(-1, R)
+
+            # import matplotlib.pyplot as plt
+            # plt.subplot(331)
+            # plt.imshow(prm[:, :, 0, 1, 2])
+            # plt.subplot(332)
+            # plt.imshow(prm_motif[:, :, 0, 1, 2])
+            # plt.subplot(333)
+            # plt.imshow(prm_lines[:, :, 0, 1, 2])
+            # plt.subplot(334)
+            # plt.imshow(shape_basis[:, :, 0, 1, 2])
+            # plt.subplot(335)
+            # plt.imshow(motif_contrib[:, :, 0, 1, 2])
+            # plt.subplot(336)
+            # plt.imshow(lines_contrib[:, :, 0, 1, 2])
+            # plt.subplot(338)
+            # plt.imshow(R2[:, :, 0, 1, 2])
+            # plt.subplot(339)
+            # plt.imshow(R[:, :, 0, 1, 2])
+            # plt.show()
+            #breakpoint()
+
         else:
             raise Exception(f"Please select another combo type, this ({args.combo_type}) has not been implemented yet")
 
@@ -550,7 +619,7 @@ def main(args):
 
     ## K-sparsification
     k = args.k
-    k = 20
+    k = 5
     best_scores_0rot = np.zeros((np.shape(R)[4],np.shape(R)[4]))
     best_scores = np.zeros((np.shape(R)[4], np.shape(R)[4]))
     for i in range(np.shape(R)[4]):
@@ -708,11 +777,11 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch2', help='dataset folder')
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch3', help='dataset folder')
     parser.add_argument('--puzzle', type=str, default='RPobj_g1_o0001_gt_rot', help='puzzle folder')
     parser.add_argument('--lines_det_method', type=str, default='deeplsd', help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--motif_det_method', type=str, default='yolo-obb', help='method motif detection')  # exact, manual, deeplsd
-    parser.add_argument('--cmp_cost', type=str, default='LCI', help='cost computation')  # LAP, LCI
+    parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation')  # LAP, LCI
     parser.add_argument('--use_GT', default=False, action='store_true',
         help='uses the ground truth (requires gt txt file!)')
     parser.add_argument('--anchor', type=int, default=2, help='anchor piece (index)')
@@ -729,11 +798,11 @@ if __name__ == '__main__':
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
     parser.add_argument('--k', type=int, default=10, help='keep the best k values (for each pair) in the compatibility')
     parser.add_argument('--cmp_type', type=str, default='shape', help='which compatibility to use!', choices=['combo', 'lines', 'shape', 'color',  'motifs', 'seg'])
-    parser.add_argument('--combo_type', type=str, default='SH-MOT',
+    parser.add_argument('--combo_type', type=str, default='SLM_v1',
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
             \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
             \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation', 
-        choices=['SH-SEG', 'SH-MOT', 'SH-LIN', 'SLM_v1'])
+        choices=['SH-SEG', 'SH-MOT', 'SH-LIN', 'SLM_v1', 'SLMS_v2'])
     parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')
 
     args = parser.parse_args()

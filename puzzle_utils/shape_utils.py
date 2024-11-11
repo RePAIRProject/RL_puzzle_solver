@@ -583,6 +583,10 @@ def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False)
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle_name)
     data_folder = os.path.join(root_folder, fnames.pieces_folder)
     masks_folder = os.path.join(root_folder, fnames.masks_folder)
+
+    #lines_folder = os.path.join(root_folder, fnames.lines_folder)
+    #motif_folder = os.path.join(root_folder, fnames.motif_folder)
+
     pieces_names = os.listdir(data_folder)
     pieces_names.sort()
     closing_kernel = np.ones((9, 9))

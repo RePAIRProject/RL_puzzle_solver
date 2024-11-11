@@ -24,15 +24,17 @@ def calc_computation_parameters(parameters, cmp_type, cmp_cost, lines_det_method
         if (parameters.xy_step)> 6:
             cmp_pars['max_dist'] = 6   ## changed *0.7*parameters.xy_step
         else:
-            cmp_pars['max_dist'] = 0.70*(parameters.xy_step)
+            cmp_pars['max_dist'] = 1.7*(parameters.xy_step)  #REPAIR altrimenti 0.7*parameters.xy_step)
 
         cmp_pars['badmatch_penalty'] = max(5, cmp_pars['max_dist'] * 5 / 3) # parameters.piece_size / 3 #?
-        cmp_pars['mismatch_penalty'] = max(4, cmp_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
-        cmp_pars['rmax'] = .5 * cmp_pars['max_dist'] * 7 / 6
+        cmp_pars['mismatch_penalty'] = 1  ## REPAIR
+        #cmp_pars['mismatch_penalty'] = max(4, cmp_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
+        cmp_pars['rmax'] = .5 * cmp_pars['max_dist'] * 7 / 6  ##UNUSED
         cmp_pars['cmp_cost'] = cmp_cost
         cmp_pars['k'] = 3
     elif cmp_type == 'shape':
-        cmp_pars['dilation_size'] = 35
+        cmp_pars['dilation_size'] = 35      ##UNUSED
+
     #elif cmp_type == 'motifs':
         #elif cmp_type == 'motifs': #nothing needed it seems
 
@@ -159,7 +161,7 @@ def normalize_CM(R, region_mask=None, parameters=None):
         negative_region = np.minimum(region_mask, 0)
         if parameters['cmp_type'] == 'lines':
             if parameters['cmp_cost'] == 'LCI':
-                breakpoint()
+                #breakpoint()
                 # TODO:
                 # values between 0 and positive (length of pieces)
                 normalized_R = R / np.max(R)
