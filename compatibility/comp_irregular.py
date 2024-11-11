@@ -316,7 +316,7 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
-    parser.add_argument('--dataset', type=str, default='synthetic_irregular_9_pieces_by_drawing_coloured_lines_peynrh', help='dataset folder')  # repair
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch3', help='dataset folder')  # repair
     parser.add_argument('--puzzle', type=str, default='', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')
@@ -324,29 +324,25 @@ if __name__ == '__main__':
     parser.add_argument('--save_everything', default=False, action='store_true',
         help='use to save debug matrices (may require up to ~8 GB per solution, use with care!)')
     parser.add_argument('--verbosity', type=int, default=1, help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
+
     # COMPATIBILITY PARAMETERS
-    parser.add_argument('--cmp_type', type=str, default='lines', 
+    parser.add_argument('--cmp_type', type=str, default='motifs',
         help='Chooses the compaitbility to use.\nIf more than one should be used, select `combo`\
             \nIt is connected with `--cmp_cost` and `--det_method`!', 
-        choices=['lines', 'shape', 'color', 'motifs', 'combo'])   
-    parser.add_argument('--cmp_cost', type=str, default='LCI', 
+        choices=['lines', 'shape', 'color', 'motifs'])
+    parser.add_argument('--cmp_cost', type=str, default='LAP',
         help='Chooses the cost used to compute compatibility - it depends on the `--cmp_type`\
-            \nUse LAP, LAP3 or LCI for lines, YOLO or overlap for motif, SDF for shape, MGC for color', 
+            \nUse LAP or LCI for lines, YOLO or overlap for motif, SDF for shape, MGC for color',
         choices=[
-            'LAP', 'LAP3', 'LAPvis', 'LCI', # line-based 
+            'LAP', 'LAPvis', 'LCI', # line-based
             'YOLO_conf', 'overlap', # motif-based
             'SDF', # shape-based
             'MGC' # color-based
-        ])    
-    parser.add_argument('--cmp_combo', type=str, default='LS', 
-        help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
-            \nThe capital letters are used (L=lines, M=motif, S=shape, C=color)\
-            \nFor example, MS is motif+shape, LS is lines+shape', 
-        choices=['LS', 'MS', 'CS', 'CLMS'])   
+        ])
     parser.add_argument('--lines_det_method', type=str, default='deeplsd', 
         help='method for the feature detection (usually lines or motif)',
         choices=['exact', 'deeplsd', 'manual'])  
-    parser.add_argument('--motif_det_method', type=str, default='yolo-obb', 
+    parser.add_argument('--motif_det_method', type=str, default='yolo-obb',
         help='method for the feature detection (usually lines or motif)',
         choices=['yolo-obb', 'yolo-bbox', 'yolo-seg'])  
     parser.add_argument('--yolo_path', type=str, default='/home/marina/PycharmProjects/RL_puzzle_solver/yolov5/best.pt', help='yolo path (.pt model)')
