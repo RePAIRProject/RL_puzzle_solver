@@ -338,6 +338,25 @@ def select_anchor(folder):
     new_anc = np.random.choice(good_anchors[0, :], 1)
     return new_anc[0]
 
+def sparsify_compatibility_matrix(R, k):
+    # K-sparsification
+    #k = 5
+    best_scores_0rot = np.zeros((np.shape(R)[4],np.shape(R)[4]))
+    best_scores = np.zeros((np.shape(R)[4], np.shape(R)[4]))
+    for i in range(np.shape(R)[4]):
+        for j in range(np.shape(R)[4]):
+            if i!=j:
+                r_temp = R[:, :, :, j, i]
+                a = np.min(np.partition(np.ravel(r_temp), -k)[-k:])
+                r_neg = np.where(r_temp > -1, 0, -1)
+                #r_neg = np.where(r_temp < 0, r_temp, 0)
+                r_val = np.where(r_temp < a, 0, r_temp)
+                R[:, :, :, j, i] = r_neg + r_val
+
+                best_scores_0rot[j, i] = np.max(r_temp[:,:,0])
+                best_scores[j, i] = np.max(r_temp)
+    return R
+
 
 #  MAIN
 def main(args):
@@ -606,6 +625,55 @@ def main(args):
             # plt.show()
             #breakpoint()
 
+        elif args.combo_type == 'SLMS_version3':
+            print("trying to combine three compatibilities (ShapeLinesMotifs)")
+            mat_motif = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.motif_det_method}"))
+            mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.lines_det_method}_cost_{args.cmp_cost}'))
+            mat_seg = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_seg'))
+            region_mask_mat = loadmat(os.path.join(puzzle_root_folder, fnames.rm_output_name, f'RM_{args.puzzle}.mat'))
+
+            R_shape = mat_shape['R']
+            R_lines = mat_lines['R']
+            R_motif = mat_motif['R']
+            R_seg = mat_seg['R']
+            lines_RM = region_mask_mat['RM_lines']
+            motif_RM = region_mask_mat['RM_motifs']
+            seg_RM = region_mask_mat['RM_motifs']
+            shape_RM = region_mask_mat['RM_shapes']
+
+            norm_R_shape = normalize_CM(R_shape)
+            norm_R_lines = normalize_CM(R_lines)
+            norm_R_motif = normalize_CM(R_motif)
+            norm_R_seg = normalize_CM(R_seg)
+
+            negative_region_map = R_shape < 0
+            region_motif = combine_region_masks([shape_RM, motif_RM]).astype(int)
+            region_lines = combine_region_masks([shape_RM, lines_RM]).astype(int)
+            region_seg = combine_region_masks([shape_RM, seg_RM]).astype(int)
+
+            prm_motif = (region_motif> 0).astype(int)  ## positive in RM
+            prm_lines = (region_lines> 0).astype(int)  ## positive in RM
+            prm_seg = (region_seg > 0).astype(int)  ## positive in RM
+            prm_shape = (shape_RM > 0).astype(int)
+            shape_basis = norm_R_shape * prm_shape
+
+            lines_acc_lev = 0.01  # fix level ???  # lines_avg_val1 = np.mean(norm_R_lines > 0)
+            motif_acc_lev = 0.3                   # motif_avg_val1 = np.mean(norm_R_motif > 0)
+            seg_acc_lec = 0.3
+
+            lines_contrib = prm_lines * (np.where(norm_R_lines<lines_acc_lev, norm_R_lines-0.5, norm_R_lines))
+            motif_contrib = prm_motif * (np.where(norm_R_motif < motif_acc_lev, norm_R_motif - 0.5, norm_R_motif))
+            seg_contrib = prm_seg * (np.where(norm_R_seg < seg_acc_lec, norm_R_seg - 0.5, norm_R_seg))
+
+            R = np.zeros_like(R_shape)
+            total_contrib = shape_basis * (motif_contrib + lines_contrib + seg_contrib)
+            #total_contrib = shape_basis * (lines_contrib + np.max(seg_contrib, motif_contrib))  # option
+            R = shape_basis + total_contrib
+            R += -1 * negative_region_map.astype(int)
+            R = normalize_CM(R)
+            R = np.maximum(-1, R)
+
         else:
             raise Exception(f"Please select another combo type, this ({args.combo_type}) has not been implemented yet")
 
@@ -614,6 +682,9 @@ def main(args):
         mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
         # R = mat['R_line'] ## temp
         R = mat['R']
+
+    ## K-sparsification
+    R = sparsify_compatibility_matrix(R, args.k)
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
@@ -633,38 +704,7 @@ def main(args):
         anc = args.anchor
     print(f"Using anchor the piece with id: {anc}")
 
-    ## K-sparsification
-    k = args.k
-    #k = 5
-    best_scores_0rot = np.zeros((np.shape(R)[4],np.shape(R)[4]))
-    best_scores = np.zeros((np.shape(R)[4], np.shape(R)[4]))
-    for i in range(np.shape(R)[4]):
-        for j in range(np.shape(R)[4]):
-            if i!=j:
-                r_temp = R[:, :, :, j, i]
-                a = np.min(np.partition(np.ravel(r_temp), -k)[-k:])
-                r_neg = np.where(r_temp > -1, 0, -1)
-                #r_neg = np.where(r_temp < 0, r_temp, 0)
-                r_val = np.where(r_temp < a, 0, r_temp)
-                R[:, :, :, j, i] = r_neg + r_val
-
-                best_scores_0rot[j, i] = np.max(r_temp[:,:,0])
-                best_scores[j, i] = np.max(r_temp)
-
-    # ## esclude if incompatible
-    # if args.exclude == True:
-    #     Rnew = R
-    #     for i in range(np.shape(R)[4]):
-    #         r_temp = R[:, :, :, :, i]
-    #         m = np.max(r_temp)
-    #         if m <= 0:
-    #             Rnew = np.delete(Rnew, i, 4)
-    #             Rnew = np.delete(Rnew, i, 3)
-    #             anc=anc-1
-    #     R = Rnew
-    #     anc = np.max(anc,0)
-    # #####
-
+    ## INITIALIZATION
     if args.use_GT == True:
         print('Using ground truth to calculate the grid')
         p_initial, init_pos, x0, y0, z0 = initialization_from_GT(R, anc, puzzle_root_folder)
@@ -787,7 +827,6 @@ def main(args):
     now = datetime.datetime.now()
     print(f"{now}")
     print(f'Done with {puzzle_name}\n')
-    print("-" * 50)
 
 
 if __name__ == '__main__':
@@ -818,7 +857,7 @@ if __name__ == '__main__':
         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
             \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
             \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation', 
-        choices=['SH-SEG', 'SH-MOT', 'SH-LIN', 'SLM_v1', 'SLMS_v2'])
+        choices=['SH-SEG', 'SH-MOT', 'SH-LIN', 'SLM_v1', 'SLMS_v2', 'SLMS_version3'])
     parser.add_argument('--border_len', type=int, default=-1, help='length of border (if -1 [default] it will be set to xy_step)')
 
     args = parser.parse_args()
