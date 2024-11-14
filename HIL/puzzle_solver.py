@@ -84,7 +84,7 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     # R = R[:, :, :, :, pieces_to_include]
     # if you want rotation which you shouldn't
     R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
-    R = R[:, :, 0:4, :, pieces_to_include]  # 0:4 works best for group 28 token check
+    R = R[:, :, 0:1, :, pieces_to_include]  # 0:4 works best for group 28 token check
 
     anchor = pieces_to_include.index(anchor)
 
@@ -95,7 +95,7 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
 
     # print("piece names", pieces_included)
 
-    solution = solve_puzzle(R, anchor, pieces_included, ppars,
+    solution = solve_puzzle(R, anchor, pieces_included, ppars, path_dic,
                             return_as=return_solution_as, solved_pieces=solved_pieces)
 
     return solution

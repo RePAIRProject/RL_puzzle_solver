@@ -1,30 +1,39 @@
 import numpy as np
 from scipy.ndimage import rotate
-import cv2 as cv 
+import cv2 as cv
+import os
+import json
 
 
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
 
-def default_cfg():
+def default_cfg(path_dic):
     cfg = CfgParameters()
-    cfg['Tfirst'] = 75
-    cfg['Tnext'] = 50
-    cfg['Tmax'] = 150
-    cfg['anc_fix_tresh'] = 0.65
-    cfg['p_pts'] = 21
+    solver_parameters = path_dic['solver_parameters']
+    solver_parameter = {}
+    if os.path.exists(solver_parameters):
+        solver_parameter = {}
+        with open(solver_parameters, 'r') as cp:
+            solver_parameter = json.load(cp)
+    cfg['Tfirst'] = solver_parameter['Tfirst']
+    cfg['Tnext'] = solver_parameter['Tnext']
+    cfg['Tmax'] = solver_parameter['Tmax']
+    cfg['anc_fix_tresh'] = solver_parameter['anc_fix_tresh']
+    cfg['p_matrix_shape_x'] = solver_parameter['p_matrix_shape_x']
+    cfg['p_matrix_shape_y'] = solver_parameter['p_matrix_shape_y']
     return cfg
 
 
-def solve_puzzle(R, anchor, pieces_names, ppars, return_as='dict', solved_pieces=None):
+def solve_puzzle(R, anchor, pieces_names, ppars, path_dic, return_as='dict', solved_pieces=None):
 
     if solved_pieces is None:
         solved_pieces = []
 
     p_initial, init_pos, x0, y0, z0 = initialization(R, anchor, solved_pieces, pieces_names) # we do not pass p_size so it chooses automatically
     num_anchors = 1
-    cfg = default_cfg()
+    cfg = default_cfg(path_dic)
     all_pay, all_sol, all_anc, p_final, eps, iter, num_anchors = RePairPuzz(R, p_initial, num_anchors, cfg)
     fin_sol = all_sol[len(all_sol)-1]
     fin_sol[:,:2] = fin_sol[:,:2] * ppars['xy_step']
