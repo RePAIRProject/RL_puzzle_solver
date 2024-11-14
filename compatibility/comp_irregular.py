@@ -219,7 +219,8 @@ def main(args):
                     ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, ppars, \
                         detector=yolov8_obb_detector, seg_len=seg_len,
                         verbosity=args.verbosity)
-                    
+                    print(np.max(ji_mat))
+                    print(np.unique(ji_mat))
                     All_cost[:, :, :, j, i] = ji_mat
 
                     if i > 1 and i != j and args.DEBUG == True:
@@ -229,7 +230,7 @@ def main(args):
         #   NORMALIZATION
         ###########################
         # here we have the full matrix and we normalize it
-        R = normalize_CM(All_cost, region_mask, ppars)            
+        R = normalize_CM(All_cost, ppars, region_mask)
 
         ###########################
         #   TIMING

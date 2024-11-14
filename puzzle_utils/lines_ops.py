@@ -627,12 +627,14 @@ def compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s
                     n_lines_f2 = useful_lines_alfa2.shape[0]
 
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
-                        #tot_cost = ppars.max_dist * 2  
-                        tot_cost = ppars.badmatch_penalty / guglielmo # accept with some cost, guglielmo=3
+                        #tot_cost = ppars.badmatch_penalty/2 # accept with some cost, guglielmo=3
+                        #tot_cost = ppars.max_dist
+                        tot_cost = ppars.badmatch_penalty * 0.9
 
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
-                        tot_cost = ppars.mismatch_penalty * n_lines**2
+                        #tot_cost = ppars.mismatch_penalty*n_lines**2   ## it will be very high compatibility
+                        tot_cost = ppars.badmatch_penalty*0.9
 
                     else:
                         # Compute cost_matrix, LAP, penalty, normalize
@@ -670,8 +672,8 @@ def compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s
                         
                         # # penalty
                         penalty = np.abs(n_lines_f1 - n_lines_f2) * ppars.mismatch_penalty  # no matches penalty
+                        tot_cost = tot_cost / np.min([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
                         tot_cost = (tot_cost + penalty)
-                        tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
                         #print(tot_cost)
                         
                     compatibility_score = np.clip(ppars.badmatch_penalty - tot_cost, 0, ppars.badmatch_penalty)

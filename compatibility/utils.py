@@ -63,10 +63,8 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
     if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
 
-    if idx1 == idx2:
-        #print('idx == ')
-        compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
-    else:
+    compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot)))
+    if idx1 != idx2:
         poly1 = pieces[idx1]['polygon']
         poly2 = pieces[idx2]['polygon']
         mask_ij = regions_mask[:, :, :, idx2, idx1]
@@ -74,13 +72,16 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
         if compatibility_type == 'lines':
             alfa1, r1, s11, s12, color1, cat1 = extract_from(pieces[idx1]['extracted_lines'])
             alfa2, r2, s21, s22, color2, cat2 = extract_from(pieces[idx2]['extracted_lines'])
-            if len(alfa1) == 0 and len(alfa2) == 0:
-                #print('no lines')
-                compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) + ppars.max_dist * 2
-            elif (len(alfa1) > 0 and len(alfa2) == 0) or (len(alfa1) == 0 and len(alfa2) > 0):
-                #print('only one side with lines')
-                compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) + ppars.mismatch_penalty
-            else:
+            # if len(alfa1) == 0 and len(alfa2) == 0:
+            #     #print('no lines')
+            #     #compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) + ppars.max_dist # this will be COMPATIBILITY - not COST !!!
+            #     compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) + (ppars.badmatch_penalty/3)  # badmatch_penalty will be best compatibility
+            # elif (len(alfa1) > 0 and len(alfa2) == 0) or (len(alfa1) == 0 and len(alfa2) > 0):
+            #     #print('only one side with lines')
+            #     #compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) + ppars.mismatch_penalty
+            #     compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot)))
+            # else:
+            if len(alfa1) > 0 and len(alfa2) > 0:
                 #print('values!')
                 t1 = time.time()
                 if compatibility_cost == 'DEBUG':
