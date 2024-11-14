@@ -230,15 +230,8 @@ def main(args):
         #   NORMALIZATION
         ###########################
         # here we have the full matrix and we normalize it
-<<<<<<< HEAD
-        print("unique CM:", np.unique(All_cost))
-        R = normalize_CM(All_cost, region_mask, ppars)            
-        print("unique R:", np.unique(R))
-        breakpoint()
-=======
         R = normalize_CM(All_cost, ppars, region_mask)
 
->>>>>>> 93936fde2538ccf255cc573d417e0f5b468b36b9
         ###########################
         #   TIMING
         ###########################                    
