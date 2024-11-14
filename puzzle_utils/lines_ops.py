@@ -19,21 +19,22 @@ from .shape_utils import place_on_canvas
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
-def calc_line_matching_parameters(parameters, cmp_cost='new'):
-    lm_pars = CfgParameters()
-    lm_pars['thr_coef'] = 0.13
-    #lm_pars['max_dist'] = 0.70*parameters.xy_step ## changed *0.7
-    if (parameters.xy_step)>6:
-        lm_pars['max_dist'] = 6   ## changed *0.7*parameters.xy_step
-    else:
-        lm_pars['max_dist'] = 1.70*(parameters.xy_step)
-
-    lm_pars['badmatch_penalty'] = max(5, lm_pars['max_dist'] * 5 / 3) # parameters.piece_size / 3 #?
-    lm_pars['mismatch_penalty'] = 1 #max(4, lm_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
-    lm_pars['rmax'] = .5 * lm_pars['max_dist'] * 7 / 6
-    lm_pars['cmp_cost'] = cmp_cost
-    lm_pars['k'] = 3
-    return lm_pars
+# def calc_line_matching_parameters(parameters, cmp_cost='new'):
+#     lm_pars = CfgParameters()
+#     lm_pars['thr_coef'] = 0.13
+#     #lm_pars['max_dist'] = 0.70*parameters.xy_step ## changed *0.7
+#     if (parameters.xy_step)>6:
+#         lm_pars['max_dist'] = 6   ## changed *0.7*parameters.xy_step
+#     else:
+#         lm_pars['max_dist'] = 1.70*(parameters.xy_step)
+#
+#     lm_pars['badmatch_penalty'] = max(5, lm_pars['max_dist'] * 5 / 3) # parameters.piece_size / 3 #?
+#     lm_pars['mismatch_penalty'] = 1      ## FOR REPAIR ONLY !!!
+#     #lm_pars['mismatch_penalty'] = max(4, lm_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
+#     lm_pars['rmax'] = .5 * lm_pars['max_dist'] * 7 / 6
+#     lm_pars['cmp_cost'] = cmp_cost
+#     lm_pars['k'] = 3
+#     return lm_pars
 
 def create_lines_only_image(img, lines):
 
@@ -630,12 +631,14 @@ def compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s
                     n_lines_f2 = useful_lines_alfa2.shape[0]
 
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
-                        #tot_cost = ppars.max_dist * 2  
-                        tot_cost = ppars.badmatch_penalty / guglielmo # accept with some cost
+                        #tot_cost = ppars.badmatch_penalty/2 # accept with some cost, guglielmo=3
+                        #tot_cost = ppars.max_dist
+                        tot_cost = ppars.badmatch_penalty * 0.9
 
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
-                        tot_cost = ppars.mismatch_penalty * n_lines
+                        #tot_cost = ppars.mismatch_penalty*n_lines**2   ## it will be very high compatibility
+                        tot_cost = ppars.badmatch_penalty*0.9
 
                     else:
                         # Compute cost_matrix, LAP, penalty, normalize
@@ -673,8 +676,8 @@ def compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s
                         
                         # # penalty
                         penalty = np.abs(n_lines_f1 - n_lines_f2) * ppars.mismatch_penalty  # no matches penalty
+                        tot_cost = tot_cost / np.min([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
                         tot_cost = (tot_cost + penalty)
-                        tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
                         #print(tot_cost)
                         
                     compatibility_score = np.clip(ppars.badmatch_penalty - tot_cost, 0, ppars.badmatch_penalty)
