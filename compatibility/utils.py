@@ -24,10 +24,10 @@ def calc_computation_parameters(parameters, cmp_type, cmp_cost, lines_det_method
         if (parameters.xy_step)> 6:
             cmp_pars['max_dist'] = 6   ## changed *0.7*parameters.xy_step
         else:
-            cmp_pars['max_dist'] = 0.70*(parameters.xy_step)
+            cmp_pars['max_dist'] = 1.70*(parameters.xy_step)
 
         cmp_pars['badmatch_penalty'] = max(5, cmp_pars['max_dist'] * 5 / 3) # parameters.piece_size / 3 #?
-        cmp_pars['mismatch_penalty'] = max(4, cmp_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
+        cmp_pars['mismatch_penalty'] = 1 #max(4, cmp_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
         cmp_pars['rmax'] = .5 * cmp_pars['max_dist'] * 7 / 6
         cmp_pars['cmp_cost'] = cmp_cost
         cmp_pars['k'] = 3
@@ -61,74 +61,79 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
     if verbosity > 1:
         print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
 
-    if idx1 == idx2:
-        #print('idx == ')
-        compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
-    else:
-        poly1 = pieces[idx1]['polygon']
-        poly2 = pieces[idx2]['polygon']
-        mask_ij = regions_mask[:, :, :, idx2, idx1]
-        candidate_values = np.sum(mask_ij > 0)
-        if compatibility_type == 'lines':
-            alfa1, r1, s11, s12, color1, cat1 = extract_from(pieces[idx1]['extracted_lines'])
-            alfa2, r2, s21, s22, color2, cat2 = extract_from(pieces[idx2]['extracted_lines'])
-            if len(alfa1) == 0 and len(alfa2) == 0:
-                #print('no lines')
-                compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) + ppars.max_dist * 2
-            elif (len(alfa1) > 0 and len(alfa2) == 0) or (len(alfa1) == 0 and len(alfa2) > 0):
-                #print('only one side with lines')
-                compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) + ppars.mismatch_penalty
-            else:
-                #print('values!')
-                t1 = time.time()
-                if compatibility_cost == 'DEBUG':
-                    print(f"Computing compatibility between Piece {idx1} and Piece {idx2}")
-                    if idx2 - idx1 == 1:
-                        plt.suptitle(f"COST between Piece {idx1} and Piece {idx2}", fontsize=32)
-                        compatibility_matrix = compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2,
-                                                    mask_ij, ppars, verbosity=verbosity, show=True)
-                    else:
-                        compatibility_matrix = compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
-                                                    mask_ij, ppars, verbosity=verbosity, show=False)
-                elif compatibility_cost == 'LAP':
-                    compatibility_matrix = compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
-                                                    mask_ij, ppars, verbosity=verbosity)
-                elif compatibility_cost == 'LCI':
-                    compatibility_matrix = compute_line_based_CM_LCI(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
-                                                            mask_ij, ppars, verbosity=verbosity)
-                elif compatibility_cost == 'LAPvis':
-                    lines_pi = alfa1, r1, s11, s12, color1, cat1
-                    lines_pj = alfa2, r2, s21, s22, color2, cat2 
-                    piece_i = pieces[idx1]
-                    piece_j = pieces[idx2]
-                    compatibility_matrix = compute_cost_matrix_LAP_vis(z_id, rot, lines_pi, lines_pj, piece_i, piece_j, mask_ij, ppars, verbosity=1)
-                else:
-                    print('weird: using {compatibility_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
-                    compatibility_matrix = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
-                                                            mask_ij, ppars)
-                if verbosity > 1:
-                    print(f"computed cost matrix for piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} candidate values) ")
-                #print(compatibility_matrix)
-        elif compatibility_type == 'shape':
-            #breakpoint()
-            ids_to_score = np.where(mask_ij > 0)
-            compatibility_matrix = compute_SDF_CM_matrix(pieces[idx1], pieces[idx2], ids_to_score, ppars, verbosity=verbosity)
-            #breakpoint()
-        elif compatibility_type == 'motifs':
-            assert ( (motif_det_method == "yolo-obb") | (motif_det_method == "yolo-bbox")), f"Unkown detection method for motifs!\nWe know `yolo-obb` and `yolo-bbox`, given `{motif_det_method}`\nRe-run specifying `--det_method`"
-            compatibility_matrix = compute_CM_using_motifs(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=motif_det_method, verbosity=verbosity)
-        elif compatibility_type == 'color':
-            compatibility_matrix = compute_cost_using_color_compatibility(idx1, idx2, pieces, mask_ij, ppars, seg_len=seg_len, verbosity=1)
-        else: # other compatibilities!
-            print("\n" * 20)
-            print("=" * 50)
-            print("WARNING:")
-            print(f"Received: {compatibility_type} as compatibility_type")
-            print("NOT IMPLEMENTED YET, RETURNING JUST EMPTY MATRIX")
-            print("=" * 50)
-            print("\n" * 20)
+    print(idx1, idx2)
+    if idx1 == 3 and idx2 == 5:
 
-            compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot)))
+        if idx1 == idx2:
+            #print('idx == ')
+            compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) - 1
+        else:
+            poly1 = pieces[idx1]['polygon']
+            poly2 = pieces[idx2]['polygon']
+            mask_ij = regions_mask[:, :, :, idx2, idx1]
+            candidate_values = np.sum(mask_ij > 0)
+            if compatibility_type == 'lines':
+                alfa1, r1, s11, s12, color1, cat1 = extract_from(pieces[idx1]['extracted_lines'])
+                alfa2, r2, s21, s22, color2, cat2 = extract_from(pieces[idx2]['extracted_lines'])
+                if len(alfa1) == 0 and len(alfa2) == 0:
+                    #print('no lines')
+                    compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) + ppars.max_dist * 2
+                elif (len(alfa1) > 0 and len(alfa2) == 0) or (len(alfa1) == 0 and len(alfa2) > 0):
+                    #print('only one side with lines')
+                    compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot))) + ppars.mismatch_penalty
+                else:
+                    #print('values!')
+                    t1 = time.time()
+                    if compatibility_cost == 'DEBUG':
+                        print(f"Computing compatibility between Piece {idx1} and Piece {idx2}")
+                        if idx2 - idx1 == 1:
+                            plt.suptitle(f"COST between Piece {idx1} and Piece {idx2}", fontsize=32)
+                            compatibility_matrix = compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2,
+                                                        mask_ij, ppars, verbosity=verbosity, show=True)
+                        else:
+                            compatibility_matrix = compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
+                                                        mask_ij, ppars, verbosity=verbosity, show=False)
+                    elif compatibility_cost == 'LAP':
+                        compatibility_matrix = compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
+                                                        mask_ij, ppars, verbosity=verbosity)
+                        breakpoint()
+                    elif compatibility_cost == 'LCI':
+                        compatibility_matrix = compute_line_based_CM_LCI(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
+                                                                mask_ij, ppars, verbosity=verbosity)
+                    elif compatibility_cost == 'LAPvis':
+                        lines_pi = alfa1, r1, s11, s12, color1, cat1
+                        lines_pj = alfa2, r2, s21, s22, color2, cat2 
+                        piece_i = pieces[idx1]
+                        piece_j = pieces[idx2]
+                        compatibility_matrix = compute_cost_matrix_LAP_vis(z_id, rot, lines_pi, lines_pj, piece_i, piece_j, mask_ij, ppars, verbosity=1)
+                    else:
+                        print('weird: using {compatibility_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
+                        compatibility_matrix = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
+                                                                mask_ij, ppars)
+                    if verbosity > 1:
+                        print(f"computed cost matrix for piece {idx1} ({len(alfa1)} lines) vs piece {idx2} ({len(alfa2)} lines): took {(time.time()-t1):.02f} seconds ({candidate_values:.1f} candidate values) ")
+                    #print(compatibility_matrix)
+            elif compatibility_type == 'shape':
+                #breakpoint()
+                ids_to_score = np.where(mask_ij > 0)
+                compatibility_matrix = compute_SDF_CM_matrix(pieces[idx1], pieces[idx2], ids_to_score, ppars, verbosity=verbosity)
+                #breakpoint()
+            elif compatibility_type == 'motifs':
+                assert ( (motif_det_method == "yolo-obb") | (motif_det_method == "yolo-bbox")), f"Unkown detection method for motifs!\nWe know `yolo-obb` and `yolo-bbox`, given `{motif_det_method}`\nRe-run specifying `--det_method`"
+                compatibility_matrix = compute_CM_using_motifs(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=motif_det_method, verbosity=verbosity)
+            elif compatibility_type == 'color':
+                compatibility_matrix = compute_cost_using_color_compatibility(idx1, idx2, pieces, mask_ij, ppars, seg_len=seg_len, verbosity=1)
+            else: # other compatibilities!
+                print("\n" * 20)
+                print("=" * 50)
+                print("WARNING:")
+                print(f"Received: {compatibility_type} as compatibility_type")
+                print("NOT IMPLEMENTED YET, RETURNING JUST EMPTY MATRIX")
+                print("=" * 50)
+                print("\n" * 20)
+            
+    else:
+        compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot)))
         
     return compatibility_matrix
 

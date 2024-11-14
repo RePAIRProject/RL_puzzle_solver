@@ -26,10 +26,10 @@ def calc_line_matching_parameters(parameters, cmp_cost='new'):
     if (parameters.xy_step)>6:
         lm_pars['max_dist'] = 6   ## changed *0.7*parameters.xy_step
     else:
-        lm_pars['max_dist'] = 0.70*(parameters.xy_step)
+        lm_pars['max_dist'] = 1.70*(parameters.xy_step)
 
     lm_pars['badmatch_penalty'] = max(5, lm_pars['max_dist'] * 5 / 3) # parameters.piece_size / 3 #?
-    lm_pars['mismatch_penalty'] = max(4, lm_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
+    lm_pars['mismatch_penalty'] = 1 #max(4, lm_pars['max_dist'] * 4 / 3) # parameters.piece_size / 4 #?
     lm_pars['rmax'] = .5 * lm_pars['max_dist'] * 7 / 6
     lm_pars['cmp_cost'] = cmp_cost
     lm_pars['k'] = 3
@@ -375,7 +375,7 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
 
                     intersections1, useful_lines_s11, useful_lines_s12 = \
                         line_poligon_intersect_vis(xy[::-1], -theta, piece_j['polygon'], [0, 0],  0, \
-                            piece_i['polygon'], s11, s12, ppars, extrapolate=False, draw_lines=True, \
+                            piece_i['polygon'], s11, s12, ppars, extrapolate=True, draw_lines=True, \
                                 draw_polygon=True, drawing_col='blue')
                     
                     # return intersections                    
@@ -388,7 +388,7 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                     # check if line2 crosses the polygon1
                     intersections2, useful_lines_s21, useful_lines_s22 = \
                         line_poligon_intersect_vis([0, 0], 0, piece_i['polygon'], xy[::-1], -theta, \
-                            piece_j['polygon'], s21, s22, ppars, extrapolate=False, draw_lines=True, \
+                            piece_j['polygon'], s21, s22, ppars, extrapolate=True, draw_lines=True, \
                                 draw_polygon=True, drawing_col='orange')
 
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
@@ -403,7 +403,7 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
                         #tot_cost = ppars.max_dist * 2  
                         tot_cost = ppars.badmatch_penalty / 3                   # accept with some cost
-
+                    
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
                         tot_cost = ppars.mismatch_penalty * n_lines
@@ -448,7 +448,11 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                         tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
                         #print(tot_cost)
 
-                    plt.title(f"Cost: {tot_cost} = {dist_matrix[row_ind, col_ind].sum()} + {penalty}")
+                    if n_lines_f1 > 0 and n_lines_f2 > 0:
+                        cost_string = f"Cost: {tot_cost} = {dist_matrix[row_ind, col_ind].sum()} + {penalty} ({np.abs(n_lines_f1 - n_lines_f2)})"
+                    else:
+                        cost_string = f"Cost: {tot_cost} ({n_lines_f1} lines in pi and {n_lines_f2} lines in pj)"
+                    plt.title(cost_string)
                     breakpoint()
                     plt.cla()
 

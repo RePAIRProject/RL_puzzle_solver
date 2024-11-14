@@ -18,10 +18,10 @@ def center_fragment(image):
     return centered_image, mask
 
 def main(args):
-    target_img_shape = 1501 #cfg.piece_size
+    target_img_shape = 251 #cfg.piece_size
 
 
-    groups = [77]
+    groups = [1]
     db_folder = args.dataset
     groups_folders = [os.path.join(db_folder, f'group_{group}') for group in groups]
     output_root_folder = 'data'
