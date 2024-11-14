@@ -41,7 +41,7 @@ import threading
 import time
 
 import shutil
-
+import json
 import cv2
 
 from MoveableImage import MovableImage
@@ -56,6 +56,7 @@ rotation_interval = 0.5
 showed_image_list = []
 final_solution = []
 current_image_list = []
+bank_image_list = []
 neighbour_ids = []
 buttons = []
 file_names = []
@@ -64,6 +65,7 @@ pl_solution = {}
 
 key_fragment_id = ""
 key_fragments = []
+key_list = []
 
 image_is_set = False
 anchor_showed = False
@@ -128,7 +130,6 @@ class GUIApp(MDApp):
     is_grabbing_window = False
 
     def build(self):
-
         for m in get_monitors():
             if m == get_monitors()[0]:
                 Window.left = m.x
@@ -219,7 +220,8 @@ class GUIApp(MDApp):
         self.sidebar.col_grid = MDGridLayout()
         self.sidebar.col_grid.cols = 2
         self.sidebar.col_grid.rows = 1
-        self.sidebar.col_grid.add_widget(Label(text="anchor", size_hint=(None, None), size=(44, 32)))
+        self.sidebar.col_grid.label1 = Label(text="anchor", size_hint=(None, None), size=(44, 32))
+        self.sidebar.col_grid.add_widget(self.sidebar.col_grid.label1)
         self.sidebar.image_checkbox = CheckBox(size_hint=(None, None), size=(20, 32))
         self.sidebar.image_checkbox.color = (0.6,0.6,0.6,1)
         self.sidebar.image_checkbox.group = "image_properties"
@@ -254,19 +256,27 @@ class GUIApp(MDApp):
         global backend_path
         global file_names
         global current_image_list
+        global bank_image_list
         global initial_image_updates
         global key_image
         global key_fragments
+        global key_list
 
         scores = back_end.image_scores
         current_image_list = []
         # score_label.text = str(scores[i])
         backend_path = backend_path
         file_names = back_end.image_names
-
-        if key_fragments is not []:
-            for i, fragment in enumerate(reversed(key_fragments)):
-                scores.append(str(len(key_fragments) - i) + "-Anchor")
+        last_anchors = []
+        if key_list is not []:
+            for i, fragment in enumerate(reversed(key_list)):
+                if fragment in file_names:
+                    index = file_names.index(fragment)
+                    scores.remove(scores[index])
+                    file_names.remove(fragment)
+                    back_end.image_numbers -= 1
+            for i, fragment in enumerate(reversed(key_list)):
+                scores.append(str(len(key_list) - i) + "-Anchor")
                 file_names.append(fragment)
                 back_end.image_numbers += 1
                 # scores.append(0)
@@ -274,15 +284,22 @@ class GUIApp(MDApp):
             # file_names.append(key_image.get_id())
             # back_end.image_numbers += 1
             # scores.append(0)
+        for bank_image in bank_image_list:
+            if bank_image.is_anchor:
+                last_anchors.append(bank_image.name)
         for i in range(back_end.image_numbers):
+
             image = image_reader(i, scores[i], has_score)
             # image.fit_mode = "contain"
+            if image.name in last_anchors:
+                image.is_anchor = True
             current_image_list.append(image)
         initial_image_updates = False
 
     def on_checkbox_active(self, checkbox, value):
-        if hasattr(self, 'grabbed_image'):
-            self.grabbed_image.is_anchor = value
+        if hasattr(self, 'grabbed_image') & (self.sidebar.opacity == 1):
+            if self.grabbed_image is not None:
+                self.grabbed_image.is_anchor = value
 
     def toggle_sidebar(self, on_off, true_false):
         # Toggle sidebar visibility
@@ -316,6 +333,23 @@ class GUIApp(MDApp):
             elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
                 if self.grabbed_image is not None:
                     self.grabbed_image.rotate(+1 * rotation_interval)  # its  2x God knows why
+        # elif keyboard_input == 0:
+        #     if touch.button == 'scrollup':  # scroll up is scrolling down :|
+        #         if self.grabbed_image is not None:
+        #             for image in current_image_list:
+        #                 window_size = Window.size
+        #                 mouse_pos = (window_size[0] * touch.spos[0] - image.parent.pos[0], window_size[1] * touch.spos[1] - image.parent.pos[1])
+        #                 print(image.parent.pos)
+        #                 print('up', image.scale_factor)
+        #                 image.zoom_at_point(1.05, mouse_pos)
+        #     elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
+        #         if self.grabbed_image is not None:
+        #             for image in current_image_list:
+        #                 window_size = Window.size
+        #                 mouse_pos = (window_size[0] * touch.spos[0] - image.parent.pos[0], window_size[1] * touch.spos[1] - image.parent.pos[1])
+        #                 print(image.parent.pos)
+        #                 print('up', image.scale_factor)
+        #                 image.zoom_at_point(0.95, mouse_pos)
 
         if 'button' in touch.profile:  # may cause bug in different systems -_- /todo
             if not hasattr(touch, 'prev_mouse') or not (touch.prev_mouse == touch.button):
@@ -386,11 +420,10 @@ class GUIApp(MDApp):
                     click_label.text = str(self.grabbed_image.get_name())
                     self.clicked = str(self.grabbed_image.get_number() + 1)
                     if hasattr(touch, 'double_tapped'):
-                        if touch.double_tapped:
-                            temp_text = self.grabbed_image.get_name()
-                            numbers = re.findall(r'\d+', temp_text)
-                            self.sidebar.image_name.text = '_'.join(numbers)
-                            self.toggle_sidebar(True, self.grabbed_image.is_anchor)
+                        temp_text = self.grabbed_image.get_name()
+                        numbers = re.findall(r'\d+', temp_text)
+                        self.sidebar.image_name.text = '_'.join(numbers)
+                        self.toggle_sidebar(True, self.grabbed_image.is_anchor)
                 else:
                     if self.is_grabbing_window:  # left shift
                         grid_layout = self.widget_dict['grid_layout']
@@ -445,6 +478,7 @@ class GUIApp(MDApp):
 
         showed_image_list = []
         time_stamp = time.time()
+        self.toggle_sidebar(False, False)
         for i in range(len(current_image_list)):
             showed_image_list.append(current_image_list[i].get_grid())
             self.widget_list[3].add_widget(showed_image_list[i])
@@ -559,6 +593,7 @@ class GUIApp(MDApp):
             next_neighbour_requested = False
         elif ((back_end.get_select_anchor_done()) & (back_end.get_select_neighbour_done()) & neighbour_showed &
               back_end.get_pl_solver_done() & (not solution_applied)):
+            self.sidebar.col_grid.label1.text = "Accept"
             pl_solution = back_end.get_pl_solution()
             self.apply_solution()
             solution_applied = True
@@ -596,18 +631,77 @@ def start_select_anchor(self):
 
 def start_select_neighbour(self):
     global current_image_list
+    global bank_image_list
     global image_is_set
     global key_fragment_id
     global key_fragments
-    key_fragments = [key_fragment_id]
-    for piece in final_solution:
-        if piece[0] != key_fragment_id:
-            key_fragments.append(piece[0])
+    global final_solution
+    global key_list
+    key_list = []
+    key_fragments = []
 
+    for image in current_image_list:
+        if image.is_anchor:
+            key_fragments.append(image)
+            key_list.append(image.get_id())
+        elif image.get_id() == key_fragment_id:
+            key_fragments.append(image)
+            key_list.append(image.get_id())
+            image.is_anchor = True
+            # key_list.append(image.get_id())
+
+    # # key_fragments = [key_fragment_id]
+    # for piece in final_solution:
+    #     if piece[0] != key_fragment_id:
+    #         key_list.append(piece[0])
+    #         # key_list.append(piece[0])
+
+    print("final_solution", final_solution)
+
+    if len(key_fragments) > 1:
+        target_position = [0, 0]
+        initial_position = key_fragments[0].position_memory
+        initial_position = (initial_position[0],
+                            initial_position[1],
+                            initial_position[2])
+
+        offset = (target_position[0] - initial_position[0],
+                  target_position[1] - initial_position[1],
+                  0)
+        data = None
+        parameters = path_dic['parameters']
+        bank_array = []
+        for solution in final_solution:
+            bank_array.append(solution[0])
+        with open(parameters, 'r') as f:
+            data = json.load(f)
+            if data is not None:
+                xy_step = data['xy_step']
+                theta_step = data['theta_step']
+        for key_fragment in key_fragments:
+            if key_fragment.name in bank_array:
+                break
+            key_fragment.update_ratio()
+            image_ratio = key_fragment.ratio
+            pos = [key_fragment.position_memory[0],
+                   key_fragment.position_memory[1],
+                   key_fragment.position_memory[2]]
+
+            new_position = (pos[0] + offset[0],
+                            pos[1] + offset[1],
+                            pos[2])
+            new_position = [new_position[0]/image_ratio[0],
+                            new_position[1]/image_ratio[1],
+                            new_position[2]]
+            pos = back_end.scale_to_solver(xy_step, theta_step, new_position, path_dic)
+            pos = [pos[0], pos[1], pos[2]]
+            final_solution.append([key_fragment.get_id(), pos])
+            pass
     back_end.key_fragment = key_fragment_id
     image_is_set = False
+    bank_image_list = current_image_list
     current_image_list = []
-    back_end.start_neighbour_thread(key_fragments)
+    back_end.start_neighbour_thread(key_list)
     GUIApp.widget_dict['show_button'].disabled = True
     GUIApp.widget_dict['neighbour_button'].disabled = True
 
@@ -662,7 +756,6 @@ def loop_finalization(solved_pieces):
     global image_offset
     center = [Window.size[0] / 2, Window.size[1] / 2]
     final_solution = back_end.loop_finalization(solved_pieces, image_offset)
-    print('Final Solution:', final_solution)
     # neighbour_test = ['piece_0006.png']
     # back_end.puzzle_solver_test_function(final_solution, neighbour_test)
 
@@ -720,12 +813,12 @@ def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_hei
     return reality_pixel
 
 
-def image_reader(image_number, score, has_score):
+def image_reader(image_number, score, has_score, is_anchor=False):
     name = file_names[image_number]
     click_label.color = (1, 0, 1, 1)
     image_path = path_dic['image_path']
     mask_path = path_dic['mask_path']
-    image = MovableImage(image_path, mask_path, click_label, score, image_number, has_score, name, 0)
+    image = MovableImage(image_path, mask_path, click_label, score, image_number, has_score, name, 0, is_anchor)
 
     return image
 
@@ -974,11 +1067,12 @@ def get_solved_pieces():
     solved_pieces = []
 
     for image in current_image_list:
-        image_id = image.get_id()
-        position = image.position_memory
-        x, y, rotation = int(position[0]), int(position[1]), int(position[2])
-        y = y  # Invert y-axis
-        solved_pieces.append((image_id, [x, y, rotation]))
+        if image.is_anchor:
+            image_id = image.get_id()
+            position = image.position_memory
+            x, y, rotation = int(position[0]), int(position[1]), int(position[2])
+            y = y  # Invert y-axis
+            solved_pieces.append((image_id, [x, y, rotation]))
 
     return solved_pieces
 
@@ -1034,7 +1128,6 @@ def remove_image_from_cache(image_id):
     else:
         print(f"File {file_name} does not exist in {cache}")
 
-
 if __name__ == '__main__':
     setting()
     Config.set('input', 'mouse', 'mouse, multitouch_on_demand')
@@ -1045,9 +1138,10 @@ if __name__ == '__main__':
 
     read_ground_truth()
 
-    # transparent_path = os.getcwd() + "/GUI/pieces_2/"
+    # transparent_path = os.getcwd() + "/GUI/pieces/"
     # transparent_data(transparent_path)
 
     # erode_data()
 
-    app = GUIApp().run()
+    app = GUIApp()
+    app.run()

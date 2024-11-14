@@ -168,8 +168,6 @@ def loop_finalization(solved_list, offset):
         if data is not None:
             xy_step = data['xy_step']
             theta_step = data['theta_step']
-    print("xy_step", xy_step)
-    print("theta_step", theta_step)
 
     for pieces in solved_list:
         name = pieces[0]
@@ -177,7 +175,7 @@ def loop_finalization(solved_list, offset):
 
         pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
 
-        pos = scale_to_solver(xy_step, theta_step, pos)
+        pos = scale_to_solver(xy_step, theta_step, pos, path_dic)
 
         pieces[1][0] = pos[0]
         pieces[1][1] = pos[1]
@@ -186,23 +184,22 @@ def loop_finalization(solved_list, offset):
     return final_solution
 
 
-def scale_to_solver(xy_step, theta_step, position):
-    global path_dic
+def scale_to_solver(xy_step, theta_step, position, dic):
     y, x, rotation = position
     x = -1 * x / xy_step
     y = y / xy_step
-    x = round(x) # should I
-    y = round(y) # should I?
+    x = round(x)  # should I
+    y = round(y)  # should I?
     rotation = rotation / theta_step
 
-    comp_folder = path_dic['comp_folder']
-    comp_name = path_dic['comp_name']
+    comp_folder = dic['comp_folder']
+    comp_name = dic['comp_name']
 
     # print(comp_name)
     # comp_name = eval("f'{}'".format(comp_name))
     mat = loadmat(os.path.join(comp_folder, comp_name))  # load the new compatibility matrix
 
-    R = mat[path_dic['comp_format']]
+    R = mat[dic['comp_format']]
     bias = R.shape[0] + 1
     # centralizing in solution how can I get 16 from?! #ask LUCA
     position = [x + bias, y + bias, rotation]
@@ -315,7 +312,7 @@ def get_pl_solution():
 
 
 def scale_solution():
-    global pl_solutionf
+    global pl_solution
     global path_dic
     key_x, key_y, key_rotation = pl_solution[key_fragment]
 

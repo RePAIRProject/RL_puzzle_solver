@@ -16,12 +16,16 @@ from PuzzlePiece import PuzzlePiece
 
 
 class MovableImage(Image):
-    def __init__(self, path, path_bw, label, score, image_number, has_score, name, angle):
+    def __init__(self, path, path_bw, label, score, image_number, has_score, name, angle, is_anchor=False, **kwargs):
         super(MovableImage, self).__init__()
 
         self.name = name
         os_path = getcwd()
         self.path = path + self.name
+        self.base_scale_factor = 1.0
+        self.true_scale = 1.0
+        self.scale_factor = self.base_scale_factor
+        self.zoom_scale = Scale(x=self.scale_factor, y=self.scale_factor, origin=(self.center_x, self.center_y))
         self.path_bw = path_bw + self.name
         self.limit_image = self
         self.source = self.path
@@ -63,11 +67,12 @@ class MovableImage(Image):
 
         self.ratio = np.array([1, 1])
         self.update_ratio()
-        self.is_anchor = False
+        self.is_anchor = is_anchor
 
         with self.canvas.before:
             PushMatrix()
             # self.canvas.before.add(PushMatrix())
+            self.canvas.before.add(self.zoom_scale)
             self.trans = Translate(0, 0)
             self.rot = Rotate(self.rot.origin, self.rot.angle)
 
@@ -123,10 +128,7 @@ class MovableImage(Image):
             self.grid.add_widget(self.score_label)
 
     def remove_score(self):
-        print(self.score_label.text)
-
         self.score_label.text = ""
-        print(self.score_label.text)
 
     def rotate(self, delta_angle):
         self.rot.origin = self.center
@@ -173,6 +175,46 @@ class MovableImage(Image):
     def update_ratio(self):
         self.ratio = np.array([self.texture_size[0] / self.norm_image_size[0],
                                self.texture_size[1] / self.norm_image_size[1]])
+
+    def zoom_at_point(self, factor, mouse_pos):
+        """
+        Zooms the image at the specified mouse position.
+
+        :param factor: Float for zoom level (e.g., 1.1 for zoom in, 0.9 for zoom out).
+        :param mouse_pos: Tuple (x, y) with the mouse position in window coordinates.
+        """
+        # Convert mouse position to local coordinates of the image
+        local_mouse_x = mouse_pos[0] - self.x
+        local_mouse_y = mouse_pos[1] - self.y
+
+        new_scale = self.scale_factor * factor
+
+        if (self.scale_factor < self.true_scale < new_scale) or (self.scale_factor > self.true_scale > new_scale):
+            new_scale = self.true_scale
+
+        # Update the origin of the scale to the local mouse position
+        self.zoom_scale.origin = (local_mouse_x, local_mouse_y)
+
+        # Adjust the scale factor
+        self.scale_factor = new_scale
+        self.zoom_scale.x = self.scale_factor
+        self.zoom_scale.y = self.scale_factor
+
+        self.base_scale_factor = self.scale_factor
+
+        # Optionally ensure zoom limits
+        # self.ensure_within_zoom_limits()
+
+    def ensure_within_zoom_limits(self):
+        min_zoom, max_zoom = 0.5, 3.0  # Example limits from half-size to triple-size zoom
+        if self.scale_factor < min_zoom:
+            self.scale_factor = min_zoom
+        elif self.scale_factor > max_zoom:
+            self.scale_factor = max_zoom
+
+        # Apply constrained zoom limits
+        self.zoom_scale.x = self.scale_factor
+        self.zoom_scale.y = self.scale_factor
 
     @staticmethod
     def normalize_angle(angle):
