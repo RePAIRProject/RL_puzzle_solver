@@ -4,6 +4,7 @@ from puzzle_utils.lines_ops import compute_line_based_CM_LAP, compute_line_based
         extract_from, compute_cost_matrix_LAP_vis, compute_cost_matrix_LAP_debug
 from compatibility.compatibility_Motifs import compute_CM_using_motifs
 from compatibility.compatibility_MGC import compute_cost_using_color_compatibility
+from compatibility.compatibility_Oracle import compute_oracle_compatibility
 import time
 
 
@@ -40,7 +41,7 @@ def calc_computation_parameters(parameters, cmp_type, cmp_cost, lines_det_method
 
     return cmp_pars
 
-def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None, seg_len=0, verbosity=1):
+def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, puzzle_root_folder, detector=None, seg_len=0, verbosity=1):
     """
     Wrapper for the cost computation, so that it can be called in one-line, 
     making it easier to parallelize using joblib's Parallel (in comp_irregular.py) 
@@ -60,8 +61,8 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
     lines_det_method = ppars['lines_det_method']
     motif_det_method = ppars['motif_det_method']
     
-    if verbosity > 1:
-        print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
+    #if verbosity > 1:
+        #print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
 
     compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot)))
     if idx1 != idx2:
@@ -105,6 +106,9 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
                     piece_i = pieces[idx1]
                     piece_j = pieces[idx2]
                     compatibility_matrix = compute_cost_matrix_LAP_vis(z_id, rot, lines_pi, lines_pj, piece_i, piece_j, mask_ij, ppars, verbosity=1)
+
+
+
                 else:
                     print('weird: using {compatibility_cost} method, not known! We use `new` as we dont know what else to do! change --cmp_cost')
                     compatibility_matrix = compute_cost_matrix_LCI_method(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, 
@@ -122,6 +126,10 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
             compatibility_matrix = compute_CM_using_motifs(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=motif_det_method, verbosity=verbosity)
         elif compatibility_type == 'color':
             compatibility_matrix = compute_cost_using_color_compatibility(idx1, idx2, pieces, mask_ij, ppars, seg_len=seg_len, verbosity=1)
+
+        elif compatibility_type == 'Oracle_GT':
+            compatibility_matrix = compute_oracle_compatibility(idx1, idx2, pieces, mask_ij, ppars, puzzle_root_folder, verbosity=1)
+
         else: # other compatibilities!
             print("\n" * 20)
             print("=" * 50)

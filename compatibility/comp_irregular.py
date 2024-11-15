@@ -216,11 +216,11 @@ def main(args):
                 for j in range(n):
                     if args.verbosity == 1:
                         print(f"Computing compatibility between piece {i:04d} and piece {j:04d}..", end='\r')
-                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, ppars, \
+                    ji_mat = compute_cost_wrapper(i, j, pieces, region_mask, ppars, puzzle_root_folder,\
                         detector=yolov8_obb_detector, seg_len=seg_len,
                         verbosity=args.verbosity)
-                    print(np.max(ji_mat))
-                    print(np.unique(ji_mat))
+                    #print(np.max(ji_mat))
+                    #print(np.unique(ji_mat))
                     All_cost[:, :, :, j, i] = ji_mat
 
                     if i > 1 and i != j and args.DEBUG == True:
@@ -330,7 +330,7 @@ if __name__ == '__main__':
     parser.add_argument('--cmp_type', type=str, default='motifs',
         help='Chooses the compaitbility to use.\nIf more than one should be used, select `combo`\
             \nIt is connected with `--cmp_cost` and `--det_method`!', 
-        choices=['lines', 'shape', 'color', 'motifs'])
+        choices=['lines', 'shape', 'color', 'motifs', 'Oracle_GT'])
     parser.add_argument('--cmp_cost', type=str, default='LAP',
         help='Chooses the cost used to compute compatibility - it depends on the `--cmp_type`\
             \nUse LAP or LCI for lines, YOLO or overlap for motif, SDF for shape, MGC for color',
