@@ -224,8 +224,9 @@ def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
                         c1[:, :, zj, j] = cc
 
                 q1 = np.sum(c1, axis=(2, 3))
+                #q_pos = (q1 > 0) * (q1 + no_patches * no_rotations * 1)  ## new_experiment
                 #q2 = (q1 != 0) * (q1 + no_patches * no_rotations) ## new_experiment
-                q2 = (q1 + no_patches * no_rotations * 1)
+                q2 = (q1 + no_patches * no_rotations * 1) #+ q_pos
                 q[:, :, zi, i] = q2
 
         pq = p * q  # e = 1e-11
@@ -298,7 +299,6 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folde
         if np.sum(pos[i, :2])>0:
 
             ids = (pos[i, :2] * step + cc).astype(int)
-            mask = (Im > 0.05).astype(np.uint8)
             if pos.shape[1] == 3:
                 rot = z_rot[pos[i, 2]]
                 Im = rotate(Im, rot, reshape=False, mode='constant')
@@ -314,7 +314,6 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folde
                     em = cv2.erode(mask, np.ones((5, 5)))
                     bordered_im = Im * em + (mask - em) * borders_cmap(i)[:3]
                     Im = bordered_im
-            
             if ppars.p_hs * 2 < ppars.piece_size:
                 fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
                                                                                            ids[0] - cc:ids[0] + cc + 1,
@@ -702,8 +701,30 @@ def main(args):
         R = mat['R']
         R = normalize_CM(R)
 
+    ## ADD GT Oracle-Compatibility
+    mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_Oracle_GT'))
+    R_oracle = mat['R']
+    R = R+R_oracle
+    ######
+
     ## K-sparsification
-    # R = sparsify_compatibility_matrix(R, args.k)
+    R = sparsify_compatibility_matrix(R, args.k)
+
+    ## Save Combo-compaibility matrix
+    filename = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}')
+    np.save(filename, R)
+    mdic = {
+        "R": R,
+        "label": "label",
+        "cmp_type": args.cmp_type,
+        "cmp_cost": args.cmp_cost,
+        "lines_det_method": args.lines_det_method,
+        "motif_det_method": args.motif_det_method,
+        "xy_step": ppars.xy_step,
+        "xy_grid_points": ppars.xy_grid_points,
+        "theta_step": ppars.theta_step
+    }
+    savemat(f'{filename}.mat', mdic)
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
@@ -739,8 +760,8 @@ def main(args):
     os.makedirs(solver_visualization_folder, exist_ok=True)
 
     save_each_phase = True
-    saving_stuff = (anc, pieces, pieces_files, pieces_folder, ppars, solver_visualization_folder)    
-    
+    saving_stuff = (anc, pieces, pieces_files, pieces_folder, ppars, solver_visualization_folder)
+
     all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity, decimals=args.decimals, \
         save_each_phase=save_each_phase, saving_stuff=saving_stuff)
 
@@ -757,7 +778,6 @@ def main(args):
         print(f"Solving this puzzle took {time_in_seconds:.0f} seconds")
     print("-" * 50)
 
-    
     solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}_gt{args.use_GT}_k{args.k}')
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
@@ -775,8 +795,8 @@ def main(args):
     # pdb.set_trace()
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=False)
     fin_im1_brd = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=True)
-    fin_im1_brd_no_overlap = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=True, exclude_overlapping_pieces=True)
-    
+    #fin_im1_brd_no_overlap = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=True, exclude_overlapping_pieces=True)
+
     # fin_im_v3 = reconstruct_puzzle_vis(fin_sol, pieces_folder, ppars, suffix='')
     # alternative method for reconstruction (with transparency on overlap because of b/w image)
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, pieces_dict, ppars, use_RGB=False)
@@ -795,7 +815,6 @@ def main(args):
     clean_img = fin_im1 * (fin_im1 > 0.1)
     plt.imsave(f"{final_solution[:-4]}_cropped.png", crop_to_content(clean_img * 255).astype(np.uint8))
     plt.imsave(f"{final_solution[:-4]}_bordered_cropped.png", crop_to_content(np.clip(fin_im1_brd, 0, 1) * 255).astype(np.uint8))
-    plt.imsave(f"{final_solution[:-4]}_bordered_cropped_no_overlap.png", crop_to_content(np.clip(fin_im1_brd_no_overlap, 0, 1) * 255).astype(np.uint8))
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, Z, pieces_dict, ppars, use_RGB=True)
     # final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
     # if np.max(fin_im_v2) > 1:
@@ -837,7 +856,7 @@ def main(args):
         for ff in range(f):
             frame_path = os.path.join(frames_folders, f"frame_{ff:05d}.png")
             cur_sol = all_sol[ff]
-            im_rec = reconstruct_puzzle(cur_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder)
+            im_rec = reconstruct_puzzle(cur_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=False)
             im_rec = np.clip(im_rec, 0, 1)
             plt.imsave(frame_path, im_rec)
 
