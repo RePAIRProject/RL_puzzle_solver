@@ -704,7 +704,7 @@ def main(args):
     ## ADD GT Oracle-Compatibility
     mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_Oracle_GT'))
     R_oracle = mat['R']
-    R = R+R_oracle
+    R = R + R_oracle * 1
     ######
 
     ## K-sparsification
