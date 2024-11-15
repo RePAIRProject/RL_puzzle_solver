@@ -102,8 +102,13 @@ def initialization(R, anc, p_size_y=0, p_size_x=0, anc_pos=0):
     print("P:", p.shape)
     return p, init_pos, x0, y0, z0
 
+def save_vis_puzzle(fin_sol, Y, X, Z, saving_stuff, iter_num):
+    anc, pieces, pieces_files, pieces_folder, ppars, solver_visualization_folder = saving_stuff
+    img = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=True)
+    name = os.path.join(solver_visualization_folder, f'sol_it{iter_num}.png')
+    plt.imsave(name, crop_to_content(np.clip(img, 0, 1) * 255).astype(np.uint8))
 
-def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
+def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8, save_each_phase=False, saving_stuff=[]):
     R = np.maximum(R, -1)
     R_new = R
     faze = 0
@@ -153,6 +158,8 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8):
         i1, i2, i3 = np.unravel_index(I, p[:, :, :, 1].shape)
 
         fin_sol = np.concatenate((i1, i2, i3), axis=1)
+        if save_each_phase == True:
+            save_vis_puzzle(fin_sol, Y, X, Z, saving_stuff, iter)
         if verbosity > 0:
             print("#" * 70)
             print("ITERATION", iter)
@@ -262,7 +269,7 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, Z, pieces, ppars, use_RGB=True
 
     return canvas_image
                     
-def reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=False):
+def reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=False, exclude_overlapping_pieces=False):
     step = np.ceil(ppars.xy_step)
     #ang = ppars.theta_step # 360 / Z    
     ang = 360 / Z
@@ -291,6 +298,7 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folde
         if np.sum(pos[i, :2])>0:
 
             ids = (pos[i, :2] * step + cc).astype(int)
+            mask = (Im > 0.05).astype(np.uint8)
             if pos.shape[1] == 3:
                 rot = z_rot[pos[i, 2]]
                 Im = rotate(Im, rot, reshape=False, mode='constant')
@@ -306,6 +314,7 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folde
                     em = cv2.erode(mask, np.ones((5, 5)))
                     bordered_im = Im * em + (mask - em) * borders_cmap(i)[:3]
                     Im = bordered_im
+            
             if ppars.p_hs * 2 < ppars.piece_size:
                 fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
                                                                                            ids[0] - cc:ids[0] + cc + 1,
@@ -444,19 +453,28 @@ def main(args):
         cmp_name = f"combo_{args.combo_type}"
         if args.combo_type == "SH-LIN":
             print("combining shape and lines..")
-            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.lines_det_method}_cost_{args.cmp_cost}'))
             mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
-            #breakpoint()
-            R_lines = mat_lines['R']
+            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.lines_det_method}_cost_{args.cmp_cost}'))
+            region_mask_mat = loadmat(os.path.join(puzzle_root_folder, fnames.rm_output_name, f'RM_{args.puzzle}.mat'))
             R_shape = mat_shape['R']
-            negative_region_map = R_lines < 0
-
-            # only positive values
-            R = (np.clip(R_lines, 0, 1) + np.clip(R_shape, 0, 1)) / 2
-            #R /= np.max(R)
-
-            # negative values set to -1
-            R[negative_region_map] = -1
+            R_lines = mat_lines['R']
+            lines_RM = region_mask_mat['RM_lines']
+            shape_RM = region_mask_mat['RM_shapes']
+            norm_R_shape = normalize_CM(R_shape)
+            norm_R_lines = normalize_CM(R_lines)
+            negative_region_map = R_shape < 0
+            region_lines = combine_region_masks([shape_RM, lines_RM])
+            prm_lines = (region_lines> 0).astype(int)  ## positive in RM
+            prm_shape = (shape_RM > 0).astype(int)
+            shape_basis = norm_R_shape * prm_shape
+            lines_avg_val = 0.5  # fix level ???  # lines_avg_val1 = np.mean(norm_R_lines > 0)
+            lines_contrib = prm_lines * ((norm_R_lines / lines_avg_val)-1)
+            R = np.zeros_like(R_shape)
+            total_contrib = shape_basis * (lines_contrib)
+            R = shape_basis + total_contrib
+            R += -1 * negative_region_map.astype(int)
+            R = normalize_CM(R)
+            R = np.maximum(-1, R)
 
         elif args.combo_type == 'SH-MOT':
             print("combining shape and motifs..")
@@ -682,9 +700,10 @@ def main(args):
         mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
         # R = mat['R_line'] ## temp
         R = mat['R']
+        R = normalize_CM(R)
 
     ## K-sparsification
-    R = sparsify_compatibility_matrix(R, args.k)
+    # R = sparsify_compatibility_matrix(R, args.k)
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
@@ -714,7 +733,16 @@ def main(args):
 
     # print(p_initial.shape)
     na = 1
-    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity, decimals=args.decimals)
+    num_rot = p_initial.shape[2]
+
+    solver_visualization_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}_gt{args.use_GT}_k{args.k}', 'phase_frames')
+    os.makedirs(solver_visualization_folder, exist_ok=True)
+
+    save_each_phase = True
+    saving_stuff = (anc, pieces, pieces_files, pieces_folder, ppars, solver_visualization_folder)    
+    
+    all_pay, all_sol, all_anc, p_final, eps, iter, na = RePairPuzz(R, p_initial, na, cfg, verbosity=args.verbosity, decimals=args.decimals, \
+        save_each_phase=save_each_phase, saving_stuff=saving_stuff)
 
     print("-" * 50)
     time_in_seconds = time.time()-time_start_puzzle
@@ -729,7 +757,7 @@ def main(args):
         print(f"Solving this puzzle took {time_in_seconds:.0f} seconds")
     print("-" * 50)
 
-    num_rot = p_initial.shape[2]
+    
     solution_folder = os.path.join(puzzle_root_folder, f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}_gt{args.use_GT}_k{args.k}')
     os.makedirs(solution_folder, exist_ok=True)
     print("Done! Saving in", solution_folder)
@@ -747,6 +775,7 @@ def main(args):
     # pdb.set_trace()
     fin_im1 = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=False)
     fin_im1_brd = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=True)
+    fin_im1_brd_no_overlap = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=True, exclude_overlapping_pieces=True)
     
     # fin_im_v3 = reconstruct_puzzle_vis(fin_sol, pieces_folder, ppars, suffix='')
     # alternative method for reconstruction (with transparency on overlap because of b/w image)
@@ -766,6 +795,7 @@ def main(args):
     clean_img = fin_im1 * (fin_im1 > 0.1)
     plt.imsave(f"{final_solution[:-4]}_cropped.png", crop_to_content(clean_img * 255).astype(np.uint8))
     plt.imsave(f"{final_solution[:-4]}_bordered_cropped.png", crop_to_content(np.clip(fin_im1_brd, 0, 1) * 255).astype(np.uint8))
+    plt.imsave(f"{final_solution[:-4]}_bordered_cropped_no_overlap.png", crop_to_content(np.clip(fin_im1_brd_no_overlap, 0, 1) * 255).astype(np.uint8))
     # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, Z, pieces_dict, ppars, use_RGB=True)
     # final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
     # if np.max(fin_im_v2) > 1:

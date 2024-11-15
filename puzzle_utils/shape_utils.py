@@ -545,7 +545,8 @@ def include_shape_info(fnames, pieces, dataset, puzzle, lines_det_method, motif_
             print(f'###\n\nWARNING:\nNo method, just reading from {fnames.motifs_output_name}\n\n###')
             motif_subfolder = fnames.motifs_output_name
         motif_folder = os.path.join(root_folder, motif_subfolder)
-        # motif_folder = os.path.join(root_folder, fnames.motifs_output_name, method)  #TODO - add method to detection path !!! Yolo5 ect...
+        # motif_folder = os.path.join(root_folder, fnames.motifs_output_name, method)  
+        # TODO - add method to detection path !!! Yolo5 ect...
         motif_files = os.listdir(motif_folder)
         motif = [line for line in motif_files if line.endswith('.npy')]
         motif.sort()

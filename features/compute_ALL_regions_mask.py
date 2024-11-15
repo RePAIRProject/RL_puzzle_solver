@@ -55,7 +55,7 @@ def main(args):
         # INCLUDE SHAPE
         pieces = include_shape_info(fnames, pieces, args.dataset, puzzle, lines_det_method=args.lines_det_method, \
             motif_det_method=args.motif_det_method, line_based=args.lines, line_thickness=3, motif_based=args.motif)
-        if 'detected_lines' not in pieces[0].keys():
+        if 'lines_mask' not in pieces[0].keys():
             print("-" * 50)
             print("\nWARNING:\nno lines found, line-based region will be empty!\n")
         if 'motif_mask' not in pieces[0].keys():
