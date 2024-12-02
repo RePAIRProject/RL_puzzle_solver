@@ -701,10 +701,11 @@ def main(args):
         R = mat['R']
         R = normalize_CM(R)
 
+    ## FOR DEBUG
     ## ADD GT Oracle-Compatibility
-    mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_Oracle_GT'))
-    R_oracle = mat['R']
-    R = R+R_oracle
+    # mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_Oracle_GT'))
+    # R_oracle = mat['R']
+    # R = R+R_oracle
     ######
 
     ## K-sparsification

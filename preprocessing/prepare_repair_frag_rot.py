@@ -7,8 +7,8 @@ from puzzle_utils.shape_utils import get_mask, get_polygon
 import matplotlib.pyplot as plt 
 
 target_shape = 251
-gr_num = 1
-obj_num = 1
+gr_num = 3
+obj_num = 3
 
 #dataset = f'/media/lucap/big_data/datasets/repair/2D_dataset/RPobj_g{obj_num}_o{obj_num:04d}'
 #output = f'/media/lucap/big_data/datasets/repair/2D_dataset/RPobj_g{obj_num}_o{obj_num:04d}_gt_rot'

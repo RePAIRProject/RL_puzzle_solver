@@ -56,7 +56,7 @@ def main(args):
     # '/home/lucap/code/RL_puzzle_solver/data/manual_lines/pieces'
     dataset_folder_pieces = os.path.join(os.getcwd(), f'output', args.dataset) #'pieces')
     border_tolerance = 5
-    filter_lines = True
+    filter_lines = False
     output_folder = dataset_folder_pieces #os.path.join(root_folder, f'output_{num_pieces}x{num_pieces}', args.dataset)
     # output_folder = '/home/lucap/code/RL_puzzle_solver/output/manual_lines'
     
@@ -78,8 +78,6 @@ def main(args):
     net = DeepLSD(conf)
     net.load_state_dict(ckpt['model'])
     net = net.to(device).eval()
-
-
 
     for puzzle_folder in os.listdir(dataset_folder_pieces):
         print("detecting on", puzzle_folder)
@@ -140,7 +138,11 @@ def main(args):
                     }
                 with torch.no_grad():
                     out = net(inputs)
-                    pred_lines = out['lines'][0]
+                    if 'lines' in out.keys():
+                        pred_lines = out['lines'][0]
+                    else:
+                        pred_lines = None
+                        len_lines = 0
 
                 if pred_lines is not None:
                     # convert to polar
