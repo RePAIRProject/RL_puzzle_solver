@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- Meta tags for social media banners, these should be filled in appropriatly as they are your "business card" -->
+  <!-- Replace the content tag with appropriate information -->
+  <meta name="description" content="Re-assembling the past: The RePAIR dataset and benchmark for real world 2D and 3D puzzle solving">
+  <meta property="og:title" content="Re-assembling the past: The RePAIR dataset and benchmark for real world 2D and 3D puzzle solving"/>
+  <meta property="og:description" content="Re-assembling the past: The RePAIR dataset and benchmark for real world 2D and 3D puzzle solving"/>
+  <meta property="og:url" content="https://repairproject.github.io/AAFR_web/"/>
+  <!-- Path to banner image, should be in the path listed below. Optimal dimenssions are 1200X630-->
+  <meta property="og:image" content="static/images/pipeline.jpg" />
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+
+
+  <meta name="twitter:title" content="Re-assembling the past: The RePAIR dataset and benchmark for real world 2D and 3D puzzle solving">
+  <meta name="twitter:description" content="Re-assembling the past: The RePAIR dataset and benchmark for real world 2D and 3D puzzle solving">
+  <!-- Path to banner image, should be in the path listed below. Optimal dimenssions are 1200X600-->
+  <meta name="twitter:image" content="static/images/pipeline.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- Keywords for your paper to be indexed by-->
+  <meta name="keywords" content="repair, 3d-assembly, 3d-segmentation">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+  <title>Re-assembling the past: The RePAIR dataset and benchmark for real world 2D and 3D puzzle solving</title>
+  <link rel="icon" type="image/x-icon" href="">
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+  rel="stylesheet">
+
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+  href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script src="static/js/bulma-carousel.min.js"></script>
+  <script src="static/js/bulma-slider.min.js"></script>
+  <script src="static/js/index.js"></script>
+  <!-- Import the component -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+
+</head>
+<body>
+
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">Nash Meets Wertheimer:<br>Using Good Continuation in Jigsaw Puzzles</h1>
+            <div class="is-size-6 publication-authors">
+              Marina Khoroshiltseva<sup>1,*</sup>, Luca Palmieri<sup>1,*</sup>, Sinem Aslan<sup>1,2</sup>, 
+              Sebastiano Vascon<sup>1,2</sup>, Marcello Pelillo<sup>1</sup>
+              <span class="eql-cntrb is-size-7"><small><br><sup>*</sup>Indicates Equal Contribution</small></span>
+
+            </div>
+
+            <div class="is-size-6 publication-authors my-4">
+                <span class="author-block"><sup>1</sup> Department of Computer Science (DAIS), Ca’ Foscari University of Venice, Italy</span>
+                <span class="author-block"><sup>2</sup> European Center for Living Technology (ECLT), Venice, Italy</span>
+                <br>
+                <i>to be presented at</i> &nbsp; <span class="author-block has-text-weight-semibold pt-2">ACCV 2024</span>
+            </div>
+
+            <div>
+                <img src="static/images/cover/line_matters_all.png" 
+                alt="example of broken artworks where the principle of good continuation is important" />
+            </div>
+
+            <div class="has-text-centered my-4">
+                <span class="link-block">
+                    <a href="https://github.com/RePAIRProject/RL_puzzle_solver" target="_blank"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                        <i class="fab fa-github"></i>
+                    </span>
+                    <span>Code</span>
+                    </a>
+                </span>
+                <span class="link-block">
+                    <a href="https://arxiv.org/abs/2410.16857" target="_blank"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                        <i class="ai ai-arxiv"></i>
+                    </span>
+                    <span>Paper</span>
+                    </a>
+                </span>
+                <span class="link-block">
+                    <a href="https://arxiv.org/abs/2410.16857" target="_blank"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                        <i class="ai ai-arxiv"></i>
+                    </span>
+                    <span>Supplementary (coming soon)</span>
+                    </a>
+                </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<section class="section hero is-light">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            Jigsaw puzzle solving is a challenging task for computer vision since it requires high-level spatial and semantic reasoning. 
+            To solve the problem, existing approaches invariably use color and/or shape information but in many real-world scenarios, such as in archaeological fresco reconstruction, 
+            this kind of clues is often unreliable due to severe physical and pictorial deterioration of the individual fragments. 
+            This makes state-of-the-art approaches entirely unusable in practice. 
+            On the other hand, in such cases, simple geometrical patterns such as lines or curves offer a powerful yet unexplored clue. 
+            In an attempt to fill in this gap, in this paper we introduce a new challenging version of the puzzle solving problem in which 
+            one deliberately ignores conventional color and shape features and relies solely on the presence of linear geometrical patterns. 
+            The reconstruction process is then only driven by one of the most fundamental principles of Gestalt perceptual organization, 
+            namely Wertheimer's <i>law of good continuation</i>. In order to tackle this problem, we formulate the puzzle solving problem as 
+            the problem of finding a Nash equilibrium of a (noncooperative) multiplayer game and use classical multi-population replicator dynamics to solve it. 
+            The proposed approach is general and allows us to deal with pieces of arbitrary shape, size and orientation. 
+            We evaluate our approach on both synthetic and real-world data and compare it with state-of-the-art algorithms.
+             The results show the intrinsic complexity of our purely line-based puzzle problem as well as the relative effectiveness of our game-theoretic formulation.         </p>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</section>
+<!-- Image carousel -->
+<section class="hero is-small">
+    <div class="hero-body">
+      <div class="container">
+        <div id="results-carousel" class="carousel results-carousel">
+            <div class="item">
+                <!-- Your image here -->
+                <img src="static/images/cover/line_matters_all.png" alt="The pipeline of the proposed method."/>
+                <h2 class="subtitle has-text-centered">
+                    <b>Fig. 1:</b> Three groups of fragments from an ancient broken fresco. 
+                    Here, the good continuation principle plays a major role in the reassembly process.
+                </h2>
+            </div>
+            <div class="item">
+                <!-- Your image here -->
+                <img src="static/images/method/patial_payoff.jpg" alt="The pipeline of the proposed method."/>
+                <h2 class="subtitle has-text-centered">
+                    <b>Fig. 3:</b> The three regions of the space : 
+                    neutral (yellow), adjacent (green) and overlapping (red).
+                </h2>
+            </div>
+            <div class="item">
+                <!-- Your image here -->
+                <img src="static/images/method/cm_players_v4.png" alt="Comparison with other methods."/>
+                <h2 class="subtitle has-text-centered">
+                    <b>Fig. 4:</b> An example of the computation of the cost for the players i and j given a
+candidate γ strategy. The two sets Li|γ and Lj|γ are created by selecting only lines
+which intersects the opposite player, and the total cost consists of the sum of the cost
+of the corresponding LAP and the penalty for unmatched lines.
+                </h2>
+            </div>
+            <div class="item">
+                <!-- Your image here -->
+                <img src="static/images/puzzles.jpg" alt="Results on different datasets."/>
+                <h2 class="subtitle has-text-centered">
+                    <b>Fig. 5:</b> Some examples of puzzles using real vector maps from Openstreetmaps
+                </h2>
+            </div>
+            <div class="item">
+                <!-- Your image here -->
+                <img src="static/images/repair/repair_solutions.png" alt="Results on different datasets."/>
+                <h2 class="subtitle has-text-centered">
+                    <b>Fig. 6:</b> An example of a real archaeological puzzle composed of irregular fragments.
+                </h2>
+            </div>
+            <div class="item">
+                <!-- Your image here -->
+                <img src="static/images/results/squared_pieces.jpg" alt="Results on different datasets."/>
+                <h2 class="subtitle has-text-centered">
+                    <b>Table 2:</b> Qualitative Results on squared pieces
+                </h2>
+            </div>
+            <div class="item">
+                <!-- Your image here -->
+                <img src="static/images/results/polyomino_pieces.jpg" alt="Results on different datasets."/>
+                <h2 class="subtitle has-text-centered">
+                    <b>Table 4:</b> Qualitative results on the polyomino pieces. 
+                    Reconstructed puzzles are cropped for a better visualization.
+                </h2>
+            </div>
+            <div class="item">
+                <!-- Your image here -->
+                <img src="static/images/results/irregular.jpg" alt="Results on different datasets."/>
+                <h2 class="subtitle has-text-centered">
+                    <b>Table 4:</b> Qualitative results on the irregular pieces. 
+                    Reconstructed puzzles are cropped for a better visualization.
+                </h2>
+            </div>
+        </div>
+    </div>
+</div>
+</section>
+  <!-- End image carousel -->
+
+<section class="section hero is-light">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title">Challenge</h2>
+        <img src="static/images/9lines_v2.png"
+        alt="9 squared pieces with lines"/>
+        <h2 class="subtitle has-text-centered">
+            <b>Fig. 2:</b> The difficulty of solving purely line-based jigsaw puzzles. 
+            The reader is invited to solve this small (3 × 3) instance of the problem. 
+            Our algorithm solves it perfectly.
+        </h2>
+        <details class="subtitle has-text-centered">
+            <summary><i><b>Click for help</i></b></summary>
+            The solution can be found in the <a href="">supplementary material</a> (link will be updated soon).
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Teaser video-->
+<!-- <section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body is-centered">
+      <video poster="" id="tree" autoplay controls muted loop height="100%">
+        <source src="static/videos/banner_video.mp4"
+        type="video/mp4">
+      </video>
+      <h2 class="subtitle has-text-centered">
+        Aliquam vitae elit ullamcorper tellus egestas pellentesque. Ut lacus tellus, maximus vel lectus at, placerat pretium mi. Maecenas dignissim tincidunt vestibulum. Sed consequat hendrerit nisl ut maximus. 
+      </h2>
+    </div>
+  </div>
+</section> -->
+<!-- End teaser video -->
+
+
+
+
+
+
+<!-- Youtube video -->
+<!-- <section class="hero is-small is-light">
+  <div class="hero-body">
+    <div class="container">
+      <h2 class="title is-3">Video Presentation</h2>
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          
+          <div class="publication-video">
+            <iframe src="https://www.youtube.com/embed/JkaxUblCGz0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section> -->
+<!-- End youtube video -->
+
+
+
+<!--BibTex citation -->
+  <!-- <section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+      <h2 class="title">BibTeX</h2>
+      <pre><code>
+@misc{paper_code,
+      title={Re-assembling the past: The RePAIR dataset and benchmark for real world 2D and 3D puzzle solving},
+      author={many},
+      year={2024},
+      eprint={},
+      archivePrefix={},
+      primaryClass={}
+}
+      </code></pre>
+    </div>
+</section> -->
+<!--End BibTex citation -->
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+
+    <!-- <h2 class="title">Preview Files</h2>
+    <p>
+      The files used in this web page are not yet released. 
+      These should not be used until full disclosure of the dataset.
+    </p> -->
+
+    <h2 class="title">Acknowledgment</h2>
+    <p>
+      This work is part of a project that has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No.964854.
+    </p>
+
+    <div class="columns p-6">
+      <div class="column mg-large p-6">
+        <img src="static/images/eu.jpg" alt="eu flag."/>
+      </div>
+      <div class="column mg-large p-6">
+        <img src="static/images/logo-repair.png" alt="logo repair."/>
+      </div>
+    </div>
+
+
+  <footer class="footer">
+  <div class="container is-max-desktop">
+    <div class="columns is-max-desktop is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            This page was built using the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">Academic Project Page Template</a>.
+            You are free to borrow the of this website, we just ask that you link back to this page in the footer. <br> This website is licensed under a <a rel="license"  href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative
+            Commons Attribution-ShareAlike 4.0 International License</a>.
+          </p>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Statcounter tracking code -->
+  
+<!-- You can add a tracker to track page visits by creating an account at statcounter.com -->
+
+    <!-- End of Statcounter Code -->
+
+  </body>
+  </html>
