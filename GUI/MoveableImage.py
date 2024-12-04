@@ -6,6 +6,7 @@ from kivy.uix.gridlayout import GridLayout
 
 from kivy.uix.image import Image
 from kivy.uix.label import Label
+from kivy.graphics import Color
 
 from point_Inside import is_inside_sm
 from os import getcwd
@@ -19,6 +20,7 @@ class MovableImage(Image):
     def __init__(self, path, path_bw, label, score, image_number, has_score, name, angle, is_anchor=False, **kwargs):
         super(MovableImage, self).__init__()
 
+        self.is_selected = False
         self.name = name
         os_path = getcwd()
         self.path = path + self.name
@@ -230,17 +232,10 @@ class MovableImage(Image):
         self.x = x
         self.y = y
 
-    def get_scatter(self):
-        return self.scatter
+    def select(self):
+        self.is_selected = True
+        self.color = (0.8, 0.8, 1, 1)
 
-    def get_number(self):
-        return self.image_number
-
-    def get_grid(self):
-        return self.grid
-
-    def get_name(self):
-        return self.name
-
-    def get_path(self):
-        return self.path
+    def deselect(self):
+        self.is_selected = False
+        self.color = (1, 1, 1, 1)

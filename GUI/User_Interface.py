@@ -3,103 +3,36 @@ import re
 
 from kivy import Config
 from kivy.clock import Clock, mainthread
-from kivy.uix.scatter import Scatter
+from kivy.graphics import Rectangle, Color
 from kivymd.app import MDApp
 import numpy as np
 import math
 from screeninfo import get_monitors
 from kivy.uix.gridlayout import GridLayout
-from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.checkbox import CheckBox
-from kivy.uix.togglebutton import ToggleButton
-from kivy.uix.bubble import Bubble
-from kivy.uix.textinput import TextInput
-
-from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.toolbar import MDTopAppBar
-from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.card import MDCard
-from kivymd.uix.relativelayout import MDRelativeLayout
-from kivy.uix.screenmanager import ScreenManager, Screen
-
-from kivymd.uix.snackbar import MDSnackbar
-
 from kivy.core.window import Window
-
 from PIL import Image as PILImage
-
 import Back_End as back_end
-
 from RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
-
 import threading
 import time
-
 import shutil
 import json
 import cv2
-
 from MoveableImage import MovableImage
 
 Window.clearcolor = (0, 0, 0, 0)
 
 backend_path = os.getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
-path_dic = None
-image_offset = [0, 0]
+path_dic = {}
+
 rotation_interval = 0.5
-
-showed_image_list = []
-final_solution = []
-current_image_list = []
-bank_image_list = []
-neighbour_ids = []
-buttons = []
-file_names = []
-
-pl_solution = {}
-
-key_fragment_id = ""
-key_fragments = []
-key_list = []
-
-image_is_set = False
-anchor_showed = False
-neighbour_showed = False
-next_neighbour_requested = False
-solution_applied = False
-initial_image_updates = False
-hold_left = False
-checked_border = False
-test_thread_started = True
-
-communicate_thread_lock = threading.Lock()
-click_label = Label()
-
-key_image = None
-sorted_image_scores = None
-
-select_anchor_running = None
-select_neighbour_running = None
-pl_solver_running = None
-
-select_anchor_done = None
-select_neighbour_done = None
-pl_solver_done = None
-
-selected_pic = 0
-
-ratio = 1
-time_stamp = 0
-none_counter = 0
-keyboard_input = 0
-
-toolbar_color = 0  # 0 for light blue, -1 for red, 1 for green
-
 communication_freq = 0.10  # in seconds
 graphic_freq = 0.10  # in seconds
 
@@ -118,16 +51,72 @@ def update_image_offset(image, center):
 
 
 class GUIApp(MDApp):
-    widget_list = []
-    widget_dict = {}
-    clicked = ""
-    resize_event = None
-    global select_anchor_running
-    global toolbar_color
-    toolbar_bg = 0
-    global backend_path
-    grid_layout = GridLayout()
-    is_grabbing_window = False
+    def __init__(self):
+        super().__init__()
+        self.the_app = self
+        self.communicate_thread_lock = threading.Lock()
+
+        self.grabbed_image = None
+        self.selection_rect = None
+
+        # flags
+        self.hold_left = False
+        self.checked_border = False
+        self.is_grabbing_window = False
+        self.image_is_set = False
+        self.anchor_showed = False
+        self.neighbour_showed = False
+        self.next_neighbour_requested = False
+        self.solution_applied = False
+        self.initial_image_updates = False
+
+        # keyboard flags
+        self.is_grabbing_window = False
+
+        self.keyboard_input = 0
+        self.ratio = 1
+        self.time_stamp = 0
+        self.selected_pic = 0
+
+        self.toolbar_color = 0
+        self.toolbar_bg = 0
+
+        self.image_offset = [0, 0]
+
+        self.pl_solution = {}
+
+        self.showed_image_list = []
+        self.final_solution = []
+        self.current_image_list = []
+        self.bank_image_list = []
+        self.neighbour_ids = []
+        self.file_names = []
+        self.key_fragments = []
+        self.key_list = []
+
+        self.clicked = ""
+        self.key_fragment_id = ""
+
+        self.resize_event = None
+        self.key_image = None
+        self.select_anchor_running = None
+        self.select_neighbour_running = None
+        self.pl_solver_running = None
+        self.select_anchor_done = None
+        self.select_neighbour_done = None
+        self.pl_solver_done = None
+
+        self.the_layout = MDFloatLayout(md_bg_color=(0, 0, 0, 1))
+        self.grid_layout = GridLayout()
+        self.toolbar = MDTopAppBar()
+        self.click_label = Label()
+        self.main_layout = MainLayout()
+        self.sidebar = MDCard(size_hint=(None, None), size=(64, Window.size[1] - 64), pos_hint={"right": 1, "down": 1},
+                              md_bg_color=(0.1, 0.1, 0.1, 1))
+        self.anchor_button = Button(text="Select Anchor")
+        self.show_button = Button(text="Next")
+        self.neighbour_button = Button(text="Neighbour")
+        self.pl_solver_button = Button(text="PL Solver")
 
     def build(self):
         for m in get_monitors():
@@ -135,78 +124,62 @@ class GUIApp(MDApp):
                 Window.left = m.x
                 Window.top = m.y
                 Window.size = (m.width, m.height)
-        self.the_app = self
-        self.the_layout = MDFloatLayout(md_bg_color=(0, 0, 0, 1))
         # the_layout = Scatter()
-        main_layout = MainLayout()
-        main_layout.cols = 1
+        self.main_layout.cols = 1
 
-        Window.bind(on_motion=self.on_touch_move, on_key_down=self._on_keyboard_down, on_key_up=self.on_keyboard_up,
-                    on_resize=self.on_resize)
+        Window.bind(
+            on_motion=self.on_touch_move,
+            on_touch_down=self.on_touch_down,
+            on_key_down=self._on_keyboard_down,
+            on_key_up=self.on_keyboard_up,
+            on_resize=self.on_resize,
+            on_touch_up = self.on_touch_up
+        )
 
-        main_layout.rows = 3
-        main_layout.padding = [0, 0, 0, 0]
-        main_layout.spacing = [0, 0]
+        self.main_layout.rows = 3
+        self.main_layout.padding = [0, 0, 0, 0]
+        self.main_layout.spacing = [0, 0]
 
-        self.toolbar = MDTopAppBar()
         self.toolbar.orientation = "horizontal"
 
-        main_layout.add_widget(self.toolbar)
+        self.main_layout.add_widget(self.toolbar)
 
-        anchor_button = Button(text="Select Anchor")
-        anchor_button.bind(on_press=start_select_anchor)
-        anchor_button.size_hint_x = 0.5
+        self.anchor_button.bind(on_press=start_select_anchor)
+        self.anchor_button.size_hint_x = 0.5
 
-        show_button = Button(text="Next")
-        show_button.bind(on_press=get_next_neighbour)
-        show_button.size_hint_x = 0.5
+        self.show_button.bind(on_press=get_next_neighbour)
+        self.show_button.size_hint_x = 0.5
 
-        neighbour_button = Button(text="Neighbour")
-        neighbour_button.bind(on_press=start_select_neighbour)
-        neighbour_button.size_hint_x = 0.5
+        self.neighbour_button.bind(on_press=start_select_neighbour)
+        self.neighbour_button.size_hint_x = 0.5
 
         # the_layout.add_widget(snackbar)
 
-        pl_solver_button = Button(text="PL Solver")
-        pl_solver_button.bind(on_press=start_pl_solver)
-        pl_solver_button.size_hint_x = 0.5
+        self.pl_solver_button.bind(on_press=start_pl_solver)
+        self.pl_solver_button.size_hint_x = 0.5
 
-        self.toolbar.left_action_items.append(["menu", lambda x: the_app.callback()])
+        self.toolbar.left_action_items.append(["menu", lambda x: self.the_app.callback()])
 
-        self.toolbar.add_widget(pl_solver_button)
-        self.toolbar.add_widget(neighbour_button)
-        self.toolbar.add_widget(anchor_button)
-        self.toolbar.add_widget(show_button)
+        self.toolbar.add_widget(self.pl_solver_button)
+        self.toolbar.add_widget(self.neighbour_button)
+        self.toolbar.add_widget(self.anchor_button)
+        self.toolbar.add_widget(self.show_button)
 
-        main_layout.minimum_height = 1
+        self.main_layout.minimum_height = 1
 
-        click_label.text = "Click on the pictures"
-        click_label.size_hint_y = 0.1
-        click_label.height = 0.1
+        self.click_label.text = "Click on the pictures"
+        self.click_label.size_hint_y = 0.1
+        self.click_label.height = 0.1
 
-        grid_layout = GridLayout()
-        grid_layout.cols = 5
-        grid_layout.size_hint = (1, 1)
-        grid_layout.padding = 0
-        grid_layout.spacing = 0
+        self.grid_layout.cols = 5
+        self.grid_layout.size_hint = (1, 1)
+        self.grid_layout.padding = 0
+        self.grid_layout.spacing = 0
 
-        main_layout.add_widget(grid_layout)
-        main_layout.add_widget(click_label)
+        self.main_layout.add_widget(self.grid_layout)
+        self.main_layout.add_widget(self.click_label)
 
-        self.the_layout.add_widget(main_layout)
-        self.widget_list.append(self.toolbar)  # 0 toolbar
-        self.widget_list.append(anchor_button)  # 1 anchor_button
-        self.widget_list.append(show_button)  # 2 show_button
-        self.widget_list.append(grid_layout)  # 3 image_view
-        self.widget_list.append(neighbour_button)  # 4 neighbour_button
-
-        self.widget_dict.update({'grid_layout': grid_layout})
-        self.widget_dict.update({'toolbar': self.toolbar})
-        self.widget_dict.update({'anchor_button': anchor_button})
-        self.widget_dict.update({'show_button': show_button})
-        self.widget_dict.update({'neighbour_button': neighbour_button})
-        self.widget_dict.update({'main_layout': main_layout})
-        self.widget_dict.update({'pl_solver_button': pl_solver_button})
+        self.the_layout.add_widget(self.main_layout)
 
         # toggle_button = MDRaisedButton(text="Toggle Sidebar", size_hint=(None, None), size=(200, 50))
         # toggle_button.bind(on_release=self.toggle_sidebar)
@@ -243,48 +216,38 @@ class GUIApp(MDApp):
         # the_layout.add_widget(toggle_button)
         self.the_layout.add_widget(self.sidebar)
 
-        anchor_button.disabled = False
-        show_button.disabled = True
-        neighbour_button.disabled = True
-        pl_solver_button.disabled = True
+        self.anchor_button.disabled = False
+        self.show_button.disabled = True
+        self.neighbour_button.disabled = True
+        self.pl_solver_button.disabled = True
 
         Clock.schedule_interval(self.checking_clock, graphic_freq)  # Graphic Internal Thread to communicate
         return self.the_layout
 
     @mainthread
     def set_images(self, has_score, *args, **kwargs):
-        global backend_path
-        global file_names
-        global current_image_list
-        global bank_image_list
-        global initial_image_updates
-        global key_image
-        global key_fragments
-        global key_list
-
         scores = back_end.image_scores
-        current_image_list = []
+        self.current_image_list = []
         # score_label.text = str(scores[i])
-        backend_path = backend_path
-        file_names = back_end.image_names
+        self.file_names = back_end.image_names
         last_anchors = []
-        if key_list is not []:
-            for i, fragment in enumerate(reversed(key_list)):
-                if fragment in file_names:
-                    index = file_names.index(fragment)
+        if self.key_list is not []:
+            for i, fragment in enumerate(reversed(self.key_list)):
+                if fragment in self.file_names:
+                    index = self.file_names.index(fragment)
                     scores.remove(scores[index])
-                    file_names.remove(fragment)
+                    self.file_names.remove(fragment)
                     back_end.image_numbers -= 1
-            for i, fragment in enumerate(reversed(key_list)):
-                scores.append(str(len(key_list) - i) + "-Anchor")
-                file_names.append(fragment)
+            for i, fragment in enumerate(reversed(self.key_list)):
+                scores.append(str(len(self.key_list) - i) + "-Anchor")
+                self.file_names.append(fragment)
                 back_end.image_numbers += 1
                 # scores.append(0)
 
-            # file_names.append(key_image.get_id())
+            # self.file_names.append(key_image.get_id())
             # back_end.image_numbers += 1
             # scores.append(0)
-        for bank_image in bank_image_list:
+        for bank_image in self.bank_image_list:
             if bank_image.is_anchor:
                 last_anchors.append(bank_image.name)
         for i in range(back_end.image_numbers):
@@ -293,8 +256,8 @@ class GUIApp(MDApp):
             # image.fit_mode = "contain"
             if image.name in last_anchors:
                 image.is_anchor = True
-            current_image_list.append(image)
-        initial_image_updates = False
+            self.current_image_list.append(image)
+        self.initial_image_updates = False
 
     def on_checkbox_active(self, checkbox, value):
         if hasattr(self, 'grabbed_image') & (self.sidebar.opacity == 1):
@@ -313,20 +276,27 @@ class GUIApp(MDApp):
             self.sidebar.image_checkbox.state = "normal"
 
     @mainthread
-    def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener
-        global click_label
-        global hold_left
-        global checked_border
-        global none_counter
-        global keyboard_input
-        global key_fragment_id
-        global key_image
-        global rotation_interval
+    def on_touch_down(self, window, touch, *args, **kwargs):
+        if touch.button == 'left':
+            self.start_pos = touch.pos
+            self.hold_left = True
 
+    @mainthread
+    def on_touch_up(self, window, touch, *args, **kwargs):
+        if touch.button == 'left':
+            self.hold_left = False
+            if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+                self.grabbed_image.deselect()
+        if (touch.button == 'left') & hasattr(self, 'selection_rect'):
+                if self.selection_rect in self.grid_layout.canvas.children:
+                    self.grid_layout.canvas.remove(self.selection_rect)
+
+    @mainthread
+    def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener
         scrolling = 0
-        if keyboard_input == 304:
+        if self.keyboard_input == 304:  # left shift
             self.is_grabbing_window = True
-        if keyboard_input == 305:
+        if self.keyboard_input == 305: # left ctrl
             if touch.button == 'scrollup':  # scroll up is scrolling down :|
                 if self.grabbed_image is not None:
                     self.grabbed_image.rotate(-1 * rotation_interval)  # its  2x God knows why
@@ -336,7 +306,7 @@ class GUIApp(MDApp):
         # elif keyboard_input == 0:
         #     if touch.button == 'scrollup':  # scroll up is scrolling down :|
         #         if self.grabbed_image is not None:
-        #             for image in current_image_list:
+        #             for image in self.current_image_list:
         #                 window_size = Window.size
         #                 mouse_pos = (window_size[0] * touch.spos[0] - image.parent.pos[0], window_size[1] * touch.spos[1] - image.parent.pos[1])
         #                 print(image.parent.pos)
@@ -344,32 +314,18 @@ class GUIApp(MDApp):
         #                 image.zoom_at_point(1.05, mouse_pos)
         #     elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
         #         if self.grabbed_image is not None:
-        #             for image in current_image_list:
+        #             for image in self.current_image_list:
         #                 window_size = Window.size
         #                 mouse_pos = (window_size[0] * touch.spos[0] - image.parent.pos[0], window_size[1] * touch.spos[1] - image.parent.pos[1])
         #                 print(image.parent.pos)
         #                 print('up', image.scale_factor)
         #                 image.zoom_at_point(0.95, mouse_pos)
 
-        if 'button' in touch.profile:  # may cause bug in different systems -_- /todo
-            if not hasattr(touch, 'prev_mouse') or not (touch.prev_mouse == touch.button):
-                touch.prev_mouse = touch.button
-                hold_left = False
-            else:
-                if touch.button == 'left':
-                    hold_left = True
-                else:
-                    hold_left = False
-            none_counter = 0
-        else:
-            if none_counter > 1:
-                none_counter = 0
-                hold_left = False
-            else:
-                none_counter += 1  # weird input recognition from KIVY
         window_size = Window.size
         mouse_pos = (window_size[0] * touch.spos[0], window_size[1] * touch.spos[1])
         if touch.button == 'right':
+            if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+                self.grabbed_image.deselect()
             # self.grabbed_image = None
             self.toggle_sidebar(False, False)
 
@@ -377,89 +333,103 @@ class GUIApp(MDApp):
             if touch.is_double_tap:
                 if not hasattr(touch, 'double_tapped') or not touch.double_tapped:
                     touch.double_tapped = True
-            if not hold_left:
-                checked_border = False
-                for image in current_image_list:
+            if not self.hold_left:
+                self.checked_border = False
+                for image in reversed(self.current_image_list):
                     if not hasattr(touch, 'dragging') or not touch.dragging:
-                        if image.collides(mouse_pos[0], mouse_pos[1]):
-                            if not checked_border:
-                                width_height = ((image.width - image.norm_image_size[0]) / 2,
-                                                (image.height - image.norm_image_size[1]) / 2)
-                                pixel = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
-                                                            image.get_norm_image_size(), mouse_pos, width_height,
-                                                            (image.texture_size[0] / image.norm_image_size[0]),
-                                                            (image.texture_size[1] / image.norm_image_size[1]),
-                                                            image.angle)
+                        if check_image_select(image, mouse_pos):
+                            if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+                                self.grabbed_image.deselect()
+                            self.grabbed_image = image
+                            self.grabbed_image.select()
+                            self.grabbed_image.update_translate()
 
-                                if image.check_mask(pixel):
-                                    self.grabbed_image = image
-                                    self.grabbed_image.update_translate()
-
-                                    checked_border = True  # /todo
-                                    break
-                if not checked_border:
+                            self.checked_border = True  # /todo
+                            break
+                if not self.checked_border:
+                    if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+                        self.grabbed_image.deselect()
                     self.grabbed_image = None
-            else:
-                if self.grabbed_image is not None and checked_border:
-                    if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
-                        # Store the offset between touch position and widget position
-                        touch.offset_x = mouse_pos[0] - self.grabbed_image.get_real_pos()[0]
-                        touch.offset_y = mouse_pos[1] - self.grabbed_image.get_real_pos()[1]
-                        # self.grabbed_image.translate(touch.offset_x, touch.offset_y)
-                    # x_y = (mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
-                    # r = np.array([1,1])
-                    self.grabbed_image.translate(mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
-                    # self.grabbed_image.update(x_y, r, 0)
-                    if solution_applied:
-                        self.grabbed_image
 
-                    if (not select_anchor_running) and (not select_neighbour_running) and (not select_neighbour_done):
-                        key_fragment_id = str(self.grabbed_image.get_id())
-                        key_image = self.grabbed_image
-                    # click_label.text = str(self.grabbed_image.get_number() + 1)
-                    click_label.text = str(self.grabbed_image.get_name())
-                    self.clicked = str(self.grabbed_image.get_number() + 1)
-                    if hasattr(touch, 'double_tapped'):
-                        temp_text = self.grabbed_image.get_name()
-                        numbers = re.findall(r'\d+', temp_text)
-                        self.sidebar.image_name.text = '_'.join(numbers)
-                        self.toggle_sidebar(True, self.grabbed_image.is_anchor)
+            if self.hold_left:  # hold left
+                if self.keyboard_input == 103:
+                    with self.grid_layout.canvas:
+                        if not hasattr(self, 'selection_rect') or not (
+                                self.selection_rect in self.grid_layout.canvas.children):
+                            Color(0, 1, 0, 0.3)
+                            rectangle_size_x = 10
+                            rectangle_size_y = 10
+                            self.selection_rect = Rectangle(pos=(touch.x, touch.y - rectangle_size_y),
+                                                            size=(rectangle_size_x, rectangle_size_y))
+                            self.selection_rect.pos = (touch.x, touch.y - rectangle_size_y)
+                            self.selection_rect.size = (rectangle_size_x, rectangle_size_y)
+                    if hasattr(self, 'selection_rect'):
+                        self.selection_rect.size = (touch.x - self.start_pos[0], touch.y - self.start_pos[1])
+                        for image in reversed(self.current_image_list):
+                            print("here")
+                            # print(image.right)
+                            if check_collision(image, self.selection_rect):
+                                print(image.name)
+                                print(self.time_stamp)
+                                image.select()
                 else:
-                    if self.is_grabbing_window:  # left shift
-                        grid_layout = self.widget_dict['grid_layout']
+                    if self.grabbed_image is not None and self.checked_border:
                         if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
-                            # Store the initial touch position
+                            # Store the offset between touch position and widget position
+                            touch.offset_x = mouse_pos[0] - self.grabbed_image.get_real_pos()[0]
+                            touch.offset_y = mouse_pos[1] - self.grabbed_image.get_real_pos()[1]
+                            # self.grabbed_image.translate(touch.offset_x, touch.offset_y)
+                        # x_y = (mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
+                        # r = np.array([1,1])
+                        self.grabbed_image.translate(mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
+                        # self.grabbed_image.update(x_y, r, 0)
+
+                        if (not self.select_anchor_running) and (not self.select_neighbour_running) and (not self.select_neighbour_done):
+                            self.key_fragment_id = str(self.grabbed_image.get_id())
+                            self.key_image = self.grabbed_image
+                        # self.click_label.text = str(self.grabbed_image.image_number + 1)
+                        self.click_label.text = str(self.grabbed_image.name)
+                        self.clicked = str(self.grabbed_image.image_number + 1)
+                        if hasattr(touch, 'double_tapped'):
+                            temp_text = self.grabbed_image.name
+                            numbers = re.findall(r'\d+', temp_text)
+                            self.sidebar.image_name.text = '_'.join(numbers)
+                            self.toggle_sidebar(True, self.grabbed_image.is_anchor)
+                    else:
+                        if self.is_grabbing_window:  # left shift
+                            if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
+                                # Store the initial touch position
+                                touch.offset_x = mouse_pos[0]
+                                touch.offset_y = mouse_pos[1]
+
+                            # Update the position of the layout based on the movement of the mouse
+                            self.grid_layout.pos = (self.grid_layout.pos[0] + (mouse_pos[0] - touch.offset_x),
+                                               self.grid_layout.pos[1] + (mouse_pos[1] - touch.offset_y))
+
+                            # Update the touch position for the next move event
                             touch.offset_x = mouse_pos[0]
                             touch.offset_y = mouse_pos[1]
-
-                        # Update the position of the layout based on the movement of the mouse
-                        grid_layout.pos = (grid_layout.pos[0] + (mouse_pos[0] - touch.offset_x),
-                                           grid_layout.pos[1] + (mouse_pos[1] - touch.offset_y))
-
-                        # Update the touch position for the next move event
-                        touch.offset_x = mouse_pos[0]
-                        touch.offset_y = mouse_pos[1]
-                        self.is_grabbing_window = False
+                            self.is_grabbing_window = False
 
     @mainthread
     def on_keyboard_up(self, instance, keyboard, keycode):  # Keyboard up Listener
-        global keyboard_input
+        print("here")
+        self.keyboard_input = 0
         if keyboard is not None:
-            if keyboard == 305:  # code for ctrl button on keyboard
-                keyboard_input = None  # might cause issue
+            if keyboard == 305:
+                self.keyboard_input = 0
             if keyboard == 304:
-                keyboard_input = None
+                self.keyboard_input = 0
 
     @mainthread
     def _on_keyboard_down(self, instance, keyboard, keycode, text, modifiers):  # Keyboard down Listener
-        global keyboard_input
-        keyboard_input = keyboard
+        self.keyboard_input = keyboard
 
     @mainthread
     def on_resize(self, *args):
         self.sidebar.size = (64, Window.size[1] - self.toolbar.size[1])
-        if (select_anchor_done is not None) & (select_neighbour_done is not None) & (pl_solver_done is not None):
-            if select_anchor_done & select_neighbour_done & pl_solver_done:
+        if (self.select_anchor_done is not None) & (self.select_neighbour_done is not None) & (self.pl_solver_done is not None):
+            if self.select_anchor_done & self.select_neighbour_done & self.pl_solver_done:
                 if self.resize_event is None:
                     self.resize_event = Clock.schedule_interval(self.apply_resize_throttled, graphic_freq)
 
@@ -470,48 +440,38 @@ class GUIApp(MDApp):
 
     @mainthread
     def show_images(self, *args, **kwargs):
-        global showed_image_list
-        global current_image_list
-        global time_stamp
-        if len(showed_image_list) != 0:
+        if len(self.showed_image_list) != 0:
             self.clear_images()
 
-        showed_image_list = []
-        time_stamp = time.time()
+        self.showed_image_list = []
+        self.time_stamp = time.time()
         self.toggle_sidebar(False, False)
-        for i in range(len(current_image_list)):
-            showed_image_list.append(current_image_list[i].get_grid())
-            self.widget_list[3].add_widget(showed_image_list[i])
-            time_stamp = time.time()
+        for i in range(len(self.current_image_list)):
+            self.showed_image_list.append(self.current_image_list[i].grid)
+            self.grid_layout.add_widget(self.showed_image_list[i])
+            self.time_stamp = time.time()
 
     def clear_images(self, *args, **kwargs):
-        global showed_image_list
-        for i in range(len(showed_image_list)):
-            self.widget_list[3].remove_widget(showed_image_list[i])
-        showed_image_list = []
+        for i in range(len(self.showed_image_list)):
+            self.grid_layout.remove_widget(self.showed_image_list[i])
+        self.showed_image_list = []
 
     @mainthread
     def apply_resize(self):
-        global pl_solution
-        global key_fragment_id
-        global key_image
-        global path_dic
-        global image_offset
-
         center = [Window.size[0] / 2, Window.size[1] / 2]
         # center = [0, 0]
-        bank_offset = image_offset
-        for image in current_image_list:
+        bank_offset = self.image_offset
+        for image in self.current_image_list:
             positions = np.array(image.position_memory)
 
             positions = [positions[0] - bank_offset[0],
                          positions[1] - bank_offset[1],
                          positions[2]]
             #
-            image_offset = update_image_offset(image, center)
+            self.image_offset = update_image_offset(image, center)
             #
-            positions = [positions[0] + image_offset[0],
-                         positions[1] + image_offset[1],
+            positions = [positions[0] + self.image_offset[0],
+                         positions[1] + self.image_offset[1],
                          positions[2]]
 
             # positions = current_positions[image_id]
@@ -521,101 +481,86 @@ class GUIApp(MDApp):
 
     @mainthread
     def apply_solution(self):
-        global pl_solution
-        global key_fragment_id
-        global key_image
-        global path_dic
-        global image_offset
-
         # Calculate the center of the window
         center = [Window.size[0] / 2, Window.size[1] / 2]
 
-        for image in current_image_list:
+        for image in self.current_image_list:
             image.remove_score()
             image_id = image.get_id()
 
-            if image_id in pl_solution:
-                positions = pl_solution[image_id]
+            if image_id in self.pl_solution:
+                positions = self.pl_solution[image_id]
                 position = np.array([positions[1], (-1 * positions[0])])  # fix the coordinate system
 
                 image.update_ratio()
 
-                # image_offset_x = center[0] - image.parent.size[0] / 2 - (image.parent.pos[0] - image.pos[0]) / 2
-                # image_offset_y = center[1] - image.parent.size[1] / 2 - (image.parent.pos[1] - image.pos[1]) / 2
+                # self.image_offset_x = center[0] - image.parent.size[0] / 2 - (image.parent.pos[0] - image.pos[0]) / 2
+                # self.image_offset_y = center[1] - image.parent.size[1] / 2 - (image.parent.pos[1] - image.pos[1]) / 2
 
                 # centering the anchor and moving others, image.parent (it's canvas) is responsible for positioning
-                image_offset = update_image_offset(image, center)
+                self.image_offset = update_image_offset(image, center)
 
                 # ratio will apply in update_positions function
                 new_positions = np.array(
-                    [position[0] + image_offset[0], position[1] + image_offset[1]])
+                    [position[0] + self.image_offset[0], position[1] + self.image_offset[1]])
 
                 image.update_positions(new_positions, positions[2])
 
     def checking_clock(self, *args, **kwargs):
-        global selected_pic
-        global anchor_showed
-        global neighbour_showed
-        global initial_image_updates
-        global solution_applied
-        global pl_solution
-        global next_neighbour_requested
-        global select_anchor_done
-
-        communicate_thread_lock.acquire()
-        self.toolbar_changes(toolbar_color)
+        self.communicate_thread_lock.acquire()
+        self.toolbar_changes(self.toolbar_color)
 
         clicked = self.clicked
 
-        if (clicked.isdigit()) & (selected_pic == 0):
-            self.widget_dict['neighbour_button'].disabled = False
-            selected_pic = int(clicked)
+        if (clicked.isdigit()) & (self.selected_pic == 0):
+            self.neighbour_button.disabled = False
+            self.selected_pic = int(clicked)
         if clicked.isdigit():
-            selected_pic = int(clicked)
-        if not anchor_showed:
-            if (back_end.get_select_anchor_done()) & (len(current_image_list) == 0):
+            self.selected_pic = int(clicked)
+        if not self.anchor_showed:
+            if (back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0):
                 self.set_images(1)
                 self.show_images(self)
-                anchor_showed = True
-                self.widget_dict['anchor_button'].disabled = True
-        elif ((back_end.get_select_anchor_done()) & (len(current_image_list) == 0) &
-              (back_end.get_select_neighbour_done()) & (not neighbour_showed)):
+                self.anchor_showed = True
+                self.anchor_button.disabled = True
+        elif ((back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0) &
+              (back_end.get_select_neighbour_done()) & (not self.neighbour_showed)):
             self.set_images(1)
             self.show_images(self)
-            neighbour_showed = True
-            self.widget_dict['neighbour_button'].disabled = True
-            self.widget_dict['show_button'].disabled = False
-            self.widget_dict['pl_solver_button'].disabled = False
-        elif ((back_end.get_select_anchor_done()) & (len(current_image_list) == 0) &
-              (back_end.get_select_neighbour_done()) & neighbour_showed & next_neighbour_requested):
+            self.neighbour_showed = True
+            self.neighbour_button.disabled = True
+            self.show_button.disabled = False
+            self.pl_solver_button.disabled = False
+        elif ((back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0) &
+              (back_end.get_select_neighbour_done()) & self.neighbour_showed & self.next_neighbour_requested):
             self.set_images(1)
             self.show_images(self)
-            next_neighbour_requested = False
-        elif ((back_end.get_select_anchor_done()) & (back_end.get_select_neighbour_done()) & neighbour_showed &
-              back_end.get_pl_solver_done() & (not solution_applied)):
+            self.next_neighbour_requested = False
+        elif ((back_end.get_select_anchor_done()) & (back_end.get_select_neighbour_done()) & self.neighbour_showed &
+              back_end.get_pl_solver_done() & (not self.solution_applied)):
             self.sidebar.col_grid.label1.text = "Accept"
-            pl_solution = back_end.get_pl_solution()
+            self.pl_solution = back_end.get_pl_solution()
             self.apply_solution()
-            solution_applied = True
-            self.widget_dict['pl_solver_button'].disabled = True
-            self.widget_dict['show_button'].text = 'Next Loop'
-            self.widget_dict['show_button'].disabled = False
-            self.widget_dict['neighbour_button'].disabled = True
-        communicate_thread_lock.release()
+            self.solution_applied = True
+            self.pl_solver_button.disabled = True
+            self.show_button.text = 'Next Loop'
+            self.show_button.disabled = False
+            self.neighbour_button.disabled = True
+        self.communicate_thread_lock.release()
 
     def toolbar_changes(self, color):
         match color:
             case 0:
                 if self.toolbar_bg != 0:
-                    self.widget_list[0].md_bg_color = (0.678431373, 0.847058824, 0.901960784, 1)  # Set Toolbar Blue
+                    self.toolbar.md_bg_color = (0.678431373, 0.847058824, 0.901960784, 1)  # Set Toolbar Blue
                     self.toolbar_bg = 0
             case -1:
                 if self.toolbar_bg != -1:
-                    self.widget_list[0].md_bg_color = (0.545098039, 0, 0, 1)  # Set Toolbar Red
+                    self.toolbar.md_bg_color = (0.545098039, 0, 0, 1)  # Set Toolbar Red
                     self.toolbar_bg = -1
             case 1:
                 if self.toolbar_bg != 1:
-                    self.widget_list[0].md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
+                    self.toolbar.md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
                     self.toolbar_bg = 1
 
     def callback(self):
@@ -624,43 +569,33 @@ class GUIApp(MDApp):
 
 
 def start_select_anchor(self):
-    global image_is_set
-    image_is_set = False
+    app.image_is_set = False
     back_end.start_anchor_thread()
 
 
 def start_select_neighbour(self):
-    global current_image_list
-    global bank_image_list
-    global image_is_set
-    global key_fragment_id
-    global key_fragments
-    global final_solution
-    global key_list
-    key_list = []
-    key_fragments = []
+    app.key_list = []
+    app.key_fragments = []
 
-    for image in current_image_list:
+    for image in app.current_image_list:
         if image.is_anchor:
-            key_fragments.append(image)
-            key_list.append(image.get_id())
-        elif image.get_id() == key_fragment_id:
-            key_fragments.append(image)
-            key_list.append(image.get_id())
+            app.key_fragments.append(image)
+            app.key_list.append(image.get_id())
+        elif image.get_id() == app.key_fragment_id:
+            app.key_fragments.append(image)
+            app.key_list.append(image.get_id())
             image.is_anchor = True
-            # key_list.append(image.get_id())
+            # app.key_list.append(image.get_id())
 
-    # # key_fragments = [key_fragment_id]
-    # for piece in final_solution:
-    #     if piece[0] != key_fragment_id:
-    #         key_list.append(piece[0])
-    #         # key_list.append(piece[0])
+    # # app.key_fragments = [app.key_fragment_id]
+    # for piece in app.final_solution:
+    #     if piece[0] != app.key_fragment_id:
+    #         app.key_list.append(piece[0])
+    #         # app.key_list.append(piece[0])
 
-    print("final_solution", final_solution)
-
-    if len(key_fragments) > 1:
+    if len(app.key_fragments) > 1:
         target_position = [0, 0]
-        initial_position = key_fragments[0].position_memory
+        initial_position = app.key_fragments[0].position_memory
         initial_position = (initial_position[0],
                             initial_position[1],
                             initial_position[2])
@@ -671,18 +606,19 @@ def start_select_neighbour(self):
         data = None
         parameters = path_dic['parameters']
         bank_array = []
-        for solution in final_solution:
+        for solution in app.final_solution:
             bank_array.append(solution[0])
         with open(parameters, 'r') as f:
             data = json.load(f)
             if data is not None:
                 xy_step = data['xy_step']
                 theta_step = data['theta_step']
-        for key_fragment in key_fragments:
+        for key_fragment in app.key_fragments:
             if key_fragment.name in bank_array:
                 break
-            key_fragment.update_ratio()
+            # key_fragment.update_ratio()
             image_ratio = key_fragment.ratio
+
             pos = [key_fragment.position_memory[0],
                    key_fragment.position_memory[1],
                    key_fragment.position_memory[2]]
@@ -693,112 +629,186 @@ def start_select_neighbour(self):
             new_position = [new_position[0]/image_ratio[0],
                             new_position[1]/image_ratio[1],
                             new_position[2]]
+            print('ratio', image_ratio)
             pos = back_end.scale_to_solver(xy_step, theta_step, new_position, path_dic)
             pos = [pos[0], pos[1], pos[2]]
-            final_solution.append([key_fragment.get_id(), pos])
+            app.final_solution.append([key_fragment.get_id(), pos])
             pass
-    back_end.key_fragment = key_fragment_id
-    image_is_set = False
-    bank_image_list = current_image_list
-    current_image_list = []
-    back_end.start_neighbour_thread(key_list)
-    GUIApp.widget_dict['show_button'].disabled = True
-    GUIApp.widget_dict['neighbour_button'].disabled = True
+    back_end.key_fragment = app.key_fragment_id
+    app.image_is_set = False
+    app.bank_image_list = app.current_image_list
+    app.current_image_list = []
+    back_end.start_neighbour_thread(app.key_list)
+    app.show_button.disabled = True
+    app.neighbour_button.disabled = True
 
 
 def start_pl_solver(self):
-    global current_image_list
-    global image_is_set
-    global neighbour_ids
-    global final_solution
+    app.show_button.disabled = True
 
-    GUIApp.widget_dict['show_button'].disabled = True
-
-    for i in range(0, len(current_image_list)):
-        if not (current_image_list[i].get_id() == key_image.get_id()):
-            neighbour_ids.append(current_image_list[i].get_id())
-    back_end.neighbour_ids = neighbour_ids
-    # image_is_set = False
-    # current_image_list = []
-    back_end.start_pl_solver_thread(last_loop_solution=final_solution)
+    for i in range(0, len(app.current_image_list)):
+        if not (app.current_image_list[i].get_id() == app.key_image.get_id()):
+            app.neighbour_ids.append(app.current_image_list[i].get_id())
+    back_end.neighbour_ids = app.neighbour_ids
+    # self.image_is_set = False
+    # app.current_image_list = []
+    back_end.start_pl_solver_thread(last_loop_solution=app.final_solution)
 
 
 def get_next_neighbour(self, *args, **kwargs):
-    global next_neighbour_requested
-    global current_image_list
-    global image_is_set
-    global image_offset
-    global final_solution
-    global solution_applied
-    global neighbour_showed
-    if not solution_applied:
-        boolean, next_neighbours = back_end.get_next_neighbour(click_label.text)
+    if not app.solution_applied:
+        boolean, next_neighbours = back_end.get_next_neighbour(app.click_label.text)
         if boolean:
-            image_is_set = False
-            current_image_list = []
-            next_neighbour_requested = True
+            app.image_is_set = False
+            app.current_image_list = []
+            app.next_neighbour_requested = True
     else:
         solved_pieces = get_solved_pieces()
 
-        build_meta_fragment(solved_pieces)
+        # build_meta_fragment(solved_pieces)
 
         loop_finalization(solved_pieces)
 
-        GUIApp.widget_dict['show_button'].disabled = True
-        GUIApp.widget_dict['neighbour_button'].disabled = False
-        neighbour_showed = False
+        app.show_button.disabled = True
+        app.neighbour_button.disabled = False
+        app.neighbour_showed = False
         back_end.set_pl_solver_done(False)
-        solution_applied = False
+        app.solution_applied = False
 
 
 def loop_finalization(solved_pieces):
-    global final_solution
-    global image_offset
     center = [Window.size[0] / 2, Window.size[1] / 2]
-    final_solution = back_end.loop_finalization(solved_pieces, image_offset)
+    app.final_solution = back_end.loop_finalization(solved_pieces, app.image_offset)
     # neighbour_test = ['piece_0006.png']
-    # back_end.puzzle_solver_test_function(final_solution, neighbour_test)
+    # back_end.puzzle_solver_test_function(app.final_solution, neighbour_test)
 
 
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
-    global select_anchor_running
-    global select_neighbour_running
-    global pl_solver_running
-    global select_anchor_done
-    global select_neighbour_done
-    global pl_solver_done
-    global toolbar_color
     while True:
-        communicate_thread_lock.acquire()
+        app.communicate_thread_lock.acquire()
 
-        select_anchor_running = back_end.get_select_anchor_running()
-        select_neighbour_running = back_end.get_select_neighbour_running()
-        pl_solver_running = back_end.get_pl_solver_running()
-        select_neighbour_done = back_end.get_select_neighbour_done()
-        select_anchor_done = back_end.get_select_anchor_done()
-        pl_solver_done = back_end.get_pl_solver_done()
+        app.select_anchor_running = back_end.get_select_anchor_running()
+        app.select_neighbour_running = back_end.get_select_neighbour_running()
+        app.pl_solver_running = back_end.get_pl_solver_running()
+        app.select_neighbour_done = back_end.get_select_neighbour_done()
+        app.select_anchor_done = back_end.get_select_anchor_done()
+        app.pl_solver_done = back_end.get_pl_solver_done()
 
-        if select_anchor_running is not None:
-            if select_anchor_running:
-                toolbar_color = -1
+        if app.select_anchor_running is not None:
+            if app.select_anchor_running:
+                app.toolbar_color = -1
             else:
-                toolbar_color = 1
-        if select_anchor_done:
-            toolbar_color = 1
-        if select_neighbour_running is not None:
-            if select_neighbour_running:
-                toolbar_color = -1
+                app.toolbar_color = 1
+        if app.select_anchor_done:
+            app.toolbar_color = 1
+        if app.select_neighbour_running is not None:
+            if app.select_neighbour_running:
+                app.toolbar_color = -1
             else:
-                toolbar_color = 1
+                app.toolbar_color = 1
         else:
-            toolbar_color = 0
-        communicate_thread_lock.release()
+            app.toolbar_color = 0
+        app.communicate_thread_lock.release()
         time.sleep(communication_freq)  # Thread sleep timerfasd
 
 
+def check_collision(image, rectangle): # /todo
+    image_bw = image.image_bw
+    non_zero_indices = np.argwhere(image_bw != 0)
+
+    # If there are no pixels, return None
+    if non_zero_indices.size == 0:
+        return None
+
+    # Compute the extremes
+    top_index = non_zero_indices[:, 0].min()  # Smallest y-value
+    bottom_index = non_zero_indices[:, 0].max()  # Largest y-value
+    left_index = non_zero_indices[:, 1].min()  # Smallest x-value
+    right_index = non_zero_indices[:, 1].max()  # Largest x-value
+
+    top = (left_index, top_index)
+    bottom = (left_index, bottom_index)
+    left = (left_index, top_index)
+    right = (right_index, top_index)
+
+    image_points = [top, bottom, left, right]
+
+    rec_left = rectangle.pos[0]
+    rec_bottom = rectangle.pos[1]
+    rec_right = rec_left + rectangle.size[0]
+    rec_top = rec_bottom + rectangle.size[1]
+
+    width_height = ((image.width - image.norm_image_size[0]) / 2,
+                    (image.height - image.norm_image_size[1]) / 2)
+
+    pixel_left = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
+                                     image.get_norm_image_size(), [rec_left,0], width_height,
+                                    (image.texture_size[0] / image.norm_image_size[0]),
+                                    (image.texture_size[1] / image.norm_image_size[1]),
+                                    image.angle)
+
+    pixel_right = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
+                                     image.get_norm_image_size(), [rec_right, 0], width_height,
+                                     (image.texture_size[0] / image.norm_image_size[0]),
+                                     (image.texture_size[1] / image.norm_image_size[1]),
+                                     image.angle)
+
+    pixel_top = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
+                                     image.get_norm_image_size(), [0, rec_top], width_height,
+                                     (image.texture_size[0] / image.norm_image_size[0]),
+                                     (image.texture_size[1] / image.norm_image_size[1]),
+                                     image.angle)
+
+    pixel_bottom = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
+                                     image.get_norm_image_size(), [0, rec_bottom], width_height,
+                                     (image.texture_size[0] / image.norm_image_size[0]),
+                                     (image.texture_size[1] / image.norm_image_size[1]),
+                                     image.angle)
+
+    for point in image_points:
+        if not (pixel_left[0] <= point[0] <= pixel_right[0] and pixel_bottom[1] <= point[1] <= pixel_top[1]):
+            return False  # If any point is outside the rectangle, return False
+    return True
+
+    print(top, bottom, left, right)
+
+    width_height = ((image.width - image.norm_image_size[0]) / 2,
+                    (image.height - image.norm_image_size[1]) / 2)
+    image_pos = image.get_real_pos()
+    pos = (image_pos[0] + width_height[0], image_pos[1] + width_height[1])
+    image_right = image.pos[0] + image.width
+    image_top = image.pos[1] + image.height
+    x = rectangle.pos[0]
+    y = rectangle.pos[1]
+    top = rectangle.size[1] + y
+    right = rectangle.size[0] + x
+    if image_right < x:
+        return False
+    if pos[0] > right:
+        return False
+    if image_top < y:
+        return False
+    if pos[1] > top:
+        return False
+    return True
+
+
+def check_image_select(image, mouse_pos):
+    if image.collides(mouse_pos[0], mouse_pos[1]):
+        if not app.checked_border:
+            width_height = ((image.width - image.norm_image_size[0]) / 2,
+                            (image.height - image.norm_image_size[1]) / 2)
+            pixel = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
+                                        image.get_norm_image_size(), mouse_pos, width_height,
+                                        (image.texture_size[0] / image.norm_image_size[0]),
+                                        (image.texture_size[1] / image.norm_image_size[1]),
+                                        image.angle)
+            return image.check_mask(pixel)
+    return False
+
+
 def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_height, ratio_x, ratio_y, angle):
-    global ratio
-    ratio = (ratio_x, ratio_y)
+    app.ratio = (ratio_x, ratio_y)
 
     angle_rad = math.radians(angle)
 
@@ -808,17 +818,17 @@ def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_hei
     rotated_x = (relative_pos[0] * math.cos(-angle_rad)) - (relative_pos[1] * math.sin(-angle_rad))
     rotated_y = (relative_pos[0] * math.sin(-angle_rad)) + (relative_pos[1] * math.cos(-angle_rad))
 
-    reality_pixel = (rotated_x * ratio[0], rotated_y * ratio[1])
+    reality_pixel = (rotated_x * app.ratio[0], rotated_y * app.ratio[1])
 
     return reality_pixel
 
 
 def image_reader(image_number, score, has_score, is_anchor=False):
-    name = file_names[image_number]
-    click_label.color = (1, 0, 1, 1)
+    name = app.file_names[image_number]
+    app.click_label.color = (1, 0, 1, 1)
     image_path = path_dic['image_path']
     mask_path = path_dic['mask_path']
-    image = MovableImage(image_path, mask_path, click_label, score, image_number, has_score, name, 0, is_anchor)
+    image = MovableImage(image_path, mask_path, app.click_label, score, image_number, has_score, name, 0, is_anchor)
 
     return image
 
@@ -945,7 +955,6 @@ def setting():  # unified path setting
 
 
 def copy_to_cache(file_extension='.png'):
-    global path_dic
     source = path_dic['pieces_path']
     cache = path_dic['cache_path']
     # Remove the cache folder and its contents if it exists
@@ -1009,7 +1018,6 @@ def transparent(img):
 
 
 def read_ground_truth():
-    global path_dic
     ground_truth = path_dic['ground_truth']
     if ground_truth != "":
         with open(ground_truth, 'r') as file:
@@ -1029,13 +1037,11 @@ def get_bounding_box(size, rotation):
 
 
 def calculate_canvas_size():
-    global current_image_list
-    global path_dic
     min_x, min_y = float('inf'), float('inf')
     max_x, max_y = float('-inf'), float('-inf')
     cache = path_dic['cache_path']
 
-    for image in current_image_list:
+    for image in app.current_image_list:
         img_path = image.get_id()
         img_path = os.path.join(cache, img_path)
         position = image.position_memory
@@ -1063,10 +1069,9 @@ def calculate_canvas_size():
 
 
 def get_solved_pieces():
-    global current_image_list
     solved_pieces = []
 
-    for image in current_image_list:
+    for image in app.current_image_list:
         if image.is_anchor:
             image_id = image.get_id()
             position = image.position_memory
@@ -1078,7 +1083,6 @@ def get_solved_pieces():
 
 
 def build_meta_fragment(solved_pieces, canvas_size=(1000, 1000)):
-    global current_image_list, path_dic, key_image
     cache = path_dic['cache_path']
 
     canvas_width, canvas_height, offset_x, offset_y = calculate_canvas_size()
@@ -1114,7 +1118,6 @@ def build_meta_fragment(solved_pieces, canvas_size=(1000, 1000)):
 
 
 def remove_image_from_cache(image_id):
-    global path_dic
     cache = path_dic['cache_path']
     file_name = image_id
     file_path = os.path.join(cache, file_name)
@@ -1131,10 +1134,6 @@ def remove_image_from_cache(image_id):
 if __name__ == '__main__':
     setting()
     Config.set('input', 'mouse', 'mouse, multitouch_on_demand')
-    test_thread = threading.Thread(target=communicate_thread, daemon=True)
-
-    test_thread_started = True
-    test_thread.start()
 
     read_ground_truth()
 
@@ -1144,4 +1143,9 @@ if __name__ == '__main__':
     # erode_data()
 
     app = GUIApp()
+
+    test_thread = threading.Thread(target=communicate_thread, daemon=True)
+    app.test_thread_started = True
+    test_thread.start()
+
     app.run()
