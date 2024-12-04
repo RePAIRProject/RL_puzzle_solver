@@ -30,7 +30,7 @@ from MoveableImage import MovableImage
 Window.clearcolor = (0, 0, 0, 0)
 
 backend_path = os.getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
-path_dic = {}
+path_dic = {''}
 
 rotation_interval = 0.5
 communication_freq = 0.10  # in seconds
