@@ -453,7 +453,7 @@ class GUIApp(MDApp):
     @mainthread
     def _on_keyboard_down(self, instance, keyboard, keycode, text, modifiers):  # Keyboard down Listener
         self.keyboard_input = keyboard
-    # test
+
     @mainthread
     def on_resize(self, *args):
         self.sidebar.size = (64, Window.size[1] - self.toolbar.size[1])
