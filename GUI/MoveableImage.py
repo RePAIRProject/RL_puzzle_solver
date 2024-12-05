@@ -7,6 +7,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.graphics import Color
+from shapely.affinity import rotate
 
 from point_Inside import is_inside_sm
 from os import getcwd
@@ -133,7 +134,10 @@ class MovableImage(Image):
         self.score_label.text = ""
 
     def rotate(self, delta_angle):
-        self.rot.origin = self.center
+        self.rotate_point(delta_angle, self.center)
+
+    def rotate_point(self, delta_angle, point):
+        self.rot.origin = point
         self.rot.angle += delta_angle
         self.rot.axis = (0, 0, 1)
         # self.canvas.before.add(self.rot)
@@ -239,3 +243,9 @@ class MovableImage(Image):
     def deselect(self):
         self.is_selected = False
         self.color = (1, 1, 1, 1)
+
+    def select_toggle(self):
+        if self.is_selected:
+            self.deselect()
+        else:
+            self.select()

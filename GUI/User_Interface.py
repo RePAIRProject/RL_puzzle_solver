@@ -5,6 +5,7 @@ from kivy import Config
 from kivy.clock import Clock, mainthread
 from kivy.graphics import Rectangle, Color
 from kivymd.app import MDApp
+from kivy.core.image import Image as CoreImage
 import numpy as np
 import math
 from screeninfo import get_monitors
@@ -82,6 +83,7 @@ class GUIApp(MDApp):
         self.toolbar_bg = 0
 
         self.image_offset = [0, 0]
+        self.mouse_pos = [0, 0]
 
         self.pl_solution = {}
 
@@ -285,18 +287,27 @@ class GUIApp(MDApp):
     def on_touch_up(self, window, touch, *args, **kwargs):
         if touch.button == 'left':
             self.hold_left = False
-            if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
-                self.grabbed_image.deselect()
-        if (touch.button == 'left') & hasattr(self, 'selection_rect'):
+            # if self.keyboard_input != 305:
+            # if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+            #     self.grabbed_image.deselect()
+            if hasattr(self, 'selection_rect'):
                 if self.selection_rect in self.grid_layout.canvas.children:
+                    for image in reversed(self.current_image_list):
+                        if check_collision(image, self.selection_rect):
+                            image.select()
                     self.grid_layout.canvas.remove(self.selection_rect)
+            if self.keyboard_input == 305:  # left ctrl
+                for image in reversed(self.current_image_list):
+                    if check_image_select(image, self.mouse_pos):
+                        image.select_toggle()
+                        break
 
     @mainthread
     def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener
         scrolling = 0
         if self.keyboard_input == 304:  # left shift
             self.is_grabbing_window = True
-        if self.keyboard_input == 305: # left ctrl
+        if self.keyboard_input == 32: # space
             if touch.button == 'scrollup':  # scroll up is scrolling down :|
                 if self.grabbed_image is not None:
                     self.grabbed_image.rotate(-1 * rotation_interval)  # its  2x God knows why
@@ -308,26 +319,29 @@ class GUIApp(MDApp):
         #         if self.grabbed_image is not None:
         #             for image in self.current_image_list:
         #                 window_size = Window.size
-        #                 mouse_pos = (window_size[0] * touch.spos[0] - image.parent.pos[0], window_size[1] * touch.spos[1] - image.parent.pos[1])
+        #                 self.mouse_pos = (window_size[0] * touch.spos[0] - image.parent.pos[0], window_size[1] * touch.spos[1] - image.parent.pos[1])
         #                 print(image.parent.pos)
         #                 print('up', image.scale_factor)
-        #                 image.zoom_at_point(1.05, mouse_pos)
+        #                 image.zoom_at_point(1.05, self.mouse_pos)
         #     elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
         #         if self.grabbed_image is not None:
         #             for image in self.current_image_list:
         #                 window_size = Window.size
-        #                 mouse_pos = (window_size[0] * touch.spos[0] - image.parent.pos[0], window_size[1] * touch.spos[1] - image.parent.pos[1])
+        #                 self.mouse_pos = (window_size[0] * touch.spos[0] - image.parent.pos[0], window_size[1] * touch.spos[1] - image.parent.pos[1])
         #                 print(image.parent.pos)
         #                 print('up', image.scale_factor)
-        #                 image.zoom_at_point(0.95, mouse_pos)
+        #                 image.zoom_at_point(0.95, self.mouse_pos)
 
         window_size = Window.size
-        mouse_pos = (window_size[0] * touch.spos[0], window_size[1] * touch.spos[1])
+        self.mouse_pos = (window_size[0] * touch.spos[0], window_size[1] * touch.spos[1])
         if touch.button == 'right':
-            if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
-                self.grabbed_image.deselect()
+            # if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+            #     self.grabbed_image.deselect()
             # self.grabbed_image = None
             self.toggle_sidebar(False, False)
+            for image in self.current_image_list:
+                if image.is_selected:
+                    image.deselect()
 
         if touch.button == 'left':
             if touch.is_double_tap:
@@ -335,24 +349,25 @@ class GUIApp(MDApp):
                     touch.double_tapped = True
             if not self.hold_left:
                 self.checked_border = False
-                for image in reversed(self.current_image_list):
-                    if not hasattr(touch, 'dragging') or not touch.dragging:
-                        if check_image_select(image, mouse_pos):
-                            if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
-                                self.grabbed_image.deselect()
-                            self.grabbed_image = image
-                            self.grabbed_image.select()
-                            self.grabbed_image.update_translate()
+                if self.keyboard_input != 305: # left ctrl
+                    for image in reversed(self.current_image_list):
+                        if not hasattr(touch, 'dragging') or not touch.dragging:
+                            if check_image_select(image, self.mouse_pos):
+                                # if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+                                #     self.grabbed_image.deselect()
+                                self.grabbed_image = image
+                                self.grabbed_image.select()
+                                self.grabbed_image.update_translate()
 
-                            self.checked_border = True  # /todo
-                            break
-                if not self.checked_border:
-                    if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
-                        self.grabbed_image.deselect()
-                    self.grabbed_image = None
+                                self.checked_border = True  # /todo
+                                break
+                    if not self.checked_border:
+                        # if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+                        #     self.grabbed_image.deselect()
+                        self.grabbed_image = None
 
             if self.hold_left:  # hold left
-                if self.keyboard_input == 103:
+                if self.keyboard_input == 103:  # G
                     with self.grid_layout.canvas:
                         if not hasattr(self, 'selection_rect') or not (
                                 self.selection_rect in self.grid_layout.canvas.children):
@@ -365,58 +380,72 @@ class GUIApp(MDApp):
                             self.selection_rect.size = (rectangle_size_x, rectangle_size_y)
                     if hasattr(self, 'selection_rect'):
                         self.selection_rect.size = (touch.x - self.start_pos[0], touch.y - self.start_pos[1])
-                        for image in reversed(self.current_image_list):
-                            print("here")
-                            # print(image.right)
-                            if check_collision(image, self.selection_rect):
-                                print(image.name)
-                                print(self.time_stamp)
-                                image.select()
+
                 else:
-                    if self.grabbed_image is not None and self.checked_border:
+                    if self.is_grabbing_window:  # left shift
                         if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
-                            # Store the offset between touch position and widget position
-                            touch.offset_x = mouse_pos[0] - self.grabbed_image.get_real_pos()[0]
-                            touch.offset_y = mouse_pos[1] - self.grabbed_image.get_real_pos()[1]
-                            # self.grabbed_image.translate(touch.offset_x, touch.offset_y)
-                        # x_y = (mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
-                        # r = np.array([1,1])
-                        self.grabbed_image.translate(mouse_pos[0] - touch.offset_x, mouse_pos[1] - touch.offset_y)
-                        # self.grabbed_image.update(x_y, r, 0)
+                            # Store the initial touch position
+                            touch.offset_x = self.mouse_pos[0]
+                            touch.offset_y = self.mouse_pos[1]
 
-                        if (not self.select_anchor_running) and (not self.select_neighbour_running) and (not self.select_neighbour_done):
-                            self.key_fragment_id = str(self.grabbed_image.get_id())
-                            self.key_image = self.grabbed_image
-                        # self.click_label.text = str(self.grabbed_image.image_number + 1)
-                        self.click_label.text = str(self.grabbed_image.name)
-                        self.clicked = str(self.grabbed_image.image_number + 1)
-                        if hasattr(touch, 'double_tapped'):
-                            temp_text = self.grabbed_image.name
-                            numbers = re.findall(r'\d+', temp_text)
-                            self.sidebar.image_name.text = '_'.join(numbers)
-                            self.toggle_sidebar(True, self.grabbed_image.is_anchor)
+                        # Update the position of the layout based on the movement of the mouse
+                        self.grid_layout.pos = (self.grid_layout.pos[0] + (self.mouse_pos[0] - touch.offset_x),
+                                           self.grid_layout.pos[1] + (self.mouse_pos[1] - touch.offset_y))
+
+                        # Update the touch position for the next move event
+                        touch.offset_x = self.mouse_pos[0]
+                        touch.offset_y = self.mouse_pos[1]
+                        self.is_grabbing_window = False
                     else:
-                        if self.is_grabbing_window:  # left shift
-                            if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
-                                # Store the initial touch position
-                                touch.offset_x = mouse_pos[0]
-                                touch.offset_y = mouse_pos[1]
-
-                            # Update the position of the layout based on the movement of the mouse
-                            self.grid_layout.pos = (self.grid_layout.pos[0] + (mouse_pos[0] - touch.offset_x),
-                                               self.grid_layout.pos[1] + (mouse_pos[1] - touch.offset_y))
-
-                            # Update the touch position for the next move event
-                            touch.offset_x = mouse_pos[0]
-                            touch.offset_y = mouse_pos[1]
-                            self.is_grabbing_window = False
+                        # for image in reversed(self.current_image_list):
+                        #     if image.is_selected:
+                        #         if not hasattr(touch, 'dragging') or not touch.dragging:
+                        #             if check_image_select(image, mouse_pos):
+                        #                 touch.dragging = True
+                        #                 print('dragging')
+                        #                 if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+                        #                     self.grabbed_image.deselect()
+                        #                 self.grabbed_image = image
+                        #                 self.grabbed_image.select()
+                        #                 self.grabbed_image.update_translate()
+                        #
+                        #                 self.checked_border = True  # /todo
+                        #                 break
+                        if self.grabbed_image is not None and self.checked_border:
+                            if not hasattr(touch, 'offsets'):
+                                touch.offsets = {}
+                                for image in self.current_image_list:
+                                    if image.is_selected:
+                                        touch.offsets[image.name] = [
+                                            self.mouse_pos[0] - image.get_real_pos()[0],
+                                            self.mouse_pos[1] - image.get_real_pos()[1],
+                                        ]
+                            for image in self.current_image_list:
+                                if image.is_selected:
+                                    offset = touch.offsets[image.name]
+                                    image.translate(self.mouse_pos[0] - offset[0], self.mouse_pos[1] - offset[1])
+                        # if self.grabbed_image is not None and self.checked_border:
+                        #     if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
+                        #         touch.offset_x = self.mouse_pos[0] - self.grabbed_image.get_real_pos()[0]
+                        #         touch.offset_y = self.mouse_pos[1] - self.grabbed_image.get_real_pos()[1]
+                        #     self.grabbed_image.translate(self.mouse_pos[0] - touch.offset_x, self.mouse_pos[1] - touch.offset_y)
+                        #
+                            if (not self.select_anchor_running) and (not self.select_neighbour_running) and (not self.select_neighbour_done):
+                                self.key_fragment_id = str(self.grabbed_image.get_id())
+                                self.key_image = self.grabbed_image
+                            self.click_label.text = str(self.grabbed_image.name)
+                            self.clicked = str(self.grabbed_image.image_number + 1)
+                            if hasattr(touch, 'double_tapped'):
+                                temp_text = self.grabbed_image.name
+                                numbers = re.findall(r'\d+', temp_text)
+                                self.sidebar.image_name.text = '_'.join(numbers)
+                                self.toggle_sidebar(True, self.grabbed_image.is_anchor)
 
     @mainthread
     def on_keyboard_up(self, instance, keyboard, keycode):  # Keyboard up Listener
-        print("here")
         self.keyboard_input = 0
         if keyboard is not None:
-            if keyboard == 305:
+            if keyboard == 32:
                 self.keyboard_input = 0
             if keyboard == 304:
                 self.keyboard_input = 0
@@ -549,19 +578,18 @@ class GUIApp(MDApp):
         self.communicate_thread_lock.release()
 
     def toolbar_changes(self, color):
-        match color:
-            case 0:
-                if self.toolbar_bg != 0:
-                    self.toolbar.md_bg_color = (0.678431373, 0.847058824, 0.901960784, 1)  # Set Toolbar Blue
-                    self.toolbar_bg = 0
-            case -1:
-                if self.toolbar_bg != -1:
-                    self.toolbar.md_bg_color = (0.545098039, 0, 0, 1)  # Set Toolbar Red
-                    self.toolbar_bg = -1
-            case 1:
-                if self.toolbar_bg != 1:
-                    self.toolbar.md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
-                    self.toolbar_bg = 1
+        if color == 0:
+            if self.toolbar_bg != 0:
+                self.toolbar.md_bg_color = (0.678431373, 0.847058824, 0.901960784, 1)  # Set Toolbar Blue
+                self.toolbar_bg = 0
+        elif color == -1:
+            if self.toolbar_bg != -1:
+                self.toolbar.md_bg_color = (0.545098039, 0, 0, 1)  # Set Toolbar Red
+                self.toolbar_bg = -1
+        elif color == 1:
+            if self.toolbar_bg != 1:
+                self.toolbar.md_bg_color = (0.141176471, 0.529411765, 0.129411765, 1)  # Set Toolbar Green
+                self.toolbar_bg = 1
 
     def callback(self):
         # start_select_anchor(self)
@@ -629,7 +657,6 @@ def start_select_neighbour(self):
             new_position = [new_position[0]/image_ratio[0],
                             new_position[1]/image_ratio[1],
                             new_position[2]]
-            print('ratio', image_ratio)
             pos = back_end.scale_to_solver(xy_step, theta_step, new_position, path_dic)
             pos = [pos[0], pos[1], pos[2]]
             app.final_solution.append([key_fragment.get_id(), pos])
@@ -713,85 +740,60 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
 
 
 def check_collision(image, rectangle): # /todo
-    image_bw = image.image_bw
-    non_zero_indices = np.argwhere(image_bw != 0)
+    texture = image.texture
 
-    # If there are no pixels, return None
-    if non_zero_indices.size == 0:
-        return None
+    pixels = np.frombuffer(texture.pixels, dtype=np.uint8)
+    pixels = pixels.reshape(texture.height, texture.width, 4)
+    non_zero_pixels = np.argwhere(pixels[:, :, 3] > 0)
 
-    # Compute the extremes
-    top_index = non_zero_indices[:, 0].min()  # Smallest y-value
-    bottom_index = non_zero_indices[:, 0].max()  # Largest y-value
-    left_index = non_zero_indices[:, 1].min()  # Smallest x-value
-    right_index = non_zero_indices[:, 1].max()  # Largest x-value
+    top = 0
+    left = 0
+    bottom = 0
+    right = 0
 
-    top = (left_index, top_index)
-    bottom = (left_index, bottom_index)
-    left = (left_index, top_index)
-    right = (right_index, top_index)
+    if rectangle.size[0] >= 0:
+        rec_left = rectangle.pos[0]
+        rec_right = rectangle.pos[0] + rectangle.size[0]
+    else:
+        rec_left = rectangle.pos[0] + rectangle.size[0]
+        rec_right = rectangle.pos[0]
 
-    image_points = [top, bottom, left, right]
-
-    rec_left = rectangle.pos[0]
-    rec_bottom = rectangle.pos[1]
-    rec_right = rec_left + rectangle.size[0]
-    rec_top = rec_bottom + rectangle.size[1]
-
-    width_height = ((image.width - image.norm_image_size[0]) / 2,
-                    (image.height - image.norm_image_size[1]) / 2)
-
-    pixel_left = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
-                                     image.get_norm_image_size(), [rec_left,0], width_height,
-                                    (image.texture_size[0] / image.norm_image_size[0]),
-                                    (image.texture_size[1] / image.norm_image_size[1]),
-                                    image.angle)
-
-    pixel_right = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
-                                     image.get_norm_image_size(), [rec_right, 0], width_height,
-                                     (image.texture_size[0] / image.norm_image_size[0]),
-                                     (image.texture_size[1] / image.norm_image_size[1]),
-                                     image.angle)
-
-    pixel_top = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
-                                     image.get_norm_image_size(), [0, rec_top], width_height,
-                                     (image.texture_size[0] / image.norm_image_size[0]),
-                                     (image.texture_size[1] / image.norm_image_size[1]),
-                                     image.angle)
-
-    pixel_bottom = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
-                                     image.get_norm_image_size(), [0, rec_bottom], width_height,
-                                     (image.texture_size[0] / image.norm_image_size[0]),
-                                     (image.texture_size[1] / image.norm_image_size[1]),
-                                     image.angle)
-
-    for point in image_points:
-        if not (pixel_left[0] <= point[0] <= pixel_right[0] and pixel_bottom[1] <= point[1] <= pixel_top[1]):
-            return False  # If any point is outside the rectangle, return False
-    return True
-
-    print(top, bottom, left, right)
+    if rectangle.size[1] >= 0:
+        rec_bottom = rectangle.pos[1]
+        rec_top = rectangle.pos[1] + rectangle.size[1]
+    else:
+        rec_bottom = rectangle.pos[1] + rectangle.size[1]
+        rec_top = rectangle.pos[1]
 
     width_height = ((image.width - image.norm_image_size[0]) / 2,
                     (image.height - image.norm_image_size[1]) / 2)
-    image_pos = image.get_real_pos()
-    pos = (image_pos[0] + width_height[0], image_pos[1] + width_height[1])
-    image_right = image.pos[0] + image.width
-    image_top = image.pos[1] + image.height
-    x = rectangle.pos[0]
-    y = rectangle.pos[1]
-    top = rectangle.size[1] + y
-    right = rectangle.size[0] + x
-    if image_right < x:
-        return False
-    if pos[0] > right:
-        return False
-    if image_top < y:
-        return False
-    if pos[1] > top:
+
+    rec_right_top = [rec_right, rec_top]
+    rec_left_bottom = [rec_left, rec_bottom]
+    rec_right_top = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
+                                image.get_norm_image_size(), rec_right_top, width_height,
+                                (image.texture_size[0] / image.norm_image_size[0]),
+                                (image.texture_size[1] / image.norm_image_size[1]),
+                                image.angle)
+    rec_left_bottom = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
+                                image.get_norm_image_size(), rec_left_bottom, width_height,
+                                (image.texture_size[0] / image.norm_image_size[0]),
+                                (image.texture_size[1] / image.norm_image_size[1]),
+                                image.angle)
+    rec_right = rec_right_top[0]
+    rec_top = rec_right_top[1]
+    rec_left = rec_left_bottom[0]
+    rec_bottom = rec_left_bottom[1]
+
+    if non_zero_pixels.size > 0:
+        top = np.max(non_zero_pixels[:, 0])
+        left = np.min(non_zero_pixels[:, 1])
+        bottom = np.min(non_zero_pixels[:, 0])
+        right = np.max(non_zero_pixels[:, 1])
+
+    if not (top <= rec_top and right <= rec_right and bottom >= rec_bottom and left >= rec_left):
         return False
     return True
-
 
 def check_image_select(image, mouse_pos):
     if image.collides(mouse_pos[0], mouse_pos[1]):
