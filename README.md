@@ -10,9 +10,9 @@ More code, more puzzles and newer versions are coming soon!
 We assume here that a *puzzle* is prepared (the code for that will be documented and provided).
 This means that we have a folder with the pieces (and their binary masks and polygons).
 To solve the puzzle, we can breakdown the workflow in small steps:
-- Create the ***partial payoff matrix*** (Section 4.1 of the paper) --> [See below]()
-- Calculate the ***line-based compatibility scores*** (Section 4.2 of the paper) --> [See below]()
-- Run the ***relaxation-labeling-based solver*** (Section 3.3 of the paper) --> [See below]()
+- Create the ***partial payoff matrix*** (Section 4.1 of the paper) --> [See below](https://github.com/RePAIRProject/RL_puzzle_solver?tab=readme-ov-file#311-create-the-partial-payoff-matrix-section-41-of-the-paper)
+- Calculate the ***line-based compatibility scores*** (Section 4.2 of the paper) --> [See below](https://github.com/RePAIRProject/RL_puzzle_solver?tab=readme-ov-file#312-calculate-the-line-based-compatibility-scores-section-42-of-the-paper)
+- Run the ***relaxation-labeling-based solver*** (Section 3.3 of the paper) --> [See below](https://github.com/RePAIRProject/RL_puzzle_solver?tab=readme-ov-file#313-run-the-relaxation-labeling-based-solver-section-33-of-the-paper)
 
 # 2) Installation
 Depending on the features used, you may need to install different libraries. 
