@@ -174,7 +174,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
         
         candidate_line_shapely0 = shapely.LineString((p1, p2))
         candidate_line_rotate = rotate(candidate_line_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
-        candidate_line_trans = transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] - z_l)
+        candidate_line_trans = transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
 
         # append to the useful lines
         ps1 = np.array(candidate_line_trans.coords)[0]
@@ -392,6 +392,8 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                             piece_j['polygon'], s21, s22, ppars, extrapolate=True, draw_lines=True, \
                                 draw_polygon=True, drawing_col='orange')
 
+                    breakpoint()
+
                     useful_lines_alfa2 = alfa2[intersections2] + theta_rad # the rotation!
                     useful_lines_color2 = color2[intersections2]
                     useful_lines_cat2 = cat2[intersections2]
@@ -450,12 +452,20 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                         #print(tot_cost)
 
                     if n_lines_f1 > 0 and n_lines_f2 > 0:
-                        cost_string = f"Cost: {tot_cost} = {dist_matrix[row_ind, col_ind].sum()} + {penalty} ({np.abs(n_lines_f1 - n_lines_f2)})"
+                        cost_string = f"R[{iy},{ix},{t}] = {tot_cost} (penalty was {penalty}, n1={n_lines_f1}, n2={n_lines_f2})"
+                        #f"Cost: {tot_cost} = {dist_matrix[row_ind, col_ind].sum()} + {penalty} ({np.abs(n_lines_f1 - n_lines_f2)})"
                     else:
-                        cost_string = f"Cost: {tot_cost} ({n_lines_f1} lines in pi and {n_lines_f2} lines in pj)"
+                        cost_string = f"R[{iy},{ix},{t}] = {tot_cost} (penalty was {penalty}, n1={n_lines_f1}, n2={n_lines_f2})"
+                        # f"Cost: {tot_cost} ({n_lines_f1} lines in pi and {n_lines_f2} lines in pj)"
+                    R_cost[iy,ix,t] = tot_cost
                     plt.title(cost_string)
+                    print(cost_string)
                     breakpoint()
                     plt.cla()
+
+    plt.title("R_cost")
+    plt.imshow(R_cost)
+    breakpoint()
 
 def compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, mask_ij, pars, verbosity=1, show=False):
     # ppars is the old cfg (with the parameters)
@@ -634,12 +644,15 @@ def compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s
                         #tot_cost = ppars.badmatch_penalty/2 # accept with some cost, guglielmo=3
                         #tot_cost = ppars.max_dist
                         tot_cost = ppars.badmatch_penalty * 0.9
+                        tot_cost = ppars.badmatch_penalty / 3                   # accept with some cost
+
 
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
                         #tot_cost = ppars.mismatch_penalty*n_lines**2   ## it will be very high compatibility
-                        tot_cost = ppars.badmatch_penalty*0.9
-
+                        tot_cost = ppars.badmatch_penalty * 0.9
+                        tot_cost = ppars.mismatch_penalty * n_lines
+                        
                     else:
                         # Compute cost_matrix, LAP, penalty, normalize
                         dist_matrix0 = np.zeros((n_lines_f1, n_lines_f2))
@@ -676,9 +689,11 @@ def compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s
                         
                         # # penalty
                         penalty = np.abs(n_lines_f1 - n_lines_f2) * ppars.mismatch_penalty  # no matches penalty
-                        tot_cost = tot_cost / np.min([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
+                        # tot_cost = tot_cost / np.min([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
                         tot_cost = (tot_cost + penalty)
-                        #print(tot_cost)
+                        tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
+
+                        # print(f"R[{iy},{ix},{t}] = {tot_cost} (penalty was {penalty}, n1={n_lines_f1}, n2={n_lines_f2})")
                         
                     compatibility_score = np.clip(ppars.badmatch_penalty - tot_cost, 0, ppars.badmatch_penalty)
                     compatibility_matrix[iy, ix, t] = compatibility_score
@@ -689,6 +704,10 @@ def compute_line_based_CM_LAP(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s
         if verbosity > 2:
             print(f"comp on t = {t} (for all x,y) took {(time.time()-t_rot):.02f} seconds ({np.sum(mask_ij[:, :, t]>0)} valid values)")
     
+    # plt.imshow(compatibility_matrix)
+    # plt.show()
+    # # plt.title()
+    # breakpoint()
     # #print(R_cost)
     # R_cost[R_cost > ppars.badmatch_penalty] = ppars.badmatch_penalty
     # len_unique = len(np.unique(R_cost))

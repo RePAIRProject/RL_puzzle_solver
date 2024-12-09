@@ -1,50 +1,18 @@
-# RL Puzzle Solver (WIP)
-Solving puzzle using Relaxation Labeling
+# RL Puzzle Solver 
 
-| :exclamation:  This repository is under active development! Some things may change!  |
-|-----------------------------------------|
+This repo contains the code used in the 2024 ACCV paper: *Nash meets Wertheimer: Using Good Continuation in Jigsaw Puzzles*.
+
+This repo is under active development (for extensions), we provide here below some explanation to reproduce the paper experiments. 
+
+More code, more puzzles and newer versions are coming soon!
 
 # 1) Description
-The repository contains the code for computing the compatibility matrices and the solver to reassemble the pieces.
-
-
-## Folder Structure
-The data is structured following this idea (where `data` has the input files and `output` all the files created by the code):
-```bash
-.
-├── configs/        # configuration
-│   ├── folder_names.py     # folders
-├── features/               # extracting features for the compatibility
-├── compatibility/          # calculating the comp. matrices
-├── solver/                 # rl-based solver
-├── data/                   # not included here on Github
-│   ├── wikiart/            # DATASET (collection of images)
-│   │   ├── image_0001      # PUZZLE (single image, jpg or png)
-│   │   ├── image_0002      # PUZZLE (single image, jpg or png)
-│   ├── real_smalL_dataset/ # DATASET (collection of images)
-│   │   ├── image_0001      # PUZZLE (single image, jpg or png)
-│   │   ├── image_0002      # PUZZLE (single image, jpg or png)
-└── output/                             
-    ├── wikiart/                        # DATASET name
-    │   ├── image_0001/
-    │   │   ├── image_scaled/           # rescaled image (to avoid large files)
-    │   │   ├── lines_detection/        # detected or extracted lines
-    │   │   ├── masks/                  # binary masks for irregular pieces
-    │   │   ├── pieces/                 # alpha-channel images of irregular pieces
-    │   │   ├── polygons/               # shapely polygons saved as .npy files 
-    │   │   ├── regions_matrix/         # candidate regions for comp speedup
-    │   │   ├── compatibility_matrix/   # final compatibility matrix 
-    │   │   ├── solution/               # solution from the solver 
-    │   │   ├── evaluation/             # numerical and visual analysis 
-    │   │   ├── parameters.json         # parameters used to create the pieces
-    │   │   ├── regions_uint8.jpg       # regions used to cut the pieces 
-    │   │   └── regions_color_coded.png # regions color-coded 
-    │   └── image_0002/
-    │       └── same as above
-    └── real_small_dataset/             # DATASET name
-        └── image_0001/
-            └── same as above
-```
+We assume here that a *puzzle* is prepared (the code for that will be documented and provided).
+This means that we have a folder with the pieces (and their binary masks and polygons).
+To solve the puzzle, we can breakdown the workflow in small steps:
+- Create the ***partial payoff matrix*** (Section 4.1 of the paper) --> [See below]()
+- Calculate the ***line-based compatibility scores*** (Section 4.2 of the paper) --> [See below]()
+- Run the ***relaxation-labeling-based solver*** (Section 3.3 of the paper) --> [See below]()
 
 # 2) Installation
 Depending on the features used, you may need to install different libraries. 
@@ -54,210 +22,100 @@ numpy
 opencv-python
 matplotlib
 argparse
-```
-We use slightly less but still most likely to be needed:
-```
 scipy
+```
+We use less, but may still be needed:
+```
 skfmm
 scikit-learn
 scikit-image
 opencv-python-contrib
 ```
-Plus, if you need particular stuff:
-```
-YOLO-based segmentation: ultralytics
-SDF-based compatibility: scikit-fmm
-DeepLSD for line detection: [DeepLSD](https://github.com/cvg/DeepLSD)
-```
 
-# 3) Usage
-We use the `argparse` package for the parameters, so usually you pass parameters via command line and by using `-h` you can get some help on the parameters.
+# 3) Usage 
+As described above, we have 3 steps to get to the final solution, which can be performed with 3 separate scripts.
 
-The steps needed are:
+# 3.1) Puzzles with Squared Pieces
 
-- Optional: Create the pieces from an image
-- Create regions mask to filter out candidate positions
-- Compute compatibility matrix
-- Launch the solver to reach the puzzle solution
-- Evaluate results
+We provide here an example to show how to use the code, the $3\times3$ squared puzzle shown in Fig. 2 of the paper.
+It is very hard for a human, but straightforward when using the algorithm.
 
+![image of the 9 pieces in a row](imgs/9lines_v2.png)
 
-| :exclamation:  This section is not updated!  |
-|-----------------------------------------|
-
-
-## Full pipeline from a dataset (folder with images)
-
-Let's assume we have our dataset folder called `real_small_dataset`.
-The input folder should be in the code folder + `data`
-So full path could be: `~whatever_your_path~/RL_puzzle_solver/data/real_small_dataset`.
-
-The output (everything we create) would be in the code folder + `output`.
-
-### 1. Create pieces from images (fast, few seconds per image)
-| :exclamation:  This section is not updated!  |
-|-----------------------------------------|
-
-Let's run the piece creation! It cuts our images into a (variable) number of pieces. 
-We set the (maximum) number with the `-np` argument. It could lead to a smaller number of pieces, depending on the size of the image! This does not affect our algorithm, which does not strictly require a fixed number of pieces.
-
+## 3.1.1) Create the ***partial payoff matrix*** (Section 4.1 of the paper)
+Run the script to create the matrix
 ```bash
-python datasets/create_pieces_from_images.py -i real_small_dataset -np 16 
+python features/compute_square_regions_masks.py --dataset ACCV_fig2_puzzle --puzzle image_00000 --lines 1 --lines_det_method exact --xy_step 400 --xy_grid_points 3
 ```
 
-The output of this would be saved in `~whatever_your_path~/RL_puzzle_solver/output/synthetic_irregular_pieces_from_real_small_dataset`
+#### Breakdown: 
+We compute the matrix using *lines* (`--lines 1`) on the *dataset* `ACCV_fig2_puzzle` (which is the `output` folder) and in particular, on the *puzzle* `image_00000` (the first and only one in this case). The puzzle is already in the output folder. We have in this case *exact* lines (as we generated them) so we use the *exact* method (`--lines_det_method exact`)
 
+We use as parameters: a grid of $3\times3$ (`--xy_grid_points 3`) as they are squared pieces, a step of $400$ pixels (`--xy_step 400`) as each piece is a squared image of $400 \times 400$ pixels.
 
-### 1b. Create pieces by drawing lines (so that you have exact extracted lines!)
+#### Output: 
+This will create a `regions_matrix` folder inside `ACCV_fig2_puzzle/image_00000/` which contains the matrix (saved as `.mat` or `.npy` file) and a visualization folder to visualize the results.
 
-We have two options:
-#### Irregular shapes
+## 3.1.2) Calculate the ***line-based compatibility scores*** (Section 4.2 of the paper)
+Run the script to calculate the compatibility:
 ```bash
-python data_generator/synth_puzzle.py -nl 30 -sv -ni 1 -s irregular
+python compatibility/comp_irregular.py --dataset ACCV_fig2_puzzle --puzzle image_00000 --lines_det_method exact --cmp_type lines --cmp_cost LAP
 ```
-#### Using patterns
-This requires patterns in a folder (which in the below command is assumed to be `data/patterns`)
+#### Breakdown: 
+`--dataset`, `--puzzle` and `--lines_det_method` are the same as above, and we compute the score using *lines* (`--cmp_type lines`) calculating each pairwise score $R_{ij\gamma}$ by solving the associated **LAP** problem (`--cmp_cost LAP`). 
+
+#### Output: 
+This will create a `compatibility_matrix` folder (inside `ACCV_fig2_puzzle/image_00000/`) which contains the matrix (saved as `.mat` or `.npy` file) and a visualization folder to visualize the results.
+
+## 3.1.3) Run the ***relaxation-labeling-based solver*** (Section 3.3 of the paper)
+Run the script to solve the puzzle using the compatibility scores:
 ```bash
-python data_generator/synth_puzzle.py -nl 30 -sv -ni 1 -s pattern -pf data/patterns --extr
+python solver/solver_irregular.py --dataset ACCV_fig2_puzzle --puzzle image_00000 --lines_det_method exact --cmp_type lines --cmp_cost LAP --anchor 5
 ```
-##### Arguments
-Arguments are the same: `-nl` is the number of lines, `-sv` saves the lines visualization, `-ni` is the number of images, `-s` the shape, `-extr` extrapolates the fragments, `-pf` is the pattern folder.
+#### Breakdown: 
+`--dataset`, `--puzzle`, `--lines_det_method`, `--cmp_type` and `--cmp_cost` are the same as above, the only new parameter is the reference piece, where the algorithm will start from. It is selected passing the number (in this case, `--anchor 5` means use the 5th piece as anchor/reference and start from that).
 
-You can get the full list of arguments options running 
-```bash
-python data_generator/synth_puzzle.py -h
-```
+#### Output: 
+It will create a `solution_using..` where you can find the solution matrix and a visualization of the assembled pieces.
 
+![solution from the algorithm](imgs/solution_anc5.png)
 
-### 2. Detect lines (fast, few seconds per piece, so less than a minute per image)
-| :exclamation:  This section is not updated!  |
-|-----------------------------------------|
+This is the solution of the puzzle shown above.
 
-The detection can be done with any edge detector. We sugget to use [DeepLSD](https://github.com/cvg/DeepLSD).
-From the detected lines, we extract and save the initial and end points plus their polar coordinates (we will use the angle).
-This script is actually launched from within the DeepLSD folder (for an easier usage of that) so it contains some hardcoded paths. 
-You can define and change your own as needed.
-```bash 
-python detect_lines_irregular.py -rf ~whatever_your_path~/RL_puzzle_solver -d synthetic_irregular_pieces_from_real_small_dataset
-```
-The lines detected will be saved inside each folder of the database (there will be one `lines_detection` folder).
-It also saves a visualization (image with lines drawn in red over it) and one representation with all white images with black lines drawn on top (without the real image colors).
+# 3.2) Puzzles with Polyominoes or Irregular Pieces
 
-### 3. Create region masks (fast, seconds to minutes)
-After we have created our pieces, we create the regions masks.
-Depending on which pieces you have, you may get very different results in terms of performances.
-This highly depends on the shape of the (pairwise) compatbility matrix (the region matrix has the same shape)
-```bash 
-python features/compute_both_regions_masks.py --dataset dataset_name --puzzle image_00000 --method exact --xy_step 30 --xy_grid_points 7 --theta_step 90
-```
-Where `--dataset` selects the dataset, `--puzzle` the image/puzzle, `--method` how the lines were extracted (usually `exact` or `deeplsd`), `-xy_step` is the distance between two possible candidate position on the `xy` plane, `--theta_step` the same in the rotation space (in degrees).
-The `--xy_grid_points` control the shape of the grid (which, if you set it to $N$, will be $N \times N$)
-
-The script will create and save the outcome inside the puzzle folder (under `regions_matrix`).
-
-**TIP:** if you remove the `--puzzle` argument, it will compute the regions for the whole dataset.
-
-You can get the full list of arguments options running 
-```bash
-python features/compute_both_regions_masks.py -h 
-```
-
-### 4. Compute compatibility (may take some time on irregular pieces)
-The compatibility can be compute using:
-```bash
-python compatibility/comp_irregular.py --dataset dataset_name --puzzle image_name --det_method exact --cmp_cost LAP --xy_step 30 --xy_grid_points 7 --theta_step 90 --verbosity 1
-```
-Where `--dataset` selects the dataset, `--puzzle` the image/puzzle,  `--jobs` can be used to run in parallel the computations, `--det_method` is the method used to extract lines (`deeplsd` or `exact` for example), 
-`cmp_cost` chooses the algorithm to compute the compatibility cost (at the moment we have implemented `LAP` and `LCI`, see below for more details), `--penalty` is the penalty value (to use the correct compatibility matrix),
-the `_step`, `_grid_points` are inherited from the region matrix (should be the same), `-verbosity` controls how much of what is happening is printed (to screen or log).
-
-You can get the full list of arguments options running 
-```bash
-python compatibility/comp_irregular.py -h 
-```
-
-#### Compatibility Cost Algorithms
-This section will be updated upon publication.
-
-#### Linear Assignment Problem (LAP)
-
-#### Line Confidence Importance (LCI)
-
-### 5. Running the solver to get the solution (slow, half an hour per puzzle)
-| :exclamation:  This section is not updated!  |
-|-----------------------------------------|
-
-At the moment we have some issues, still work in progress
-```bash
-python solver/solver_irregular.py --dataset synthetic_irregular_pieces_from_real_small_dataset --puzzle image_00005_wireframe_00190925 --method deeplsd --anchor 5 --pieces 0 --penalty 40
-```
-
-### ! Script for full pipeline (given you have a puzzle in a dataset)
-```bash
-sh scripts/synth_puzzle_pipeline.sh synthetic_irregular_9_pieces_by_drawing_coloured_lines_jqdmhs image_00000 exact 10 31 90 LCI 1 24 5 600 300 1500 111
-```
-This may be very hard to read, but under the hood just runs the same command from step 3 to 5 passing the parameters (open the file for more info)
-
-
-| :exclamation:  These commands may be slightly outdated! Some things may change!  |
-|-----------------------------------------|
-
-<details>
-<summary>See at your own risk!</summary>
-
-#### Evaluation
-```bash
-python metrics/evaluate.py
-```
-
-## Full pipeline RePAIR
-
-#### Create pieces ???
-```bash
-python preprocessing/preprocess_fragments.py -d repair
-```
-
-#### Detect lines (using deepLSD)
-```bash
-python detect_lines_compatibility.py -rf /home/lucap/code/RL_puzzle_solver -d repair
-```
-
-#### Compute regions matrices
-```bash
-python features/compute_regions_masks.py --dataset repair --puzzle decor_1
-```
-
-#### Compute polygons
-```bash
-python dataset/create_polygons.py 
-```
-
-#### Compute compatibility
-```bash
-python compatibility/line_matching_RePAIR_poly_2910.py --dataset repair --puzzle decor_1
-```
-
-## SCRIPTS to do multiple steps at once
-
-
-#### Solve a puzzle (given pieces and detected lines)
-```bash
-sh solve_puzzle.sh
-```
-</details>
+More info and one example coming soon! Stay tuned!
 
 # 4) Known Issues
 
-***Problem with input and output data folders path?***
+### ***Problem with input and output data folders path?***
 
 Input and output path, respectively `data_path = 'data'` and `output_dir = 'output'` in the config file (`configs/folder_names.py`) are defined without the full path. If you run the scripts via terminal from the root folder, you should be fine. If you run from subfolders or use special settings, you can set these two accordingly.
 
-***Issues when importing `shapely`***
+### ***ModuleNotFoundError: No module named 'configs'***
+You should provide python the path where you are. Please run the code from the root folder of `RL_puzzle_solver` (`cd ~/RL_puzzle_solver`) and export the current path to the `PYTHONPATH` environmental variable.
+```
+export PYTHONPATH=$PWD:$PYTHONPATH
+```
 
-If you get `ImportError: cannot import name 'transform' from 'shapely' (/home/lucap/miniconda3/lib/python3.9/site-packages/shapely/__init__.py)` then you probably have an old version of shapely. Updating it (I guess `pip install --update shapely` should be enough) usually solves the problem.
+### ***Issues when importing `shapely`***
+
+If you get 
+```
+ImportError: cannot import name 'transform' from 'shapely' (~/miniconda3/lib/python3.9/site-packages/shapely/__init__.py)
+``` 
+then you probably have an old version of shapely. Updating it (I guess `pip install --update shapely` should be enough) usually solves the problem.
 
 # 5) Relevant publications
-Hopefully soon.
+If you find our code useful for your research, please cite
+```
+@inproceedings{nash2024ACCV,
+  title={Nash Meets Wertheimer: Using Good Continuation in Jigsaw Puzzles},
+  author={Khoroshiltseva, Marina and Palmieri, Luca and Aslan, Sinem and Vascon, Sebastiano and Pelillo, Marcello},
+  booktitle={17th Asian Conference on Computer Vision ({ACCV})},
+  year={2024}
+}
+```
 
 # 6) Acknowledgements
 We use part of other open source software/tools:

@@ -39,7 +39,7 @@ def main(args):
         pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, puzzle, args.num_pieces, verbose=True)
         # PARAMETERS
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
-        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters.json')
+        cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters_v2.json')
         # if os.path.exists(cmp_parameter_path):
         #     print("never tested! remove this comment afterwars (line 53 of comp_irregular.py)")
         #     with open(cmp_parameter_path, 'r') as cp:
@@ -60,7 +60,7 @@ def main(args):
 
         grid_size_xy = ppars.comp_matrix_shape[0]
         grid_size_rot = ppars.comp_matrix_shape[2]
-        grid, grid_step_size = create_grid(grid_size_xy, ppars.p_hs, ppars.canvas_size)
+        #grid, grid_step_size = create_grid(grid_size_xy, ppars.p_hs, ppars.canvas_size)
 
         print()
         print('#' * 50)
@@ -130,7 +130,7 @@ if __name__ == '__main__':
     parser.add_argument('--xy_step', type=int, default=32, help='the step (in pixels) between each grid point')
     parser.add_argument('--xy_grid_points', type=int, default=3, 
         help='the number of points in the grid (for each axis, total number will be the square of what is given)')
-    parser.add_argument('--theta_step', type=int, default=0, help='degrees of each rotation')
+    parser.add_argument('--theta_step', type=int, default=0, help='degrees of each rotation (leave 0 for no rotation)')
     parser.add_argument('--DEBUG', action='store_true', default=False, help='WARNING: will use debugger! It stops and show the matrices!')
     args = parser.parse_args()
     main(args)

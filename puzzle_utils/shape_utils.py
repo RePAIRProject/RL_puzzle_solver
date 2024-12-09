@@ -524,7 +524,7 @@ def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, 
         piece['boundary_seg'] = borders_segments
     return pieces
 
-def include_shape_info(fnames, pieces, dataset, puzzle, lines_det_method, motif_det_method, line_thickness=1, line_based=True, sdf=False, motif_based=True):
+def include_shape_info(fnames, pieces, dataset, puzzle, lines_det_method, motif_det_method=None, line_thickness=1, line_based=True, sdf=False, motif_based=False):
 
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle)
     polygons_folder = os.path.join(root_folder, fnames.polygons_folder)

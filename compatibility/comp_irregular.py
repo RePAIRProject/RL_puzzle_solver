@@ -7,7 +7,7 @@ from scipy.io import loadmat, savemat
 import datetime
 import matplotlib.pyplot as plt 
 import time
-from ultralytics import YOLO
+# from ultralytics import YOLO
 
 
 # internal
@@ -226,6 +226,7 @@ def main(args):
                     if i > 1 and i != j and args.DEBUG == True:
                         show_debug_visualization(pieces, i, j, args, ji_mat, region_mask, ppars)
 
+        breakpoint()
         ###########################
         #   NORMALIZATION
         ###########################
