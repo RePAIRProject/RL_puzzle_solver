@@ -1,0 +1,65 @@
+{
+   "piece_0000": {
+      "translation": [
+         0.0,
+         0.0
+      ],
+      "rotation": 0
+   },
+   "piece_0001": {
+      "translation": [
+         -400.0,
+         0.0
+      ],
+      "rotation": 0
+   },
+   "piece_0002": {
+      "translation": [
+         -800.0,
+         0.0
+      ],
+      "rotation": 0
+   },
+   "piece_0003": {
+      "translation": [
+         0.0,
+         -400.0
+      ],
+      "rotation": 0
+   },
+   "piece_0004": {
+      "translation": [
+         -400.0,
+         -400.0
+      ],
+      "rotation": 0
+   },
+   "piece_0005": {
+      "translation": [
+         -800.0,
+         -400.0
+      ],
+      "rotation": 0
+   },
+   "piece_0006": {
+      "translation": [
+         0.0,
+         -800.0
+      ],
+      "rotation": 0
+   },
+   "piece_0007": {
+      "translation": [
+         -400.0,
+         -800.0
+      ],
+      "rotation": 0
+   },
+   "piece_0008": {
+      "translation": [
+         -800.0,
+         -800.0
+      ],
+      "rotation": 0
+   }
+}

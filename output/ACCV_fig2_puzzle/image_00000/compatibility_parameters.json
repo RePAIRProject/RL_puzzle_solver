@@ -1,0 +1,27 @@
+{
+   "piece_size": 400,
+   "num_pieces": 9,
+   "img_size": [
+      1200,
+      1200,
+      3
+   ],
+   "p_hs": 200,
+   "xy_step": 400,
+   "xy_grid_points": 3,
+   "theta_step": 0,
+   "theta_grid_points": 1,
+   "pairwise_comp_range": 800,
+   "canvas_size": 1202,
+   "comp_matrix_shape": [
+      3,
+      3,
+      1
+   ],
+   "threshold_overlap": 40.0,
+   "threshold_overlap_lines": 50.0,
+   "threshold_overlap_motifs": 80.0,
+   "borders_regions_width_outside": 1,
+   "borders_regions_width_inside": 1,
+   "border_tolerance": 13
+}

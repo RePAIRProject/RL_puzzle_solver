@@ -1,0 +1,9 @@
+{
+   "thr_coef": 0.13,
+   "max_dist": 6,
+   "badmatch_penalty": 10.0,
+   "mismatch_penalty": 8.0,
+   "rmax": 3.5,
+   "cmp_cost": "LAP",
+   "k": 3
+}

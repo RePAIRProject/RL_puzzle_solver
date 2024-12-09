@@ -1,0 +1,10 @@
+{
+   "Tfirst": 1000,
+   "Tnext": 500,
+   "Tmax": 3000,
+   "anc_fix_tresh": 0.75,
+   "p_matrix_shape": 7,
+   "cmp_type": "lines",
+   "cmp_cost": "LAP",
+   "combo_type": "SLM_v1"
+}
