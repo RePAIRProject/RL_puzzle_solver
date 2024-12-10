@@ -86,6 +86,12 @@ This is the solution of the puzzle shown above.
 
 More info and one example coming soon! Stay tuned!
 
+# 3.3) Real Data (Vector Maps)
+
+We uploaded the vector maps we downloaded from [Openstreetmaps](https://www.openstreetmap.org/) using [Cadmapper](https://cadmapper.com/) on Zenodo. 
+
+You can find the related dataset [here](https://zenodo.org/records/14353233).
+
 # 4) Known Issues
 
 ### ***Problem with input and output data folders path?***
