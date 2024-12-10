@@ -2,9 +2,9 @@ import numpy as np
 from puzzle_utils.shape_utils import compute_SDF_CM_matrix
 from puzzle_utils.lines_ops import compute_line_based_CM_LAP, compute_line_based_CM_LCI, \
         extract_from, compute_cost_matrix_LAP_vis, compute_cost_matrix_LAP_debug
-from compatibility.compatibility_Motifs import compute_CM_using_motifs
-from compatibility.compatibility_MGC import compute_cost_using_color_compatibility
-from compatibility.compatibility_Oracle import compute_oracle_compatibility
+# from compatibility.compatibility_Motifs import compute_CM_using_motifs
+# from compatibility.compatibility_MGC import compute_cost_using_color_compatibility
+# from compatibility.compatibility_Oracle import compute_oracle_compatibility
 import time
 
 

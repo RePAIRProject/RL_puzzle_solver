@@ -226,7 +226,6 @@ def main(args):
                     if i > 1 and i != j and args.DEBUG == True:
                         show_debug_visualization(pieces, i, j, args, ji_mat, region_mask, ppars)
 
-        breakpoint()
         ###########################
         #   NORMALIZATION
         ###########################

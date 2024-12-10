@@ -86,13 +86,19 @@ This is the solution of the puzzle shown above.
 
 More info and one example coming soon! Stay tuned!
 
-# 3.3) Real Data (Vector Maps)
+# 4) Dataset
 
+## 4.1) Synthetic Puzzles
+We are preparing the code for generating the images. We provided (in the output folder) the example with the squared pieces and will provide the code for generating puzzles (squared, polyominoes and irregular).
+
+## 4.2) Puzzles from Vector Maps
 We uploaded the vector maps we downloaded from [Openstreetmaps](https://www.openstreetmap.org/) using [Cadmapper](https://cadmapper.com/) on Zenodo. 
 
 You can find the related dataset [here](https://zenodo.org/records/14353233).
 
-# 4) Known Issues
+The code for creating pieces from the maps will be released soon.
+
+# 5) Known Issues
 
 ### ***Problem with input and output data folders path?***
 
@@ -112,7 +118,7 @@ ImportError: cannot import name 'transform' from 'shapely' (~/miniconda3/lib/pyt
 ``` 
 then you probably have an old version of shapely. Updating it (I guess `pip install --update shapely` should be enough) usually solves the problem.
 
-# 5) Relevant publications
+# 6) Relevant publications
 If you find our code useful for your research, please cite
 ```
 @inproceedings{nash2024ACCV,
