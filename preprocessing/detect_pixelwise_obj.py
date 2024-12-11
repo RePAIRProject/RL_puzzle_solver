@@ -57,7 +57,7 @@ def main(args):
         imgs_folder = os.path.join(args.images, 'pieces')
         motifs_output = args.images
 
-    motifs_output = os.path.join(motifs_output, 'motifs_detection_OBB')
+    motifs_output = os.path.join(motifs_output, 'motifs_segmentation')
     #motifs_output = os.path.join(args.images, 'motifs_detection_OBB')
     os.makedirs(motifs_output, exist_ok=True)
     
@@ -85,22 +85,26 @@ def main(args):
         image0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
         jetcmap = mpl.colormaps['jet'].resampled(len(class_names))
         cubo_image0 = np.zeros((np.shape(img_pil)[0], np.shape(img_pil)[1], 14), dtype='uint8')
-        for j, mask in enumerate(obbs.masks):
-            #breakpoint()
-            class_label = det_obb.cpu().cls.numpy()[0]
-            do_pts = det_obb.cpu().xyxyxyxy.numpy()[0]
-
-            # Polygon corner points coordinates
-            pts = np.array(do_pts, dtype='int64')
-            #color = 255*np.array(obb_colormap(class_label)[:3])
-            color = (255, 255, 255)
-            thickness = 2
-            isClosed = True
-            im0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
-            image0_new = cv2.fillPoly(im0, [pts], color)
-            base_img_colored = cv2.polylines(base_img_colored, [pts], isClosed=True, color=np.asarray(jetcmap(int(class_label))[:3]) * 255, thickness=3)
-            print(int(class_label))
-            cubo_image0[:, :, int(class_label)] = cubo_image0[:, :, int(class_label)] + image0_new
+        # breakpoint()
+        for mask, box in zip(obbs.masks, obbs.boxes):
+            # class_label = mask.cpu().cls.numpy()[0]
+            # do_pts = det_obb.cpu().xyxyxyxy.numpy()[0]
+            # breakpoint()
+            resized_mask = cv2.resize(mask.data.cpu().numpy()[0,:,:], (np.shape(img_pil)[0], np.shape(img_pil)[1]))
+            class_label = int(box.data[0][-1].item())
+            # # Polygon corner points coordinates
+            # pts = np.array(do_pts, dtype='int64')
+            # #color = 255*np.array(obb_colormap(class_label)[:3])
+            # color = (255, 255, 255)
+            # thickness = 2
+            # isClosed = True
+            # im0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
+            # image0_new = cv2.fillPoly(im0, [pts], color)
+            # base_img_colored = cv2.polylines(base_img_colored, [pts], isClosed=True, color=np.asarray(jetcmap(int(class_label))[:3]) * 255, thickness=3)
+            # print(int(class_label))
+            cubo_image0[:, :, class_label] += resized_mask.astype(np.uint8) #cubo_image0[:, :, int(class_label)] + image0_new
+        cubo_image0 = np.clip(cubo_image0, 0, 1)
+        # breakpoint()
 
         # save motifs_CUBE per ogni image
         filename = os.path.join(motifs_output, f'motifs_cube_{img_name}')
