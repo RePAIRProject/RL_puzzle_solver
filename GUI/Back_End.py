@@ -1,6 +1,7 @@
 import os
 from threading import Thread, Event, Lock
 
+from fontTools.misc.cython import returns
 from scipy.io import loadmat
 
 import select_anchor_RePAIR
@@ -75,16 +76,94 @@ def select_anchor_thread_function():
     set_select_anchor_running(False)
     set_select_anchor_done(True)
 
+def get_probability_matrix():
+    answer, probability = puzzle_solver.get_p_matrix()
+    if answer is not None:
+        answer = scale_solution(answer)
+    # print(puzzle_solver.get_p_matrix())
+    return answer, probability
 
 def pl_solver_thread_function():
     global input_dict
     global pl_solution
     global path_dic
     set_pl_solver_running(True)
-    pl_solution = puzzle_solver.assemble(input_dict, path_dic)
+
+    initial_thresh = 0.0
+    average_thresh_factor = 0.05
+    min_remaining = 2
+    puzzle_solver.set_running(True)
+    pl_solution, probability = puzzle_solver.assemble(input_dict, path_dic)
+    puzzle_solver.set_running(False)
+    print('pl_solution', pl_solution)
+    pl_solution = throw_away_1(pl_solution, probability, initial_thresh)
+    # pl_solution = throw_away_2(pl_solution, probability, average_thresh_factor)
+    # pl_solution = combined_throw_away(pl_solution, probability, initial_thresh, min_remaining, average_thresh_factor)
     set_pl_solver_running(False)
     set_pl_solver_done(True)
 
+def throw_away_1(solution, probability, thresh_hold):
+    for key in list(solution.keys()):
+        prob = probability[key][0]
+        if prob < thresh_hold:
+            del solution[key]
+    return solution
+
+def throw_away_2(solution, probability, thresh_hold):
+    filtered_probs = [prob[0] for key, prob in probability.items() if prob[0] != 1]
+    average_prob = sum(filtered_probs) / len(filtered_probs)
+    threshold_value = average_prob * thresh_hold
+    print("threshold_value", threshold_value)
+    for key in list(solution.keys()):
+        print(key, probability[key])
+        prob = probability[key][0]
+        if prob != 1 and (prob - average_prob) <= threshold_value:
+            del solution[key]
+    return solution
+
+def combined_throw_away(solution, probability, initial_thresh, base_min_remaining, average_thresh_factor):
+    kept_solutions = {}
+    deleted_solutions = {}
+
+    for key in solution.keys():
+        prob = probability[key][0]
+        if prob >= initial_thresh:
+            kept_solutions[key] = solution[key]
+        else:
+            deleted_solutions[key] = solution[key]
+
+    count_prob_1 = sum(1 for key in probability if probability[key][0] == 1)
+    required_min_remaining = base_min_remaining + count_prob_1 + 1
+
+    remaining_probs = []
+
+    for key in kept_solutions:
+        prob = probability.get(key, [None])[0]
+        if prob is not None and prob != 1:
+            remaining_probs.append(prob)
+
+
+    if len(remaining_probs) < required_min_remaining:
+        all_deleted_probs = {key: probability[key][0] for key in deleted_solutions if probability[key][0] != 1}
+        all_probs = list(all_deleted_probs.values())
+
+        if all_probs:
+            average_prob = sum(all_probs) / len(all_probs)
+            print("Average probability:", average_prob)
+
+            sorted_deleted = sorted(
+                all_deleted_probs.items(),
+                key=lambda item: item[1] - average_prob,
+                reverse=True
+            )
+
+            for key, prob in sorted_deleted:
+                if len(remaining_probs) + len(kept_solutions) >= required_min_remaining:
+                    break
+                kept_solutions[key] = deleted_solutions.pop(key)
+                remaining_probs.append(prob)
+
+    return kept_solutions
 
 def puzzle_solver_test_function(last_loop_solution, neighbour_test):
     global input_dict
@@ -94,6 +173,8 @@ def puzzle_solver_test_function(last_loop_solution, neighbour_test):
     input_dict.update({'neighbours': neighbour_test})
 
     pl_solution = puzzle_solver.assemble(input_dict, path_dic)
+
+
 
 
 def get_next_neighbour(image_id):
@@ -307,18 +388,18 @@ def get_pl_solution():
     apply_gt = path_dic['apply_gt']
     if apply_gt == "True":
         pl_solution = apply_ground_truth()
-    pl_solution = scale_solution()
+    pl_solution = scale_solution(pl_solution)
+    print('pl_solution', pl_solution)
     return pl_solution
 
 
-def scale_solution():
-    global pl_solution
+def scale_solution(solution):
     global path_dic
-    key_x, key_y, key_rotation = pl_solution[key_fragment]
+    key_x, key_y, key_rotation = solution[key_fragment]
 
     adjusted_solution = {}
 
-    for piece, (x, y, rotation) in pl_solution.items():
+    for piece, (x, y, rotation) in solution.items():
 
         new_x = x - key_x
         new_y = y - key_y

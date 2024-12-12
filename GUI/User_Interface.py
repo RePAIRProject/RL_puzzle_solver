@@ -3,13 +3,15 @@ import re
 
 from kivy import Config
 from kivy.clock import Clock, mainthread
-from kivy.graphics import Rectangle, Color
+from kivy.graphics import Rotate, PopMatrix, PushMatrix, Translate, Scale, Color, Rectangle
+from kivy.graphics.context_instructions import Scale
 from kivymd.app import MDApp
 from kivy.core.image import Image as CoreImage
 import numpy as np
 import math
 from screeninfo import get_monitors
 from kivy.uix.gridlayout import GridLayout
+from kivy.graphics import Rotate, PopMatrix, PushMatrix, Translate, Scale
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.checkbox import CheckBox
@@ -44,13 +46,6 @@ class MainLayout(GridLayout):  # might need to change GridLayout to sth else to 
 
     the_list = []
 
-
-def update_image_offset(image, center):
-    offset = [(center[0] - image.parent.size[0] / 2 - (image.parent.pos[0] - image.pos[0]) / 2) * image.ratio[0],
-              (center[1] - image.parent.size[1] / 2 - (image.parent.pos[1] - image.pos[1]) / 2) * image.ratio[1]]
-    return offset
-
-
 class GUIApp(MDApp):
     def __init__(self):
         super().__init__()
@@ -70,6 +65,7 @@ class GUIApp(MDApp):
         self.next_neighbour_requested = False
         self.solution_applied = False
         self.initial_image_updates = False
+        self.zoom_processed = False
 
         # keyboard flags
         self.is_grabbing_window = False
@@ -110,6 +106,16 @@ class GUIApp(MDApp):
 
         self.the_layout = MDFloatLayout(md_bg_color=(0, 0, 0, 1))
         self.grid_layout = GridLayout()
+
+        self.grid_layout.base_scale_factor = 1.0
+        self.grid_layout.true_scale = 1.0
+        self.grid_layout.scale_factor = self.grid_layout.base_scale_factor
+        self.grid_layout.zoom_scale = Scale(x=self.grid_layout.scale_factor, y=self.grid_layout.scale_factor, origin=(0, 0))
+        # PushMatrix()
+        self.grid_layout.canvas.add(self.grid_layout.zoom_scale)
+
+        # with self.grid_layout.canvas.after:
+        #     PopMatrix()
         self.toolbar = MDTopAppBar()
         self.click_label = Label()
         self.main_layout = MainLayout()
@@ -288,8 +294,8 @@ class GUIApp(MDApp):
         if touch.button == 'left':
             self.hold_left = False
             # if self.keyboard_input != 305:
-            # if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
-            #     self.grabbed_image.deselect()
+            if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+                self.grabbed_image.deselect()
             if hasattr(self, 'selection_rect'):
                 if self.selection_rect in self.grid_layout.canvas.children:
                     for image in reversed(self.current_image_list):
@@ -304,7 +310,8 @@ class GUIApp(MDApp):
 
     @mainthread
     def on_touch_move(self, window, pos, touch, *args, **kwargs):  # Mouse Listener
-        scrolling = 0
+        window_size = Window.size
+        self.mouse_pos = (window_size[0] * touch.spos[0], window_size[1] * touch.spos[1])
         if self.keyboard_input == 304:  # left shift
             self.is_grabbing_window = True
         if self.keyboard_input == 32: # space
@@ -314,26 +321,23 @@ class GUIApp(MDApp):
             elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
                 if self.grabbed_image is not None:
                     self.grabbed_image.rotate(+1 * rotation_interval)  # its  2x God knows why
-        # elif keyboard_input == 0:
-        #     if touch.button == 'scrollup':  # scroll up is scrolling down :|
-        #         if self.grabbed_image is not None:
-        #             for image in self.current_image_list:
-        #                 window_size = Window.size
-        #                 self.mouse_pos = (window_size[0] * touch.spos[0] - image.parent.pos[0], window_size[1] * touch.spos[1] - image.parent.pos[1])
-        #                 print(image.parent.pos)
-        #                 print('up', image.scale_factor)
-        #                 image.zoom_at_point(1.05, self.mouse_pos)
-        #     elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
-        #         if self.grabbed_image is not None:
-        #             for image in self.current_image_list:
-        #                 window_size = Window.size
-        #                 self.mouse_pos = (window_size[0] * touch.spos[0] - image.parent.pos[0], window_size[1] * touch.spos[1] - image.parent.pos[1])
-        #                 print(image.parent.pos)
-        #                 print('up', image.scale_factor)
-        #                 image.zoom_at_point(0.95, self.mouse_pos)
 
-        window_size = Window.size
-        self.mouse_pos = (window_size[0] * touch.spos[0], window_size[1] * touch.spos[1])
+        # zooming functionality
+        if self.keyboard_input == 308:  # left alt
+            if not hasattr(self, 'zoom_processed') or not self.zoom_processed:
+                if touch.button == 'scrollup' or touch.button == 'scrolldown':
+                    for image in self.current_image_list:
+                        if touch.button == 'scrollup':  # scroll up is scrolling down :|
+                            # self.zoom_at_point(0.95, self.mouse_pos)
+                            image.zoom_at_point(0.95, self.mouse_pos)
+                        elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
+                            # self.zoom_at_point(1.05, self.mouse_pos)
+                            image.zoom_at_point(1.05, self.mouse_pos)
+                    self.zoom_processed = True
+            else:
+                self.zoom_processed = False
+        # end of zooming
+
         if touch.button == 'right':
             # if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
             #     self.grabbed_image.deselect()
@@ -417,13 +421,13 @@ class GUIApp(MDApp):
                                 for image in self.current_image_list:
                                     if image.is_selected:
                                         touch.offsets[image.name] = [
-                                            self.mouse_pos[0] - image.get_real_pos()[0],
-                                            self.mouse_pos[1] - image.get_real_pos()[1],
+                                            (self.mouse_pos[0]/image.zoom_scale.x - image.get_real_pos()[0]),
+                                            (self.mouse_pos[1]/image.zoom_scale.x - image.get_real_pos()[1]),
                                         ]
                             for image in self.current_image_list:
                                 if image.is_selected:
                                     offset = touch.offsets[image.name]
-                                    image.translate(self.mouse_pos[0] - offset[0], self.mouse_pos[1] - offset[1])
+                                    image.translate((self.mouse_pos[0]/image.zoom_scale.x - offset[0]), (self.mouse_pos[1]/image.zoom_scale.x - offset[1]))
                         # if self.grabbed_image is not None and self.checked_border:
                         #     if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
                         #         touch.offset_x = self.mouse_pos[0] - self.grabbed_image.get_real_pos()[0]
@@ -449,10 +453,16 @@ class GUIApp(MDApp):
                 self.keyboard_input = 0
             if keyboard == 304:
                 self.keyboard_input = 0
+            if keyboard == 308:
+                self.keyboard_input = 0
 
     @mainthread
     def _on_keyboard_down(self, instance, keyboard, keycode, text, modifiers):  # Keyboard down Listener
         self.keyboard_input = keyboard
+        # zoom reset
+        if self.keyboard_input == 122:  # z
+            for image in self.current_image_list:
+                image.zoom_reset()
 
     @mainthread
     def on_resize(self, *args):
@@ -497,7 +507,7 @@ class GUIApp(MDApp):
                          positions[1] - bank_offset[1],
                          positions[2]]
             #
-            self.image_offset = update_image_offset(image, center)
+            self.image_offset = image.update_offset(center)
             #
             positions = [positions[0] + self.image_offset[0],
                          positions[1] + self.image_offset[1],
@@ -527,13 +537,15 @@ class GUIApp(MDApp):
                 # self.image_offset_y = center[1] - image.parent.size[1] / 2 - (image.parent.pos[1] - image.pos[1]) / 2
 
                 # centering the anchor and moving others, image.parent (it's canvas) is responsible for positioning
-                self.image_offset = update_image_offset(image, center)
+                self.image_offset = image.update_offset(center)
 
                 # ratio will apply in update_positions function
                 new_positions = np.array(
                     [position[0] + self.image_offset[0], position[1] + self.image_offset[1]])
 
                 image.update_positions(new_positions, positions[2])
+            else:
+                image.update_positions([-1500, -1500], 0)
 
     def checking_clock(self, *args, **kwargs):
         self.communicate_thread_lock.acquire()
@@ -549,12 +561,14 @@ class GUIApp(MDApp):
         if not self.anchor_showed:
             if (back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0):
                 self.set_images(1)
+                print("set_image 1")
                 self.show_images(self)
                 self.anchor_showed = True
                 self.anchor_button.disabled = True
         elif ((back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0) &
               (back_end.get_select_neighbour_done()) & (not self.neighbour_showed)):
             self.set_images(1)
+            print("set_image 2")
             self.show_images(self)
             self.neighbour_showed = True
             self.neighbour_button.disabled = True
@@ -563,6 +577,7 @@ class GUIApp(MDApp):
         elif ((back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0) &
               (back_end.get_select_neighbour_done()) & self.neighbour_showed & self.next_neighbour_requested):
             self.set_images(1)
+            print("set_image 3")
             self.show_images(self)
             self.next_neighbour_requested = False
         elif ((back_end.get_select_anchor_done()) & (back_end.get_select_neighbour_done()) & self.neighbour_showed &
@@ -594,6 +609,29 @@ class GUIApp(MDApp):
     def callback(self):
         # start_select_anchor(self)
         return
+
+    def zoom_at_point(self, factor, origin):
+        new_scale = self.grid_layout.scale_factor * factor
+
+        last_origin = self.grid_layout.zoom_scale.origin
+        origin_diff = (origin[0] - last_origin[0], origin[1] - last_origin[1])
+
+        if (self.grid_layout.scale_factor < self.grid_layout.true_scale < new_scale) or (self.grid_layout.scale_factor > self.grid_layout.true_scale > new_scale):
+            new_scale = self.grid_layout.true_scale
+
+        if (new_scale > 0.95) & (new_scale < 1.05):
+            new_scale = 1.0
+        if new_scale < 0.5:
+            new_scale = 0.5
+        origin_diff = (origin_diff[0] / new_scale, origin_diff[1] / new_scale)
+        # Update the origin of the scale to the local mouse position
+        self.grid_layout.zoom_scale.origin = (last_origin[0] + origin_diff[0], last_origin[1] + origin_diff[1])
+
+        # Adjust the scale factor
+        self.grid_layout.scale_factor = new_scale
+        self.grid_layout.zoom_scale.x = self.grid_layout.scale_factor
+        self.grid_layout.zoom_scale.y = self.grid_layout.scale_factor
+        self.grid_layout.base_scale_factor = self.grid_layout.scale_factor
 
 
 def start_select_anchor(self):
@@ -709,11 +747,20 @@ def loop_finalization(solved_pieces):
     # neighbour_test = ['piece_0006.png']
     # back_end.puzzle_solver_test_function(app.final_solution, neighbour_test)
 
-
+update_counter = 0
+update_freq = 1 # in seconds
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
+    global update_counter
     while True:
         app.communicate_thread_lock.acquire()
-
+        if update_counter>=(1/communication_freq)*update_freq:
+            answer, probabality = back_end.get_probability_matrix()
+            if answer is not None:
+                app.pl_solution = answer
+                print(answer)
+                app.apply_solution()
+            update_counter = 0
+        update_counter += 1
         app.select_anchor_running = back_end.get_select_anchor_running()
         app.select_neighbour_running = back_end.get_select_neighbour_running()
         app.pl_solver_running = back_end.get_pl_solver_running()
@@ -765,25 +812,11 @@ def check_collision(image, rectangle): # /todo
         rec_bottom = rectangle.pos[1] + rectangle.size[1]
         rec_top = rectangle.pos[1]
 
-    width_height = ((image.width - image.norm_image_size[0]) / 2,
-                    (image.height - image.norm_image_size[1]) / 2)
-
     rec_right_top = [rec_right, rec_top]
     rec_left_bottom = [rec_left, rec_bottom]
-    rec_right_top = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
-                                image.get_norm_image_size(), rec_right_top, width_height,
-                                (image.texture_size[0] / image.norm_image_size[0]),
-                                (image.texture_size[1] / image.norm_image_size[1]),
-                                image.angle)
-    rec_left_bottom = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
-                                image.get_norm_image_size(), rec_left_bottom, width_height,
-                                (image.texture_size[0] / image.norm_image_size[0]),
-                                (image.texture_size[1] / image.norm_image_size[1]),
-                                image.angle)
-    rec_right = rec_right_top[0]
-    rec_top = rec_right_top[1]
-    rec_left = rec_left_bottom[0]
-    rec_bottom = rec_left_bottom[1]
+    # zoom = [app.grid_layout.zoom_scale.x, app.grid_layout.zoom_scale.y, app.grid_layout.zoom_scale.origin]
+    rec_right_top = image.map_mouse_pos_pixel(rec_right_top)
+    rec_left_bottom = image.map_mouse_pos_pixel(rec_left_bottom)
 
     if non_zero_pixels.size > 0:
         top = np.max(non_zero_pixels[:, 0])
@@ -791,38 +824,19 @@ def check_collision(image, rectangle): # /todo
         bottom = np.min(non_zero_pixels[:, 0])
         right = np.max(non_zero_pixels[:, 1])
 
-    if not (top <= rec_top and right <= rec_right and bottom >= rec_bottom and left >= rec_left):
+    if not (top <= rec_right_top[1] and right <= rec_right_top[0] and bottom >= rec_left_bottom[1] and left >= rec_left_bottom[0]):
         return False
     return True
 
+
 def check_image_select(image, mouse_pos):
-    if image.collides(mouse_pos[0], mouse_pos[1]):
+    if image.collides(mouse_pos):
         if not app.checked_border:
-            width_height = ((image.width - image.norm_image_size[0]) / 2,
-                            (image.height - image.norm_image_size[1]) / 2)
-            pixel = map_mouse_pos_pixel(image.get_real_pos(), image.texture_size,
-                                        image.get_norm_image_size(), mouse_pos, width_height,
-                                        (image.texture_size[0] / image.norm_image_size[0]),
-                                        (image.texture_size[1] / image.norm_image_size[1]),
-                                        image.angle)
+            pixel = image.map_mouse_pos_pixel(mouse_pos)
+            # if pixel[0]<0 or pixel[1] < 0:
+            #     return False
             return image.check_mask(pixel)
     return False
-
-
-def map_mouse_pos_pixel(image_pos, image_pixel, image_size, mouse_pos, width_height, ratio_x, ratio_y, angle):
-    app.ratio = (ratio_x, ratio_y)
-
-    angle_rad = math.radians(angle)
-
-    relative_pos = (mouse_pos[0] - (image_pos[0] + width_height[0]),
-                    mouse_pos[1] - (image_pos[1] + width_height[1]))
-
-    rotated_x = (relative_pos[0] * math.cos(-angle_rad)) - (relative_pos[1] * math.sin(-angle_rad))
-    rotated_y = (relative_pos[0] * math.sin(-angle_rad)) + (relative_pos[1] * math.cos(-angle_rad))
-
-    reality_pixel = (rotated_x * app.ratio[0], rotated_y * app.ratio[1])
-
-    return reality_pixel
 
 
 def image_reader(image_number, score, has_score, is_anchor=False):

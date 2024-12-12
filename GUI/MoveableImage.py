@@ -1,6 +1,8 @@
 import math
 
 from kivy.graphics import Rotate, PopMatrix, PushMatrix, Translate, Scale
+from kivy.graphics.transformation import Matrix
+from kivymd.uix.behaviors import ScaleBehavior
 
 from kivy.uix.gridlayout import GridLayout
 
@@ -20,7 +22,7 @@ from PuzzlePiece import PuzzlePiece
 class MovableImage(Image):
     def __init__(self, path, path_bw, label, score, image_number, has_score, name, angle, is_anchor=False, **kwargs):
         super(MovableImage, self).__init__()
-
+        self.offset = [0, 0]
         self.is_selected = False
         self.name = name
         os_path = getcwd()
@@ -28,7 +30,7 @@ class MovableImage(Image):
         self.base_scale_factor = 1.0
         self.true_scale = 1.0
         self.scale_factor = self.base_scale_factor
-        self.zoom_scale = Scale(x=self.scale_factor, y=self.scale_factor, origin=(self.center_x, self.center_y))
+        self.zoom_scale = Scale(x=self.scale_factor, y=self.scale_factor, origin=(0, 0))
         self.path_bw = path_bw + self.name
         self.limit_image = self
         self.source = self.path
@@ -82,6 +84,10 @@ class MovableImage(Image):
         with self.canvas.after:
             PopMatrix()
 
+        self.zoom_matrix = self.zoom_scale.matrix.tolist()
+        self.trans_matrix = self.trans.matrix.tolist()
+        self.rotate_matrix = self.rot.matrix.tolist()
+
     def get_id(self, *args, **kwargs):
         return self.name
 
@@ -89,7 +95,7 @@ class MovableImage(Image):
         try:
             check = self.image_bw[-1 * int(point[1]), int(point[0])]
             # The real image and the coordinate system of here are not really matching... /todo
-            if check == 0:
+            if check == 0 or check is None:
                 return False
             return True
         except IndexError:
@@ -146,6 +152,7 @@ class MovableImage(Image):
         self.position_memory = [self.position_memory[0], self.position_memory[1], self.angle]
 
     def translate(self, x, y):
+
         self.trans.x = x - self.pos[0]
         self.trans.y = y - self.pos[1]
         self.trans_bank = (self.trans.x, self.trans.y)
@@ -162,9 +169,35 @@ class MovableImage(Image):
     def get_angel(self):
         return self.angle
 
-    def collides(self, x, y):
-        return self.collide_point(x - self.trans.x, y - self.trans.y)
-        # return self.x <= x <= self.right and self.y <= y - self.trans.y <= self.top
+    def apply_transform_matrix(self, point):
+        self.zoom_matrix = np.array(self.zoom_scale.matrix.tolist())
+        self.trans_matrix = np.array(self.trans.matrix.tolist())
+        self.rotate_matrix = np.array(self.rot.matrix.tolist())
+
+        zoom_applied = np.dot(self.zoom_matrix, [point[0], point[1], 0, 1])
+        rotation_applied = np.dot(self.rotate_matrix, zoom_applied)
+        trans_applied = np.dot(self.trans_matrix, rotation_applied)[:2]
+        transformed_point = trans_applied
+        return transformed_point
+
+    def collides(self, mouse_pos):
+        zoom_matrix = np.array(self.zoom_scale.matrix.tolist())
+        rot_matrix = np.array(self.rot.matrix.tolist())
+        trans_matrix = np.array(self.trans.matrix.tolist())
+
+        combined_matrix = np.linalg.inv(trans_matrix @ rot_matrix @ zoom_matrix).T
+
+        # Convert mouse position to homogeneous coordinates
+        mouse_pos_homogeneous = np.array([mouse_pos[0], mouse_pos[1], 0, 1])
+
+        # Apply the combined transformation matrix
+        transformed_point = np.dot(combined_matrix, mouse_pos_homogeneous)
+
+        # Extract x and y from the transformed point
+        x, y = transformed_point[:2]
+        return True
+        # Check if the point is within the bounds
+        return self.x <= x <= self.right and self.y <= y <= self.top
 
     def update_positions(self, position, solved_rotation, *args, **kwargs):
         self.update_ratio()
@@ -182,45 +215,81 @@ class MovableImage(Image):
         self.ratio = np.array([self.texture_size[0] / self.norm_image_size[0],
                                self.texture_size[1] / self.norm_image_size[1]])
 
-    def zoom_at_point(self, factor, mouse_pos):
-        """
-        Zooms the image at the specified mouse position.
-
-        :param factor: Float for zoom level (e.g., 1.1 for zoom in, 0.9 for zoom out).
-        :param mouse_pos: Tuple (x, y) with the mouse position in window coordinates.
-        """
-        # Convert mouse position to local coordinates of the image
-        local_mouse_x = mouse_pos[0] - self.x
-        local_mouse_y = mouse_pos[1] - self.y
-
+    def zoom_at_point(self, factor, origin):
         new_scale = self.scale_factor * factor
+        self.scale_factor = new_scale
 
-        if (self.scale_factor < self.true_scale < new_scale) or (self.scale_factor > self.true_scale > new_scale):
+        # self.zoom_matrix[0] = self.scale_factor
+        # self.zoom_matrix[5] = self.scale_factor
+        # self.zoom_matrix[12] = origin[0]
+        # self.zoom_matrix[13] = origin[1]
+
+        # self.zoom_scale.matrix = self.zoom_matrix.tolist()
+
+        last_origin = self.zoom_scale.origin
+        origin_diff = (origin[0] - last_origin[0], origin[1] - last_origin[1])
+
+        if (self.scale_factor < self.true_scale < new_scale) or (
+                self.scale_factor > self.true_scale > new_scale):
             new_scale = self.true_scale
 
+        if (new_scale > 0.95) & (new_scale < 1.05):
+            new_scale = 1.0
+        if new_scale < 0.5:
+            new_scale = 0.5
+        elif new_scale > 10.0:
+            new_scale = 10.0
+        origin_diff = (origin_diff[0] / self.scale_factor, origin_diff[1] / self.scale_factor)
+
         # Update the origin of the scale to the local mouse position
-        self.zoom_scale.origin = (local_mouse_x, local_mouse_y)
+        self.zoom_scale.origin = (last_origin[0] + origin_diff[0], last_origin[1] + origin_diff[1])
 
         # Adjust the scale factor
         self.scale_factor = new_scale
         self.zoom_scale.x = self.scale_factor
         self.zoom_scale.y = self.scale_factor
-
         self.base_scale_factor = self.scale_factor
 
-        # Optionally ensure zoom limits
-        # self.ensure_within_zoom_limits()
+    def zoom_reset(self):
+        self.scale_factor = 1.0
+        self.base_scale_factor = 1.0
+        self.zoom_scale.x = 1.0
+        self.zoom_scale.y = 1.0
 
-    def ensure_within_zoom_limits(self):
-        min_zoom, max_zoom = 0.5, 3.0  # Example limits from half-size to triple-size zoom
-        if self.scale_factor < min_zoom:
-            self.scale_factor = min_zoom
-        elif self.scale_factor > max_zoom:
-            self.scale_factor = max_zoom
+    def map_mouse_pos_pixel(self, mouse_pos):
+        self.zoom_matrix = np.array(self.zoom_scale.matrix.tolist())
+        self.trans_matrix = np.array(self.trans.matrix.tolist())
+        self.rotate_matrix = np.array(self.rot.matrix.tolist())
 
-        # Apply constrained zoom limits
-        self.zoom_scale.x = self.scale_factor
-        self.zoom_scale.y = self.scale_factor
+        width_height = ((self.width - self.norm_image_size[0]) / 2,
+                        (self.height - self.norm_image_size[1]) / 2)
+
+        image_pos = (self.pos[0], self.pos[1])
+
+        relative_translation = (image_pos[0] + width_height[0], image_pos[1] + width_height[1])
+
+        self.trans_matrix[3][0] += relative_translation[0]
+        self.trans_matrix[3][1] += relative_translation[1]
+
+        combined_matrix = np.dot(self.trans_matrix, self.zoom_matrix)
+
+        inverse_combined_matrix = np.linalg.inv(combined_matrix)
+
+        inverse_combined_matrix = np.matrix_transpose(inverse_combined_matrix)
+
+        ratio = (self.texture_size[0] / self.norm_image_size[0], self.texture_size[1] / self.norm_image_size[1])
+        ratio = (ratio[0], ratio[1])
+
+        relative_pos = np.dot(inverse_combined_matrix, [mouse_pos[0], mouse_pos[1], 0, 1])[:2]
+
+        angle_rad = math.radians(self.angle)
+
+        rotated_x = (relative_pos[0] * math.cos(-angle_rad)) - (relative_pos[1] * math.sin(-angle_rad))
+        rotated_y = (relative_pos[0] * math.sin(-angle_rad)) + (relative_pos[1] * math.cos(-angle_rad))
+
+        reality_pixel = (rotated_x * ratio[0], rotated_y * ratio[1])
+
+        return reality_pixel
 
     @staticmethod
     def normalize_angle(angle):
@@ -249,3 +318,8 @@ class MovableImage(Image):
             self.deselect()
         else:
             self.select()
+
+    def update_offset(self, center):
+        offset = [(center[0] - self.parent.size[0] / 2 - (self.parent.pos[0] - self.pos[0]) / 2) * self.ratio[0],
+                  (center[1] - self.parent.size[1] / 2 - (self.parent.pos[1] - self.pos[1]) / 2) * self.ratio[1]]
+        return offset

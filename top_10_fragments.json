@@ -1,42 +1,6 @@
 [
   {
-    "img_name": "RPf_00002_intact_mesh.png",
-    "score": 0.0065155029296875
-  },
-  {
-    "img_name": "RPf_00008_intact_mesh.png",
-    "score": 0.00534820556640625
-  },
-  {
-    "img_name": "RPf_00010_intact_mesh.png",
-    "score": 0.00443267822265625
-  },
-  {
-    "img_name": "RPf_00003_intact_mesh.png",
-    "score": 0.00399017333984375
-  },
-  {
-    "img_name": "RPf_00006_intact_mesh.png",
-    "score": 0.0031890869140625
-  },
-  {
-    "img_name": "RPf_00004_intact_mesh.png",
-    "score": 0.00279998779296875
-  },
-  {
-    "img_name": "RPf_00007_intact_mesh.png",
-    "score": 0.0027923583984375
-  },
-  {
-    "img_name": "RPf_00001_intact_mesh.png",
-    "score": 0.0021820068359375
-  },
-  {
-    "img_name": "RPf_00009_intact_mesh.png",
-    "score": 0.0019073486328125
-  },
-  {
-    "img_name": "RPf_00005_intact_mesh.png",
-    "score": 0.00176239013671875
+    "img_name": "RPf_00008_mesh.png",
+    "score": 0.00928497314453125
   }
 ]
