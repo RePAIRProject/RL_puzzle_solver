@@ -45,11 +45,11 @@ It is very hard for a human, but straightforward when using the algorithm.
 ## 3.1.1) Create the ***partial payoff matrix*** (Section 4.1 of the paper)
 Run the script to create the matrix
 ```bash
-python features/compute_square_regions_masks.py --dataset ACCV_fig2_puzzle --puzzle image_00000 --lines 1 --lines_det_method exact --xy_step 400 --xy_grid_points 3
+python features/compute_square_regions_masks.py --dataset ACCV_fig2_puzzle --puzzle image_00000 --xy_step 400 --xy_grid_points 3
 ```
 
 #### Breakdown: 
-We compute the matrix using *lines* (`--lines 1`) on the *dataset* `ACCV_fig2_puzzle` (which is the `output` folder) and in particular, on the *puzzle* `image_00000` (the first and only one in this case). The puzzle is already in the output folder. We have in this case *exact* lines (as we generated them) so we use the *exact* method (`--lines_det_method exact`)
+We compute the matrix on the *dataset* `ACCV_fig2_puzzle` (which is the `output` folder) and in particular, on the *puzzle* `image_00000` (the first and only one in this case). The puzzle is already in the output folder. 
 
 We use as parameters: a grid of $3\times3$ (`--xy_grid_points 3`) as they are squared pieces, a step of $400$ pixels (`--xy_step 400`) as each piece is a squared image of $400 \times 400$ pixels.
 
