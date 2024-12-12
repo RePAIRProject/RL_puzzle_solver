@@ -17,6 +17,7 @@ from configs import folder_names as fnames
 import yaml
 import matplotlib as mpl
 import copy 
+from skimage.morphology import medial_axis, skeletonize
 
 def read_PIL_image(image_path):
     img = Image.open(image_path)
@@ -58,8 +59,10 @@ def main(args):
         motifs_output = args.images
 
     motifs_output = os.path.join(motifs_output, 'motifs_segmentation')
+    skeleton_output = os.path.join(motifs_output, 'motifs_skeletons')
     #motifs_output = os.path.join(args.images, 'motifs_detection_OBB')
     os.makedirs(motifs_output, exist_ok=True)
+    os.makedirs(skeleton_output, exist_ok=True)
     
     indent_spaces = 3
 
@@ -84,33 +87,33 @@ def main(args):
         base_img_colored = copy.deepcopy(img_cv)
         image0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
         jetcmap = mpl.colormaps['jet'].resampled(len(class_names))
-        cubo_image0 = np.zeros((np.shape(img_pil)[0], np.shape(img_pil)[1], 14), dtype='uint8')
+        motifs_segmaps = np.zeros((np.shape(img_pil)[0], np.shape(img_pil)[1], 14), dtype='uint8')
+        motifs_skeletons = np.zeros((np.shape(img_pil)[0], np.shape(img_pil)[1], 14), dtype='uint8')
         # breakpoint()
         for mask, box in zip(obbs.masks, obbs.boxes):
-            # class_label = mask.cpu().cls.numpy()[0]
-            # do_pts = det_obb.cpu().xyxyxyxy.numpy()[0]
-            # breakpoint()
-            resized_mask = cv2.resize(mask.data.cpu().numpy()[0,:,:], (np.shape(img_pil)[0], np.shape(img_pil)[1]))
             class_label = int(box.data[0][-1].item())
-            # # Polygon corner points coordinates
-            # pts = np.array(do_pts, dtype='int64')
-            # #color = 255*np.array(obb_colormap(class_label)[:3])
-            # color = (255, 255, 255)
-            # thickness = 2
-            # isClosed = True
-            # im0 = np.zeros(np.shape(img_pil)[0:2], dtype='uint8')
-            # image0_new = cv2.fillPoly(im0, [pts], color)
-            # base_img_colored = cv2.polylines(base_img_colored, [pts], isClosed=True, color=np.asarray(jetcmap(int(class_label))[:3]) * 255, thickness=3)
-            # print(int(class_label))
-            cubo_image0[:, :, class_label] += resized_mask.astype(np.uint8) #cubo_image0[:, :, int(class_label)] + image0_new
-        cubo_image0 = np.clip(cubo_image0, 0, 1)
+            resized_mask = cv2.resize(mask.data.cpu().numpy()[0,:,:], (np.shape(img_pil)[0], np.shape(img_pil)[1]))
+            
+            skeleton_mask = cv2.resize(mask.data.cpu().numpy()[0,:,:], (np.shape(img_pil)[0], np.shape(img_pil)[1]))
+            motifs_segmaps[:, :, class_label] += resized_mask.astype(np.uint8) #cubo_image0[:, :, int(class_label)] + image0_new
+             #cubo_image0[:, :, int(class_label)] + image0_new
+        motifs_segmaps = np.clip(motifs_segmaps, 0, 1)
         # breakpoint()
+        
+        for j in range(len(class_names)):
+            seg_mask = motifs_segmaps[:, :, j]
+            # Compute the medial axis (skeleton) and the distance transform
+            skel, distance = medial_axis(seg_mask, return_distance=True)
+            # Distance to the background for pixels of the skeleton
+            dist_on_skel = distance * skel
+            motifs_skeletons[:, :, j] = dist_on_skel
+        
 
         # save motifs_CUBE per ogni image
         filename = os.path.join(motifs_output, f'motifs_cube_{img_name}')
-        np.save(filename, cubo_image0)
+        np.save(filename, motifs_segmaps)
 
-        n_motifs = cubo_image0.shape[2]
+        n_motifs = motifs_segmaps.shape[2]
         plt.figure(figsize=(32,16))
         plt.suptitle(img_name, fontsize=38)
         plt.subplot(3, 7, 1)
@@ -118,14 +121,14 @@ def main(args):
         plt.subplot(3, 7, 2)
         plt.imshow(cv2.cvtColor(base_img_colored, cv2.COLOR_BGR2RGB))
         for mt in range(n_motifs):
-            motif_mask_mt = cubo_image0[:, :, mt]
             plt.subplot(3, 7, 7+mt+1)
             print(class_names[mt])
             plt.title(class_names[mt], fontsize=22)
-            plt.imshow(motif_mask_mt, cmap='gray')
-
+            plt.imshow(motifs_skeletons[:, :, mt], cmap='magma')
+            plt.contour(motifs_segmaps[:, :, mt], [0.5], colors='w')
+            #breakpoint()
         #plt.title(f"Fragment {img_name}")
-        fig_name = os.path.join(vis_output_dir, f'det_motifs{img_name}.png')
+        fig_name = os.path.join(vis_output_dir, f'det_motifs_ma_{img_name}.png')
         plt.tight_layout()
         plt.savefig(fig_name)
         print('stop')

@@ -225,6 +225,9 @@ def line_poligon_intersect_vis(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s
     piece_j_rotate = rotate(piece_j_shape, theta_p, origin=[pars.p_hs, pars.p_hs])
     piece_j_trans = transform(piece_j_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_p)
     
+    plt.subplot(132)
+    
+
     if return_shapes == True:
         trans_lines = []
         trans_useful_lines = []
@@ -270,12 +273,13 @@ def line_poligon_intersect_vis(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s
             else:
                 candidate_line_extrap = candidate_line_trans
 
-            if draw_lines == True:
-                plt.plot(*candidate_line_extrap.xy, linewidth='3', color=drawing_col)
+            
 
             # breakpoint()
             if shapely.is_empty(shapely.intersection(candidate_line_extrap, piece_j_trans.boundary)):
                 intersections.append(False)
+                if draw_lines == True:
+                    plt.plot(*candidate_line_extrap.xy, linewidth='3', color=drawing_col, linestyle='dashed')
                 if return_shapes == True:
                     trans_lines.append(candidate_line_extrap)
                 # canvas_aligned_line = []
@@ -284,6 +288,8 @@ def line_poligon_intersect_vis(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s
                     
             else:
                 intersections.append(True)
+                if draw_lines == True:
+                    plt.plot(*candidate_line_extrap.xy, linewidth='3', color=drawing_col)
                 if return_shapes == True:
                     trans_useful_lines.append(candidate_line_extrap)
                 # canvas_aligned_line = []
@@ -305,9 +311,10 @@ def line_poligon_intersect_vis(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s
     # #plt.show()
     # breakpoint()
     # plt.cla()
+    
+    plt.xlim([-200, 200])
+    plt.ylim([150, -150])
     plt.axis('equal')
-    plt.xlim([-300, 300])
-    plt.ylim([-300, 300])
     if return_shapes == True:
         return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2), piece_j_trans, trans_lines, trans_useful_lines
     return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2)
@@ -354,9 +361,11 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
 
     alfa1, r1, s11, s12, color1, cat1 = lines_pi
     alfa2, r2, s21, s22, color2, cat2 = lines_pj
-    R_cost = np.ones((grid_xy.shape[1], grid_xy.shape[1], len(rot))) * (ppars.badmatch_penalty + 1)
+    R_cost = np.zeros((grid_xy.shape[1], grid_xy.shape[1], len(rot))) - (mask_ij < 0)
     plt.ion()
-    for t in range(len(rot)):
+    counter_num = 0
+    plt.figure(figsize =(36, 18))
+    for t in range(0, 1): #len(rot)):
         theta = rot[t]
         theta_rad = rot[t] * np.pi / 180     # np.deg2rad(theta) ?
         for ix in range(grid_xy.shape[1]): 
@@ -370,7 +379,9 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                     piece_j_on_canvas = place_on_canvas(piece_j, (center_pos + xy[0], center_pos + xy[1]), ppars.canvas_size, theta)
                     overlap_area = piece_i_on_canvas['mask'] + piece_j_on_canvas['mask']
                     pieces_ij_on_canvas = piece_i_on_canvas['img'] + piece_j_on_canvas['img'] * (np.dstack(((overlap_area < 2), (overlap_area < 2), (overlap_area < 2)))).astype(int)
-                    # plt.imshow(pieces_ij_on_canvas)
+                    plt.subplot(131)
+                    plt.title("What a human sees:", fontsize=24)
+                    plt.imshow(pieces_ij_on_canvas)
                     # plt.plot(*piece_i_on_canvas['polygon'].boundary.xy)
                     # plt.plot(*piece_j_on_canvas['polygon'].boundary.xy)
 
@@ -400,6 +411,9 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
 
                     n_lines_f1 = useful_lines_alfa1.shape[0]
                     n_lines_f2 = useful_lines_alfa2.shape[0]
+
+                    plt.subplot(132)
+                    plt.title(f"What the algorithm sees: \n{len(s11)} lines on piece i (blue)\n {len(s21)} lines on piece j (orange)\nin this configuration, we use:\n{n_lines_f1} lines of piece i \n{n_lines_f2} lines of piece j", fontsize=24)
 
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
                         #tot_cost = ppars.max_dist * 2  
@@ -445,17 +459,26 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                         
                         # # penalty
                         penalty = np.abs(n_lines_f1 - n_lines_f2) * ppars.mismatch_penalty  # no matches penalty
-                        tot_cost = (tot_cost + penalty)
-                        tot_cost = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
+                        tot_cost_wp = (tot_cost + penalty)
+                        tot_cost_wp = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
                         #print(tot_cost)
+                        comp = np.clip(ppars.badmatch_penalty - tot_cost, 0, ppars.badmatch_penalty) / ppars.badmatch_penalty
 
                     if n_lines_f1 > 0 and n_lines_f2 > 0:
                         cost_string = f"Cost: {tot_cost} = {dist_matrix[row_ind, col_ind].sum()} + {penalty} ({np.abs(n_lines_f1 - n_lines_f2)})"
                     else:
                         cost_string = f"Cost: {tot_cost} ({n_lines_f1} lines in pi and {n_lines_f2} lines in pj)"
-                    plt.title(cost_string)
-                    breakpoint()
-                    plt.cla()
+                    #plt.title(cost_string)
+                    R_cost[iy, ix, t] = comp
+                    plt.subplot(133)
+                    plt.title(f"The Compatibility Matrix\nEach point represent a configuration of the two pieces\nThe score in this configuration is:\nR[{iy, ix, t}]={comp:.3f}\nFrom {np.min([n_lines_f1, n_lines_f2])} matched lines (C_LAP={tot_cost:.3f})\nand the penalty (P={penalty})", fontsize=24, va="bottom")
+                    plt.imshow(R_cost[:,:,0], cmap='RdYlGn', vmin=-1, vmax=1)
+                    plt.savefig(f'visualization/squared/config_{counter_num:04d}.png')
+                    print(f'saved configuration #{counter_num}')
+                    counter_num += 1
+                    #breakpoint()
+                    plt.clf()
+    breakpoint()
 
 def compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, mask_ij, pars, verbosity=1, show=False):
     # ppars is the old cfg (with the parameters)
