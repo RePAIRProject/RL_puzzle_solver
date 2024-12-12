@@ -3,7 +3,7 @@ import os
 import pdb
 
 from scipy.io import loadmat
-from utils import solve_puzzle
+from utils import PuzzleSolver
 
 """
 This is the method which should be used from the HIL interface
@@ -11,7 +11,12 @@ This is the method which should be used from the HIL interface
 - v1 - 2024/04/11
 Now it actually assumes RM and CM are precomputed and just launches the solver
 """
+puzzle_solver = PuzzleSolver()
+def get_p_matrix():
+    return puzzle_solver.get_probability_matrix()
 
+def set_running(running):
+    puzzle_solver.set_running(running)
 
 def assemble(fragments_list, path_dic, return_solution_as='dict'):
     """
@@ -94,8 +99,9 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
         pieces_included.append(pieces_names[pieces_to_include[i]])
 
     # print("piece names", pieces_included)
+    puzzle_solver.__init__(ppars, pieces_included)
 
-    solution = solve_puzzle(R, anchor, pieces_included, ppars, path_dic,
+    solution = puzzle_solver.solve_puzzle(R, anchor, pieces_included, ppars, path_dic,
                             return_as=return_solution_as, solved_pieces=solved_pieces)
 
     return solution
