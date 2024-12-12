@@ -174,7 +174,7 @@ def line_poligon_intersect(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s2, p
         
         candidate_line_shapely0 = shapely.LineString((p1, p2))
         candidate_line_rotate = rotate(candidate_line_shapely0, theta_l, origin=[pars.p_hs, pars.p_hs])
-        candidate_line_trans = transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] - z_l)
+        candidate_line_trans = transform(candidate_line_rotate, lambda x: x - [pars.p_hs, pars.p_hs] + z_l)
 
         # append to the useful lines
         ps1 = np.array(candidate_line_trans.coords)[0]
@@ -312,8 +312,8 @@ def line_poligon_intersect_vis(z_p, theta_p, poly_p, z_l, theta_l, poly_l, s1, s
     # breakpoint()
     # plt.cla()
     
-    plt.xlim([-200, 200])
-    plt.ylim([150, -150])
+    plt.xlim([-700, 700])
+    plt.ylim([700, -700])
     plt.axis('equal')
     if return_shapes == True:
         return intersections, np.array(useful_lines_s1), np.array(useful_lines_s2), piece_j_trans, trans_lines, trans_useful_lines

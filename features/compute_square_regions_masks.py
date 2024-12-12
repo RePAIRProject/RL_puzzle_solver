@@ -60,7 +60,7 @@ def main(args):
 
         grid_size_xy = ppars.comp_matrix_shape[0]
         grid_size_rot = ppars.comp_matrix_shape[2]
-        grid, grid_step_size = create_grid(grid_size_xy, ppars.p_hs, ppars.canvas_size)
+        #grid, grid_step_size = create_grid(grid_size_xy, ppars.p_hs, ppars.canvas_size)
 
         print()
         print('#' * 50)
