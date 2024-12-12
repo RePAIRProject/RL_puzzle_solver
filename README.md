@@ -67,6 +67,11 @@ python compatibility/comp_irregular.py --dataset ACCV_fig2_puzzle --puzzle image
 #### Output: 
 This will create a `compatibility_matrix` folder (inside `ACCV_fig2_puzzle/image_00000/`) which contains the matrix (saved as `.mat` or `.npy` file) and a visualization folder to visualize the results.
 
+
+![an animation of the different compatibility scores](imgs/animation_CM.gif)
+
+This animation shows the 4 possible configuration when fixing one piece in the center and moving the other one around. You can see the images of the two pieces on the left, the set of lines chosen in the center, and the compatibility score (including cost and penalty for computing it) on the right (it colors the score each time).
+
 ## 3.1.3) Run the ***relaxation-labeling-based solver*** (Section 3.3 of the paper)
 Run the script to solve the puzzle using the compatibility scores:
 ```bash
