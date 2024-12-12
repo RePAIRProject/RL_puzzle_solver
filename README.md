@@ -62,7 +62,7 @@ Run the script to calculate the compatibility:
 python compatibility/comp_irregular.py --dataset ACCV_fig2_puzzle --puzzle image_00000 --lines_det_method exact --cmp_type lines --cmp_cost LAP
 ```
 #### Breakdown: 
-`--dataset`, `--puzzle` and `--lines_det_method` are the same as above, and we compute the score using *lines* (`--cmp_type lines`) calculating each pairwise score $R_{ij\gamma}$ by solving the associated **LAP** problem (`--cmp_cost LAP`). 
+`--dataset`, `--puzzle` are the same as above, `--lines_det_method` is *exact* as we have the coordinates of the lines and we compute the score using *lines* (`--cmp_type lines`) calculating each pairwise score $R_{ij\gamma}$ by solving the associated **LAP** problem (`--cmp_cost LAP`). 
 
 #### Output: 
 This will create a `compatibility_matrix` folder (inside `ACCV_fig2_puzzle/image_00000/`) which contains the matrix (saved as `.mat` or `.npy` file) and a visualization folder to visualize the results.
