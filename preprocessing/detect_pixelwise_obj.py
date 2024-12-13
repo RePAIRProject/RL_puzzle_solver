@@ -106,7 +106,26 @@ def main(args):
             skel, distance = medial_axis(seg_mask, return_distance=True)
             # Distance to the background for pixels of the skeleton
             dist_on_skel = distance * skel
-            motifs_skeletons[:, :, j] = dist_on_skel
+            skeleton = skeletonize(seg_mask)
+            motifs_skeletons[:, :, j] = skeleton
+            
+
+            # if np.max(skeleton) > 0:
+            #     # breakpoint()
+            #     contours, _ = cv2.findContours((skeleton * 255).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE) # get contour with not approximation
+            #     ## resample the borders (maybe better RDP or some spline interpolation of the contour?)
+            #     X,Y = np.array(contours[-1]).T # unpack contour to X and Y coordinates
+            #     X = X[0] # ==//==
+            #     Y = Y[0] # ==//==
+            #     resampleIndices = np.arange(0, len(Y), 3, dtype=int) # generate uniformally distant indices until len(X) - len(X)//numPoints to accound for the end of the contour
+            #     x = X[resampleIndices] #  ==//==
+            #     y = Y[resampleIndices] #  ==//==
+            #     print(x,y)
+            #     plt.imshow(skeleton)
+            #     plt.contour(seg_mask)
+            #     plt.scatter(x,y, marker='x', linewidth=10)
+            #     plt.show()
+            #     breakpoint()
         
 
         # save motifs_CUBE per ogni image
@@ -128,7 +147,7 @@ def main(args):
             plt.contour(motifs_segmaps[:, :, mt], [0.5], colors='w')
             #breakpoint()
         #plt.title(f"Fragment {img_name}")
-        fig_name = os.path.join(vis_output_dir, f'det_motifs_ma_{img_name}.png')
+        fig_name = os.path.join(vis_output_dir, f'det_motifs_sk_{img_name}.png')
         plt.tight_layout()
         plt.savefig(fig_name)
         print('stop')

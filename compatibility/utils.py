@@ -105,7 +105,8 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, puzzle_root_fo
                     lines_pj = alfa2, r2, s21, s22, color2, cat2 
                     piece_i = pieces[idx1]
                     piece_j = pieces[idx2]
-                    compatibility_matrix = compute_cost_matrix_LAP_vis(z_id, rot, lines_pi, lines_pj, piece_i, piece_j, mask_ij, ppars, verbosity=1)
+                    if idx1 == 3 and idx2 == 5:
+                        compatibility_matrix = compute_cost_matrix_LAP_vis(z_id, rot, lines_pi, lines_pj, piece_i, piece_j, mask_ij, ppars, idx1, idx2, verbosity=1)
 
 
 

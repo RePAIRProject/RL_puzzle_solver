@@ -8,7 +8,7 @@ from matplotlib import cm
 import shapely
 from shapely import transform
 from shapely.affinity import rotate
-import pdb 
+import os
 import math 
 from scipy.spatial import distance
 from scipy.optimize import linear_sum_assignment
@@ -357,14 +357,16 @@ def getExtrapoledLine(line, dist, poly, border_tolerance):
     return shapely.LineString([a, b])
 
 
-def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece_j, mask_ij, ppars, verbosity=1):
+def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece_j, mask_ij, ppars, idx1, idx2, verbosity=1):
 
     alfa1, r1, s11, s12, color1, cat1 = lines_pi
     alfa2, r2, s21, s22, color2, cat2 = lines_pj
     R_cost = np.zeros((grid_xy.shape[1], grid_xy.shape[1], len(rot))) - (mask_ij < 0)
-    plt.ion()
+    # plt.ion()
     counter_num = 0
     plt.figure(figsize =(36, 18))
+    target_dir = os.path.join('visualization', 'RP_g1', f"P_{idx1}_{idx2}")
+    os.makedirs(target_dir, exist_ok=True)
     for t in range(0, 1): #len(rot)):
         theta = rot[t]
         theta_rad = rot[t] * np.pi / 180     # np.deg2rad(theta) ?
@@ -418,11 +420,12 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                     if n_lines_f1 == 0 and n_lines_f2 == 0:
                         #tot_cost = ppars.max_dist * 2  
                         tot_cost = ppars.badmatch_penalty / 3                   # accept with some cost
-                    
+                        penalty = ppars.badmatch_penalty / 3          
+
                     elif (n_lines_f1 == 0 and n_lines_f2 > 0) or (n_lines_f1 > 0 and n_lines_f2 == 0):
                         n_lines = (np.max([n_lines_f1, n_lines_f2]))
                         tot_cost = ppars.mismatch_penalty * n_lines
-
+                        penalty = ppars.mismatch_penalty * n_lines
                     else:
                         # Compute cost_matrix, LAP, penalty, normalize
                         dist_matrix0 = np.zeros((n_lines_f1, n_lines_f2))
@@ -462,7 +465,8 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                         tot_cost_wp = (tot_cost + penalty)
                         tot_cost_wp = tot_cost / np.max([n_lines_f1, n_lines_f2])  # normalize to all lines in the game
                         #print(tot_cost)
-                        comp = np.clip(ppars.badmatch_penalty - tot_cost, 0, ppars.badmatch_penalty) / ppars.badmatch_penalty
+                    
+                    comp = np.clip(ppars.badmatch_penalty - tot_cost, 0, ppars.badmatch_penalty) / ppars.badmatch_penalty
 
                     if n_lines_f1 > 0 and n_lines_f2 > 0:
                         cost_string = f"Cost: {tot_cost} = {dist_matrix[row_ind, col_ind].sum()} + {penalty} ({np.abs(n_lines_f1 - n_lines_f2)})"
@@ -473,7 +477,8 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                     plt.subplot(133)
                     plt.title(f"The Compatibility Matrix\nEach point represent a configuration of the two pieces\nThe score in this configuration is:\nR[{iy, ix, t}]={comp:.3f}\nFrom {np.min([n_lines_f1, n_lines_f2])} matched lines (C_LAP={tot_cost:.3f})\nand the penalty (P={penalty})", fontsize=24, va="bottom")
                     plt.imshow(R_cost[:,:,0], cmap='RdYlGn', vmin=-1, vmax=1)
-                    plt.savefig(f'visualization/squared/config_{counter_num:04d}.png')
+                    
+                    plt.savefig(os.path.join(target_dir, f'config_{counter_num:04d}.png'))
                     print(f'saved configuration #{counter_num}')
                     counter_num += 1
                     #breakpoint()
