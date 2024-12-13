@@ -167,12 +167,20 @@ class MovableImage(Image):
         # y = position[1]
         # self.rotate(solved_rotation/2)
 
-        self.rotate(solved_rotation)
+        self.rotate(solved_rotation - self.angle)
         self.translate(x, y)
 
     def update_ratio(self):
         self.ratio = np.array([self.texture_size[0] / self.norm_image_size[0],
                                self.texture_size[1] / self.norm_image_size[1]])
+
+    def zoom_default(self, factor, origin):
+        self.zoom_scale.origin = origin
+        self.scale_factor = factor
+        self.zoom_scale.x = factor
+        self.zoom_scale.y = factor
+        self.base_scale_factor = factor
+        self.transform_matrix = self.zoom_scale.matrix.multiply(self.trans.matrix.multiply(self.rot.matrix))
 
     def zoom_at_point(self, factor, origin):
         new_scale = self.scale_factor * factor
@@ -267,11 +275,20 @@ class MovableImage(Image):
 
     def select(self):
         self.is_selected = True
-        self.color = (0.8, 0.8, 1, 1)
+        self.color = (0.8, 0.8, 1, 1) # blue
 
     def deselect(self):
         self.is_selected = False
         self.color = (1, 1, 1, 1)
+
+    def set_probability(self, probability):
+        probability = np.round(probability * 100)
+        if probability <25:
+            self.color = (1,1,1, 0.25)
+        else:
+            alpha = probability / 100
+            self.color = (1, 1, 1, alpha)  # gradually transparent to original
+        print(self.name, probability)
 
     def select_toggle(self):
         if self.is_selected:

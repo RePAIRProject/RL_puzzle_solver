@@ -5,6 +5,7 @@ from kivy import Config
 from kivy.clock import Clock, mainthread
 from kivy.graphics import Rotate, PopMatrix, PushMatrix, Translate, Scale, Color, Rectangle
 from kivy.graphics.context_instructions import Scale
+from kivy.uix.image import Image
 from kivymd.app import MDApp
 from kivy.core.image import Image as CoreImage
 import numpy as np
@@ -22,7 +23,7 @@ from kivymd.uix.card import MDCard
 from kivy.core.window import Window
 from kivy.uix.progressbar import ProgressBar
 from PIL import Image as PILImage
-import Back_End as back_end
+from Back_End import BackEnd
 from RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
 import threading
 import time
@@ -35,6 +36,8 @@ Window.clearcolor = (0, 0, 0, 0)
 
 backend_path = os.getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
 path_dic = {}
+
+back_end = BackEnd()
 
 rotation_interval = 0.5
 communication_freq = 0.10  # in seconds
@@ -155,22 +158,19 @@ class GUIApp(MDApp):
         self.main_layout.add_widget(self.toolbar)
 
         self.anchor_button.bind(on_press=start_select_anchor)
-        self.anchor_button.size_hint_x = 0.5
 
         self.show_button.bind(on_press=get_next_neighbour)
-        self.show_button.size_hint_x = 0.5
 
         self.neighbour_button.bind(on_press=start_select_neighbour)
-        self.neighbour_button.size_hint_x = 0.5
-
         # the_layout.add_widget(snackbar)
 
         self.pl_solver_button.bind(on_press=start_pl_solver)
-        self.pl_solver_button.size_hint_x = 0.5
 
-        self.toolbar.left_action_items.append(["menu", lambda x: self.the_app.callback()])
+        # self.toolbar.left_action_items.append(["menu", lambda x: self.the_app.callback()])
+        void_image = Image(source=os.path.join(path_dic['icons'], "Void Image.png"))
 
         self.toolbar.add_widget(self.progress_bar)
+        self.toolbar.add_widget(void_image)
         self.progress_bar.max = 100
         self.progress_bar.value = 0
         self.toolbar.add_widget(self.pl_solver_button)
@@ -178,6 +178,12 @@ class GUIApp(MDApp):
         self.toolbar.add_widget(self.anchor_button)
         self.toolbar.add_widget(self.show_button)
 
+        self.anchor_button.size_hint_x = Window.size[0] / 8
+        self.show_button.size_hint_x = Window.size[0] / 8
+        self.neighbour_button.size_hint_x = Window.size[0] / 8
+        self.pl_solver_button.size_hint_x = Window.size[0] / 8
+        void_image.size_hint_x = Window.size[0] / 128
+        self.progress_bar.size_hint_x = Window.size[0] / 2
 
         self.main_layout.minimum_height = 1
 
@@ -564,7 +570,10 @@ class GUIApp(MDApp):
             self.selected_pic = int(clicked)
         if clicked.isdigit():
             self.selected_pic = int(clicked)
+        if back_end.pl_solver_running:
+            universal_zoom(1)
         if not self.anchor_showed:
+
             if (back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0):
                 self.set_images(1)
                 self.show_images(self)
@@ -638,6 +647,7 @@ class GUIApp(MDApp):
 
 
 def start_select_anchor(self):
+    global back_end
     app.image_is_set = False
     back_end.start_anchor_thread()
 
@@ -712,6 +722,7 @@ def start_select_neighbour(self):
 
 
 def start_pl_solver(self):
+    global universal_zoom_applied
     app.show_button.disabled = True
 
     for i in range(0, len(app.current_image_list)):
@@ -721,6 +732,7 @@ def start_pl_solver(self):
     # self.image_is_set = False
     # app.current_image_list = []
     back_end.start_pl_solver_thread(last_loop_solution=app.final_solution)
+    universal_zoom_applied = False
 
 
 def get_next_neighbour(self, *args, **kwargs):
@@ -750,6 +762,15 @@ def loop_finalization(solved_pieces):
     # neighbour_test = ['piece_0006.png']
     # back_end.puzzle_solver_test_function(app.final_solution, neighbour_test)
 
+def set_probabilities(answer, probability, average_thresh_factor):
+    for image in app.current_image_list:
+        image.remove_score()
+        image_id = image.get_id()
+
+        if image_id in answer:
+            image.set_probability(probability[image_id])
+    return answer
+
 update_counter = 0
 update_freq = 1 # in seconds
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
@@ -759,12 +780,12 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         if update_counter>=(1/communication_freq)*update_freq:
             answer, probability, process = back_end.get_probability_matrix()
             if answer is not None:
-                average_thresh_factor = 0.1
+                average_thresh_factor = 0.01
+                answer = set_probabilities(answer, probability, average_thresh_factor)
                 answer = back_end.throw_away_1(answer, probability, average_thresh_factor)
                 app.pl_solution = answer
                 app.apply_solution()
                 app.progress_bar.value = np.round(process * 100)
-                print(process)
             update_counter = 0
         update_counter += 1
         app.select_anchor_running = back_end.get_select_anchor_running()
@@ -790,7 +811,26 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
             app.toolbar_color = 0
         app.communicate_thread_lock.release()
         time.sleep(communication_freq)  # Thread sleep timerfasd
+universal_zoom_applied = False
+def universal_zoom(factor):
+    global universal_zoom_applied
+    if not universal_zoom_applied:
+        # universal_center = calculate_universal_center()
+        window_size = Window.size
+        universal_center = [window_size[0]/2, window_size[1]/2]
+        for image in app.current_image_list:
+            image.zoom_default(3,universal_center)
+        universal_zoom_applied = True
 
+def calculate_universal_center():
+    universal_center = [0, 0]
+    image_number = len(app.current_image_list)
+    for image in app.current_image_list:
+        universal_center[0] += image.center[0]
+        universal_center[1] += image.center[1]
+    universal_center[0] = universal_center[0]/image_number
+    universal_center[1] = universal_center[1]/image_number
+    return universal_center
 
 def check_collision(image, rectangle): # /todo
     texture = image.texture
@@ -877,6 +917,7 @@ def setting():  # unified path setting
     global backend_path
     global path_dic
     global rotation_interval
+    global back_end
     image_path = ""
     mask_path = ""
     comp_path = ""
@@ -886,6 +927,7 @@ def setting():  # unified path setting
     ground_truth = ""
     dataset_name = ""
     cache_path = ""
+    icons_path = ""
     apply_gt = False
     number_of_neighbours = 3
     number_of_anchors = 4
@@ -921,6 +963,8 @@ def setting():  # unified path setting
                                      "number_of_anchors: 4",
                                      "\n",
                                      "dataset_name: RePair_group_28",
+                                     "\n",
+                                     "icons: /GUI/Icons/",
                                      "\n"
                                      ])
     os_path = os.getcwd()
@@ -960,6 +1004,8 @@ def setting():  # unified path setting
                     dataset_name = line.split('dataset_name: ')[1].strip()
                 elif line.startswith('solver_parameters:'):
                     solver_parameters = os_path + line.split('solver_parameters: ')[1].strip()
+                elif line.startswith('icons:'):
+                    icons_path = os_path + line.split('icons: ')[1].strip()
     cache_path = "/GUI/pieces/"
     cache_path = os_path + cache_path
     path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path, 'comp_path': comp_path,
@@ -967,13 +1013,13 @@ def setting():  # unified path setting
                 'rotation_intervals': rotation_intervals, 'ground_truth': ground_truth,
                 'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
                 'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors,
-                'dataset_name': dataset_name, 'cache_path': cache_path, 'solver_parameters': solver_parameters}
+                'dataset_name': dataset_name, 'cache_path': cache_path, 'solver_parameters': solver_parameters, 'icons': icons_path}
     backend_path = backend_path
     rotation_interval = float(rotation_intervals) / 2
 
     copy_to_cache()
 
-    back_end.set_backend_path(path_dic)
+    back_end.set_path(path_dic)
 
 
 def copy_to_cache(file_extension='.png'):
