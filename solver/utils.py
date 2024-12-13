@@ -14,6 +14,7 @@ class PuzzleSolver:
         self.ppars = args[0] if len(args) > 0 else None
         self.pieces_names = args[1] if len(args) > 1 else None
         self.running = True
+        self.process = 0.0
 
     def default_cfg(self, path_dic):
         cfg = CfgParameters()
@@ -69,7 +70,7 @@ class PuzzleSolver:
             # # Display the results
             # # print("Highest values for each slice along the j dimension:")
             # # print(highest_values)
-        return sol_dict, probability_dict
+        return sol_dict, probability_dict, self.process
 
 
     def solve_puzzle(self, R, anchor, pieces_names, ppars, path_dic, return_as='dict', solved_pieces=None):
@@ -225,13 +226,15 @@ class PuzzleSolver:
             R_renorm = R_new / np.max(R_new)
             R_new = np.where((R_new > 0), R_renorm*1.5, R_new)
 
+            Tmax = cfg.Tmax
+
             if faze == 0:
                 T = cfg.Tfirst
             else:
                 T = cfg.Tnext
 
             #pdb.set_trace()
-            p, payoff, eps, iter, total_iter = self.solver_rot_puzzle(R_new, R, p, T, iter, total_iter, 0, verbosity=3, decimals=decimals, )
+            p, payoff, eps, iter, total_iter = self.solver_rot_puzzle(R_new, R, p, T, iter, total_iter, Tmax, 0, verbosity=3, decimals=decimals, )
 
             fin_sol, m = self.extract_info(p)
             if verbosity > 0:
@@ -271,7 +274,7 @@ class PuzzleSolver:
         return all_pay, all_sol, all_anc, p_final, eps, iter, na_new, m
 
 
-    def solver_rot_puzzle(self, R, R_orig, p, T, iter, total_iter, visual, verbosity=1, decimals=8):
+    def solver_rot_puzzle(self, R, R_orig, p, T, iter, total_iter, Tmax, visual, verbosity=1, decimals=8):
         no_rotations = R.shape[2]
         # no_rotations = 4
         print("No_Rotations", no_rotations)
@@ -287,9 +290,11 @@ class PuzzleSolver:
             t += 1
             iter += 1
             total_iter += 1
+            self.process = float(total_iter)/float(Tmax)
 
             q = np.zeros_like(p)
             for i in range(no_patches):
+
                 ri = R[:, :, :, :, i]
                 #  ri = R[:, :, :, i, :]  # FOR ORACLE SQUARE ONLY
                 for zi in range(no_rotations):
