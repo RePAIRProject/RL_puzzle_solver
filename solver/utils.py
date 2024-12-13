@@ -314,7 +314,7 @@ class PuzzleSolver:
                     q2 = (q1 + no_patches * no_rotations * 1)
                     q[:, :, zi, i] = q2
 
-            pq = p * q  # e = 1e-11
+            pq = p * np.exp(q) # e = 1e-11
             p_new = pq / (np.sum(pq, axis=(0, 1, 2)))
             p_new = np.where(np.isnan(p_new), 0, p_new)
 
@@ -331,3 +331,4 @@ class PuzzleSolver:
             p = np.round(p_new, decimals)
             fin_sol, m = self.extract_info(p)
         return p, payoff, eps, iter, total_iter
+
