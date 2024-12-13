@@ -77,11 +77,13 @@ def select_anchor_thread_function():
     set_select_anchor_done(True)
 
 def get_probability_matrix():
-    answer, probability = puzzle_solver.get_p_matrix()
+    answer, probability, process = puzzle_solver.get_p_matrix()
+
     if answer is not None:
+        # answer = throw_away_2(pl_solution, probability, average_thresh_factor)
         answer = scale_solution(answer)
     # print(puzzle_solver.get_p_matrix())
-    return answer, probability
+    return answer, probability, process
 
 def pl_solver_thread_function():
     global input_dict

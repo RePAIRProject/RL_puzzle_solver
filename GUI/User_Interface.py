@@ -20,6 +20,7 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.toolbar import MDTopAppBar
 from kivymd.uix.card import MDCard
 from kivy.core.window import Window
+from kivy.uix.progressbar import ProgressBar
 from PIL import Image as PILImage
 import Back_End as back_end
 from RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
@@ -125,6 +126,7 @@ class GUIApp(MDApp):
         self.show_button = Button(text="Next")
         self.neighbour_button = Button(text="Neighbour")
         self.pl_solver_button = Button(text="PL Solver")
+        self.progress_bar = ProgressBar()
 
     def build(self):
         for m in get_monitors():
@@ -168,10 +170,14 @@ class GUIApp(MDApp):
 
         self.toolbar.left_action_items.append(["menu", lambda x: self.the_app.callback()])
 
+        self.toolbar.add_widget(self.progress_bar)
+        self.progress_bar.max = 100
+        self.progress_bar.value = 0
         self.toolbar.add_widget(self.pl_solver_button)
         self.toolbar.add_widget(self.neighbour_button)
         self.toolbar.add_widget(self.anchor_button)
         self.toolbar.add_widget(self.show_button)
+
 
         self.main_layout.minimum_height = 1
 
@@ -561,14 +567,12 @@ class GUIApp(MDApp):
         if not self.anchor_showed:
             if (back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0):
                 self.set_images(1)
-                print("set_image 1")
                 self.show_images(self)
                 self.anchor_showed = True
                 self.anchor_button.disabled = True
         elif ((back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0) &
               (back_end.get_select_neighbour_done()) & (not self.neighbour_showed)):
             self.set_images(1)
-            print("set_image 2")
             self.show_images(self)
             self.neighbour_showed = True
             self.neighbour_button.disabled = True
@@ -577,7 +581,6 @@ class GUIApp(MDApp):
         elif ((back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0) &
               (back_end.get_select_neighbour_done()) & self.neighbour_showed & self.next_neighbour_requested):
             self.set_images(1)
-            print("set_image 3")
             self.show_images(self)
             self.next_neighbour_requested = False
         elif ((back_end.get_select_anchor_done()) & (back_end.get_select_neighbour_done()) & self.neighbour_showed &
@@ -754,11 +757,14 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
     while True:
         app.communicate_thread_lock.acquire()
         if update_counter>=(1/communication_freq)*update_freq:
-            answer, probabality = back_end.get_probability_matrix()
+            answer, probability, process = back_end.get_probability_matrix()
             if answer is not None:
+                average_thresh_factor = 0.1
+                answer = back_end.throw_away_1(answer, probability, average_thresh_factor)
                 app.pl_solution = answer
-                print(answer)
                 app.apply_solution()
+                app.progress_bar.value = np.round(process * 100)
+                print(process)
             update_counter = 0
         update_counter += 1
         app.select_anchor_running = back_end.get_select_anchor_running()
@@ -833,8 +839,8 @@ def check_image_select(image, mouse_pos):
     if image.collides(mouse_pos):
         if not app.checked_border:
             pixel = image.map_mouse_pos_pixel(mouse_pos)
-            # if pixel[0]<0 or pixel[1] < 0:
-            #     return False
+            if pixel[0]<0 or pixel[1] < 0:
+                return False
             return image.check_mask(pixel)
     return False
 

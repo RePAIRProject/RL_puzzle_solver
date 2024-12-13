@@ -5,7 +5,7 @@ comp_path: /GUI/DataBase/new_looks/database/RPobj_g1_o0001_gt_rot/compatibility_
 pieces_path: /GUI/DataBase/new_looks/database/RPobj_g1_o0001_gt_rot/pieces/
 comp_folder: /GUI/DataBase/new_looks/database/RPobj_g1_o0001_gt_rot/compatibility_matrix/
 comp_name: CM_combo_SLMS_v2.mat
-Rotation_Intervals: 90
+Rotation_Intervals: 1
 number_of_neighbours: 10
 number_of_anchors: 1
 comp_format: R
