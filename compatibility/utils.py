@@ -4,6 +4,7 @@ from puzzle_utils.lines_ops import compute_line_based_CM_LAP, compute_line_based
         extract_from, compute_cost_matrix_LAP_vis, compute_cost_matrix_LAP_debug
 from compatibility.compatibility_Motifs import compute_CM_using_motifs
 from compatibility.compatibility_MGC import compute_cost_using_color_compatibility
+from compatibility.compatibility_Segmentation import compute_CM_using_segmentation_compatibility
 import time
 
 
@@ -119,6 +120,8 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, detector=None,
         elif compatibility_type == 'motifs':
             assert ( (motif_det_method == "yolo-obb") | (motif_det_method == "yolo-bbox")), f"Unkown detection method for motifs!\nWe know `yolo-obb` and `yolo-bbox`, given `{motif_det_method}`\nRe-run specifying `--det_method`"
             compatibility_matrix = compute_CM_using_motifs(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=motif_det_method, verbosity=verbosity)
+        elif compatibility_type == 'seg':
+            compatibility_matrix = compute_CM_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, ppars, segmentator=segmentator, verbosity=verbosity)
         elif compatibility_type == 'color':
             compatibility_matrix = compute_cost_using_color_compatibility(idx1, idx2, pieces, mask_ij, ppars, seg_len=seg_len, verbosity=1)
         else: # other compatibilities!

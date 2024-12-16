@@ -18,6 +18,7 @@ from puzzle_utils.visualization import save_vis
 from puzzle_utils.regions import combine_region_masks
 from utils import compute_cost_wrapper, calc_computation_parameters, normalize_CM, reshape_list2mat,\
     show_debug_visualization
+from compatibility_Segmentation import Segmentator
 
 
 def main(args):
@@ -75,6 +76,8 @@ def main(args):
             for ppk in ppars_dict.keys():
                 ppars[ppk] = ppars_dict[ppk]
                 print(f"{ppk}: {ppars[ppk]}")
+            
+            ppars['puzzle_root_folder'] = puzzle_root_folder
         else:
             print("\n" * 3)
             print("/" * 60)
@@ -339,7 +342,7 @@ if __name__ == '__main__':
     parser.add_argument('--cmp_type', type=str, default='motifs',
         help='Chooses the compaitbility to use.\nIf more than one should be used, select `combo`\
             \nIt is connected with `--cmp_cost` and `--det_method`!', 
-        choices=['lines', 'shape', 'color', 'motifs'])
+        choices=['lines', 'shape', 'color', 'motifs','seg'])
     parser.add_argument('--cmp_cost', type=str, default='LAP',
         help='Chooses the cost used to compute compatibility - it depends on the `--cmp_type`\
             \nUse LAP or LCI for lines, YOLO or overlap for motif, SDF for shape, MGC for color',

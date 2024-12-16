@@ -150,7 +150,7 @@ def build_point_grid(n_per_side: int) -> np.ndarray:
 
 #########################################
 
-def compute_cost_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, ppars, segmentator, verbosity=1):
+def compute_CM_using_segmentation_compatibility(idx1, idx2, pieces, mask_ij, ppars, segmentator, verbosity=1):
 
     p = ppars['p']
     z_id = ppars['z_id']
