@@ -229,7 +229,7 @@ def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
                 q2 = (q1 + no_patches * no_rotations * 1) #+ q_pos
                 q[:, :, zi, i] = q2
 
-        pq = p * q  # e = 1e-11
+        pq = p * np.exp(q)  # e = 1e-11
         p_new = pq / (np.sum(pq, axis=(0, 1, 2)))
         p_new = np.where(np.isnan(p_new), 0, p_new)
         pay = np.sum(p_new * q)
@@ -303,11 +303,11 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folde
                 rot = z_rot[pos[i, 2]]
                 Im = rotate(Im, rot, reshape=False, mode='constant')
 
-                # if i == anc:
-                #     mask = (Im > 0.05).astype(np.uint8)
-                #     em = cv2.erode(mask, np.ones((5, 5)))
-                #     bordered_im = Im * em + (mask - em) * borders_cmap(i)[:3]
-                #     Im = bordered_im
+                if i == anc:
+                    mask = (Im > 0.05).astype(np.uint8)
+                    em = cv2.erode(mask, np.ones((5, 5)))
+                    bordered_im = Im * em + (mask - em) * borders_cmap(i)[:3]
+                    Im = bordered_im
 
                 if show_borders == True:
                     mask = (Im > 0.05).astype(np.uint8)

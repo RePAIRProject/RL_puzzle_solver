@@ -93,7 +93,7 @@ def main(args):
             ppars[parkey] = additional_cmp_pars[parkey]
         ppars['cmp_type'] = args.cmp_type
         calc_sdf = False
-        if args.cmp_type == 'shape':
+        if 'shape' in args.cmp_type:
             calc_sdf = True
         ppars['calc_sdf'] = calc_sdf
         line_based = False
@@ -101,7 +101,7 @@ def main(args):
             line_based = True
         ppars['line_based'] = line_based
         motif_based = False
-        if args.cmp_type == 'motifs':
+        if 'motifs' in args.cmp_type: # == 'motifs':
             motif_based = True
             if args.yolo_path == '':
                 raise Exception("You are trying to use yolo-based motif compatibility without specifying the yolo model to be used.\
@@ -226,6 +226,7 @@ def main(args):
                     if i > 1 and i != j and args.DEBUG == True:
                         show_debug_visualization(pieces, i, j, args, ji_mat, region_mask, ppars)
 
+        breakpoint()
         ###########################
         #   NORMALIZATION
         ###########################
@@ -330,7 +331,7 @@ if __name__ == '__main__':
     parser.add_argument('--cmp_type', type=str, default='motifs',
         help='Chooses the compaitbility to use.\nIf more than one should be used, select `combo`\
             \nIt is connected with `--cmp_cost` and `--det_method`!', 
-        choices=['lines', 'shape', 'color', 'motifs', 'Oracle_GT'])
+        choices=['lines', 'shape', 'color', 'motifs', 'Oracle_GT', 'motifs_vis', 'shape_vis'])
     parser.add_argument('--cmp_cost', type=str, default='LAP',
         help='Chooses the cost used to compute compatibility - it depends on the `--cmp_type`\
             \nUse LAP or LCI for lines, YOLO or overlap for motif, SDF for shape, MGC for color',

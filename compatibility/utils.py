@@ -1,8 +1,8 @@
 import numpy as np 
-from puzzle_utils.shape_utils import compute_SDF_CM_matrix
+from puzzle_utils.shape_utils import compute_SDF_CM_matrix, compute_SDF_CM_matrix_vis
 from puzzle_utils.lines_ops import compute_line_based_CM_LAP, compute_line_based_CM_LCI, \
         extract_from, compute_cost_matrix_LAP_vis, compute_cost_matrix_LAP_debug
-from compatibility.compatibility_Motifs import compute_CM_using_motifs
+from compatibility.compatibility_Motifs import compute_CM_using_motifs, compute_CM_using_motifs_vis
 from compatibility.compatibility_MGC import compute_cost_using_color_compatibility
 from compatibility.compatibility_Oracle import compute_oracle_compatibility
 import time
@@ -105,8 +105,7 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, puzzle_root_fo
                     lines_pj = alfa2, r2, s21, s22, color2, cat2 
                     piece_i = pieces[idx1]
                     piece_j = pieces[idx2]
-                    if idx1 == 3 and idx2 == 5:
-                        compatibility_matrix = compute_cost_matrix_LAP_vis(z_id, rot, lines_pi, lines_pj, piece_i, piece_j, mask_ij, ppars, idx1, idx2, verbosity=1)
+                    compatibility_matrix = compute_cost_matrix_LAP_vis(z_id, rot, lines_pi, lines_pj, piece_i, piece_j, mask_ij, ppars, idx1, idx2, verbosity=1)
 
 
 
@@ -121,10 +120,21 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, puzzle_root_fo
             #breakpoint()
             ids_to_score = np.where(mask_ij > 0)
             compatibility_matrix = compute_SDF_CM_matrix(pieces[idx1], pieces[idx2], ids_to_score, ppars, verbosity=verbosity)
+        elif compatibility_type == 'shape_vis':
             #breakpoint()
+            if idx1 == 7 and idx2 == 10:
+                ids_to_score = np.where(mask_ij > 0)
+                compatibility_matrix = compute_SDF_CM_matrix_vis(pieces[idx1], pieces[idx2], ids_to_score, ppars, verbosity=verbosity)
+                #breakpoint()
+            else:
+                # ids_to_score = np.where(mask_ij > 0)
+                compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot)))
         elif compatibility_type == 'motifs':
             assert ( (motif_det_method == "yolo-obb") | (motif_det_method == "yolo-bbox")), f"Unkown detection method for motifs!\nWe know `yolo-obb` and `yolo-bbox`, given `{motif_det_method}`\nRe-run specifying `--det_method`"
             compatibility_matrix = compute_CM_using_motifs(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=motif_det_method, verbosity=verbosity)
+        elif compatibility_type == 'motifs_vis':
+            assert ( (motif_det_method == "yolo-obb") | (motif_det_method == "yolo-bbox")), f"Unkown detection method for motifs!\nWe know `yolo-obb` and `yolo-bbox`, given `{motif_det_method}`\nRe-run specifying `--det_method`"
+            compatibility_matrix = compute_CM_using_motifs_vis(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=motif_det_method, verbosity=verbosity)
         elif compatibility_type == 'color':
             compatibility_matrix = compute_cost_using_color_compatibility(idx1, idx2, pieces, mask_ij, ppars, seg_len=seg_len, verbosity=1)
 
@@ -141,7 +151,7 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, puzzle_root_fo
             print("\n" * 20)
 
             compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot)))
-        
+    
     return compatibility_matrix
 
 def normalize_CM(R, parameters=None, region_mask=None):

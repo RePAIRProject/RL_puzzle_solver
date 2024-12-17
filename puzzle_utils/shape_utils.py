@@ -12,6 +12,7 @@ import shapely
 from shapely import transform
 from shapely.affinity import rotate
 import json
+
 def extract_from(lines_dict):
     """
     It just unravels the different parts of the extracted line dictionary 
@@ -652,6 +653,12 @@ def prepare_pieces(cfg, fnames, dataset, puzzle_name, background=0):
         pieces.append(piece_d)
     return pieces
 
+def shape_pairwise_compatibility_vis(piece_i, piece_j, x_j, y_j, theta_j, puzzle_cfg, grid, pieces, sigma=1):
+    """
+    Visualization of the shape compatibility 
+    """
+
+
 def shape_pairwise_compatibility(piece_i, piece_j, x_j, y_j, theta_j, puzzle_cfg, grid, sigma=1):
 
     assert type(piece_i) == dict and type(piece_j) == dict, 'pieces should be dict with (img, sd, mask, cm) as keys'
@@ -718,6 +725,115 @@ def process_region_map(region_map, perc_min=0.01):
     # plt.show()
     # pdb.set_trace()
     return rmap, rc-1
+
+def compute_SDF_CM_matrix_vis(piece_i, piece_j, ids_to_score, ppars, verbosity=1):
+    """ 
+    It visualizes the SDF computation to debug it or create visuals for presentations
+    """
+    p = ppars['p']
+    alignment_grid = ppars['z_id']
+    m = ppars['m']
+    rot = ppars['rot']    
+    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+
+    # grid on the canvas
+    canv_cnt = ppars.canvas_size // 2
+    grid = alignment_grid + canv_cnt #alignment_grid has negative values
+
+    dilation_size = ppars['dilation_size'] #35
+    dil_kernel = np.ones((dilation_size, dilation_size))
+    sigma = ppars.p_hs
+    #plt.ion()
+    #plt.figure(figsize=(12,12))
+    for x,y,t in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+        theta = rot[t]
+        center_pos = (len(grid) - 1 ) // 2
+        x_c_pixel, y_c_pixel = grid[center_pos, center_pos]
+        x_j_pixel, y_j_pixel = grid[y, x]
+        piece_i_on_canvas = place_on_canvas(piece_i, (y_c_pixel, x_c_pixel), ppars.canvas_size, 0)
+        piece_j_on_canvas = place_on_canvas(piece_j, (y_j_pixel, x_j_pixel), ppars.canvas_size, theta)
+        #piece_i_on_canvas['mask'] = (piece_i_on_canvas['mask'] > 0.0005).astype(np.uint8)
+        #piece_j_on_canvas['mask'] = (piece_j_on_canvas['mask'] > 0.0005).astype(np.uint8)
+        dilated_pi_mask = cv2.dilate(piece_i_on_canvas['mask'], dil_kernel)
+        dilated_pj_mask = cv2.dilate(piece_j_on_canvas['mask'], dil_kernel)
+        inters_dilated_pi_mask_pj = ((dilated_pi_mask + piece_j_on_canvas['mask']) > 1).astype(np.uint8)      
+        inters_dilated_pj_mask_pi = ((dilated_pj_mask + piece_i_on_canvas['mask']) > 1).astype(np.uint8)      
+        touching_region = ((inters_dilated_pi_mask_pj + inters_dilated_pj_mask_pi) > 0).astype(np.uint8)
+        touching_region = cv2.morphologyEx(touching_region, cv2.MORPH_CLOSE, dil_kernel)
+        size_touching_region = np.sum(touching_region > 0)
+        #print(f"We have {size_touching_region} pixels in the touching region")
+        if size_touching_region < 2*ppars.p_hs:
+            shape_score = 0
+            #print(f"skipping as number of pixels < {2*ppars.p_hs}!")
+            #touching_region = ((dilated_pi_mask + dilated_pj_mask) > 1).astype(np.uint8)
+
+            # plt.subplot(231); plt.imshow(dilated_pi_mask)
+            # plt.subplot(234); plt.imshow(dilated_pj_mask)
+            # plt.subplot(232); plt.imshow(inters_dilated_pi_mask_pj)
+            # plt.subplot(235); plt.imshow(dilated_pj_mask)
+            # plt.subplot(233); plt.imshow((inters_dilated_pi_mask_pj + inters_dilated_pj_mask_pi))
+            # plt.subplot(236); plt.imshow(touching_region)
+            # plt.show()
+            # breakpoint()
+            # min_axis = min_axis_factor * np.minimum(np.sqrt(np.sum(piece_i['mask'])), np.sqrt(np.sum(piece_j['mask']))) # MAGIC NUMBER :/
+            # drawn_matching_region, mregion_mask = get_ellipsoid(piece_i_on_canvas['cm'], piece_j_on_canvas['cm'], min_axis, ppars.canvas_size)
+        else:
+            shape_score = compute_shape_score(piece_i_on_canvas, piece_j_on_canvas, touching_region, sigma=sigma)
+            #breakpoint()
+            plt.subplot(131)
+            plt.title("what the human sees")
+            reassembled_image = piece_i_on_canvas['img']+piece_j_on_canvas['img']
+            plt.imshow(reassembled_image)
+            plt.subplot(132)
+            plt.title("what the algorithm sees")
+            sdf_sum = piece_i_on_canvas['sdf'] + piece_j_on_canvas['sdf']
+            touching_region_size = np.sum(touching_region > 0)
+            sdf_val = np.sum(touching_region*np.square(sdf_sum)) / touching_region_size
+            plt.imshow(touching_region*np.square(sdf_sum), cmap='RdYlGn')
+            # plt.imshow(sdf_sum, cmap='RdYlGn')
+            plt.contour(touching_region)
+            plt.subplot(133)
+            plt.title(f"SDF-value: {sdf_val:.03f}\nshape score: {shape_score:.03f}")
+            plt.imshow(R_cost[:,:,0])
+            plt.show()
+            breakpoint()
+            # R_cost[x,y,t] = shape_score
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
+            plt.subplot(251); plt.imshow(piece_i_on_canvas['img']); plt.title("image piece i")
+            plt.subplot(256); plt.imshow(piece_j_on_canvas['img']); plt.title("image piece j")
+            plt.subplot(252); plt.imshow(piece_i_on_canvas['mask']); plt.title("mask piece i")
+            plt.subplot(257); plt.imshow(piece_j_on_canvas['mask']); plt.title("mask piece j")
+            plt.subplot(253); plt.imshow(piece_i_on_canvas['sdf']); plt.title("sdf piece i")
+            plt.subplot(258); plt.imshow(piece_j_on_canvas['sdf']); plt.title("sdf piece j")
+            sdf_sum = piece_i_on_canvas['sdf'] + piece_j_on_canvas['sdf']
+            plt.subplot(254); plt.imshow(touching_region); plt.title("touching_region")
+            touching_region_size = np.sum(touching_region > 0)
+            sdf_val = np.sum(touching_region*np.square(sdf_sum)) / touching_region_size
+            plt.subplot(259); plt.imshow(touching_region*np.square(sdf_sum), cmap='jet'); plt.title(f"SDF ellipsoid region (val={sdf_val:.03f})")
+            reassembled_image = piece_i_on_canvas['img']+piece_j_on_canvas['img']
+            plt.subplot(255); plt.imshow(reassembled_image); plt.title(f"reassembled image (score={shape_score:.03f})")
+            plt.subplot(2,5,10); plt.imshow(reassembled_image * np.dstack((touching_region, touching_region, touching_region))); plt.title("reassembled image ellipsoid region")
+            plt.suptitle(f"T: ({x},{y},{t}) # SDF-val: {sdf_val:.03f} # Score: {shape_score:.03f}")
+            plt.show()
+        #
+        R_cost[x,y,t] = shape_score
+    return R_cost
 
 def compute_SDF_CM_matrix(piece_i, piece_j, ids_to_score, ppars, verbosity=1):
     """ 

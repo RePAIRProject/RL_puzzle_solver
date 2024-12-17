@@ -59,10 +59,10 @@ def main(args):
         motifs_output = args.images
 
     motifs_output = os.path.join(motifs_output, 'motifs_segmentation')
-    skeleton_output = os.path.join(motifs_output, 'motifs_skeletons')
+    # skeleton_output = os.path.join(motifs_output, 'motifs_skeletons')
     #motifs_output = os.path.join(args.images, 'motifs_detection_OBB')
     os.makedirs(motifs_output, exist_ok=True)
-    os.makedirs(skeleton_output, exist_ok=True)
+    # os.makedirs(skeleton_output, exist_ok=True)
     
     indent_spaces = 3
 

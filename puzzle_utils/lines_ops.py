@@ -365,8 +365,8 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
     # plt.ion()
     counter_num = 0
     plt.figure(figsize =(36, 18))
-    target_dir = os.path.join('visualization', 'RP_g1', f"P_{idx1}_{idx2}")
-    os.makedirs(target_dir, exist_ok=True)
+    target_dir = os.path.join('visualization', 'rp_g39', f"P_{idx1}_{idx2}")
+    
     for t in range(0, 1): #len(rot)):
         theta = rot[t]
         theta_rad = rot[t] * np.pi / 180     # np.deg2rad(theta) ?
@@ -477,13 +477,13 @@ def compute_cost_matrix_LAP_vis(grid_xy, rot, lines_pi, lines_pj, piece_i, piece
                     plt.subplot(133)
                     plt.title(f"The Compatibility Matrix\nEach point represent a configuration of the two pieces\nThe score in this configuration is:\nR[{iy, ix, t}]={comp:.3f}\nFrom {np.min([n_lines_f1, n_lines_f2])} matched lines (C_LAP={tot_cost:.3f})\nand the penalty (P={penalty})", fontsize=24, va="bottom")
                     plt.imshow(R_cost[:,:,0], cmap='RdYlGn', vmin=-1, vmax=1)
-                    
+                    os.makedirs(target_dir, exist_ok=True)
                     plt.savefig(os.path.join(target_dir, f'config_{counter_num:04d}.png'))
                     print(f'saved configuration #{counter_num}')
                     counter_num += 1
                     #breakpoint()
                     plt.clf()
-    breakpoint()
+    #breakpoint()
 
 def compute_cost_matrix_LAP_debug(p, z_id, m, rot, alfa1, alfa2, r1, r2, s11, s12, s21, s22, poly1, poly2, color1, color2, cat1, cat2, mask_ij, pars, verbosity=1, show=False):
     # ppars is the old cfg (with the parameters)

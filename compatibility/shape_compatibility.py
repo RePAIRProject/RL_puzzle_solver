@@ -45,7 +45,7 @@ def main(args):
     pieces = prepare_pieces(cfg, fnames, args.puzzle)
     grid_size_xy = cfg.comp_matrix_shape[0]
     grid_size_rot = cfg.comp_matrix_shape[2]
-    grid, grid_step_size = create_grid(grid_size_xy, cfg.p_hs, cfg.canvas_size)
+    # grid, grid_step_size = create_grid(grid_size_xy, cfg.p_hs, cfg.canvas_size)
     if args.urm is True:
         ok, RM = read_region_masks(cfg, args.puzzle)
         if ok < 0:
