@@ -12,8 +12,14 @@ This is the method which should be used from the HIL interface
 Now it actually assumes RM and CM are precomputed and just launches the solver
 """
 puzzle_solver = PuzzleSolver()
-def get_p_matrix():
-    return puzzle_solver.get_probability_matrix()
+def get_solution_dict():
+    return puzzle_solver.get_dict()
+
+def set_p_elements(x, y, r, piece_name):
+    x = int(x)
+    y = int(y)
+    r = int(r)
+    puzzle_solver.set_p_matrix_element(x, y, r, piece_name, 1)
 
 def set_running(running):
     puzzle_solver.set_running(running)

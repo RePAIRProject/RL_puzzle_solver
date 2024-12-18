@@ -4,17 +4,22 @@ import cv2 as cv
 import os
 import json
 
+from threading import Lock
+
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
 class PuzzleSolver:
     def __init__(self, *args, **kwargs):
         self.probability_matrix = None
+        self.maximum_probability = None
         self.final_solution = None
         self.ppars = args[0] if len(args) > 0 else None
         self.pieces_names = args[1] if len(args) > 1 else None
         self.running = True
         self.process = 0.0
+
+        self.p_matrix_lock = Lock()
 
     def default_cfg(self, path_dic):
         cfg = CfgParameters()
@@ -35,13 +40,13 @@ class PuzzleSolver:
     def set_running(self, running):
         self.running = running
 
-    def get_probability_matrix(self):
+    def get_dict(self):
         sol_dict = None
         probability_dict = None
         final_solution_bank = None
-        if (self.probability_matrix is not None and self.final_solution is not None and
+        if (self.maximum_probability is not None and self.final_solution is not None and
                 self.ppars is not None and self.pieces_names is not None and self.running and
-                self.running is not None and self.probability_matrix is not None):
+                self.running is not None and self.maximum_probability is not None):
             final_solution_bank = self.final_solution.copy()
             final_solution_bank[:, :2] = final_solution_bank[:, :2] * self.ppars['xy_step']
             final_solution_bank[:, 2] = final_solution_bank[:, 2] * self.ppars['theta_step']
@@ -50,7 +55,7 @@ class PuzzleSolver:
             for j in range(final_solution_bank.shape[0]):
                 sol_dict[self.pieces_names[j]] = final_solution_bank[j, :]
                 # probability_dict[pieces_names[j]] = np.round(highest_values[j], 3)
-                probability_dict[self.pieces_names[j]] = self.probability_matrix[j]
+                probability_dict[self.pieces_names[j]] = self.maximum_probability[j]
             # highest_values = []
             #
             # # Iterate over the `j` dimension
@@ -72,6 +77,25 @@ class PuzzleSolver:
             # # print(highest_values)
         return sol_dict, probability_dict, self.process
 
+    def set_p_matrix(self, p_matrix):
+        with self.p_matrix_lock:
+            self.probability_matrix = p_matrix
+            print("P matrix set", self.probability_matrix.shape)
+
+    def set_p_matrix_element(self, x, y, r, piece_name, value):
+        piece_number = self.extract_piece_number(piece_name)
+        print('piece_number', piece_number)
+        with self.p_matrix_lock:
+            print("Setting value", value, "at", x, y, r, piece_name)
+            self.probability_matrix[:, :, :, piece_number] = 0
+            self.probability_matrix[x, y, r, piece_number] = value
+
+    def get_p_matrix(self):
+        with self.p_matrix_lock:
+            return self.probability_matrix
+
+    def extract_piece_number(self, piece_name):
+        return self.pieces_names.index(piece_name)
 
     def solve_puzzle(self, R, anchor, pieces_names, ppars, path_dic, return_as='dict', solved_pieces=None):
         self.ppars = ppars
@@ -80,10 +104,11 @@ class PuzzleSolver:
         if solved_pieces is None:
             solved_pieces = []
 
-        p_initial, init_pos, x0, y0, z0 = self.initialization(R, anchor, solved_pieces, pieces_names) # we do not pass p_size so it chooses automatically
+        init_pos, x0, y0, z0 = self.initialization(R, anchor, solved_pieces, pieces_names) # we do not pass p_size so it chooses automatically
         num_anchors = 1
         cfg = self.default_cfg(path_dic)
-        all_pay, all_sol, all_anc, p_final, eps, iter, num_anchors, m = self.RePairPuzz(R, p_initial, num_anchors, cfg)
+        all_pay, all_sol, all_anc, eps, iter, num_anchors, m = self.RePairPuzz(R, num_anchors, cfg)
+        p_final = self.probability_matrix
 
         fin_sol = all_sol[len(all_sol)-1]
         fin_sol[:,:2] = fin_sol[:,:2] * ppars['xy_step']
@@ -163,9 +188,11 @@ class PuzzleSolver:
             p[pos[0], pos[1], pos[2], b] = 1
             init_pos[b, :] = pos
 
+        self.set_p_matrix(p)
+
         init_pos[anc, :] = ([y0, x0, z0])
 
-        return p, init_pos, x0, y0, z0
+        return init_pos, x0, y0, z0
 
     def extract_info(self, p):
         Y, X, Z, noPatches = p.shape
@@ -180,12 +207,12 @@ class PuzzleSolver:
         i1, i2, i3 = np.unravel_index(I, p[:, :, :, 0].shape)
 
         fin_sol = np.concatenate((i1, i2, i3), axis=1)
-        self.probability_matrix = m
+        self.maximum_probability = m
         self.final_solution = fin_sol
         return fin_sol, m
 
 
-    def RePairPuzz(self, R, p, na, cfg, verbosity=1, decimals=8):
+    def RePairPuzz(self, R, na, cfg, verbosity=1, decimals=8):
         R = np.maximum(R, -1)
         R_new = R
         faze = 0
@@ -199,6 +226,9 @@ class PuzzleSolver:
         all_pay = []
         all_sol = []
         all_anc = []
+
+        p = self.get_p_matrix()
+
         Y, X, Z, noPatches = p.shape
 
         # while not np.isclose(eps, 0)
@@ -207,6 +237,7 @@ class PuzzleSolver:
             if na_new > na:
                 na = na_new
                 faze += 1
+
                 p = np.ones((Y, X, Z, noPatches)) / (Y * X)
 
                 for jj in range(noPatches):
@@ -222,7 +253,7 @@ class PuzzleSolver:
                         for jj_anc in range(noPatches):
                             if new_anc[jj_anc, 0] != 0:
                                 R_new[:, :, : , jj_anc, jj] = 0
-
+            self.set_p_matrix(p)
             R_renorm = R_new / np.max(R_new)
             R_new = np.where((R_new > 0), R_renorm*1.5, R_new)
 
@@ -234,9 +265,8 @@ class PuzzleSolver:
                 T = cfg.Tnext
 
             #pdb.set_trace()
-            p, payoff, eps, iter, total_iter = self.solver_rot_puzzle(R_new, R, p, T, iter, total_iter, Tmax, 0, verbosity=3, decimals=decimals, )
-
-            fin_sol, m = self.extract_info(p)
+            payoff, eps, iter, total_iter = self.solver_rot_puzzle(R_new, R, T, iter, total_iter, Tmax, 0, verbosity=3, decimals=decimals, )
+            fin_sol, m = self.extract_info(self.probability_matrix)
             if verbosity > 0:
                 print("#" * 70)
                 print("ITERATION", iter)
@@ -270,11 +300,10 @@ class PuzzleSolver:
         #     print("#" * 70)
         #     print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
         # all_sol.append(fin_sol)
-        p_final = p
-        return all_pay, all_sol, all_anc, p_final, eps, iter, na_new, m
+        return all_pay, all_sol, all_anc, eps, iter, na_new, m
 
 
-    def solver_rot_puzzle(self, R, R_orig, p, T, iter, total_iter, Tmax, visual, verbosity=1, decimals=8):
+    def solver_rot_puzzle(self, R, R_orig, T, iter, total_iter, Tmax, visual, verbosity=1, decimals=8):
         no_rotations = R.shape[2]
         # no_rotations = 4
         print("No_Rotations", no_rotations)
@@ -286,6 +315,7 @@ class PuzzleSolver:
         print("z_rot", z_rot)
         t = 0
         eps = np.inf
+        p = self.get_p_matrix().copy()
         while t < T and eps > 0:
             t += 1
             iter += 1
@@ -313,22 +343,23 @@ class PuzzleSolver:
                     # q2 = (q1 != 0) * (q1 + no_patches * no_rotations * 0.5) ## new_experiment
                     q2 = (q1 + no_patches * no_rotations * 1)
                     q[:, :, zi, i] = q2
+            with self.p_matrix_lock:
+                pq = self.probability_matrix * np.exp(q) # e = 1e-11
+                self.probability_matrix = pq / (np.sum(pq, axis=(0, 1, 2)))
+                self.probability_matrix = np.where(np.isnan(self.probability_matrix), 0, self.probability_matrix)
 
-            pq = p * np.exp(q) # e = 1e-11
-            p_new = pq / (np.sum(pq, axis=(0, 1, 2)))
-            p_new = np.where(np.isnan(p_new), 0, p_new)
 
+                pay = np.sum(self.probability_matrix * q)
 
-            pay = np.sum(p_new * q)
-
-            payoff[t] = pay
-            eps = abs(pay - payoff[t-1])
-            if verbosity > 1:
-                if verbosity == 2:
-                    print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}', end='\r')
-                else:
-                    print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}')
-            p = np.round(p_new, decimals)
-            fin_sol, m = self.extract_info(p)
-        return p, payoff, eps, iter, total_iter
+                payoff[t] = pay
+                eps = abs(pay - payoff[t-1])
+                if verbosity > 1:
+                    if verbosity == 2:
+                        print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}', end='\r')
+                    else:
+                        print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}')
+                self.probability_matrix = np.round(self.probability_matrix, decimals)
+                p = self.probability_matrix
+                fin_sol, m = self.extract_info(p)
+        return payoff, eps, iter, total_iter
 
