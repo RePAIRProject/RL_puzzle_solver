@@ -307,6 +307,9 @@ class GUIApp(MDApp):
             self.hold_left = False
             # if self.keyboard_input != 305:
             if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+                if update_started:
+                    back_end.set_p_elements(self.grabbed_image.name, self.grabbed_image.position_memory, self.image_offset)
+                self.grabbed_image.set_is_grabbed(False)
                 self.grabbed_image.deselect()
             if hasattr(self, 'selection_rect'):
                 if self.selection_rect in self.grid_layout.canvas.children:
@@ -372,6 +375,7 @@ class GUIApp(MDApp):
                                 # if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
                                 #     self.grabbed_image.deselect()
                                 self.grabbed_image = image
+                                self.grabbed_image.set_is_grabbed(True)
                                 self.grabbed_image.select()
                                 self.grabbed_image.update_translate()
 
@@ -554,8 +558,8 @@ class GUIApp(MDApp):
                 # ratio will apply in update_positions function
                 new_positions = np.array(
                     [position[0] + self.image_offset[0], position[1] + self.image_offset[1]])
-
-                image.update_positions(new_positions, positions[2])
+                if not image.is_grabbed:
+                    image.update_positions(new_positions, positions[2])
             else:
                 image.update_positions([-1500, -1500], 0)
 
@@ -571,7 +575,7 @@ class GUIApp(MDApp):
         if clicked.isdigit():
             self.selected_pic = int(clicked)
         if back_end.pl_solver_running:
-            universal_zoom(1)
+            universal_zoom(2.5)
         if not self.anchor_showed:
 
             if (back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0):
@@ -723,6 +727,7 @@ def start_select_neighbour(self):
 
 def start_pl_solver(self):
     global universal_zoom_applied
+    global update_started
     app.show_button.disabled = True
 
     for i in range(0, len(app.current_image_list)):
@@ -731,6 +736,7 @@ def start_pl_solver(self):
     back_end.neighbour_ids = app.neighbour_ids
     # self.image_is_set = False
     # app.current_image_list = []
+    update_started = False
     back_end.start_pl_solver_thread(last_loop_solution=app.final_solution)
     universal_zoom_applied = False
 
@@ -773,18 +779,21 @@ def set_probabilities(answer, probability, average_thresh_factor):
 
 update_counter = 0
 update_freq = 1 # in seconds
+update_started = False
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
     global update_counter
+    global update_started
     while True:
         app.communicate_thread_lock.acquire()
         if update_counter>=(1/communication_freq)*update_freq:
-            answer, probability, process = back_end.get_probability_matrix()
+            answer, probability, process = back_end.get_solution_dict()
             if answer is not None:
                 average_thresh_factor = 0.01
                 answer = set_probabilities(answer, probability, average_thresh_factor)
                 answer = back_end.throw_away_1(answer, probability, average_thresh_factor)
                 app.pl_solution = answer
                 app.apply_solution()
+                update_started = True
                 app.progress_bar.value = np.round(process * 100)
             update_counter = 0
         update_counter += 1
@@ -814,12 +823,12 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
 universal_zoom_applied = False
 def universal_zoom(factor):
     global universal_zoom_applied
-    if not universal_zoom_applied:
+    if not universal_zoom_applied and update_started:
         # universal_center = calculate_universal_center()
         window_size = Window.size
         universal_center = [window_size[0]/2, window_size[1]/2]
         for image in app.current_image_list:
-            image.zoom_default(3,universal_center)
+            image.zoom_default(factor,universal_center)
         universal_zoom_applied = True
 
 def calculate_universal_center():

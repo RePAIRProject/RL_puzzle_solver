@@ -74,6 +74,8 @@ class MovableImage(Image):
         self.update_ratio()
         self.is_anchor = is_anchor
 
+        self.is_grabbed = False
+
         with self.canvas.before:
             PushMatrix()
             # self.canvas.before.add(PushMatrix())
@@ -300,3 +302,6 @@ class MovableImage(Image):
         offset = [(center[0] - self.parent.size[0] / 2 - (self.parent.pos[0] - self.pos[0]) / 2) * self.ratio[0],
                   (center[1] - self.parent.size[1] / 2 - (self.parent.pos[1] - self.pos[1]) / 2) * self.ratio[1]]
         return offset
+
+    def set_is_grabbed(self, is_grabbed):
+        self.is_grabbed = is_grabbed

@@ -62,8 +62,31 @@ class BackEnd:
         self.set_select_anchor_running(False)
         self.set_select_anchor_done(True)
 
-    def get_probability_matrix(self):
-        answer, probability, process = puzzle_solver.get_p_matrix()
+
+    def set_p_elements(self, image_name, image_pos, offset):
+        pos = image_pos
+
+        parameters = self.path_dic['parameters']
+        data = None
+        xy_step = 1
+        theta_step = 360
+        final_solution = []
+        with open(parameters, 'r') as f:
+            data = json.load(f)
+            if data is not None:
+                xy_step = data['xy_step']
+                theta_step = data['theta_step']
+
+        print('pos', pos)
+
+        pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
+
+        pos = self.scale_to_solver(xy_step, theta_step, pos, self.path_dic)
+
+        puzzle_solver.set_p_elements(pos[0], pos[1], pos[2], image_name)
+
+    def get_solution_dict(self):
+        answer, probability, process = puzzle_solver.get_solution_dict()
 
         if answer is not None:
             # answer = throw_away_2(pl_solution, probability, average_thresh_factor)
@@ -73,7 +96,7 @@ class BackEnd:
     def pl_solver_thread_function(self):
         self.set_pl_solver_running(True)
 
-        initial_thresh = 0.01
+        initial_thresh = 0.1
         average_thresh_factor = 0.05
         min_remaining = 2
         puzzle_solver.set_running(True)
