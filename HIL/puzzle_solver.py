@@ -19,7 +19,7 @@ def set_p_elements(x, y, r, piece_name):
     x = int(x)
     y = int(y)
     r = int(r)
-    puzzle_solver.set_p_matrix_element(x, y, r, piece_name, 1)
+    puzzle_solver.set_p_matrix_element(x, y, r, piece_name, 0.75)
 
 def set_running(running):
     puzzle_solver.set_running(running)

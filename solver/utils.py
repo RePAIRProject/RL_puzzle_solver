@@ -6,6 +6,8 @@ import json
 
 from threading import Lock
 
+from GUI.ReinforcementLearning import ReinforcementLearning
+
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
@@ -13,6 +15,8 @@ class PuzzleSolver:
     def __init__(self, *args, **kwargs):
         self.probability_matrix = None
         self.maximum_probability = None
+        self.delta_probs = None
+        self.reinforcement_learning = ReinforcementLearning(None, None)
         self.final_solution = None
         self.ppars = args[0] if len(args) > 0 else None
         self.pieces_names = args[1] if len(args) > 1 else None
@@ -83,12 +87,32 @@ class PuzzleSolver:
             print("P matrix set", self.probability_matrix.shape)
 
     def set_p_matrix_element(self, x, y, r, piece_name, value):
-        piece_number = self.extract_piece_number(piece_name)
-        print('piece_number', piece_number)
+
+        self.reinforcement_learning.set_probability_matrix(self.probability_matrix, self.delta_probs)
+
         with self.p_matrix_lock:
-            print("Setting value", value, "at", x, y, r, piece_name)
-            self.probability_matrix[:, :, :, piece_number] = 0
-            self.probability_matrix[x, y, r, piece_number] = value
+            self.probability_matrix = self.reinforcement_learning.update_probability_matrix(x, y, r, self.extract_piece_number(piece_name))
+
+
+        # piece_number = self.extract_piece_number(piece_name)
+        #
+        # # Shape of the probability matrix for the current piece
+        # shape_x, shape_y, shape_r = self.probability_matrix.shape[:3]
+        #
+        # # Generate coordinate grids for the matrix
+        # X, Y, R = np.meshgrid(np.arange(shape_x), np.arange(shape_y), np.arange(shape_r), indexing="ij")
+        #
+        # # Compute Gaussian adjustment
+        # sigma = value  # Spread of the Gaussian
+        # gaussian_adjustment = np.exp(-((X - x) ** 2 + (Y - y) ** 2 + (R - r) ** 2) / (2 * sigma ** 2))
+        #
+        # # Update probabilities for the specific piece
+        # with self.p_matrix_lock:
+        #     self.probability_matrix[:, :, :, piece_number] *= (1 - gaussian_adjustment)
+        #     self.probability_matrix[x, y, r, piece_number] += gaussian_adjustment[x, y, r]
+        #
+        #     # Normalize probabilities to ensure they sum to 1
+        #     self.probability_matrix[:, :, :, piece_number] /= np.sum(self.probability_matrix[:, :, :, piece_number])
 
     def get_p_matrix(self):
         with self.p_matrix_lock:
@@ -345,6 +369,7 @@ class PuzzleSolver:
                     q[:, :, zi, i] = q2
             with self.p_matrix_lock:
                 pq = self.probability_matrix * np.exp(q) # e = 1e-11
+                self.delta_probs = pq - self.probability_matrix
                 self.probability_matrix = pq / (np.sum(pq, axis=(0, 1, 2)))
                 self.probability_matrix = np.where(np.isnan(self.probability_matrix), 0, self.probability_matrix)
 
