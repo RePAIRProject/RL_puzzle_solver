@@ -751,7 +751,7 @@ def get_next_neighbour(self, *args, **kwargs):
     else:
         solved_pieces = get_solved_pieces()
 
-        # build_meta_fragment(solved_pieces)
+        build_meta_fragment(solved_pieces)
 
         loop_finalization(solved_pieces)
 

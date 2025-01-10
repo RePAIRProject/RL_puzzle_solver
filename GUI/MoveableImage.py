@@ -277,19 +277,19 @@ class MovableImage(Image):
 
     def select(self):
         self.is_selected = True
-        self.color = (0.8, 0.8, 1, 1) # blue
+        self.set_color((0.8, 0.8, 1, 1))  # blue
 
     def deselect(self):
         self.is_selected = False
-        self.color = (1, 1, 1, 1)
+        self.set_color((1, 1, 1, 1))
 
     def set_probability(self, probability):
         probability = np.round(probability * 100)
         if probability <25:
-            self.color = (1,1,1, 0.25)
+            self.set_color((1, 1, 1, 0.25)) # transparent
         else:
             alpha = probability / 100
-            self.color = (1, 1, 1, alpha)  # gradually transparent to original
+            self.set_color((1, 1, 1, alpha)) # gradually transparent to original
         print(self.name, probability)
 
     def select_toggle(self):
@@ -297,6 +297,12 @@ class MovableImage(Image):
             self.deselect()
         else:
             self.select()
+
+    def set_color(self, color):
+        if not self.is_grabbed:
+            self.color = color
+        else:
+            self.color = (0.8, 0.8, 1, 1)
 
     def update_offset(self, center):
         offset = [(center[0] - self.parent.size[0] / 2 - (self.parent.pos[0] - self.pos[0]) / 2) * self.ratio[0],
