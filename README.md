@@ -1,8 +1,18 @@
 # RL Puzzle Solver (WIP)
 Solving puzzle using Relaxation Labeling
 
-| :exclamation:  This repository is under active development! Some things may change!  |
-|-----------------------------------------|
+| :exclamation:  This branch is under active development! :exclamation: |
+|-----------------------------------------------------------------------|
+
+
+
+
+------------
+
+------------
+
+------------
+
 
 # 1) Description
 The repository contains the code for computing the compatibility matrices and the solver to reassemble the pieces.

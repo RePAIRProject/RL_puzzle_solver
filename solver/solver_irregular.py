@@ -102,10 +102,10 @@ def initialization(R, anc, p_size_y=0, p_size_x=0, anc_pos=0):
     print("P:", p.shape)
     return p, init_pos, x0, y0, z0
 
-def save_vis_puzzle(fin_sol, Y, X, Z, saving_stuff, iter_num):
+def save_vis_puzzle(fin_sol, Y, X, Z, saving_stuff, iter_num, show_borders=False):
     anc, pieces, pieces_files, pieces_folder, ppars, solver_visualization_folder = saving_stuff
-    img = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=True)
-    name = os.path.join(solver_visualization_folder, f'sol_it{iter_num}.png')
+    img = reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=show_borders)
+    name = os.path.join(solver_visualization_folder, f'sol_it{iter_num:05d}.png')
     plt.imsave(name, crop_to_content(np.clip(img, 0, 1) * 255).astype(np.uint8))
 
 def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8, save_each_phase=False, saving_stuff=[]):
@@ -159,7 +159,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8, save_each_phase=False, sa
 
         fin_sol = np.concatenate((i1, i2, i3), axis=1)
         if save_each_phase == True:
-            save_vis_puzzle(fin_sol, Y, X, Z, saving_stuff, iter)
+            save_vis_puzzle(fin_sol, Y, X, Z, saving_stuff, iter, show_borders=False)
         if verbosity > 0:
             print("#" * 70)
             print("ITERATION", iter)
@@ -229,7 +229,7 @@ def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
                 q2 = (q1 + no_patches * no_rotations * 1) #+ q_pos
                 q[:, :, zi, i] = q2
 
-        pq = p * q  # e = 1e-11
+        pq = p * np.exp(q)  # e = 1e-11
         p_new = pq / (np.sum(pq, axis=(0, 1, 2)))
         p_new = np.where(np.isnan(p_new), 0, p_new)
         pay = np.sum(p_new * q)
@@ -701,12 +701,16 @@ def main(args):
         R = mat['R']
         R = normalize_CM(R)
 
+    ## FOR DEBUG
     ## ADD GT Oracle-Compatibility
     mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_Oracle_GT'))
     R_oracle = mat['R']
     R = R + R_oracle * 10
     #R = R_oracle*10
     R = np.clip(R, -1, R)
+    # mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_Oracle_GT'))
+    # R_oracle = mat['R']
+    # R = R+R_oracle
     ######
 
     ## K-sparsification
