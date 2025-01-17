@@ -85,6 +85,7 @@ def main(args):
         ## CREATE MATRIX
         RM_combo = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         RM_motifs = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+        RM_poly_motifs = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         RM_lines = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         RM_shapes = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         for i in range(len(pieces)):
@@ -95,6 +96,7 @@ def main(args):
                     RM_shapes[:, :, :, j, i] = -1
                     RM_lines[:, :, :, j, i] = -1
                     RM_motifs[:, :, :, j, i] = -1
+                    RM_poly_motifs[:, :, :, j, i] = -1
                     RM_combo[:, :, :, j, i] = -1
                 else:
                     center_pos = ppars.canvas_size // 2
@@ -141,25 +143,43 @@ def main(args):
                      
                             n_motifs = piece_i_on_canvas['motif_mask'].shape[2]
                             mask_mt = np.zeros((piece_i_on_canvas['motif_mask'].shape[0], piece_i_on_canvas['motif_mask'].shape[1], n_motifs))
+                            poly_mask_mt = np.zeros((piece_i_on_canvas['motif_mask'].shape[0], piece_i_on_canvas['motif_mask'].shape[1], n_motifs))
+                            mask_i = piece_i_on_canvas['mask'][:, :]
                             for mt in range(n_motifs):
                                 a = piece_i_on_canvas['motif_mask'][:, :, mt]
                                 b = piece_j_on_canvas['motif_mask'][:, :, mt]
                                 if np.sum(a) > 0 and np.sum(b) > 0:
                                     mask_mt[:, :, mt] = cv2.filter2D(a, -1, b)
+                                    poly_mask_mt[:, :, mt] = cv2.filter2D(mask_i, -1, b)
 
-                            overlap_motifs = np.sum(mask_mt, 2)
+                            overlap_motifs = np.sum(mask_mt, 2) # NOOOOO !!! for each motive
                             binary_overlap_motifs = (overlap_motifs > ppars.threshold_overlap_motifs).astype(np.int32)  # CHECK !!!
                             binary_overlap_motifs = dilate(binary_overlap_motifs.astype(np.uint8), width=np.floor(
                                                                     ppars.borders_regions_width_outside * ppars.xy_step).astype(int))
-                            # print("\n\n\nDILATE\n\n\n")
                             binary_overlap_motifs_no_pad = binary_overlap_motifs[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
-                            resized_motifs = np.array(Image.fromarray(binary_overlap_motifs_no_pad).resize((grid_size_xy, grid_size_xy), Image.Resampling.NEAREST))
+                            resized_motifs = np.array(
+                                Image.fromarray(binary_overlap_motifs_no_pad).resize((grid_size_xy, grid_size_xy),
+                                                                                     Image.Resampling.NEAREST))
+                            ### NEW PART TEST
+                            overlap_poly_motifs = np.sum(poly_mask_mt, 2)  # NOOOOO !!! for each motive
+                            binary_overlap_poly_motifs = (overlap_poly_motifs > ppars.threshold_overlap_motifs).astype(
+                                np.int32)  # CHECK !!!
+                            binary_overlap_poly_motifs = dilate(binary_overlap_poly_motifs.astype(np.uint8), width=np.floor(
+                                ppars.borders_regions_width_outside * ppars.xy_step).astype(int))
+                            binary_overlap_poly_motifs_no_pad = binary_overlap_poly_motifs[ppars.p_hs + 1:-(ppars.p_hs + 1),
+                                                           ppars.p_hs + 1:-(ppars.p_hs + 1)]
+                            resized_poly_motifs = np.array(
+                                Image.fromarray(binary_overlap_poly_motifs_no_pad).resize((grid_size_xy, grid_size_xy),
+                                                                                          Image.Resampling.NEAREST))
+
+
 
                             # COMBO for MOTIFS case
                             combo = thresholded_regions_map * binary_overlap_motifs
                             combo[thresholded_regions_map < 0] = -1  # enforce -1 in the overlapping areas
                         else:
                             resized_motifs = np.zeros((grid_size_xy, grid_size_xy))
+                            resized_poly_motifs = np.zeros((grid_size_xy, grid_size_xy))
 
                       
                         if 'motif_mask' in pieces[i].keys() or 'lines_mask' in pieces[i].keys():
@@ -172,6 +192,7 @@ def main(args):
                         # These are the matrices
                         RM_combo[:, :, t, j, i] = (resized_combo.astype(np.int32) - 1)
                         RM_motifs[:, :, t, j, i] = resized_motifs
+                        RM_poly_motifs[:, :, t, j, i] = resized_poly_motifs
                         RM_lines[:, :, t, j, i] = resized_lines
                         RM_shapes[:, :, t, j, i] = (resized_shape.astype(np.int32) - 1)
 
@@ -254,6 +275,7 @@ def main(args):
         RM_D = {}
         RM_D['RM'] = RM_combo
         RM_D['RM_motifs'] = RM_motifs
+        RM_D['RM_poly_motifs'] = RM_poly_motifs
         RM_D['RM_lines'] = RM_lines
         RM_D['RM_shapes'] = RM_shapes
 
@@ -265,6 +287,9 @@ def main(args):
             save_vis(RM_combo, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_combo_{file_partial_name}'), f"regions matrix {puzzle}", save_every=4, all_rotation=False)
             save_vis(RM_lines, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_lines_{file_partial_name}'), f"overlap {puzzle}", save_every=4, all_rotation=False)
             save_vis(RM_motifs, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_motifs_{file_partial_name}'), f"overlap {puzzle}", save_every=4, all_rotation=False)
+            save_vis(RM_poly_motifs, pieces, ppars.theta_step,
+                     os.path.join(vis_folder, f'visualization_poly_motifs_{file_partial_name}'), f"overlap {puzzle}",
+                     save_every=4, all_rotation=False)
             save_vis(RM_shapes, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_shapes_{file_partial_name}'), f"borders {puzzle}", save_every=4, all_rotation=False)
         print(f'Done with {puzzle}\n')
 

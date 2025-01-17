@@ -15,7 +15,7 @@ from configs import folder_names as fnames
 from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, include_shape_info, encode_boundary_segments
 from puzzle_utils.pieces_utils import calc_parameters_v2, CfgParameters
 from puzzle_utils.visualization import save_vis
-from puzzle_utils.regions import combine_region_masks
+from puzzle_utils.regions import combine_region_masks, combine_region_masks_V2
 from utils import compute_cost_wrapper, calc_computation_parameters, normalize_CM, reshape_list2mat,\
     show_debug_visualization
 
@@ -154,7 +154,9 @@ def main(args):
             region_mask = combine_region_masks([shape_RM, lines_RM])
         elif line_based == False and motif_based == True:
             motif_RM = region_mask_mat['RM_motifs']
-            region_mask = combine_region_masks([shape_RM, motif_RM])
+            poly_motif_RM = region_mask_mat['RM_poly_motifs'] # new part
+            #region_mask = combine_region_masks([shape_RM, motif_RM])
+            region_mask = combine_region_masks_V2([shape_RM, poly_motif_RM, motif_RM])
         elif line_based == True and motif_based == True:
             lines_RM = region_mask_mat['RM_lines']
             motif_RM = region_mask_mat['RM_motifs']
@@ -317,7 +319,7 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')  # add some discription
-    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch3', help='dataset folder')  # repair
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch3_clean', help='dataset folder')  # repair
     parser.add_argument('--puzzle', type=str, default='', help='puzzle folder (if empty will do all folders inside the dataset folder)')  # repair_g97, repair_g28, decor_1_lines
     parser.add_argument('--penalty', type=int, default=-1, help='penalty (leave -1 to use the one from the config file)')
     parser.add_argument('--jobs', type=int, default=0, help='how many jobs (if you want to parallelize the execution')
