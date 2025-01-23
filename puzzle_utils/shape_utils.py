@@ -174,20 +174,20 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
 
     ## ROTATE
     if theta > 0:
-        piece_img = scipy.ndimage.rotate(piece_img, theta, reshape=False, mode='constant')
-        piece_mask = scipy.ndimage.rotate(piece_mask, theta, reshape=False, mode='constant', prefilter=False)
+        piece_img = scipy.ndimage.rotate(piece_img, theta, reshape=False, mode='constant', order=0)
+        piece_mask = scipy.ndimage.rotate(piece_mask, theta, reshape=False, mode='constant', prefilter=False, order=0)
         piece_mask = cv2.morphologyEx(piece_mask, cv2.MORPH_CLOSE, closing_kernel)
         #piece_mask = (piece_mask > eps_mh).astype(np.uint8)
         if 'sdf' in piece.keys():
-            piece_sdf = scipy.ndimage.rotate(piece_sdf, theta, reshape=False, mode='constant')
+            piece_sdf = scipy.ndimage.rotate(piece_sdf, theta, reshape=False, mode='constant', order=0)
         if 'lines_mask' in piece.keys():
-            piece_lines_mask = scipy.ndimage.rotate(piece_lines_mask, theta, reshape=False, mode='constant', prefilter=False)
+            piece_lines_mask = scipy.ndimage.rotate(piece_lines_mask, theta, reshape=False, mode='constant', order=0, prefilter=False)
             piece_lines_mask = cv2.morphologyEx(piece_lines_mask, cv2.MORPH_CLOSE, closing_kernel)
             #piece_lines_mask = (piece_lines_mask > eps_mh).astype(np.uint8)
         piece['cm'] = get_cm(piece_mask)
         ## NEW MOTIF-BASED
         if 'motif_mask' in piece.keys():
-            piece_motif_mask = scipy.ndimage.rotate(piece_motif_mask, theta, reshape=False, mode='constant')
+            piece_motif_mask = scipy.ndimage.rotate(piece_motif_mask, theta, reshape=False, mode='constant', order=0)
         #piece['cm'] = get_cm(piece_mask)
         if 'polygon' in piece.keys():
             rotated_poly = rotate(piece['polygon'], -theta, origin=half_piece_shift)
@@ -249,8 +249,11 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     return piece_on_canvas
 
 
-def get_mask(img, background=0, noisy=False, epsilon=0.1):
+def get_mask(img, background=0, noisy=False, epsilon=0.1, black_bg=False):
 
+    if black_bg == True:
+        mask = 255 - (np.sum(img[:,:,:3], axis=2) == 0)
+        return mask
     if img.shape[2] == 4:
         img = img[:,:,3]
     else:
@@ -477,7 +480,7 @@ def add_colors(image, borders_segments, thickness):
             if np.sum(left_part) > 10:
                 # good one
                  #scipy.ndimage.rotate(, 90)
-                colors = scipy.ndimage.rotate(left_part, 180)
+                colors = scipy.ndimage.rotate(left_part, 180, order=0)
                 # plt.subplot(132); plt.imshow(left_part); plt.title(f"left part ({st},{stt[0]} to {en})")
                 # plt.subplot(133); plt.imshow(colors); plt.title("no rotation needed")
                 # plt.show()
@@ -497,13 +500,13 @@ def add_colors(image, borders_segments, thickness):
             top_part = image[stt[1]-thickness:end[1], st:en]
             # vertical   
             if np.sum(top_part) > 10:
-                colors = scipy.ndimage.rotate(top_part, -90)
+                colors = scipy.ndimage.rotate(top_part, -90, order=0)
                 # plt.subplot(132); plt.imshow(top_part); plt.title(f"top part ({st} to {en})")
                 # plt.subplot(133); plt.imshow(colors); plt.title("rotated -90")
                 # plt.show()
             else:
                 bottom_part = image[stt[1]:thickness+end[1], st:en] 
-                colors = scipy.ndimage.rotate(bottom_part, 90)
+                colors = scipy.ndimage.rotate(bottom_part, 90, order=0)
                 # plt.subplot(132); plt.imshow(bottom_part); plt.title(f"bottom part ({st} to {en})")
                 # plt.subplot(133); plt.imshow(colors); plt.title("rotated 90")
                 # plt.show()

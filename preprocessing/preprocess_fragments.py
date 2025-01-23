@@ -1,4 +1,6 @@
-import os 
+import os
+from distutils.dep_util import newer_group
+
 import numpy as np 
 import cv2
 import matplotlib.pyplot as plt
@@ -35,6 +37,7 @@ def main(args):
             #if 'RPf' in piece_path:
             piece_full_path = os.path.join(group_folder, piece_path)
             imgcv = cv2.imread(piece_full_path, cv2.IMREAD_UNCHANGED)
+
             if imgcv.shape[0] != target_img_shape:
                 imgcv = cv2.resize(imgcv, dsize=(target_img_shape, target_img_shape), interpolation=cv2.INTER_CUBIC)
             centered_img, img_mask = center_fragment(imgcv)
@@ -49,7 +52,7 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Prepare the data')
-    parser.add_argument('-d', '--dataset', type=str, default='/media/lucap/big_data/datasets/repair/puzzle2D', help='data folder')
+    parser.add_argument('-d', '--dataset', type=str, default='', help='data folder')
 
     args = parser.parse_args()
     main(args)

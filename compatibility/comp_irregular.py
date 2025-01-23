@@ -44,7 +44,8 @@ def main(args):
         # img_parameters contains the size of the image and of the pieces
         # ppars contains all the values needed for computing stuff (p_hs, comp_range..)
         # ppars is a dict but can be accessed by pieces_paramters.property!
-        ################################# 
+        #################################
+
         print()
         print("-" * 60)
         print("-- CMP_START_TIME -- ")
@@ -62,6 +63,7 @@ def main(args):
         
         puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, puzzle)
         cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters_v2.json')
+
         #################################
         #   PARAMETERS (from .json file)
         #################################
@@ -155,8 +157,9 @@ def main(args):
         elif line_based == False and motif_based == True:
             motif_RM = region_mask_mat['RM_motifs']
             poly_motif_RM = region_mask_mat['RM_poly_motifs'] # new part
-            #region_mask = combine_region_masks([shape_RM, motif_RM])
-            region_mask = combine_region_masks_V2([shape_RM, poly_motif_RM, motif_RM])
+            region_mask = combine_region_masks([shape_RM, motif_RM])
+            # NEW VERSION con poly-motif intersection:
+            #region_mask = combine_region_masks_V2([shape_RM, poly_motif_RM, motif_RM])
         elif line_based == True and motif_based == True:
             lines_RM = region_mask_mat['RM_lines']
             motif_RM = region_mask_mat['RM_motifs']
@@ -227,8 +230,7 @@ def main(args):
 
                     if i > 1 and i != j and args.DEBUG == True:
                         show_debug_visualization(pieces, i, j, args, ji_mat, region_mask, ppars)
-
-        breakpoint()
+        #breakpoint()
         ###########################
         #   NORMALIZATION
         ###########################

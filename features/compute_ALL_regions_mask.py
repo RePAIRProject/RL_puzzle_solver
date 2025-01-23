@@ -140,19 +140,23 @@ def main(args):
 
                         #  MOTIFS case
                         if 'motif_mask' in pieces[i].keys():
-                     
                             n_motifs = piece_i_on_canvas['motif_mask'].shape[2]
                             mask_mt = np.zeros((piece_i_on_canvas['motif_mask'].shape[0], piece_i_on_canvas['motif_mask'].shape[1], n_motifs))
                             poly_mask_mt = np.zeros((piece_i_on_canvas['motif_mask'].shape[0], piece_i_on_canvas['motif_mask'].shape[1], n_motifs))
                             mask_i = piece_i_on_canvas['mask'][:, :]
-                            for mt in range(n_motifs):
-                                a = piece_i_on_canvas['motif_mask'][:, :, mt]
-                                b = piece_j_on_canvas['motif_mask'][:, :, mt]
-                                if np.sum(a) > 0 and np.sum(b) > 0:
-                                    mask_mt[:, :, mt] = cv2.filter2D(a, -1, b)
-                                    poly_mask_mt[:, :, mt] = cv2.filter2D(mask_i, -1, b)
 
-                            overlap_motifs = np.sum(mask_mt, 2) # NOOOOO !!! for each motive
+                            for mt in range(n_motifs):
+                                if mt>1:
+                                    a = piece_i_on_canvas['motif_mask'][:, :, mt]
+                                    b = piece_j_on_canvas['motif_mask'][:, :, mt]
+                                    a = dilate(a.astype(np.uint8), width=np.floor(2 * ppars.xy_step).astype(int))
+                                    b = dilate(b.astype(np.uint8), width=np.floor(2 * ppars.xy_step).astype(int))
+                                    if np.sum(a) > 0 and np.sum(b) > 0:
+                                        mask_mt[:, :, mt] = cv2.filter2D(a, -1, b)
+                                        poly_mask_mt[:, :, mt] = cv2.filter2D(mask_i, -1, b)
+
+
+                            overlap_motifs = np.sum(mask_mt, 2) # NO !!! for each motive
                             binary_overlap_motifs = (overlap_motifs > ppars.threshold_overlap_motifs).astype(np.int32)  # CHECK !!!
                             binary_overlap_motifs = dilate(binary_overlap_motifs.astype(np.uint8), width=np.floor(
                                                                     ppars.borders_regions_width_outside * ppars.xy_step).astype(int))
@@ -161,7 +165,7 @@ def main(args):
                                 Image.fromarray(binary_overlap_motifs_no_pad).resize((grid_size_xy, grid_size_xy),
                                                                                      Image.Resampling.NEAREST))
                             ### NEW PART TEST
-                            overlap_poly_motifs = np.sum(poly_mask_mt, 2)  # NOOOOO !!! for each motive
+                            overlap_poly_motifs = np.sum(poly_mask_mt, 2)  # NO !!! for each motive
                             binary_overlap_poly_motifs = (overlap_poly_motifs > ppars.threshold_overlap_motifs).astype(
                                 np.int32)  # CHECK !!!
                             binary_overlap_poly_motifs = dilate(binary_overlap_poly_motifs.astype(np.uint8), width=np.floor(
@@ -171,8 +175,6 @@ def main(args):
                             resized_poly_motifs = np.array(
                                 Image.fromarray(binary_overlap_poly_motifs_no_pad).resize((grid_size_xy, grid_size_xy),
                                                                                           Image.Resampling.NEAREST))
-
-
 
                             # COMBO for MOTIFS case
                             combo = thresholded_regions_map * binary_overlap_motifs
@@ -295,7 +297,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Computing compatibility matrix')
-    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch2', help='dataset (name of the folders)')
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch3_clean_TEST', help='dataset (name of the folders)')
     parser.add_argument('--puzzle', type=str, default='',
                         help='puzzle to work on - leave empty to generate for the whole dataset')
     parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')

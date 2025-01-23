@@ -212,7 +212,7 @@ def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
             ri = R[:, :, :, :, i]
             #  ri = R[:, :, :, i, :]  # FOR ORACLE SQUARE ONLY
             for zi in range(no_rotations):
-                rr = rotate(ri, z_rot[zi], reshape=False, mode='constant')
+                rr = rotate(ri, z_rot[zi], reshape=False, mode='constant', order=0)
                 rr = np.roll(rr, zi, axis=2)
                 c1 = np.zeros(p.shape)
                 for j in range(no_patches):
@@ -301,7 +301,7 @@ def reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folde
             ids = (pos[i, :2] * step + cc).astype(int)
             if pos.shape[1] == 3:
                 rot = z_rot[pos[i, 2]]
-                Im = rotate(Im, rot, reshape=False, mode='constant')
+                Im = rotate(Im, rot, reshape=False, mode='constant', order=0)
 
                 if i == anc:
                     mask = (Im > 0.05).astype(np.uint8)
@@ -688,6 +688,62 @@ def main(args):
             #total_contrib = shape_basis * (lines_contrib + np.max(seg_contrib, motif_contrib))  # option
             R = shape_basis + total_contrib
             R += -1 * negative_region_map.astype(int)
+            R = normalize_CM(R)
+            R = np.maximum(-1, R)
+
+        elif args.combo_type == 'SLM_new_TEST':
+            print("trying to combine three compatibilities (ShapeLinesMotifs)")
+            mat_motif = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.motif_det_method}"))
+            mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+            mat_lines = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_linesdet_{args.lines_det_method}_cost_{args.cmp_cost}'))
+            #mat_seg = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_seg'))
+            region_mask_mat = loadmat(os.path.join(puzzle_root_folder, fnames.rm_output_name, f'RM_{args.puzzle}.mat'))
+
+            R_shape = mat_shape['R']
+            R_lines = mat_lines['R']
+            R_motif = mat_motif['R']
+            #R_seg = mat_seg['R']
+            shape_RM = region_mask_mat['RM_shapes']
+            lines_RM = region_mask_mat['RM_lines']
+            motif_RM = region_mask_mat['RM_motifs']
+            poly_motif_RM = region_mask_mat['RM_poly_motifs']  # new part
+            #seg_RM = region_mask_mat['RM_motifs']
+
+            norm_R_shape = normalize_CM(R_shape)
+            norm_R_lines = normalize_CM(R_lines)
+            norm_R_motif = normalize_CM(R_motif) # only motif-motif-intersection values
+            #norm_R_seg = normalize_CM(R_seg)
+
+            region_motif = combine_region_masks([shape_RM, motif_RM]).astype(int)
+            region_lines = combine_region_masks([shape_RM, lines_RM]).astype(int)
+            #region_seg = combine_region_masks([shape_RM, seg_RM]).astype(int)
+
+            prm_shape = (shape_RM > 0).astype(int)
+            prm_motif = (region_motif> 0).astype(int)  ## positive in RM
+            prm_lines = (region_lines> 0).astype(int)  ## positive in RM
+            #prm_seg = (region_seg > 0).astype(int)  ## positive in RM
+
+            shape_basis = norm_R_shape * prm_shape
+            ### TEMP FOR DEBUG !!!!
+            shape_basis = prm_shape
+
+            lines_contrib = prm_lines * norm_R_lines
+            motif_contrib = prm_motif * norm_R_motif
+            #seg_contrib  = prm_seg   * norm_R_seg
+
+            #total_contrib = min(motif_contrib, lines_contrib) # positive contribution
+            total_contrib = np.where((lines_contrib>0 and motif_contrib>0), min(motif_contrib, lines_contrib), max(motif_contrib, lines_contrib))
+
+            # version 1 - shape compatibility if no other contributions
+            R = np.where(total_contrib>0, total_contrib, shape_basis)
+            # version 2 - add to shpe basis
+            #R = shape_basis + total_contrib
+
+            #ADD negative shape-values(overlap) and penalised motif UN-MATCH
+            negative_region_map = R_shape < 0
+            negative_motif_map = poly_motif_RM < 0
+            R += -1 * negative_region_map.astype(int)
+            R += -1 * negative_motif_map.astype(int)
             R = normalize_CM(R)
             R = np.maximum(-1, R)
 
