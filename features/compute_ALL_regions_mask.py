@@ -2,8 +2,8 @@ import numpy as np
 from scipy.io import savemat
 import argparse
 import pdb
-import matplotlib
-matplotlib.use('TkAgg')
+# import matplotlib
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import cv2
 import json, os
@@ -83,24 +83,26 @@ def main(args):
         print()
 
         ## CREATE MATRIX
-        RM_combo = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
-        RM_motifs = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
-        RM_poly_motifs = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+        # RM_combo = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+        RM_motifs = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces), 14))
+        RM_poly_motifs = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces), 14))
         RM_lines = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
         RM_shapes = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+
         for i in range(len(pieces)):
             for j in range(len(pieces)):
-                #j = 3
+                #j = 5
                 print(f"regions for pieces {i:>2} and {j:>2}", end='\r')
                 if i == j:
-                    RM_shapes[:, :, :, j, i] = -1
+                    # RM_combo[:, :, :, j, i] = -1
+                    RM_motifs[:, :, :, j, i, :] = -1
+                    RM_poly_motifs[:, :, :, j, i, :] = -1
                     RM_lines[:, :, :, j, i] = -1
-                    RM_motifs[:, :, :, j, i] = -1
-                    RM_poly_motifs[:, :, :, j, i] = -1
-                    RM_combo[:, :, :, j, i] = -1
+                    RM_shapes[:, :, :, j, i] = -1
                 else:
                     center_pos = ppars.canvas_size // 2
                     piece_i_on_canvas = place_on_canvas(pieces[i], (center_pos, center_pos), ppars.canvas_size, 0)
+                    n_motifs = piece_i_on_canvas['motif_mask'].shape[2]
 
                     for t in range(grid_size_rot):
                         piece_j_on_canvas = place_on_canvas(pieces[j], (center_pos, center_pos), ppars.canvas_size, t * ppars.theta_step)
@@ -131,70 +133,62 @@ def main(args):
                             binary_overlap_lines_no_pad = binary_overlap_lines[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
                             resized_lines = np.array(Image.fromarray(binary_overlap_lines_no_pad).resize((grid_size_xy, grid_size_xy), Image.Resampling.NEAREST))
 
-                            # COMBO for LINES-case
-                            combo = thresholded_regions_map * binary_overlap_lines
-                            combo[thresholded_regions_map < 0] = -1  # enforce -1 in the overlapping areas
+                            # COMBO for LINES-case  - NON SERVE PIU'
+                            # combo = thresholded_regions_map * binary_overlap_lines
+                            # combo[thresholded_regions_map < 0] = -1  # -1 in the overlapping areas
                         else:
-                            
                             resized_lines = np.zeros((grid_size_xy, grid_size_xy))
 
                         #  MOTIFS case
                         if 'motif_mask' in pieces[i].keys():
-                            n_motifs = piece_i_on_canvas['motif_mask'].shape[2]
                             mask_mt = np.zeros((piece_i_on_canvas['motif_mask'].shape[0], piece_i_on_canvas['motif_mask'].shape[1], n_motifs))
                             poly_mask_mt = np.zeros((piece_i_on_canvas['motif_mask'].shape[0], piece_i_on_canvas['motif_mask'].shape[1], n_motifs))
                             mask_i = piece_i_on_canvas['mask'][:, :]
 
-                            for mt in range(n_motifs):
-                                if mt>1:
-                                    a = piece_i_on_canvas['motif_mask'][:, :, mt]
-                                    b = piece_j_on_canvas['motif_mask'][:, :, mt]
-                                    a = dilate(a.astype(np.uint8), width=np.floor(2 * ppars.xy_step).astype(int))
-                                    b = dilate(b.astype(np.uint8), width=np.floor(2 * ppars.xy_step).astype(int))
-                                    if np.sum(a) > 0 and np.sum(b) > 0:
-                                        mask_mt[:, :, mt] = cv2.filter2D(a, -1, b)
-                                        poly_mask_mt[:, :, mt] = cv2.filter2D(mask_i, -1, b)
+                            for mt in range(2, n_motifs, 1):
+                                a = piece_i_on_canvas['motif_mask'][:, :, mt]
+                                b = piece_j_on_canvas['motif_mask'][:, :, mt]
+                                a = dilate(a.astype(np.uint8), width=np.floor(2 * ppars.xy_step).astype(int))
+                                b = dilate(b.astype(np.uint8), width=np.floor(2 * ppars.xy_step).astype(int))
+                                if np.sum(a) > 0 and np.sum(b) > 0:
+                                    mask_mt_temp = cv2.filter2D(a, -1, b)
+                                    mask_mt[:, :, mt] = mask_mt_temp
+                                mask_i = dilate(mask_i.astype(np.uint8), width=np.floor(1.5 * ppars.xy_step).astype(int))
+                                if np.sum(a) > 0 or np.sum(b) > 0:
+                                    poly_mask_mt[:, :, mt] = cv2.filter2D(mask_i, -1, b)  ## THESE MATRICES ARE ASYMMETRIC !!?
 
+                            binary_overlap_motifs = (mask_mt > ppars.threshold_overlap_motifs).astype(np.int32)
+                            binary_overlap_motifs_no_pad = binary_overlap_motifs[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1),:]
+                            resized_motifs = cv2.resize(binary_overlap_motifs_no_pad, dsize=(grid_size_xy, grid_size_xy),
+                                       interpolation=cv2.INTER_NEAREST)
 
-                            overlap_motifs = np.sum(mask_mt, 2) # NO !!! for each motive
-                            binary_overlap_motifs = (overlap_motifs > ppars.threshold_overlap_motifs).astype(np.int32)  # CHECK !!!
-                            binary_overlap_motifs = dilate(binary_overlap_motifs.astype(np.uint8), width=np.floor(
-                                                                    ppars.borders_regions_width_outside * ppars.xy_step).astype(int))
-                            binary_overlap_motifs_no_pad = binary_overlap_motifs[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
-                            resized_motifs = np.array(
-                                Image.fromarray(binary_overlap_motifs_no_pad).resize((grid_size_xy, grid_size_xy),
-                                                                                     Image.Resampling.NEAREST))
-                            ### NEW PART TEST
-                            overlap_poly_motifs = np.sum(poly_mask_mt, 2)  # NO !!! for each motive
-                            binary_overlap_poly_motifs = (overlap_poly_motifs > ppars.threshold_overlap_motifs).astype(
-                                np.int32)  # CHECK !!!
-                            binary_overlap_poly_motifs = dilate(binary_overlap_poly_motifs.astype(np.uint8), width=np.floor(
-                                ppars.borders_regions_width_outside * ppars.xy_step).astype(int))
+                            binary_overlap_poly_motifs = (poly_mask_mt > ppars.threshold_overlap_motifs).astype(np.int32)
                             binary_overlap_poly_motifs_no_pad = binary_overlap_poly_motifs[ppars.p_hs + 1:-(ppars.p_hs + 1),
-                                                           ppars.p_hs + 1:-(ppars.p_hs + 1)]
-                            resized_poly_motifs = np.array(
-                                Image.fromarray(binary_overlap_poly_motifs_no_pad).resize((grid_size_xy, grid_size_xy),
-                                                                                          Image.Resampling.NEAREST))
+                                                           ppars.p_hs + 1:-(ppars.p_hs + 1), :]
+                            resized_poly_motifs = cv2.resize(binary_overlap_poly_motifs_no_pad,
+                                                        dsize=(grid_size_xy, grid_size_xy),
+                                                        interpolation=cv2.INTER_NEAREST)
 
-                            # COMBO for MOTIFS case
-                            combo = thresholded_regions_map * binary_overlap_motifs
-                            combo[thresholded_regions_map < 0] = -1  # enforce -1 in the overlapping areas
+                            # COMBO for Motif-case - NON SERVE PIU'
+                            # combo = thresholded_regions_map * binary_overlap_motifs
+                            # combo[thresholded_regions_map < 0] = -1  # -1 in the overlapping areas
+
                         else:
                             resized_motifs = np.zeros((grid_size_xy, grid_size_xy))
                             resized_poly_motifs = np.zeros((grid_size_xy, grid_size_xy))
 
-                      
-                        if 'motif_mask' in pieces[i].keys() or 'lines_mask' in pieces[i].keys():
-                            combo_uint = (combo + 1).astype(np.uint8)
-                            combo_comp_range = combo_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
-                            resized_combo = np.array(Image.fromarray(combo_comp_range).resize((grid_size_xy, grid_size_xy), Image.Resampling.NEAREST))
-                        else:
-                            resized_combo = resized_shape               
+                        # COMBO RM creation - NON SERVE PIU'
+                        # if 'motif_mask' in pieces[i].keys() or 'lines_mask' in pieces[i].keys():
+                        #     combo_uint = (combo + 1).astype(np.uint8)
+                        #     combo_comp_range = combo_uint[ppars.p_hs + 1:-(ppars.p_hs + 1), ppars.p_hs + 1:-(ppars.p_hs + 1)]
+                        #     resized_combo = np.array(Image.fromarray(combo_comp_range).resize((grid_size_xy, grid_size_xy), Image.Resampling.NEAREST))
+                        # else:
+                        #     resized_combo = resized_shape
 
                         # These are the matrices
-                        RM_combo[:, :, t, j, i] = (resized_combo.astype(np.int32) - 1)
-                        RM_motifs[:, :, t, j, i] = resized_motifs
-                        RM_poly_motifs[:, :, t, j, i] = resized_poly_motifs
+                        # RM_combo[:, :, t, j, i] = (resized_combo.astype(np.int32) - 1)
+                        RM_motifs[:, :, t, j, i, :] = resized_motifs
+                        RM_poly_motifs[:, :, t, j, i, :] = resized_poly_motifs
                         RM_lines[:, :, t, j, i] = resized_lines
                         RM_shapes[:, :, t, j, i] = (resized_shape.astype(np.int32) - 1)
 
@@ -243,15 +237,15 @@ def main(args):
                             plt.imshow(resized_lines)
                             plt.title("Overlap Lines (resized)")
                             # combo
-                            plt.subplot(6, 3, 13)
-                            plt.imshow(combo)
-                            plt.title("Overlap Combo (mask)")
-                            plt.subplot(6, 3, 14)
-                            plt.imshow(combo_comp_range)
-                            plt.title("Overlap Combo (uint8)")
-                            plt.subplot(6, 3, 15)
-                            plt.imshow(resized_combo)
-                            plt.title("Overlap Combo (resized)")
+                            # plt.subplot(6, 3, 13)
+                            # plt.imshow(combo)
+                            # plt.title("Overlap Combo (mask)")
+                            # plt.subplot(6, 3, 14)
+                            # plt.imshow(combo_comp_range)
+                            # plt.title("Overlap Combo (uint8)")
+                            # plt.subplot(6, 3, 15)
+                            # plt.imshow(resized_combo)
+                            # plt.title("Overlap Combo (resized)")
                             # results
                             plt.subplot(6, 3, 16);
                             plt.imshow(RM_lines[:, :, t, j, i]);
@@ -259,11 +253,11 @@ def main(args):
                             plt.subplot(6, 3, 17);
                             plt.imshow(RM_shapes[:, :, t, j, i]);
                             plt.title("Shapes")
-                            plt.subplot(6, 3, 18);
-                            plt.imshow(RM_combo[:, :, t, j, i]);
-                            plt.title("Combo")
-                            plt.show()
-                            pdb.set_trace()
+                            # plt.subplot(6, 3, 18);
+                            # plt.imshow(RM_combo[:, :, t, j, i]);
+                            # plt.title("Combo")
+                            # plt.show()
+                            # pdb.set_trace()
         print("\n")
         print('Done calculating')
         print('#' * 50)
@@ -275,9 +269,9 @@ def main(args):
         vis_folder = os.path.join(output_folder, fnames.visualization_folder_name)
         os.makedirs(vis_folder, exist_ok=True)
         RM_D = {}
-        RM_D['RM'] = RM_combo
-        RM_D['RM_motifs'] = RM_motifs
-        RM_D['RM_poly_motifs'] = RM_poly_motifs
+        # RM_D['RM'] = RM_combo
+        RM_D['RM_motifs'] = RM_motifs           ##  one channel more here
+        RM_D['RM_poly_motifs'] = RM_poly_motifs ##  one channel more here
         RM_D['RM_lines'] = RM_lines
         RM_D['RM_shapes'] = RM_shapes
 
@@ -286,13 +280,16 @@ def main(args):
         if args.save_visualization is True:
             print('Creating visualization')
             file_partial_name = f'{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'
-            save_vis(RM_combo, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_combo_{file_partial_name}'), f"regions matrix {puzzle}", save_every=4, all_rotation=False)
+            # save_vis(RM_combo, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_combo_{file_partial_name}'), f"regions matrix {puzzle}", save_every=4, all_rotation=False)
             save_vis(RM_lines, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_lines_{file_partial_name}'), f"overlap {puzzle}", save_every=4, all_rotation=False)
-            save_vis(RM_motifs, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_motifs_{file_partial_name}'), f"overlap {puzzle}", save_every=4, all_rotation=False)
-            save_vis(RM_poly_motifs, pieces, ppars.theta_step,
-                     os.path.join(vis_folder, f'visualization_poly_motifs_{file_partial_name}'), f"overlap {puzzle}",
-                     save_every=4, all_rotation=False)
             save_vis(RM_shapes, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_shapes_{file_partial_name}'), f"borders {puzzle}", save_every=4, all_rotation=False)
+
+            for mt in range(2, n_motifs, 1):
+                save_vis(RM_motifs[:, :, :, :, :, mt], pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_motif_{mt}_{file_partial_name}'), f"overlap {puzzle}", save_every=4, all_rotation=False)
+                save_vis(RM_poly_motifs[:, :, :, :, :, mt], pieces, ppars.theta_step,
+                     os.path.join(vis_folder, f'visualization_poly_motifs_{mt}_{file_partial_name}'), f"overlap {puzzle}",
+                     save_every=4, all_rotation=False)
+
         print(f'Done with {puzzle}\n')
 
 if __name__ == '__main__':
