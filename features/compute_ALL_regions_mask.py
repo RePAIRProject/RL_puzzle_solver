@@ -102,11 +102,9 @@ def main(args):
                 else:
                     center_pos = ppars.canvas_size // 2
                     piece_i_on_canvas = place_on_canvas(pieces[i], (center_pos, center_pos), ppars.canvas_size, 0)
-                    n_motifs = piece_i_on_canvas['motif_mask'].shape[2]
 
                     for t in range(grid_size_rot):
                         piece_j_on_canvas = place_on_canvas(pieces[j], (center_pos, center_pos), ppars.canvas_size, t * ppars.theta_step)
-
                         # SHAPE case - BASIC
                         overlap_shapes = cv2.filter2D(piece_i_on_canvas['mask'], -1, piece_j_on_canvas['mask'])
                         thresholded_regions_map = (overlap_shapes > ppars.threshold_overlap).astype(np.int32)
@@ -141,6 +139,7 @@ def main(args):
 
                         #  MOTIFS case
                         if 'motif_mask' in pieces[i].keys():
+                            n_motifs = piece_i_on_canvas['motif_mask'].shape[2]
                             mask_mt = np.zeros((piece_i_on_canvas['motif_mask'].shape[0], piece_i_on_canvas['motif_mask'].shape[1], n_motifs))
                             poly_mask_mt = np.zeros((piece_i_on_canvas['motif_mask'].shape[0], piece_i_on_canvas['motif_mask'].shape[1], n_motifs))
                             mask_i = piece_i_on_canvas['mask'][:, :]
