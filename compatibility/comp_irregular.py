@@ -157,9 +157,11 @@ def main(args):
         elif line_based == False and motif_based == True:
             motif_RM = region_mask_mat['RM_motifs']
             poly_motif_RM = region_mask_mat['RM_poly_motifs'] # new part
-            region_mask = combine_region_masks([shape_RM, motif_RM])
+            #region_mask_0 = combine_region_masks([shape_RM, motif_RM])
+
             # NEW VERSION con poly-motif intersection:
-            #region_mask = combine_region_masks_V2([shape_RM, poly_motif_RM, motif_RM])
+            region_mask = combine_region_masks_V2([shape_RM, poly_motif_RM, motif_RM])
+
         elif line_based == True and motif_based == True:
             lines_RM = region_mask_mat['RM_lines']
             motif_RM = region_mask_mat['RM_motifs']
@@ -210,6 +212,13 @@ def main(args):
         ################################
         #   COMPATIBILITY COMPUTATION
         ################################
+
+                ###############
+        if 'motifs' in args.cmp_type:
+            if len(np.shape(region_mask)) == 6:
+                n_motifs = np.shape(region_mask)[-1]
+                All_cost = np.zeros((m.shape[1], m.shape[1], len(rot), n, n, n_motifs))
+
         if args.jobs > 1: # parallelized version!
             print("### WARNING ###\nIn case of issues, re-run with `jobs 0` (default) to avoid parallel jobs!")
             print(f'running {args.jobs} parallel jobs with multiprocessing')
@@ -217,6 +226,8 @@ def main(args):
             All_cost = reshape_list2mat(costs_list, n=n)
         else:
             # standard (for-loop) version
+
+
             for i in range(n):  # select fixed fragment
                 for j in range(n):
                     if args.verbosity == 1:
@@ -307,10 +318,22 @@ def main(args):
         os.makedirs(vis_folder, exist_ok=True)
         if args.save_visualization is True:
             print('Creating visualization')
-            save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{puzzle}_{cmp_name}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"compatibility matrix {puzzle}", all_rotation=True)
+
+            file_partial_name = f'{puzzle}_{cmp_name}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'
+            if len(R.shape) == 6:  # for motif-wised compativility
+                n_motifs = R.shape[5]
+                us_motifs = [2, 6, 8, 6, 10, 11]
+                for mt in (us_motifs):
+                #for mt in range(2, n_motifs, 1):
+                    R_mt = R[:, :, :, :, :, mt]
+                    save_vis(R_mt, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_motif_{mt}_{file_partial_name}'), f"compatibility matrix {puzzle}", all_rotation=True)
+            else:
+                save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_{file_partial_name}'), f"compatibility matrix {puzzle}", all_rotation=True)
+
             if args.save_everything:
-                save_vis(All_cost, pieces, ppars.theta_step, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{cmp_name}_{m.shape[1]}x{m.shape[1]}x{len(rot)}x{n}x{n}'), f"cost matrix {puzzle}", all_rotation=True, vmin=-2, vmax=2)
-        
+                save_vis(All_cost, pieces, ppars.theta_step,
+                         os.path.join(vis_folder, f'visualization_overlap_{file_partial_name}'), f"cost matrix {puzzle}", all_rotation=True, vmin=-2, vmax=2)
+
         print("-" * 60)
         print("-- CMP_END_TIME -- ")
         # get the current date and time

@@ -13,23 +13,50 @@ def combine_region_masks(RMs):
     return combined
 
 def combine_region_masks_V2(RMs):
-    neg_reg0 = RMs[0] < 0
-    neg_reg1 = (RMs[2] - RMs[1]) < 0
-    neg_reg = neg_reg0+neg_reg1
+    shape = RMs[0]#[:,:,0,8,9]
+    poly_motif = RMs[1]#[:,:,0,8,9,8]
+    motifs = RMs[2]#[:,:,0,8,9,8]
 
-    m_m_all = RMs[2]
-    m_m = m_m_all[:, :, 0, 1, 2]
-    p_m_all = RMs[1]
-    p_m = p_m_all[:, :, 0, 1, 2]
+    shape_neg = shape < 0
+    shape_pos = shape * (shape > 0).astype(int)
 
-    neg_reg0_a = neg_reg0[:,:,0,1,2]
-    neg_reg1_a = neg_reg1[:, :, 0, 1, 2]
-    neg_reg_a = neg_reg[:, :, 0, 1, 2]
+    poly_neg = ((motifs - poly_motif) < 0).astype(int)
+    #poly_neg_combined  = shape_pos * poly_neg ## negative values to add
+    motifs_pos = motifs * (motifs > 0).astype(int)
 
-    combined_pos = RMs[0] * (RMs[0] > 0).astype(int)
-    for i in range(2, len(RMs)):
-        combined_pos *= RMs[i] * (RMs[i] > 0).astype(int)
-    combined = combined_pos - neg_reg
+    neg_reg = np.zeros(np.shape(motifs))
+    combined_motifs = np.zeros(np.shape(motifs))
+
+    if len(np.shape(motifs)) != len(np.shape(shape)):
+        n_motifs = np.shape(motifs)[-1]
+        for mt in range(n_motifs):
+            combined_motifs[:,:,:,:,:,mt] = shape_pos * motifs_pos[:,:,:,:,:,mt] ## store "useful" motif-motif intersection
+            combined_poly_neg = shape_pos * poly_neg[:, :, :, :, :, mt]  ## negative values to add
+            neg_reg[:, :, :, :, :, mt] = shape_neg + combined_poly_neg   ## store all negative (motif-poly and poly-poly overlap)
+    else:
+        neg_reg = shape_neg + poly_neg
+        combined_motifs = shape_pos + motifs_pos
+
+    combined = (combined_motifs - neg_reg).astype(int)  ## add negative to RM
+
+    import matplotlib.pyplot as plt
+    plt.subplot(241)
+    plt.imshow(shape_pos[:,:,0,8,9])
+    plt.subplot(242)
+    plt.imshow(motifs[:,:,0,8,9,8])
+    plt.subplot(243)
+    plt.imshow(combined_motifs[:,:,0,8,9,8])
+    plt.subplot(244)
+    plt.imshow(poly_motif[:,:,0,8,9,8])
+    plt.subplot(245)
+    plt.imshow(shape_neg[:,:,0,8,9])
+    plt.subplot(246)
+    plt.imshow(poly_neg[:,:,0,8,9,8])
+    plt.subplot(247)
+    plt.imshow(neg_reg[:,:,0,8,9,8])
+    plt.subplot(248)
+    plt.imshow(combined[:,:,0,8,9,8])
+
     return combined
 
 def read_region_masks(pzl_cfg, pzl_name, mat_file_path=''):

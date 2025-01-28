@@ -147,12 +147,12 @@ def main(args):
                             for mt in range(2, n_motifs, 1):
                                 a = piece_i_on_canvas['motif_mask'][:, :, mt]
                                 b = piece_j_on_canvas['motif_mask'][:, :, mt]
-                                a = dilate(a.astype(np.uint8), width=np.floor(2 * ppars.xy_step).astype(int))
-                                b = dilate(b.astype(np.uint8), width=np.floor(2 * ppars.xy_step).astype(int))
+                                a = dilate(a.astype(np.uint8), width=np.floor(2.5 * ppars.xy_step).astype(int))
+                                b = dilate(b.astype(np.uint8), width=np.floor(2.5 * ppars.xy_step).astype(int))
                                 if np.sum(a) > 0 and np.sum(b) > 0:
                                     mask_mt_temp = cv2.filter2D(a, -1, b)
                                     mask_mt[:, :, mt] = mask_mt_temp
-                                mask_i = dilate(mask_i.astype(np.uint8), width=np.floor(1.5 * ppars.xy_step).astype(int))
+                                #mask_i = dilate(mask_i.astype(np.uint8), width=np.floor(1 * ppars.xy_step).astype(int))
                                 if np.sum(a) > 0 or np.sum(b) > 0:
                                     poly_mask_mt[:, :, mt] = cv2.filter2D(mask_i, -1, b)  ## THESE MATRICES ARE ASYMMETRIC !!?
 

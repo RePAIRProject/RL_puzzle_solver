@@ -65,11 +65,15 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, puzzle_root_fo
         #print(f"Computing cost for pieces {idx1:>2} and {idx2:>2}")
 
     compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot)))
+    mask_ij = regions_mask[:, :, :, idx2, idx1]
+    if compatibility_type == 'motifs':
+        compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot), mask_ij.shape[-1]))
+
     if idx1 != idx2:
         poly1 = pieces[idx1]['polygon']
         poly2 = pieces[idx2]['polygon']
-        mask_ij = regions_mask[:, :, :, idx2, idx1]
         candidate_values = np.sum(mask_ij > 0)
+
         if compatibility_type == 'lines':
             alfa1, r1, s11, s12, color1, cat1 = extract_from(pieces[idx1]['extracted_lines'])
             alfa2, r2, s21, s22, color2, cat2 = extract_from(pieces[idx2]['extracted_lines'])
@@ -129,7 +133,14 @@ def compute_cost_wrapper(idx1, idx2, pieces, regions_mask, ppars, puzzle_root_fo
             else:
                 # ids_to_score = np.where(mask_ij > 0)
                 compatibility_matrix = np.zeros((m.shape[1], m.shape[1], len(rot)))
+
+        ###################
         elif compatibility_type == 'motifs':
+            assert ( (motif_det_method == "yolo-obb") | (motif_det_method == "yolo-bbox")), f"Unkown detection method for motifs!\nWe know `yolo-obb` and `yolo-bbox`, given `{motif_det_method}`\nRe-run specifying `--det_method`"
+            compatibility_matrix = compute_CM_using_motifs(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=motif_det_method, verbosity=verbosity)
+        ###################
+
+        elif compatibility_type == 'motifs_V0':
             assert ( (motif_det_method == "yolo-obb") | (motif_det_method == "yolo-bbox")), f"Unkown detection method for motifs!\nWe know `yolo-obb` and `yolo-bbox`, given `{motif_det_method}`\nRe-run specifying `--det_method`"
             compatibility_matrix = compute_CM_using_motifs(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector=detector, det_type=motif_det_method, verbosity=verbosity)
         elif compatibility_type == 'motifs_vis':
