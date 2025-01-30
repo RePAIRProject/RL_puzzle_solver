@@ -18,8 +18,10 @@ from solver.solver_utils_TEST import initialization_from_GT, initialization, sel
 from solver.solver_utils_TEST import RePairPuzz, reconstruct_puzzle, sparsify_compatibility_matrix
 from solver.aggregation_CM import aggregate_CM_matrices
 from puzzle_utils.pieces_utils import calc_parameters_v2, crop_to_content
+from puzzle_utils.visualization import save_vis
+from puzzle_utils.shape_utils import prepare_pieces_v2
 # from compatibility.line_matching_NEW_segments import read_info
-from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas
+# from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas
 import datetime
 import pdb
 import time
@@ -158,7 +160,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8, save_each_phase=False, sa
 
 
 #  MAIN
-def main(args):
+def main(args, pieces=None):
     print("Solver log\nSearch for `SOLVER_START_TIME` or `SOLVER_END_TIME` if you want to see which images are done")
     puzzle_name = args.puzzle
 
@@ -246,7 +248,7 @@ def main(args):
     R = normalize_CM(R)
 
     ## Save Combo-compaibility matrix
-    filename = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}')
+    filename = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_Aggregated_{cmp_name}')
     np.save(filename, R)
     mdic = {
         "R": R,
@@ -260,18 +262,31 @@ def main(args):
         "theta_step": ppars.theta_step
     }
     savemat(f'{filename}.mat', mdic)
+    vis_folder = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'visualization')
+    pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
+    #save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_{cmp_name}'), f"compatibility matrix {puzzle_name}", all_rotation=True)
 
     ## ADD GT Oracle-Compatibility
     mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_Oracle_GT'))
     R_oracle = mat['R']
     #R = R + R_oracle * 10
     R = np.clip(R, -1, R)
-    R = sparsify_compatibility_matrix(R, args.k)    ## K-sparsification
+    #R = sparsify_compatibility_matrix(R, args.k)    ## K-sparsification
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
     n_pieces = len(pieces_files)
     pieces = np.arange(len(pieces_files))
+
+    # ##################
+    pieces_excl = np.array([0,5])
+    all_pieces = np.arange(len(pieces_files))
+    pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
+
+    pieces_incl = [p for p in np.arange(0, len(all_pieces)) if p not in pieces_excl]
+    R = R[:, :, :, pieces_incl, :]  # re-arrange R-matrix
+    R = R[:, :, :, :, pieces_incl]
+    # ######################à
 
     if args.few_rotations > 0:
         n_rot = R.shape[2]

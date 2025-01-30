@@ -38,13 +38,15 @@ def compute_CM_using_motifs(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detecto
         poly1 = pieces[idx1]['polygon']
         poly2 = pieces[idx2]['polygon']
 
+        ## OLD VERSION
         #R_cost_conf, R_cost_overlap = motifs_compatibility_for_irregular(p, z_id, m, rot, pieces, mask_ij, ppars, idx1, idx2, yolo_obj_detector, det_type=det_type, verbosity=1)
         R_cost_conf, R_cost_overlap = motifs_compatibility_for_irregular_TEST(p, z_id, m, rot, pieces, mask_ij, ppars, idx1,
                                                                          idx2, yolo_obj_detector, det_type=det_type,
                                                                          verbosity=1)
         print(f"computed cost matrix for piece {idx1} vs piece {idx2}")
-      
-        R_cost = R_cost_overlap
+
+        R_cost = R_cost_conf
+        #R_cost = R_cost_overlap
 
     return R_cost
 
