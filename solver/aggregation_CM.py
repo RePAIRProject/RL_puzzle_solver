@@ -62,24 +62,34 @@ def aggregate_CM_matrices (args, puzzle_root_folder):
         R = normalize_CM(R)
         R = np.maximum(-1, R)
 
-    elif args.combo_type == 'SH-MOT':
+    elif args.combo_type == 'SH-MOT' or args.combo_type == 'SH-AggMOT':
         print("combining shape and motifs..")
-        mat_motifs = loadmat(
+
+        if args.combo_type == 'SH-AggMOT':
+            mat_motifs = loadmat(
+                os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_Aggregated_motifs_{args.motif_det_method}"))
+        else:
+            mat_motifs = loadmat(
             os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.motif_det_method}"))
+
         mat_shape = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_shape'))
+
         # breakpoint()
         R_motif = mat_motifs['R']
         R_shape = mat_shape['R']
-        negative_region_map = R_motif < 0
 
         # only positive values
         R = copy.deepcopy(R_shape)
+        negative_region_map = R_motif < 0
         positive_motif_ids = np.where(R_motif > 0)
-        R[positive_motif_ids] = (np.clip(R_motif[positive_motif_ids], 0, 1) + np.clip(R_shape[positive_motif_ids],
-                                                                                      0, 1)) / 2
-        # R /= np.max(R)
-        # negative values set to -1
+        zero_motif_ids = np.where(R_motif == 0)
+
+        shape_imp = 0.3
+        #R[positive_motif_ids] = (np.clip(R_motif[positive_motif_ids], 0, 1) + np.clip(R_shape[positive_motif_ids], 0, 1)) / 2
+        R[positive_motif_ids] = R_motif[positive_motif_ids] + shape_imp*((R_shape[positive_motif_ids]-0.5))  ## (+/-) shape_comp. val
+        R[zero_motif_ids] = R_shape[zero_motif_ids]
         R[negative_region_map] = -1
+
         # plt.subplot(131)
         # plt.imshow(R_motif[:,:,0,1,2], cmap='RdYlGn', vmin=0, vmax=1)
         # plt.subplot(132)

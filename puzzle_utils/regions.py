@@ -13,9 +13,9 @@ def combine_region_masks(RMs):
     return combined
 
 def combine_region_masks_V2(RMs):
-    shape = RMs[0]#[:,:,0,8,9]
-    poly_motif = RMs[1]#[:,:,0,8,9,8]
-    motifs = RMs[2]#[:,:,0,8,9,8]
+    shape = RMs[0]      #[:,:,0,8,9]
+    poly_motif = RMs[1] #[:,:,0,8,9,8]
+    motifs = RMs[2]     #[:,:,0,8,9,8]
 
     shape_neg = shape < 0
     shape_pos = shape * (shape > 0).astype(int)

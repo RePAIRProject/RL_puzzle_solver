@@ -226,6 +226,39 @@ def main(args, pieces=None):
     it_nums = f"{args.tmax}its"
     pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.pieces_folder}")
 
+    #############################################
+    ####### Aggregation Motifs Function  ########
+    #############################################
+    if args.cmp_type == 'motifs' or args.combo_type == 'SH-AggMOT':
+        print("loading motifs-CM for aggregation")
+        mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_motifs_{args.motif_det_method}'))
+        R = mat['R']
+        if len(R.shape) == 6:
+            # n_motifs = R.shape[5]
+            a = np.where((R != 0), R, 100)
+            R_new = np.min(a, axis=5)
+            R = np.where((R_new == 100), 0, R_new)
+
+            ## Save Combo-compatibility matrix
+            filename = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_Aggregated_motifs_{args.motif_det_method}')
+            np.save(filename, R)
+            mdic = {
+                "R": R,
+                "label": "label",
+                "cmp_type": args.cmp_type,
+                "cmp_cost": args.cmp_cost,
+                "lines_det_method": args.lines_det_method,
+                "motif_det_method": args.motif_det_method,
+                "xy_step": ppars.xy_step,
+                "xy_grid_points": ppars.xy_grid_points,
+                "theta_step": ppars.theta_step
+            }
+            savemat(f'{filename}.mat', mdic)
+            #vis_folder = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'visualization')
+            #pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
+            #save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_motifs_{args.motif_det_method}'),
+            #         f"compatibility matrix {puzzle_name}", all_rotation=True)
+
     ### check if we are combining!
     if args.cmp_type == 'combo':
         cmp_name = f"combo_{args.combo_type}"
@@ -234,16 +267,6 @@ def main(args, pieces=None):
         print("loading", os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
         mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
         R = mat['R']
-
-    #############################################
-    ####### Aggregation Motifs Function  ########
-    #############################################
-    if args.cmp_type == 'motifs':
-        if len(R.shape) == 6:
-            #n_motifs = R.shape[5]
-            a = np.where((R != 0), R, 100)
-            R_new = np.min(a, axis=5)
-            R = np.where((R_new == 100), 0, R_new)
 
     R = normalize_CM(R)
 
@@ -264,7 +287,7 @@ def main(args, pieces=None):
     savemat(f'{filename}.mat', mdic)
     vis_folder = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'visualization')
     pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
-    #save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_{cmp_name}'), f"compatibility matrix {puzzle_name}", all_rotation=True)
+    save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_{cmp_name}'), f"compatibility matrix {puzzle_name}", all_rotation=True)
 
     ## ADD GT Oracle-Compatibility
     mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_Oracle_GT'))
@@ -275,44 +298,45 @@ def main(args, pieces=None):
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
-    n_pieces = len(pieces_files)
     pieces = np.arange(len(pieces_files))
 
-    # ##################
-    pieces_excl = np.array([0,5])
+    #####################
+    ####  Few_Pieces  ###
+    #####################
+    pieces_excl = np.array([0, 4, 5])
     all_pieces = np.arange(len(pieces_files))
     pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
+    R = R[:, :, :, pieces, :]  # re-arrange R-matrix
+    R = R[:, :, :, :, pieces]
 
-    pieces_incl = [p for p in np.arange(0, len(all_pieces)) if p not in pieces_excl]
-    R = R[:, :, :, pieces_incl, :]  # re-arrange R-matrix
-    R = R[:, :, :, :, pieces_incl]
-    # ######################à
-
+    ########################
+    ####  Few_Rotations  ###
+    ########################
     if args.few_rotations > 0:
         n_rot = R.shape[2]
         rot_incl = np.arange(0, n_rot, n_rot / args.few_rotations)
         rot_incl = rot_incl.astype(int)
         R = R[:, :, rot_incl, :, :]
 
-    # HERE THE LINES WERE USED
+    # !!! Anchor number must be changed if some pieces were excluded
     if args.anchor < 0:
         anc = np.random.choice(len(pieces))  # select_anchor(detect_output)
     else:
         anc = args.anchor
     print(f"Using anchor the piece with id: {anc}")
 
+    na = 1
+    num_rot = R.shape[2]
+
     ## INITIALIZATION
     if args.use_GT == True:
         print('Using ground truth to calculate the grid')
-        p_initial, init_pos, x0, y0, z0 = initialization_from_GT(R, anc, puzzle_root_folder)
+        p_initial, init_pos, x0, y0, z0 = initialization_from_GT(anc, puzzle_root_folder, all_pieces, pieces, num_rot)
     else:
         print(f'Using a grid of {args.p_pts_x}x{args.p_pts_y} points!')
         p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts_y, args.p_pts_x)
 
     # print(p_initial.shape)
-    na = 1
-    num_rot = p_initial.shape[2]
-
     solver_visualization_folder = os.path.join(puzzle_root_folder,
                                                f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}_gt{args.use_GT}_k{args.k}',
                                                'phase_frames')
@@ -468,7 +492,7 @@ if __name__ == '__main__':
                         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
             \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
             \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation',
-                        choices=['SH-SEG', 'SH-MOT', 'SH-LIN', 'SLM_v1', 'SLMS_v2', 'SLMS_version3'])
+                        choices=['SH-SEG', 'SH-MOT', 'SH-LIN', 'SLM_v1', 'SLMS_v2', 'SLMS_version3', 'SH-AggMOT'])
     parser.add_argument('--border_len', type=int, default=-1,
                         help='length of border (if -1 [default] it will be set to xy_step)')
 

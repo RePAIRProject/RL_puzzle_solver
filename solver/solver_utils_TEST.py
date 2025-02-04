@@ -27,14 +27,11 @@ from puzzle_utils.visualization import save_vis
 import copy
 
 
-def initialization_from_GT(R, anc, puzzle_root_folder):
+def initialization_from_GT(anc, puzzle_root_folder, all_pieces, pieces_incl, no_rotations):
     border_points = 5  # xy_grid_points//10 ???
 
-    no_grid_points = R.shape[0]
-    no_patches = R.shape[3]
-    no_rotations = R.shape[2]
-    init_pos = np.zeros((no_patches, 3)).astype(int)
-    gt_grid = np.zeros((no_patches, 3))
+    init_pos = np.zeros((len(all_pieces), 3)).astype(int)
+    gt_grid  = np.zeros((len(all_pieces), 3))
 
     # 1. load GT_grid
     import pandas as pd
@@ -43,16 +40,19 @@ def initialization_from_GT(R, anc, puzzle_root_folder):
     gt_grid[:, 1] = (df.loc[:, 'y'].values).astype(int)
     # gt_grid[:, 2] = (df.loc[:, 'rot'].values)
 
+    # 1.1 include only pieces used
+    gt_grid = gt_grid[pieces_incl, :]
+
     # 2. calculate optimal grid - p_matrix
     X = (np.max(gt_grid[:, 0]) + 2 * border_points).astype(int)
     Y = (np.max(gt_grid[:, 1]) + 2 * border_points).astype(int)
     Z = no_rotations
 
     # 3. create p_matrix (optimal_grid+border_points)
-    p = np.ones((Y, X, Z, no_patches)) / (Y * X * Z)
+    p = np.ones((Y, X, Z, len(pieces_incl))) / (Y * X * Z)
 
     # 3. anchor position in GT_position+0.5*border_points
-    # for anc in range(0, no_patches):
+    # for anc in range(0, len(all_pieces)):
     x0 = (gt_grid[anc, 0] + border_points).astype(int)
     y0 = (gt_grid[anc, 1] + border_points).astype(int)
     z0 = 0
