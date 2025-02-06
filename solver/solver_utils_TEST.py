@@ -28,7 +28,7 @@ import copy
 
 
 def initialization_from_GT(anc, puzzle_root_folder, all_pieces, pieces_incl, no_rotations):
-    border_points = 5  # xy_grid_points//10 ???
+    border_points = 20  # xy_grid_points//10 ???
 
     init_pos = np.zeros((len(all_pieces), 3)).astype(int)
     gt_grid  = np.zeros((len(all_pieces), 3))
@@ -36,6 +36,7 @@ def initialization_from_GT(anc, puzzle_root_folder, all_pieces, pieces_incl, no_
     # 1. load GT_grid
     import pandas as pd
     df = pd.read_csv(os.path.join(puzzle_root_folder, f'GT/gt_grid3.txt'))
+    #df = pd.read_csv(os.path.join(puzzle_root_folder, f'GT/gt_px251.txt'))
     gt_grid[:, 0] = (df.loc[:, 'x'].values).astype(int)
     gt_grid[:, 1] = (df.loc[:, 'y'].values).astype(int)
     # gt_grid[:, 2] = (df.loc[:, 'rot'].values)

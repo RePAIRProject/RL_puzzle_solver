@@ -289,7 +289,7 @@ def main(args, pieces=None):
     ## ADD GT Oracle-Compatibility
     mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_Oracle_GT'))
     R_oracle = mat['R']
-    #R = R + R_oracle * 10
+    R = R_oracle * 10
     R = np.clip(R, -1, R)
     #R = sparsify_compatibility_matrix(R, args.k)    ## K-sparsification
 
@@ -300,7 +300,7 @@ def main(args, pieces=None):
     #####################
     ####  Few_Pieces  ###
     #####################
-    pieces_excl = np.array([0, 1,2, 3,4, 5,6])
+    pieces_excl = np.array([0, 1,2, 3,4, 5, 6])
     all_pieces = np.arange(len(pieces_files))
     pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
     R = R[:, :, :, pieces, :]  # re-arrange R-matrix
@@ -473,11 +473,11 @@ if __name__ == '__main__':
     parser.add_argument('--verbosity', type=int, default=2,
                         help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
-    parser.add_argument('--tfirst', type=int, default=250,
+    parser.add_argument('--tfirst', type=int, default=500,
                         help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
     parser.add_argument('--tnext', type=int, default=250, help='the step for multi-phase (each tnext reset)')
     parser.add_argument('--tmax', type=int, default=1000, help='the final number of iterations (it exits after tmax)')
-    parser.add_argument('--thresh', type=float, default=0.75,
+    parser.add_argument('--thresh', type=float, default=0.55,
                         help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
     parser.add_argument('--p_pts_y', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--p_pts_x', type=int, default=0, help='the size of the p matrix (it will be p_pts x p_pts)')
