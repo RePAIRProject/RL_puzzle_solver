@@ -86,18 +86,9 @@ def aggregate_CM_matrices (args, puzzle_root_folder):
 
         shape_imp = 0.3
         #R[positive_motif_ids] = (np.clip(R_motif[positive_motif_ids], 0, 1) + np.clip(R_shape[positive_motif_ids], 0, 1)) / 2
-        R[positive_motif_ids] = R_motif[positive_motif_ids] + shape_imp*((R_shape[positive_motif_ids]-0.5))  ## (+/-) shape_comp. val
+        R[positive_motif_ids] = R_motif[positive_motif_ids] + shape_imp*((R_shape[positive_motif_ids]))  ## (+/-) shape_comp. val
         R[zero_motif_ids] = R_shape[zero_motif_ids]
         R[negative_region_map] = -1
-
-        # plt.subplot(131)
-        # plt.imshow(R_motif[:,:,0,1,2], cmap='RdYlGn', vmin=0, vmax=1)
-        # plt.subplot(132)
-        # plt.imshow(R_shape[:,:,0,1,2], cmap='RdYlGn', vmin=0, vmax=1)
-        # plt.subplot(133)
-        # plt.imshow(R[:,:,0,1,2], cmap='RdYlGn', vmin=0, vmax=1)
-        # plt.show()
-        # breakpoint()
 
     elif args.combo_type == 'SH-SEG':
         print("combining shape and motifs..")
@@ -154,26 +145,6 @@ def aggregate_CM_matrices (args, puzzle_root_folder):
         R += -1 * negative_region_map.astype(int)
         R = normalize_CM(R)
         R = np.maximum(-1, R)
-
-        # import matplotlib.pyplot as plt
-        # plt.subplot(331)
-        # plt.imshow(prm[:, :, 0, 1, 2])
-        # plt.subplot(332)
-        # plt.imshow(prm_motif[:, :, 0, 1, 2])
-        # plt.subplot(333)
-        # plt.imshow(prm_lines[:, :, 0, 1, 2])
-        # plt.subplot(334)
-        # plt.imshow(shape_basis[:, :, 0, 1, 2])
-        # plt.subplot(335)
-        # plt.imshow(motif_contrib[:, :, 0, 1, 2])
-        # plt.subplot(336)
-        # plt.imshow(lines_contrib[:, :, 0, 1, 2])
-        # plt.subplot(338)
-        # plt.imshow(R2[:, :, 0, 1, 2])
-        # plt.subplot(339)
-        # plt.imshow(R[:, :, 0, 1, 2])
-        # plt.show()
-        # breakpoint()
 
     elif args.combo_type == 'SLMS_v2':
         print("trying to combine three compatibilities (ShapeLinesMotifs)")

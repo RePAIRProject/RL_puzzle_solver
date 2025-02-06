@@ -146,10 +146,6 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8, save_each_phase=False, sa
         a = (m > fix_tresh).astype(int)
         new_anc = np.array(fin_sol * a)
         na_new = np.sum(a)
-        # if verbosity > 0:
-        #     print("#" * 70)
-        #     print(f"fixed solution for a new piece (at iteration {iter}):")
-        #     print(new_anc)
         f += 1
         all_pay.append(payoff[2:])
         all_sol.append(fin_sol)
@@ -271,23 +267,24 @@ def main(args, pieces=None):
     R = normalize_CM(R)
 
     ## Save Combo-compaibility matrix
-    filename = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_Aggregated_{cmp_name}')
-    np.save(filename, R)
-    mdic = {
-        "R": R,
-        "label": "label",
-        "cmp_type": args.cmp_type,
-        "cmp_cost": args.cmp_cost,
-        "lines_det_method": args.lines_det_method,
-        "motif_det_method": args.motif_det_method,
-        "xy_step": ppars.xy_step,
-        "xy_grid_points": ppars.xy_grid_points,
-        "theta_step": ppars.theta_step
-    }
-    savemat(f'{filename}.mat', mdic)
-    vis_folder = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'visualization')
-    pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
-    save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_{cmp_name}'), f"compatibility matrix {puzzle_name}", all_rotation=True)
+    if args.cmp_type == 'combo':
+        filename = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_Aggregated_{cmp_name}')
+        np.save(filename, R)
+        mdic = {
+            "R": R,
+            "label": "label",
+            "cmp_type": args.cmp_type,
+            "cmp_cost": args.cmp_cost,
+            "lines_det_method": args.lines_det_method,
+            "motif_det_method": args.motif_det_method,
+            "xy_step": ppars.xy_step,
+            "xy_grid_points": ppars.xy_grid_points,
+            "theta_step": ppars.theta_step
+        }
+        savemat(f'{filename}.mat', mdic)
+        vis_folder = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'visualization')
+        pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
+        save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_{cmp_name}'), f"compatibility matrix {puzzle_name}", all_rotation=True)
 
     ## ADD GT Oracle-Compatibility
     mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_Oracle_GT'))
@@ -303,7 +300,7 @@ def main(args, pieces=None):
     #####################
     ####  Few_Pieces  ###
     #####################
-    pieces_excl = np.array([0, 4, 5])
+    pieces_excl = np.array([0, 1,2, 3,4, 5,6])
     all_pieces = np.arange(len(pieces_files))
     pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
     R = R[:, :, :, pieces, :]  # re-arrange R-matrix
@@ -476,7 +473,7 @@ if __name__ == '__main__':
     parser.add_argument('--verbosity', type=int, default=2,
                         help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
-    parser.add_argument('--tfirst', type=int, default=750,
+    parser.add_argument('--tfirst', type=int, default=250,
                         help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
     parser.add_argument('--tnext', type=int, default=250, help='the step for multi-phase (each tnext reset)')
     parser.add_argument('--tmax', type=int, default=1000, help='the final number of iterations (it exits after tmax)')

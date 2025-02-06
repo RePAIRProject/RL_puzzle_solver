@@ -41,20 +41,28 @@ def combine_region_masks_V2(RMs):
 
     import matplotlib.pyplot as plt
     plt.subplot(241)
+    plt.title("shape positive")
     plt.imshow(shape_pos[:,:,0,8,9])
     plt.subplot(242)
+    plt.title("motif-motif positive")
     plt.imshow(motifs[:,:,0,8,9,8])
     plt.subplot(243)
+    plt.title("motif+shape positive")
     plt.imshow(combined_motifs[:,:,0,8,9,8])
     plt.subplot(244)
+    plt.title("poly-motif intersection")
     plt.imshow(poly_motif[:,:,0,8,9,8])
     plt.subplot(245)
+    plt.title("shape negative")
     plt.imshow(shape_neg[:,:,0,8,9])
     plt.subplot(246)
+    plt.title("poly-motif negative")
     plt.imshow(poly_neg[:,:,0,8,9,8])
     plt.subplot(247)
+    plt.title("shape+motif negative")
     plt.imshow(neg_reg[:,:,0,8,9,8])
     plt.subplot(248)
+    plt.title("final RM")
     plt.imshow(combined[:,:,0,8,9,8])
 
     return combined
