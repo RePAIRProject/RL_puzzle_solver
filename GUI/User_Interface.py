@@ -31,6 +31,7 @@ import shutil
 import json
 import cv2
 from MoveableImage import MovableImage
+from Widget3D import Widget3D
 
 Window.clearcolor = (0, 0, 0, 0)
 
@@ -130,6 +131,8 @@ class GUIApp(MDApp):
         self.neighbour_button = Button(text="Neighbour")
         self.pl_solver_button = Button(text="PL Solver")
         self.progress_bar = ProgressBar()
+
+        # self.test_monkey = Widget3D('3D/untitled.obj', '3D/simple.glsl')
 
     def build(self):
         for m in get_monitors():
@@ -288,8 +291,10 @@ class GUIApp(MDApp):
         # Toggle sidebar visibility
         if on_off:
             self.sidebar.opacity = 1
+            # self.sidebar.add_widget(self.test_monkey)
         else:
             self.sidebar.opacity = 0
+            # self.sidebar.remove_widget(self.test_monkey)
         if true_false:
             self.sidebar.image_checkbox.state = "down"
         else:
@@ -308,7 +313,12 @@ class GUIApp(MDApp):
             # if self.keyboard_input != 305:
             if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
                 if update_started:
-                    back_end.set_p_elements(self.grabbed_image.name, self.grabbed_image.position_memory, self.image_offset)
+                    couple = (self.grabbed_image.name, self.grabbed_image.position_memory)
+                    back_end.set_p_elements(couple, self.image_offset)
+                    self.grabbed_image.is_anchor = True
+                    neighbour = check_neighbouring_collision(self.grabbed_image)
+                    print(neighbour)
+                    update_compatibility_matrix(self.grabbed_image, neighbour)
                 self.grabbed_image.set_is_grabbed(False)
                 self.grabbed_image.deselect()
             if hasattr(self, 'selection_rect'):
@@ -768,6 +778,23 @@ def loop_finalization(solved_pieces):
     # neighbour_test = ['piece_0006.png']
     # back_end.puzzle_solver_test_function(app.final_solution, neighbour_test)
 
+def check_neighbouring_collision(grabbed_image):
+    neighbors = []
+    for image in app.current_image_list:
+        # Skip checking the same piece
+        if image.name == grabbed_image.name:
+            continue
+        else:
+            if back_end.are_neighbors(grabbed_image, image):
+                neighbors.append(image)
+    return neighbors
+
+def update_compatibility_matrix(grabbed_image, neighbors):
+    for image in neighbors:
+        if image.is_anchor:
+            back_end.set_cm_elements(grabbed_image.name, image.name, 1.0)
+
+
 def set_probabilities(answer, probability, average_thresh_factor):
     for image in app.current_image_list:
         image.remove_score()
@@ -788,7 +815,7 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         if update_counter>=(1/communication_freq)*update_freq:
             answer, probability, process = back_end.get_solution_dict()
             if answer is not None:
-                average_thresh_factor = 0.01
+                average_thresh_factor = 0.00
                 answer = set_probabilities(answer, probability, average_thresh_factor)
                 answer = back_end.throw_away_1(answer, probability, average_thresh_factor)
                 app.pl_solution = answer
@@ -842,16 +869,8 @@ def calculate_universal_center():
     return universal_center
 
 def check_collision(image, rectangle): # /todo
-    texture = image.texture
-
-    pixels = np.frombuffer(texture.pixels, dtype=np.uint8)
-    pixels = pixels.reshape(texture.height, texture.width, 4)
-    non_zero_pixels = np.argwhere(pixels[:, :, 3] > 0)
-
-    top = 0
-    left = 0
-    bottom = 0
-    right = 0
+    bounding_box = image.extract_bounding_box()
+    top, left, bottom, right = bounding_box
 
     if rectangle.size[0] >= 0:
         rec_left = rectangle.pos[0]
@@ -872,12 +891,6 @@ def check_collision(image, rectangle): # /todo
     # zoom = [app.grid_layout.zoom_scale.x, app.grid_layout.zoom_scale.y, app.grid_layout.zoom_scale.origin]
     rec_right_top = image.map_mouse_pos_pixel(rec_right_top)
     rec_left_bottom = image.map_mouse_pos_pixel(rec_left_bottom)
-
-    if non_zero_pixels.size > 0:
-        top = np.max(non_zero_pixels[:, 0])
-        left = np.min(non_zero_pixels[:, 1])
-        bottom = np.min(non_zero_pixels[:, 0])
-        right = np.max(non_zero_pixels[:, 1])
 
     if not (top <= rec_right_top[1] and right <= rec_right_top[0] and bottom >= rec_left_bottom[1] and left >= rec_left_bottom[0]):
         return False

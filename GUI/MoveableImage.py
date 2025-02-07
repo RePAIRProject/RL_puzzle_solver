@@ -2,6 +2,7 @@ import math
 
 from kivy.graphics import Rotate, PopMatrix, PushMatrix, Translate, Scale
 from kivy.graphics.transformation import Matrix
+from kivy.multistroke import bounding_box
 from kivymd.uix.behaviors import ScaleBehavior
 
 from kivy.uix.gridlayout import GridLayout
@@ -224,8 +225,6 @@ class MovableImage(Image):
     def collides(self, mouse_pos):
         relative_pos = mouse_pos
 
-        # self.transform_matrix = self.zoom_scale.matrix.multiply(self.trans.matrix.multiply(self.rot.matrix))
-
         relative_pos = self.transform_matrix.inverse().transform_point(relative_pos[0], relative_pos[1], 0)
 
         x, y = relative_pos[:2]
@@ -240,14 +239,14 @@ class MovableImage(Image):
 
         relative_translation = Matrix().translate(relative_translation[0], relative_translation[1], 0)
 
-        # self.transform_matrix = self.zoom_scale.matrix.multiply(self.trans.matrix.multiply(self.rot.matrix))
+        ratio_x = self.texture_size[0] / self.norm_image_size[0]
+        ratio_y = self.texture_size[1] / self.norm_image_size[1]
+
         relative_pos = mouse_pos
 
         relative_pos = self.transform_matrix.inverse().transform_point(relative_pos[0], relative_pos[1], 0)
         relative_pos = relative_translation.inverse().transform_point(relative_pos[0], relative_pos[1], 0)
 
-        ratio_x = self.texture_size[0] / self.norm_image_size[0]
-        ratio_y = self.texture_size[1] / self.norm_image_size[1]
         reality_pixel = (relative_pos[0] * ratio_x, relative_pos[1] * ratio_y)
 
         return reality_pixel
@@ -290,7 +289,6 @@ class MovableImage(Image):
         else:
             alpha = probability / 100
             self.set_color((1, 1, 1, alpha)) # gradually transparent to original
-        print(self.name, probability)
 
     def select_toggle(self):
         if self.is_selected:
@@ -311,3 +309,50 @@ class MovableImage(Image):
 
     def set_is_grabbed(self, is_grabbed):
         self.is_grabbed = is_grabbed
+
+    def extract_bounding_box(self):
+        """
+        Computes the bounding box in Kivy coordinates after applying all transformations,
+        including the relative position of the widget.
+        """
+        if not self.contours:
+            return [0, 0, 0, 0]
+
+        transformed_points = []
+
+        # Compute relative translation matrix (same logic as in map_mouse_pos_pixel)
+        width_height = ((self.width - self.norm_image_size[0]) / 2,
+                        (self.height - self.norm_image_size[1]) / 2)
+        image_pos = (self.pos[0], self.pos[1])
+        relative_translation = Matrix().translate(image_pos[0] + width_height[0], image_pos[1] + width_height[1], 0)
+
+        # Apply transformations to each contour point
+        for contour in self.contours:
+            for point in contour:
+                x, y = point[0][0], point[0][1]  # Extract contour point
+
+                # First, apply full transformation matrix
+                total_transform = self.transform_matrix.multiply(relative_translation)
+                transformed_point = total_transform.transform_point(x, y, 0)
+                # transformed_point = self.transform_matrix.inverse().transform_point(transformed_point[0], transformed_point[1], 0)
+
+                # # Then apply relative translation matrix to get final Kivy coordinates
+                # kivy_point = relative_translation.transform_point(transformed_point[0], transformed_point[1], 0)
+                transformed_points.append(transformed_point[:2])  # Extract (x, y) only
+
+        if not transformed_points:
+            return [0, 0, 0, 0]
+
+        # Convert to numpy for easy min/max computation
+        transformed_points = np.array(transformed_points)
+
+        # Compute bounding box in Kivy coordinate system
+        min_x, max_x = np.min(transformed_points[:, 0]), np.max(transformed_points[:, 0])
+        min_y, max_y = np.min(transformed_points[:, 1]), np.max(transformed_points[:, 1])
+
+        min_x = min_x - 10
+        max_x = max_x + 10
+        min_y = min_y - 10
+        max_y = max_y + 10
+
+        return [min_x, min_y, max_x, max_y]

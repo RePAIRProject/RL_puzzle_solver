@@ -2,11 +2,13 @@ import os
 from threading import Thread, Event, Lock
 
 from scipy.io import loadmat
+from scipy.spatial import KDTree
 
 import select_anchor_RePAIR
 import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
 import json
 import numpy as np
+import math
 
 class BackEnd:
     def __init__(self):
@@ -62,8 +64,12 @@ class BackEnd:
         self.set_select_anchor_running(False)
         self.set_select_anchor_done(True)
 
+    def set_cm_elements(self, piece_name_1, piece_name_2, value):
+        puzzle_solver.set_cm_element(piece_name_1, piece_name_2, value)
 
-    def set_p_elements(self, image_name, image_pos, offset):
+    def set_p_elements(self, couple, offset):
+        image_name = couple[0]
+        image_pos = couple[1]
         pos = image_pos
 
         parameters = self.path_dic['parameters']
@@ -76,8 +82,6 @@ class BackEnd:
             if data is not None:
                 xy_step = data['xy_step']
                 theta_step = data['theta_step']
-
-        print('pos', pos)
 
         pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
 
@@ -96,13 +100,12 @@ class BackEnd:
     def pl_solver_thread_function(self):
         self.set_pl_solver_running(True)
 
-        initial_thresh = 0.1
+        initial_thresh = 0.0
         average_thresh_factor = 0.05
         min_remaining = 2
         puzzle_solver.set_running(True)
         self.pl_solution, probability = puzzle_solver.assemble(self.input_dict, self.path_dic)
         puzzle_solver.set_running(False)
-        print('pl_solution', self.pl_solution)
         self.pl_solution = self.throw_away_1(self.pl_solution, probability, initial_thresh)
         # pl_solution = throw_away_2(pl_solution, probability, average_thresh_factor)
         # pl_solution = combined_throw_away(pl_solution, probability, initial_thresh, min_remaining, average_thresh_factor)
@@ -337,7 +340,6 @@ class BackEnd:
         if apply_gt == "True":
             self.pl_solution = self.apply_ground_truth()
         self.pl_solution = self.scale_solution(self.pl_solution)
-        print('pl_solution', self.pl_solution)
         return self.pl_solution
 
     def scale_solution(self, solution):
@@ -376,3 +378,21 @@ class BackEnd:
                 rotation_adj = (rotation + 360) % 360
                 output[f'{piece}.png'] = np.array([x_adj, y_adj, rotation_adj])
         return output
+
+    def are_neighbors(self, grabbed_image, image):
+        # Extract bounding boxes in [min_x, min_y, max_x, max_y] format
+        min_x1, min_y1, max_x1, max_y1 = grabbed_image.extract_bounding_box()
+        min_x2, min_y2, max_x2, max_y2 = image.extract_bounding_box()
+
+        # print(image1_bounding_box)
+        # print(image2_bounding_box)
+
+        # Check if they overlap or touch
+        if (max_x1 >= min_x2 and min_x1 <= max_x2) and (max_y1 >= min_y2 and min_y1 <= max_y2):
+            return True  # Collision or touching
+        return False  # No collision
+
+
+
+
+
