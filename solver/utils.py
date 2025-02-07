@@ -14,6 +14,7 @@ class CfgParameters(dict):
 class PuzzleSolver:
     def __init__(self, *args, **kwargs):
         self.probability_matrix = None
+        self.compatibility_matrix = None
         self.maximum_probability = None
         self.delta_probs = None
         self.reinforcement_learning = ReinforcementLearning(None, None)
@@ -24,6 +25,7 @@ class PuzzleSolver:
         self.process = 0.0
 
         self.p_matrix_lock = Lock()
+        self.cm_matrix_lock = Lock()
 
     def default_cfg(self, path_dic):
         cfg = CfgParameters()
@@ -84,35 +86,43 @@ class PuzzleSolver:
     def set_p_matrix(self, p_matrix):
         with self.p_matrix_lock:
             self.probability_matrix = p_matrix
-            print("P matrix set", self.probability_matrix.shape)
+
+    def set_cm_matrix(self, cm_matrix):
+        with self.cm_matrix_lock:
+            self.compatibility_matrix = cm_matrix
 
     def set_p_matrix_element(self, x, y, r, piece_name, value):
 
-        self.reinforcement_learning.set_probability_matrix(self.probability_matrix, self.delta_probs)
+        # self.reinforcement_enforcement_learning.update_probability_matrix(x, y, r, self.extract_piece_number(piece_name))
 
+
+        piece_number = self.extract_piece_number(piece_name)
+
+        # Shape of the probability matrix for the current piece
+        shape_x, shape_y, shape_r = self.probability_matrix.shape[:3]
+
+        # Generate coordinate grids for the matrix
+        X, Y, R = np.meshgrid(np.arange(shape_x), np.arange(shape_y), np.arange(shape_r), indexing="ij")
+
+        # Compute Gaussian adjustment
+        sigma = value  # Spread of the Gaussian
+        gaussian_adjustment = np.exp(-((X - x) ** 2 + (Y - y) ** 2 + (R - r) ** 2) / (2 * sigma ** 2))
+
+        # Update probabilities for the specific piece
         with self.p_matrix_lock:
-            self.probability_matrix = self.reinforcement_learning.update_probability_matrix(x, y, r, self.extract_piece_number(piece_name))
+            self.probability_matrix[:, :, :, piece_number] *= (1 - gaussian_adjustment)
+            self.probability_matrix[x, y, r, piece_number] += gaussian_adjustment[x, y, r]
 
+            # Normalize probabilities to ensure they sum to 1
+            self.probability_matrix[:, :, :, piece_number] /= np.sum(self.probability_matrix[:, :, :, piece_number])
 
-        # piece_number = self.extract_piece_number(piece_name)
-        #
-        # # Shape of the probability matrix for the current piece
-        # shape_x, shape_y, shape_r = self.probability_matrix.shape[:3]
-        #
-        # # Generate coordinate grids for the matrix
-        # X, Y, R = np.meshgrid(np.arange(shape_x), np.arange(shape_y), np.arange(shape_r), indexing="ij")
-        #
-        # # Compute Gaussian adjustment
-        # sigma = value  # Spread of the Gaussian
-        # gaussian_adjustment = np.exp(-((X - x) ** 2 + (Y - y) ** 2 + (R - r) ** 2) / (2 * sigma ** 2))
-        #
-        # # Update probabilities for the specific piece
-        # with self.p_matrix_lock:
-        #     self.probability_matrix[:, :, :, piece_number] *= (1 - gaussian_adjustment)
-        #     self.probability_matrix[x, y, r, piece_number] += gaussian_adjustment[x, y, r]
-        #
-        #     # Normalize probabilities to ensure they sum to 1
-        #     self.probability_matrix[:, :, :, piece_number] /= np.sum(self.probability_matrix[:, :, :, piece_number])
+            self.probability_matrix[:, :, :, piece_number] = 0
+            self.probability_matrix[x, y, r, piece_number] = 1
+
+    def set_cm_element(self, piece_name_1, piece_name_2, value):
+        print("piece_name_1", piece_name_1)
+        print("piece_name_2", piece_name_2)
+        pass
 
     def get_p_matrix(self):
         with self.p_matrix_lock:
@@ -178,6 +188,7 @@ class PuzzleSolver:
     def initialization(self, R, anc, solved_pieces, pieces_names, p_size=0):
         z0 = 0  # rotation for anchored patch
         # Initialize reconstruction plan
+        self.set_cm_matrix(R)
         no_grid_points = R.shape[0]
         print("no_grid_points", no_grid_points)
         no_patches = R.shape[3]
@@ -239,6 +250,9 @@ class PuzzleSolver:
     def RePairPuzz(self, R, na, cfg, verbosity=1, decimals=8):
         R = np.maximum(R, -1)
         R_new = R
+
+        self.set_cm_matrix(R)
+
         faze = 0
         new_anc = []
         na_new = na
