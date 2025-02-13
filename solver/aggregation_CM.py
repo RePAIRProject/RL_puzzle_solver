@@ -79,15 +79,15 @@ def aggregate_CM_matrices (args, puzzle_root_folder):
         R_shape = mat_shape['R']
 
         # only positive values
-        R = copy.deepcopy(R_shape)
+        R = copy.deepcopy(R_motif)
         negative_region_map = R_motif < 0
         positive_motif_ids = np.where(R_motif > 0)
         zero_motif_ids = np.where(R_motif == 0)
 
-        shape_imp = 0.3
+        shape_imp = 2
         #R[positive_motif_ids] = (np.clip(R_motif[positive_motif_ids], 0, 1) + np.clip(R_shape[positive_motif_ids], 0, 1)) / 2
-        R[positive_motif_ids] = R_motif[positive_motif_ids] + shape_imp*((R_shape[positive_motif_ids]))  ## (+/-) shape_comp. val
-        R[zero_motif_ids] = R_shape[zero_motif_ids]
+        R[positive_motif_ids] = R_motif[positive_motif_ids] + shape_imp*((R_shape[positive_motif_ids])-0.5)  ## (+/-) shape_comp. val
+        #R[zero_motif_ids] = shape_imp*R_shape[zero_motif_ids]
         R[negative_region_map] = -1
 
     elif args.combo_type == 'SH-SEG':
