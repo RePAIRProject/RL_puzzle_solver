@@ -58,7 +58,8 @@ def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
                         c1[:, :, zj, j] = cc
 
                 q1 = np.sum(c1, axis=(2, 3))
-                q2 = (q1 + no_patches * no_rotations * 1)
+                # q2 = (q1 + no_patches * no_rotations * 1) ### un dubbio !!!
+                q2 = (q1 + no_patches * 1)
                 q[:, :, zi, i] = q2
 
         pq = p * np.exp(q)  # e = 1e-11

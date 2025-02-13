@@ -1,10 +1,3 @@
-
-import numpy as np
-import matplotlib.colors
-import os
-import configs.folder_names as fnames
-from PIL import Image
-import time
 import numpy as np
 import cv2 as cv
 import matplotlib
@@ -19,21 +12,24 @@ from PIL import Image
 import os
 import configs.folder_names as fnames
 import argparse
-# from compatibility.line_matching_NEW_segments import read_info
+
 from compatibility.utils import normalize_CM
-# import configs.solver_cfg as cfg
+from solver.solver_utils_TEST import initialization_from_GT, initialization, select_anchor, save_vis_puzzle
+from solver.solver_utils_TEST import RePairPuzz, reconstruct_puzzle, sparsify_compatibility_matrix
+#from solver.aggregation_CM1302 import aggregate_CM_matrices, aggregate_Motif_matrices
 from puzzle_utils.pieces_utils import calc_parameters_v2, crop_to_content
-from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas
+from puzzle_utils.visualization import save_vis
+from puzzle_utils.shape_utils import prepare_pieces_v2
+# from compatibility.line_matching_NEW_segments import read_info
+# from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas
 import datetime
 import pdb
 import time
 import json
 from puzzle_utils.regions import combine_region_masks
-from puzzle_utils.visualization import save_vis
-import copy
 
 
-def aggregate_Motif_matrices (args, puzzle_root_folder):
+def aggregate_motif_matrices (args, puzzle_root_folder):
     mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_motifs_{args.motif_det_method}'))
     R = mat['R']
     if len(R.shape) == 6:
@@ -41,28 +37,8 @@ def aggregate_Motif_matrices (args, puzzle_root_folder):
         a = np.where((R != 0), R, 100)
         R_new = np.min(a, axis=5)
         R = np.where((R_new == 100), 0, R_new)
-
-        ## Save Combo-compatibility matrix
-        filename = os.path.join(puzzle_root_folder, fnames.cm_output_name,
-                                f'CM_Aggregated_motifs_{args.motif_det_method}')
-        np.save(filename, R)
-        mdic = {
-            "R": R,
-            "label": "label",
-            "cmp_type": args.cmp_type,
-            "cmp_cost": args.cmp_cost,
-            "lines_det_method": args.lines_det_method,
-            "motif_det_method": args.motif_det_method,
-            "xy_step": ppars.xy_step,
-            "xy_grid_points": ppars.xy_grid_points,
-            "theta_step": ppars.theta_step
-        }
-        savemat(f'{filename}.mat', mdic)
-        vis_folder = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'visualization')
-        pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
-        save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_motifs_{args.motif_det_method}'),
-                f'compatibility matrix {puzzle_name}', all_rotation=True)
     return R
+
 
 def aggregate_CM_matrices (args, puzzle_root_folder):
     cmp_name = f"combo_{args.combo_type}"
@@ -357,6 +333,40 @@ def aggregate_CM_matrices (args, puzzle_root_folder):
         R = normalize_CM(R)
         R = np.maximum(-1, R)
 
+    return R
+
+
+class CfgParameters(dict):
+    __getattr__ = dict.__getitem__
+
+#  MAIN
+def main(args, pieces=None):
+    puzzle_name = args.puzzle
+
+    print("-" * 50)
+    print(f"Started working on {puzzle_name}")
+    print(f"Dataset: {args.dataset}")
+    print("-" * 50)
+
+    cfg = CfgParameters()
+    cfg['cmp_type'] = args.cmp_type
+    cfg['cmp_cost'] = args.cmp_cost
+    cfg['combo_type'] = args.combo_type
+    puzzle_root_folder = os.path.join(os.getcwd(), fnames.output_dir, args.dataset, args.puzzle)
+
+    cmp_parameter_path = os.path.join(puzzle_root_folder, 'compatibility_parameters_v2.json')
+    if os.path.exists(cmp_parameter_path):
+        ppars = CfgParameters()
+        with open(cmp_parameter_path, 'r') as cp:
+            ppars_dict = json.load(cp)
+        for ppk in ppars_dict.keys():
+            ppars[ppk] = ppars_dict[ppk]
+
+    ## Aggregate motifs
+    if args.cmp_type == 'motifs' or args.combo_type == 'SH-AggMOT':
+        print("loading motifs-CM for aggregation")
+        R = aggregate_motif_matrices(args, puzzle_root_folder)
+
     ## Save Combo-compaibility matrix
     filename = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_Aggregated_{cmp_name}')
     np.save(filename, R)
@@ -374,7 +384,65 @@ def aggregate_CM_matrices (args, puzzle_root_folder):
     savemat(f'{filename}.mat', mdic)
     vis_folder = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'visualization')
     pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
-    save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_{cmp_name}'),
+    save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_motifs_{args.motif_det_method}'),
              f"compatibility matrix {puzzle_name}", all_rotation=True)
 
-    return R
+
+    ## Save aggregated Motif matrix
+    filename = os.path.join(puzzle_root_folder, fnames.cm_output_name,
+                            f'CM_Aggregated_{args.combo_type}')
+    np.save(filename, R)
+    mdic = {
+        "R": R,
+        "label": "label",
+        "cmp_type": args.cmp_type,
+        "cmp_cost": args.cmp_cost,
+        "lines_det_method": args.lines_det_method,
+        "motif_det_method": args.motif_det_method,
+        "xy_step": ppars.xy_step,
+        "xy_grid_points": ppars.xy_grid_points,
+        "theta_step": ppars.theta_step
+    }
+    savemat(f'{filename}.mat', mdic)
+    vis_folder = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'visualization')
+    pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
+    save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_{args.combo_type}'),
+             f'compatibility matrix {puzzle_name}', all_rotation=True)
+
+
+    ## Combine CM
+    R = aggregate_CM_matrices(args, puzzle_root_folder)
+
+
+
+
+
+    print("-" * 50)
+    print(f'Done with aggregation CM for {puzzle_name}\n')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='........ ')  # add some description
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch3_clean', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='RPobj_g1_o0001_gt_rot', help='puzzle folder')
+    parser.add_argument('--lines_det_method', type=str, default='deeplsd',
+                        help='method line detection')  # exact, manual, deeplsd
+    parser.add_argument('--motif_det_method', type=str, default='yolo-obb',
+                        help='method motif detection')  # exact, manual, deeplsd
+    parser.add_argument('--cmp_cost', type=str, default='LAP', help='cost computation')  # LAP, LCI
+    parser.add_argument('--exclude', default=False, action='store_true',
+                        help='use to exclude pieces without compatibility (used for some partial compatibilities, not fully tested!)')
+    parser.add_argument('--verbosity', type=int, default=2,
+                        help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
+    parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
+    parser.add_argument('--cmp_type', type=str, default='shape', help='which compatibility to use!',
+                        choices=['combo', 'lines', 'shape', 'color', 'motifs', 'seg'])
+    parser.add_argument('--combo_type', type=str, default='SLM_v1',
+                        help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
+            \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
+            \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation',
+                        choices=['SH-SEG', 'SH-MOT', 'SH-LIN', 'SLM_v1', 'SLMS_v2', 'SLMS_version3', 'SH-AggMOT'])
+
+    args = parser.parse_args()
+    main(args)
+
