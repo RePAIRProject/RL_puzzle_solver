@@ -32,52 +32,6 @@ class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
 
-def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
-    no_rotations = R.shape[2]
-    no_patches = R.shape[3]
-    payoff = np.zeros(T + 1)
-    z_st = 360 / no_rotations
-    z_rot = np.arange(0, 360 - z_st + 1, z_st)
-    t = 0
-    eps = np.inf
-    while t < T and eps > 0:
-        t += 1
-        iter += 1
-        q = np.zeros_like(p)
-        for i in range(no_patches):
-            ri = R[:, :, :, :, i]
-            for zi in range(no_rotations):
-                rr = rotate(ri, z_rot[zi], reshape=False, mode='constant', order=0)
-                rr = np.roll(rr, zi, axis=2)
-                c1 = np.zeros(p.shape)
-                for j in range(no_patches):
-                    for zj in range(no_rotations):
-                        rj_z = rr[:, :, zj, j]
-                        pj_z = p[:, :, zj, j]
-                        cc = cv.filter2D(pj_z, -1, rj_z)
-                        c1[:, :, zj, j] = cc
-
-                q1 = np.sum(c1, axis=(2, 3))
-                # q2 = (q1 + no_patches * no_rotations * 1) ### un dubbio !!!
-                q2 = (q1 + no_patches * 1)
-                q[:, :, zi, i] = q2
-
-        pq = p * np.exp(q)  # e = 1e-11
-        p_new = pq / (np.sum(pq, axis=(0, 1, 2)))
-        p_new = np.where(np.isnan(p_new), 0, p_new)
-        pay = np.sum(p_new * q)
-
-        payoff[t] = pay
-        eps = abs(pay - payoff[t - 1])
-        if verbosity > 1:
-            if verbosity == 2:
-                print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}', end='\r')
-            else:
-                print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}')
-        p = np.round(p_new, decimals)
-    return p, payoff, eps, iter
-
-
 #  MAIN
 def main(args, pieces=None):
     print("Solver log\nSearch for `SOLVER_START_TIME` or `SOLVER_END_TIME` if you want to see which images are done")
@@ -136,34 +90,16 @@ def main(args, pieces=None):
     elif args.cmp_type == 'motifs':
         cmp_name = f"motifs_{args.motif_det_method}"
     elif args.cmp_type == 'color':
-        cmp_name = f"cmp_color"
+        cmp_name = f"color"
     elif args.cmp_type == 'combo':
-        cmp_name = f"cmp_combo{args.combo_type}"
+        cmp_name = f"combo_{args.combo_type}"
     else:
         cmp_name = f"cmp_{args.cmp_type}"
 
     it_nums = f"{args.tmax}its"
     pieces_folder = os.path.join(puzzle_root_folder, f"{fnames.pieces_folder}")
 
-    ### AGGREGATION - moved to aggregate_CM
-    # aggregate motifs
-    if args.cmp_type == 'motifs' or args.combo_type == 'SH-AggMOT':
-        print("loading motifs-CM for aggregation")
-        R = aggregate_Motif_matrices(args, puzzle_root_folder)
-
-    # combo
-    if args.cmp_type == 'combo':
-        cmp_name = f"combo_{args.combo_type}"
-        R = aggregate_CM_matrices(args, puzzle_root_folder)
-    else:
-        print("loading", os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
-        mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
-        R = mat['R']
-
     ## LOAD CM matrices aggregate if combo o single if CM_type
-    if args.cmp_type == 'combo':
-        cmp_name = f"combo_{args.combo_type}"  # change folder_name to load (combo_)
-
     print("loading", os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
     mat = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_{cmp_name}'))
     R = mat['R']
@@ -171,7 +107,7 @@ def main(args, pieces=None):
     R = normalize_CM(R)
 
     # ADD GT Oracle-Compatibility values
-    mat2 = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_cmp_Oracle_GT'))
+    mat2 = loadmat(os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_oracle_GT'))
     R_oracle = mat2['R']
     R = R + R_oracle * 1
     R = np.clip(R, -1, R)
@@ -179,14 +115,15 @@ def main(args, pieces=None):
 
     pieces_files = os.listdir(pieces_folder)
     pieces_files.sort()
+    all_pieces = np.arange(len(pieces_files))
     pieces = np.arange(len(pieces_files))
 
-    # Few_Pieces
-    pieces_excl = np.array([0, 1,2, 3,4, 5,6])
-    all_pieces = np.arange(len(pieces_files))
-    pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
-    R = R[:, :, :, pieces, :]  # re-arrange R-matrix
-    R = R[:, :, :, :, pieces]
+    # # Few_Pieces
+    # if args.few_pieces > 0:
+    #     pieces_excl = np.array([0, 1, 2, 3, 4, 5, 6])
+    #     pieces = [p for p in all_pieces if p not in all_pieces[pieces_excl]]
+    #     R = R[:, :, :, pieces, :]  # re-arrange R-matrix
+    #     R = R[:, :, :, :, pieces]
 
     # Few_Rotations
     if args.few_rotations > 0:
@@ -271,14 +208,6 @@ def main(args, pieces=None):
     plt.imsave(f"{final_solution[:-4]}_cropped.png", crop_to_content(clean_img * 255).astype(np.uint8))
     plt.imsave(f"{final_solution[:-4]}_bordered_cropped.png",
                crop_to_content(np.clip(fin_im1_brd, 0, 1) * 255).astype(np.uint8))
-    # fin_im_v2 = reconstruct_puzzle_v2(fin_sol, Y, X, Z, pieces_dict, ppars, use_RGB=True)
-    # final_solution_v2 = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap.png')
-    # if np.max(fin_im_v2) > 1:
-    #     fin_im_v2 = np.clip(fin_im_v2, 0, 1)
-    # plt.imsave(final_solution_v2, fin_im_v2)
-    # fin_im_cropped = crop_to_content(fin_im_v2)
-    # final_solution_v2_cropped = os.path.join(solution_folder, f'final_using_anchor{anc}_overlap_cropped.png')
-    # plt.imsave(final_solution_v2_cropped, fin_im_cropped)
 
     f = len(all_anc)
     fin_sol = all_anc[f - 1]
@@ -337,8 +266,8 @@ def main(args, pieces=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch3_clean', help='dataset folder')
-    parser.add_argument('--puzzle', type=str, default='RPobj_g1_o0001_gt_rot', help='puzzle folder')
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch3_clean_TEST', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='RPobj_g39_o0039_gt_rot_ANNOT', help='puzzle folder')
     parser.add_argument('--lines_det_method', type=str, default='deeplsd',
                         help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--motif_det_method', type=str, default='yolo-obb',
@@ -353,20 +282,20 @@ if __name__ == '__main__':
                         help='use to exclude pieces without compatibility (used for some partial compatibilities, not fully tested!)')
     parser.add_argument('--verbosity', type=int, default=2,
                         help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
-    parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
-    parser.add_argument('--tfirst', type=int, default=250,
+    parser.add_argument('--few_rotations', type=int, default=1, help='uses only few rotations to make it faster')
+    parser.add_argument('--tfirst', type=int, default=150,
                         help='when to stop for multi-phase the first time (fix anchor, reset the rest)')
-    parser.add_argument('--tnext', type=int, default=250, help='the step for multi-phase (each tnext reset)')
-    parser.add_argument('--tmax', type=int, default=1000, help='the final number of iterations (it exits after tmax)')
+    parser.add_argument('--tnext', type=int, default=50, help='the step for multi-phase (each tnext reset)')
+    parser.add_argument('--tmax', type=int, default=500, help='the final number of iterations (it exits after tmax)')
     parser.add_argument('--thresh', type=float, default=0.75,
                         help='a piece is fixed (considered solved) if the probability is above the thresh value (max .99)')
     parser.add_argument('--p_pts_y', type=int, default=-1, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--p_pts_x', type=int, default=0, help='the size of the p matrix (it will be p_pts x p_pts)')
     parser.add_argument('--decimals', type=int, default=10, help='decimal after comma when cutting payoff')
     parser.add_argument('--k', type=int, default=10, help='keep the best k values (for each pair) in the compatibility')
-    parser.add_argument('--cmp_type', type=str, default='shape', help='which compatibility to use!',
+    parser.add_argument('--cmp_type', type=str, default='combo', help='which compatibility to use!',
                         choices=['combo', 'lines', 'shape', 'color', 'motifs', 'seg'])
-    parser.add_argument('--combo_type', type=str, default='SLM_v1',
+    parser.add_argument('--combo_type', type=str, default='SH-AggMOT',
                         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
             \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
             \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation',
@@ -375,6 +304,5 @@ if __name__ == '__main__':
                         help='length of border (if -1 [default] it will be set to xy_step)')
 
     args = parser.parse_args()
-
     main(args)
 

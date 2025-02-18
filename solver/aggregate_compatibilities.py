@@ -7,26 +7,16 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import cv2
 from scipy.io import savemat, loadmat
-from scipy.ndimage import rotate
-from PIL import Image
 import os
 import configs.folder_names as fnames
 import argparse
 
 from compatibility.utils import normalize_CM
-from solver.solver_utils_TEST import initialization_from_GT, initialization, select_anchor, save_vis_puzzle
-from solver.solver_utils_TEST import RePairPuzz, reconstruct_puzzle, sparsify_compatibility_matrix
-#from solver.aggregation_CM1302 import aggregate_CM_matrices, aggregate_Motif_matrices
-from puzzle_utils.pieces_utils import calc_parameters_v2, crop_to_content
 from puzzle_utils.visualization import save_vis
 from puzzle_utils.shape_utils import prepare_pieces_v2
-# from compatibility.line_matching_NEW_segments import read_info
-# from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas
-import datetime
-import pdb
-import time
 import json
 from puzzle_utils.regions import combine_region_masks
+import copy
 
 
 def aggregate_motif_matrices (args, puzzle_root_folder):
@@ -40,7 +30,7 @@ def aggregate_motif_matrices (args, puzzle_root_folder):
     return R
 
 
-def aggregate_CM_matrices (args, puzzle_root_folder):
+def aggregate_cm_matrices (args, puzzle_root_folder):
     cmp_name = f"combo_{args.combo_type}"
 
     if args.combo_type == "SH-LIN":
@@ -74,7 +64,7 @@ def aggregate_CM_matrices (args, puzzle_root_folder):
 
         if args.combo_type == 'SH-AggMOT':
             mat_motifs = loadmat(
-                os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_Aggregated_motifs_{args.motif_det_method}"))
+                os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_Agg_motifs_{args.motif_det_method}"))
         else:
             mat_motifs = loadmat(
             os.path.join(puzzle_root_folder, fnames.cm_output_name, f"CM_motifs_{args.motif_det_method}"))
@@ -339,7 +329,7 @@ def aggregate_CM_matrices (args, puzzle_root_folder):
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
 
-#  MAIN
+
 def main(args, pieces=None):
     puzzle_name = args.puzzle
 
@@ -348,6 +338,7 @@ def main(args, pieces=None):
     print(f"Dataset: {args.dataset}")
     print("-" * 50)
 
+    pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
     cfg = CfgParameters()
     cfg['cmp_type'] = args.cmp_type
     cfg['cmp_cost'] = args.cmp_cost
@@ -367,8 +358,8 @@ def main(args, pieces=None):
         print("loading motifs-CM for aggregation")
         R = aggregate_motif_matrices(args, puzzle_root_folder)
 
-    ## Save Combo-compaibility matrix
-    filename = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_Aggregated_{cmp_name}')
+    ## Save aggregated Motif matrix
+    filename = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'CM_Agg_motifs_{args.motif_det_method}')
     np.save(filename, R)
     mdic = {
         "R": R,
@@ -383,14 +374,14 @@ def main(args, pieces=None):
     }
     savemat(f'{filename}.mat', mdic)
     vis_folder = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'visualization')
-    pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
-    save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_motifs_{args.motif_det_method}'),
+    save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Agg_motifs_{args.motif_det_method}'),
              f"compatibility matrix {puzzle_name}", all_rotation=True)
 
 
-    ## Save aggregated Motif matrix
+    ## Combine CM and Save Combo-compatibility matrix
+    R = aggregate_cm_matrices(args, puzzle_root_folder)
     filename = os.path.join(puzzle_root_folder, fnames.cm_output_name,
-                            f'CM_Aggregated_{args.combo_type}')
+                            f'CM_combo_{args.combo_type}')
     np.save(filename, R)
     mdic = {
         "R": R,
@@ -405,17 +396,8 @@ def main(args, pieces=None):
     }
     savemat(f'{filename}.mat', mdic)
     vis_folder = os.path.join(puzzle_root_folder, fnames.cm_output_name, f'visualization')
-    pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, args.puzzle, verbose=True)
-    save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_Aggregated_{args.combo_type}'),
+    save_vis(R, pieces, ppars.theta_step, os.path.join(vis_folder, f'CM_combo_{args.combo_type}'),
              f'compatibility matrix {puzzle_name}', all_rotation=True)
-
-
-    ## Combine CM
-    R = aggregate_CM_matrices(args, puzzle_root_folder)
-
-
-
-
 
     print("-" * 50)
     print(f'Done with aggregation CM for {puzzle_name}\n')
@@ -423,8 +405,8 @@ def main(args, pieces=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='........ ')  # add some description
-    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch3_clean', help='dataset folder')
-    parser.add_argument('--puzzle', type=str, default='RPobj_g1_o0001_gt_rot', help='puzzle folder')
+    parser.add_argument('--dataset', type=str, default='RePAIR_exp_batch3_clean_TEST', help='dataset folder')
+    parser.add_argument('--puzzle', type=str, default='RPobj_g39_o0039_gt_rot_ANNOT', help='puzzle folder')
     parser.add_argument('--lines_det_method', type=str, default='deeplsd',
                         help='method line detection')  # exact, manual, deeplsd
     parser.add_argument('--motif_det_method', type=str, default='yolo-obb',
@@ -435,9 +417,9 @@ if __name__ == '__main__':
     parser.add_argument('--verbosity', type=int, default=2,
                         help='level of logging/printing (0 --> nothing, higher --> more printed stuff)')
     parser.add_argument('--few_rotations', type=int, default=0, help='uses only few rotations to make it faster')
-    parser.add_argument('--cmp_type', type=str, default='shape', help='which compatibility to use!',
+    parser.add_argument('--cmp_type', type=str, default='combo', help='which compatibility to use!',
                         choices=['combo', 'lines', 'shape', 'color', 'motifs', 'seg'])
-    parser.add_argument('--combo_type', type=str, default='SLM_v1',
+    parser.add_argument('--combo_type', type=str, default='SH-AggMOT',
                         help='If `--cmp_type` is `combo`, it chooses which compatibility to use!\
             \nAbbreviations: (LIN=lines, MOT=motif, SH=shape, COL=color, SEG=segmentation)\
             \nFor example, SH-MOT is motif+shape, SH-SEG is shape+segmentation',
