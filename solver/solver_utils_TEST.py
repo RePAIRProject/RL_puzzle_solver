@@ -28,7 +28,7 @@ import copy
 
 
 def initialization_from_GT(anc, puzzle_root_folder, all_pieces, pieces_incl, no_rotations):
-    border_points = 5  # xy_grid_points//10 ???
+    border_points = 20  # xy_grid_points//10 ???
 
     init_pos = np.zeros((len(all_pieces), 3)).astype(int)
     gt_grid  = np.zeros((len(all_pieces), 3))
@@ -36,6 +36,7 @@ def initialization_from_GT(anc, puzzle_root_folder, all_pieces, pieces_incl, no_
     # 1. load GT_grid
     import pandas as pd
     df = pd.read_csv(os.path.join(puzzle_root_folder, f'GT/gt_grid3.txt'))
+    #df = pd.read_csv(os.path.join(puzzle_root_folder, f'GT/gt_px251.txt'))
     gt_grid[:, 0] = (df.loc[:, 'x'].values).astype(int)
     gt_grid[:, 1] = (df.loc[:, 'y'].values).astype(int)
     # gt_grid[:, 2] = (df.loc[:, 'rot'].values)
@@ -107,6 +108,53 @@ def save_vis_puzzle(fin_sol, Y, X, Z, saving_stuff, iter_num, show_borders=False
                              show_borders=show_borders)
     name = os.path.join(solver_visualization_folder, f'sol_it{iter_num:05d}.png')
     plt.imsave(name, crop_to_content(np.clip(img, 0, 1) * 255).astype(np.uint8))
+
+
+
+def solver_rot_puzzle(R, R_orig, p, T, iter, visual, verbosity=1, decimals=8):
+    no_rotations = R.shape[2]
+    no_patches = R.shape[3]
+    payoff = np.zeros(T + 1)
+    z_st = 360 / no_rotations
+    z_rot = np.arange(0, 360 - z_st + 1, z_st)
+    t = 0
+    eps = np.inf
+    while t < T and eps > 0:
+        t += 1
+        iter += 1
+        q = np.zeros_like(p)
+        for i in range(no_patches):
+            ri = R[:, :, :, :, i]
+            for zi in range(no_rotations):
+                rr = rotate(ri, z_rot[zi], reshape=False, mode='constant', order=0)
+                rr = np.roll(rr, zi, axis=2)
+                c1 = np.zeros(p.shape)
+                for j in range(no_patches):
+                    for zj in range(no_rotations):
+                        rj_z = rr[:, :, zj, j]
+                        pj_z = p[:, :, zj, j]
+                        cc = cv.filter2D(pj_z, -1, rj_z)
+                        c1[:, :, zj, j] = cc
+
+                q1 = np.sum(c1, axis=(2, 3))
+                # q2 = (q1 + no_patches * no_rotations * 1) ### un dubbio !!!
+                q2 = (q1 + no_patches * 1)
+                q[:, :, zi, i] = q2
+
+        pq = p * np.exp(q)  # e = 1e-11
+        p_new = pq / (np.sum(pq, axis=(0, 1, 2)))
+        p_new = np.where(np.isnan(p_new), 0, p_new)
+        pay = np.sum(p_new * q)
+
+        payoff[t] = pay
+        eps = abs(pay - payoff[t - 1])
+        if verbosity > 1:
+            if verbosity == 2:
+                print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}', end='\r')
+            else:
+                print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}')
+        p = np.round(p_new, decimals)
+    return p, payoff, eps, iter
 
 
 def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8, save_each_phase=False, saving_stuff=[]):
@@ -197,7 +245,7 @@ def RePairPuzz(R, p, na, cfg, verbosity=1, decimals=8, save_each_phase=False, sa
     return all_pay, all_sol, all_anc, p_final, eps, iter, na_new
 
 
-def reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=False,                       exclude_overlapping_pieces=False):
+def reconstruct_puzzle(fin_sol, Y, X, Z, anc, pieces, pieces_files, pieces_folder, ppars, show_borders=False, exclude_overlapping_pieces=False):
     step = np.ceil(ppars.xy_step)
     # ang = ppars.theta_step # 360 / Z
     ang = 360 / Z
