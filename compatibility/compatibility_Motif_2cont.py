@@ -14,9 +14,7 @@ from sklearn.cluster import DBSCAN
 from matplotlib import cm
 import cv2
 
-from puzzle_utils.shape_utils import place_on_canvas
-from puzzle_utils.pieces_utils import crop_to_content
-
+from puzzle_utils.shape_utils import place_on_canvas, crop_to_content
 
 def compute_CM_using_motifs(idx1, idx2, pieces, mask_ij, ppars, yolo_obj_detector, det_type='yolo-obb', verbosity=1):
     p = ppars['p']

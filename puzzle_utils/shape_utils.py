@@ -192,7 +192,8 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
         if 'polygon' in piece.keys():
             rotated_poly = rotate(piece['polygon'], -theta, origin=half_piece_shift)
     else:
-        rotated_poly = piece['polygon']
+        if 'polygon' in piece.keys():
+            rotated_poly = piece['polygon']
         
     if 'polygon' in piece.keys():
         poly_on_canvas = transform(rotated_poly, lambda f: f + [x,y] - half_piece_shift)
@@ -248,6 +249,33 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     # breakpoint()
     return piece_on_canvas
 
+def crop_to_content(image, padding=1, return_vals=False, max_noise=0):
+
+    if len(image.shape) > 2:
+        x0 = np.clip(np.min(np.where(np.sum(image, axis=2) > max_noise)[1]) - padding, 0, image.shape[1])
+        x1 = np.clip(np.max(np.where(np.sum(image, axis=2) > max_noise)[1]) + padding, 0, image.shape[1])
+        y0 = np.clip(np.min(np.where(np.sum(image, axis=2) > max_noise)[0]) - padding, 0, image.shape[0])
+        y1 = np.clip(np.max(np.where(np.sum(image, axis=2) > max_noise)[0]) + padding, 0, image.shape[0])
+    else:
+        x0 = np.min(np.where(image > max_noise)[1]) - padding
+        x1 = np.max(np.where(image > max_noise)[1]) + padding
+        y0 = np.min(np.where(image > max_noise)[0]) - padding
+        y1 = np.max(np.where(image > max_noise)[0]) + padding
+
+    if return_vals == True:
+        return image[y0:y1, x0:x1, :], x0, x1, y0, y1
+    return image[y0:y1, x0:x1, :]
+
+def render_pair_at(piece_i, piece_j, ppars, coords_xyz, crop=True, padding=5):
+    
+    center_pos = ppars.canvas_size // 2
+    piece_i_on_canvas = place_on_canvas(piece_i, (center_pos, center_pos), ppars.canvas_size, 0)
+    piece_j_on_canvas = place_on_canvas(piece_j, (coords_xyz[0], coords_xyz[1]), ppars.canvas_size, coords_xyz[2])
+    rendered_image = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
+    if crop == True:
+        rendered_image = crop_to_content(rendered_image, padding=padding, max_noise=5)
+    rendered_image = cv2.cvtColor(rendered_image.astype(np.uint8), cv2.COLOR_BGR2RGB)
+    return rendered_image
 
 def get_mask(img, background=0, noisy=False, epsilon=0.1, black_bg=False):
 
@@ -262,7 +290,7 @@ def get_mask(img, background=0, noisy=False, epsilon=0.1, black_bg=False):
         mask = img > epsilon*np.max(img)
     else:
         mask = 1 - (img == background).astype(np.uint8)
-    return mask
+    return mask.astype(np.uint8)
 
 def get_sd(img, background=0):
     if img.shape[2] == 4:
@@ -582,6 +610,21 @@ def include_shape_info(fnames, pieces, dataset, puzzle, lines_det_method, motif_
             piece['motif_mask'] = motif_cube
 
     return pieces
+
+def prepare_piece_v2(path, mask_path='', background=0, verbose=False):
+    
+    piece_d = {}
+    img = cv2.imread(path)
+    piece_d['img'] = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if mask_path == '':
+        piece_d['mask'] = get_mask(piece_d['img'], background=background, noisy=True)
+    else:
+        mask = plt.imread(mask_full_path, cv2.IMREAD_GRAYSCALE)
+    piece_d['cm'] = get_cm(piece_d['mask'])
+    piece_name = path.split('/')[-1]
+    piece_d['id'] = piece_name[:10]  # piece_XXXXX.png
+    piece_d['name'] = piece_name[:-4]  # piece_XXXXX.png    
+    return piece_d
 
 def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False):
     pieces = []
