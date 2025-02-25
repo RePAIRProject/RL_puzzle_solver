@@ -62,9 +62,9 @@ def initialization_from_GT(anc, puzzle_root_folder, all_pieces, pieces_incl, no_
     p[y0, x0, :, :] = 0
     p[y0, x0, z0, anc] = 1
     init_pos[anc, :] = ([y0, x0, z0])
-
+    anchor_pos = [y0, x0, z0]
     print("P:", p.shape)
-    return p, init_pos, x0, y0, z0
+    return p, init_pos, anchor_pos
 
 
 def initialization(R, anc, p_size_y=0, p_size_x=0, anc_pos=0):
@@ -97,9 +97,9 @@ def initialization(R, anc, p_size_y=0, p_size_x=0, anc_pos=0):
     p[y0, x0, :, :] = 0
     p[y0, x0, z0, anc] = 1
     init_pos[anc, :] = ([y0, x0, z0])
-
+    anchor_pos = [y0, x0, z0]
     print("P:", p.shape)
-    return p, init_pos, x0, y0, z0
+    return p, init_pos, anchor_pos
 
 
 def save_vis_puzzle(fin_sol, Y, X, Z, saving_stuff, iter_num, show_borders=False):
