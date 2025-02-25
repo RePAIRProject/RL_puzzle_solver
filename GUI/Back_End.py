@@ -8,10 +8,12 @@ import select_anchor_RePAIR
 import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
 import json
 import numpy as np
+from kivymd.app import MDApp
 import math
 
 class BackEnd:
     def __init__(self):
+        self.main_app = None
         self.select_anchor_running = None
         self.select_neighbour_running = None
         self.pl_solver_running = None
@@ -51,11 +53,24 @@ class BackEnd:
         self.sorted_neighbour_images = None
         self.neighbour_after = 0
 
+        self.mat = None
+        self.R = None
+
     def set_path(self, path_dic):
         self.path_dic = path_dic
+
         self.backend_path = self.path_dic['backend_path']
         self.path = self.path_dic['image_path']
         self.path_bw = self.path_dic['mask_path']
+
+        comp_folder = path_dic['comp_folder']
+        comp_name = path_dic['comp_name']
+
+        self.mat = loadmat(os.path.join(comp_folder, comp_name))
+        self.R = self.mat[path_dic['comp_format']]
+
+    def set_main_app(self, app):
+        self.main_app = app
 
     def select_anchor_thread_function(self):
         self.set_select_anchor_running(True)
@@ -63,31 +78,58 @@ class BackEnd:
         self.extract_lists(anchor_images)
         self.set_select_anchor_running(False)
         self.set_select_anchor_done(True)
+        self.main_app.show_anchors()
 
-    def set_cm_elements(self, piece_name_1, piece_name_2, value):
-        puzzle_solver.set_cm_element(piece_name_1, piece_name_2, value)
+    def set_cm_elements(self, main, neighbour, current_image_pos, image_pos, offset, value):
+        xy_step, theta_step = self.extract_steps()
+        pos = self.reverse_offset(current_image_pos, offset)
+        pos = self.scale_to_solver(xy_step, theta_step, pos, self.path_dic)
+        scaled_current_pos = pos
+
+        pos = self.reverse_offset(image_pos, offset)
+        pos = self.scale_to_solver(xy_step, theta_step, pos, self.path_dic)
+        scaled_neighbour_pos = pos
+
+        # calculate relative position
+        x = scaled_current_pos[0] - scaled_neighbour_pos[0]
+        y = scaled_current_pos[1] - scaled_neighbour_pos[1]
+        z = scaled_current_pos[2] - scaled_neighbour_pos[2]
+        relative_position = (x, y, z)
+
+        print("scaled_current_pos", scaled_current_pos)
+        print("scaled_neighbour_pos", scaled_neighbour_pos)
+        print("relative_position", relative_position)
+
+        puzzle_solver.set_cm_element(main, neighbour, relative_position, value)
 
     def set_p_elements(self, couple, offset):
         image_name = couple[0]
         image_pos = couple[1]
         pos = image_pos
 
+        xy_step, theta_step = self.extract_steps()
+
+        # pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
+        pos = self.reverse_offset(pos, offset)
+
+        pos = self.scale_to_solver(xy_step, theta_step, pos, self.path_dic)
+
+        puzzle_solver.set_p_elements(pos[0], pos[1], pos[2], image_name)
+
+    def reverse_offset(self, pos, offset):
+        pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
+        return pos
+
+    def extract_steps(self):
         parameters = self.path_dic['parameters']
-        data = None
         xy_step = 1
         theta_step = 360
-        final_solution = []
         with open(parameters, 'r') as f:
             data = json.load(f)
             if data is not None:
                 xy_step = data['xy_step']
                 theta_step = data['theta_step']
-
-        pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
-
-        pos = self.scale_to_solver(xy_step, theta_step, pos, self.path_dic)
-
-        puzzle_solver.set_p_elements(pos[0], pos[1], pos[2], image_name)
+        return xy_step, theta_step
 
     def get_solution_dict(self):
         answer, probability, process = puzzle_solver.get_solution_dict()
@@ -96,6 +138,9 @@ class BackEnd:
             # answer = throw_away_2(pl_solution, probability, average_thresh_factor)
             answer = self.scale_solution(answer)
         return answer, probability, process
+
+    def solver_toggle_lock(self, value):
+        puzzle_solver.toggle_lock(value)
 
     def pl_solver_thread_function(self):
         self.set_pl_solver_running(True)
@@ -111,6 +156,8 @@ class BackEnd:
         # pl_solution = combined_throw_away(pl_solution, probability, initial_thresh, min_remaining, average_thresh_factor)
         self.set_pl_solver_running(False)
         self.set_pl_solver_done(True)
+
+        self.main_app.show_solutions()
 
     def throw_away_1(self, solution, probability, thresh_hold):
         for key in list(solution.keys()):
@@ -209,6 +256,8 @@ class BackEnd:
         self.set_select_neighbour_running(False)
         self.set_select_neighbour_done(True)
 
+        self.main_app.show_neighbours()
+
     def extract_lists(self, main_list):
         self.image_names = []
         self.image_scores = []
@@ -219,23 +268,16 @@ class BackEnd:
             self.image_numbers += 1
 
     def loop_finalization(self, solved_list, offset):
-        parameters = self.path_dic['parameters']
-
-        data = None
-        xy_step = 1
-        theta_step = 360
         final_solution = []
-        with open(parameters, 'r') as f:
-            data = json.load(f)
-            if data is not None:
-                xy_step = data['xy_step']
-                theta_step = data['theta_step']
+
+        xy_step, theta_step = self.extract_steps()
 
         for pieces in solved_list:
             name = pieces[0]
             pos = pieces[1]
 
-            pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
+            # pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
+            pos = self.reverse_offset(pos, offset)
 
             pos = self.scale_to_solver(xy_step, theta_step, pos, self.path_dic)
 
@@ -262,7 +304,7 @@ class BackEnd:
         R = mat[dic['comp_format']]
 
         bias = R.shape[0] + 1
-        # centralizing in solution how can I get 16 from?! #ask LUCA
+
         position = [x + bias, y + bias, rotation]
         return position
 

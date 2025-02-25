@@ -12,12 +12,19 @@ from kivy.uix.label import Label
 from kivy.graphics import Color
 from shapely.affinity import rotate
 
+from enum import Enum
+
 from point_Inside import is_inside_sm
 from os import getcwd
 import numpy as np
 
 import cv2
 from PuzzlePiece import PuzzlePiece
+
+class Status(Enum):
+    ACCEPTED = "accepted"
+    DENIED = "denied"
+    NEUTRAL = "neutral"
 
 
 class MovableImage(Image):
@@ -76,6 +83,8 @@ class MovableImage(Image):
         self.is_anchor = is_anchor
 
         self.is_grabbed = False
+        self.is_locked = False
+        self.status = Status.NEUTRAL
 
         with self.canvas.before:
             PushMatrix()

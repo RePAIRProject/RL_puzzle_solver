@@ -6,6 +6,7 @@ from kivy.clock import Clock, mainthread
 from kivy.graphics import Rotate, PopMatrix, PushMatrix, Translate, Scale, Color, Rectangle
 from kivy.graphics.context_instructions import Scale
 from kivy.uix.image import Image
+from kivy.uix.togglebutton import ToggleButton
 from kivymd.app import MDApp
 from kivy.core.image import Image as CoreImage
 import numpy as np
@@ -24,6 +25,7 @@ from kivy.core.window import Window
 from kivy.uix.progressbar import ProgressBar
 from PIL import Image as PILImage
 from Back_End import BackEnd
+
 from RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
 import threading
 import time
@@ -31,6 +33,7 @@ import shutil
 import json
 import cv2
 from MoveableImage import MovableImage
+from MoveableImage import Status
 from Widget3D import Widget3D
 
 Window.clearcolor = (0, 0, 0, 0)
@@ -126,11 +129,27 @@ class GUIApp(MDApp):
         self.main_layout = MainLayout()
         self.sidebar = MDCard(size_hint=(None, None), size=(64, Window.size[1] - 64), pos_hint={"right": 1, "down": 1},
                               md_bg_color=(0.1, 0.1, 0.1, 1))
+
+        self.pause_play_button = ToggleButton(
+            size_hint=(None, None),
+            width=64, height=64,
+            background_normal='Icons/play.png',  # Initial icon
+            background_down='Icons/pause.png'
+        )
+
         self.anchor_button = Button(text="Select Anchor")
         self.show_button = Button(text="Next")
         self.neighbour_button = Button(text="Neighbour")
         self.pl_solver_button = Button(text="PL Solver")
         self.progress_bar = ProgressBar()
+
+
+
+        self.sidebar = MDCard(size_hint=(None, None), size=(64, Window.size[1] - 64), pos_hint={"right": 1, "down": 1},
+                              md_bg_color=(0.1, 0.1, 0.1, 1))
+        self.sidebar.col_grid = MDGridLayout()
+        self.sidebar.col_grid.accept_button = ToggleButton()
+        self.sidebar.col_grid.deny_button = ToggleButton()
 
         # self.test_monkey = Widget3D('3D/untitled.obj', '3D/simple.glsl')
 
@@ -169,6 +188,8 @@ class GUIApp(MDApp):
 
         self.pl_solver_button.bind(on_press=start_pl_solver)
 
+        self.pause_play_button.bind(on_press=toggle_program_lock)
+
         # self.toolbar.left_action_items.append(["menu", lambda x: self.the_app.callback()])
         void_image = Image(source=os.path.join(path_dic['icons'], "Void Image.png"))
 
@@ -176,6 +197,8 @@ class GUIApp(MDApp):
         self.toolbar.add_widget(void_image)
         self.progress_bar.max = 100
         self.progress_bar.value = 0
+
+        self.toolbar.add_widget(self.pause_play_button)
         self.toolbar.add_widget(self.pl_solver_button)
         self.toolbar.add_widget(self.neighbour_button)
         self.toolbar.add_widget(self.anchor_button)
@@ -208,26 +231,43 @@ class GUIApp(MDApp):
         # toggle_button.bind(on_release=self.toggle_sidebar)
 
         # Sidebar layout
-        self.sidebar = MDCard(size_hint=(None, None), size=(64, Window.size[1]-64), pos_hint={"right": 1, "down": 1}, md_bg_color=(0.1, 0.1, 0.1, 1))
         self.sidebar.image_name = Label(text="", size_hint=(None, None), size=(64, 32))
-        self.sidebar.main_grid = MDGridLayout()
-        self.sidebar.main_grid.cols = 1
-        self.sidebar.main_grid.rows = 4
-        self.sidebar.col_grid = MDGridLayout()
+
         self.sidebar.col_grid.cols = 2
         self.sidebar.col_grid.rows = 1
         self.sidebar.col_grid.label1 = Label(text="anchor", size_hint=(None, None), size=(44, 32))
+
+        self.sidebar.col_grid.accept_button.text = "Accept"
+        self.sidebar.col_grid.accept_button.size_hint_max_y = 50
+        self.sidebar.col_grid.accept_button.background_color = (0, 1, 0, 1) #Green
+        self.sidebar.col_grid.accept_button.disable = True
+
+        self.sidebar.col_grid.accept_button.bind(on_press=self.image_accepted)
+
+        self.sidebar.col_grid.deny_button.text = "Deny"
+        self.sidebar.col_grid.deny_button.size_hint_max_y = 50
+        self.sidebar.col_grid.deny_button.background_color = (0.8, 0.1, 0.1, 1) #Light Red
+        self.sidebar.col_grid.deny_button.disable = True
+
+        self.sidebar.col_grid.deny_button.bind(on_press=self.image_denied)
+
+        self.sidebar.col_grid.label3 = Label(text="deny", size_hint=(None, None), size=(44, 32))
         self.sidebar.col_grid.add_widget(self.sidebar.col_grid.label1)
+
         self.sidebar.image_checkbox = CheckBox(size_hint=(None, None), size=(20, 32))
         self.sidebar.image_checkbox.color = (0.6,0.6,0.6,1)
         self.sidebar.image_checkbox.group = "image_properties"
 
         self.sidebar.image_checkbox.bind(active=self.on_checkbox_active)
-
-
         self.sidebar.col_grid.add_widget(self.sidebar.image_checkbox)
-        self.sidebar.main_grid.add_widget(self.sidebar.image_name)
-        self.sidebar.main_grid.add_widget(self.sidebar.col_grid)
+
+        self.sidebar.main_grid = MDGridLayout()
+
+        self.sidebar.main_grid.cols = 1
+        self.sidebar.main_grid.rows = 5
+
+        self.add_anchor_option()
+
         self.sidebar.add_widget(self.sidebar.main_grid)
         self.sidebar.image_checkbox.state = "normal"  # False
         self.sidebar.image_checkbox.state = "down"  # True
@@ -246,6 +286,91 @@ class GUIApp(MDApp):
 
         Clock.schedule_interval(self.checking_clock, graphic_freq)  # Graphic Internal Thread to communicate
         return self.the_layout
+
+    def add_accept_deny_button(self):
+        #clear sidebar
+        self.sidebar.main_grid.clear_widgets()
+
+        self.sidebar.main_grid.add_widget(self.sidebar.image_name)
+        self.sidebar.main_grid.add_widget(self.sidebar.col_grid.accept_button)
+        self.sidebar.main_grid.add_widget(self.sidebar.col_grid.deny_button)
+
+    def add_anchor_option(self):
+        #clear sidebar
+        self.sidebar.main_grid.clear_widgets()
+
+        self.sidebar.main_grid.add_widget(self.sidebar.image_name)
+        self.sidebar.main_grid.add_widget(self.sidebar.col_grid)
+        self.sidebar.main_grid.add_widget(self.sidebar.col_grid.accept_button)
+        self.sidebar.main_grid.add_widget(self.sidebar.col_grid.deny_button)
+
+    def image_accepted(self, instance):
+        current_image = self.current_image_list[self.selected_pic - 1]
+        if current_image.status == Status.NEUTRAL:
+            self.set_image_accepted(current_image)
+        elif current_image.status == Status.ACCEPTED:
+            self.set_image_neutral(current_image)
+
+    def set_image_accepted(self, current_image):
+        current_image.status = Status.ACCEPTED
+        neighbour = []
+        if update_started:
+            # couple = (current_image.name, current_image.position_memory)
+            # back_end.set_p_elements(couple, self.image_offset)
+            current_image.is_anchor = True
+            neighbour = check_neighbouring_collision(current_image)
+            print('neighbour', neighbour)
+            update_compatibility_matrix(current_image, neighbour, True)
+
+        for image in neighbour:
+            print(image.name)
+
+        self.set_sidebar_accepted()
+
+    def set_sidebar_accepted(self):
+        self.sidebar.col_grid.accept_button.state = 'down'
+        self.sidebar.col_grid.deny_button.state = 'normal'
+        self.sidebar.col_grid.accept_button.disabled = False
+        self.sidebar.col_grid.deny_button.disabled = True
+
+    def set_image_denied(self, current_image):
+        print("Denied")
+        current_image.status = Status.DENIED
+        neighbour = []
+        if update_started:
+            # couple = (current_image.name, current_image.position_memory)
+            # back_end.set_p_elements(couple, self.image_offset)
+            current_image.is_anchor = False
+            neighbour = check_neighbouring_collision(current_image)
+            print('neighbour', neighbour)
+            update_compatibility_matrix(current_image, neighbour, False)
+
+        self.set_sidebar_denied()
+
+    def set_sidebar_denied(self):
+        self.sidebar.col_grid.accept_button.state = 'normal'
+        self.sidebar.col_grid.deny_button.state = 'down'
+        self.sidebar.col_grid.accept_button.disabled = True
+        self.sidebar.col_grid.deny_button.disabled = False
+
+    def set_image_neutral(self, current_image):
+        print("Neutral")
+        current_image.status = Status.NEUTRAL
+
+        self.set_sidebar_neutral()
+
+    def set_sidebar_neutral(self):
+        self.sidebar.col_grid.accept_button.state = 'normal'
+        self.sidebar.col_grid.deny_button.state = 'normal'
+        self.sidebar.col_grid.accept_button.disabled = False
+        self.sidebar.col_grid.deny_button.disabled = False
+
+    def image_denied(self, instance):
+        current_image = self.current_image_list[self.selected_pic-1]
+        if current_image.status == Status.NEUTRAL:
+            self.set_image_denied(current_image)
+        elif current_image.status == Status.DENIED:
+            self.set_image_neutral(current_image)
 
     @mainthread
     def set_images(self, has_score, *args, **kwargs):
@@ -291,6 +416,12 @@ class GUIApp(MDApp):
         # Toggle sidebar visibility
         if on_off:
             self.sidebar.opacity = 1
+            if self.grabbed_image.status == Status.NEUTRAL:
+                self.set_sidebar_neutral()
+            elif self.grabbed_image.status == Status.ACCEPTED:
+                self.set_sidebar_accepted()
+            elif self.grabbed_image.status == Status.DENIED:
+                self.set_sidebar_denied()
             # self.sidebar.add_widget(self.test_monkey)
         else:
             self.sidebar.opacity = 0
@@ -312,13 +443,6 @@ class GUIApp(MDApp):
             self.hold_left = False
             # if self.keyboard_input != 305:
             if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
-                if update_started:
-                    couple = (self.grabbed_image.name, self.grabbed_image.position_memory)
-                    back_end.set_p_elements(couple, self.image_offset)
-                    self.grabbed_image.is_anchor = True
-                    neighbour = check_neighbouring_collision(self.grabbed_image)
-                    print(neighbour)
-                    update_compatibility_matrix(self.grabbed_image, neighbour)
                 self.grabbed_image.set_is_grabbed(False)
                 self.grabbed_image.deselect()
             if hasattr(self, 'selection_rect'):
@@ -586,37 +710,45 @@ class GUIApp(MDApp):
             self.selected_pic = int(clicked)
         if back_end.pl_solver_running:
             universal_zoom(2.5)
-        if not self.anchor_showed:
-
-            if (back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0):
-                self.set_images(1)
-                self.show_images(self)
-                self.anchor_showed = True
-                self.anchor_button.disabled = True
-        elif ((back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0) &
-              (back_end.get_select_neighbour_done()) & (not self.neighbour_showed)):
-            self.set_images(1)
-            self.show_images(self)
-            self.neighbour_showed = True
-            self.neighbour_button.disabled = True
-            self.show_button.disabled = False
-            self.pl_solver_button.disabled = False
-        elif ((back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0) &
+        # if not self.anchor_showed:
+        #     if (back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0):
+        #         self.show_anchors(self)
+        # if ((back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0) &
+        #       (back_end.get_select_neighbour_done()) & (not self.neighbour_showed)):
+        #     self.show_neighbours()
+        if ((back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0) &
               (back_end.get_select_neighbour_done()) & self.neighbour_showed & self.next_neighbour_requested):
             self.set_images(1)
             self.show_images(self)
             self.next_neighbour_requested = False
-        elif ((back_end.get_select_anchor_done()) & (back_end.get_select_neighbour_done()) & self.neighbour_showed &
-              back_end.get_pl_solver_done() & (not self.solution_applied)):
-            self.sidebar.col_grid.label1.text = "Accept"
-            self.pl_solution = back_end.get_pl_solution()
-            self.apply_solution()
-            self.solution_applied = True
-            self.pl_solver_button.disabled = True
-            self.show_button.text = 'Next Loop'
-            self.show_button.disabled = False
-            self.neighbour_button.disabled = True
+        # elif ((back_end.get_select_anchor_done()) & (back_end.get_select_neighbour_done()) & self.neighbour_showed &
+        #       back_end.get_pl_solver_done() & (not self.solution_applied)):
+        #     self.show_solutions()
         self.communicate_thread_lock.release()
+
+    def show_solutions(self):
+        self.sidebar.col_grid.label1.text = "Accept"
+        self.pl_solution = back_end.get_pl_solution()
+        self.apply_solution()
+        self.solution_applied = True
+        self.pl_solver_button.disabled = True
+        self.show_button.text = 'Next Loop'
+        self.show_button.disabled = False
+        self.neighbour_button.disabled = True
+
+    def show_neighbours(self):
+        self.set_images(1)
+        self.show_images(self)
+        self.neighbour_showed = True
+        self.neighbour_button.disabled = True
+        self.show_button.disabled = False
+        self.pl_solver_button.disabled = False
+
+    def show_anchors(self):
+        self.set_images(1)
+        self.show_images(self)
+        self.anchor_showed = True
+        self.anchor_button.disabled = True
 
     def toolbar_changes(self, color):
         if color == 0:
@@ -693,36 +825,38 @@ def start_select_neighbour(self):
                             initial_position[1],
                             initial_position[2])
 
-        offset = (target_position[0] - initial_position[0],
-                  target_position[1] - initial_position[1],
-                  0)
-        data = None
-        parameters = path_dic['parameters']
+        # offset = (target_position[0] - initial_position[0],
+        #           target_position[1] - initial_position[1],
+        #           0)
+
         bank_array = []
         for solution in app.final_solution:
             bank_array.append(solution[0])
-        with open(parameters, 'r') as f:
-            data = json.load(f)
-            if data is not None:
-                xy_step = data['xy_step']
-                theta_step = data['theta_step']
+
+        xy_step, theta_step = back_end.extract_steps()
+
         for key_fragment in app.key_fragments:
             if key_fragment.name in bank_array:
                 break
             # key_fragment.update_ratio()
             image_ratio = key_fragment.ratio
 
+            offset = key_fragment.update_offset(center=[Window.size[0] / 2, Window.size[1] / 2])
+
             pos = [key_fragment.position_memory[0],
                    key_fragment.position_memory[1],
                    key_fragment.position_memory[2]]
 
-            new_position = (pos[0] + offset[0],
-                            pos[1] + offset[1],
-                            pos[2])
-            new_position = [new_position[0]/image_ratio[0],
-                            new_position[1]/image_ratio[1],
-                            new_position[2]]
-            pos = back_end.scale_to_solver(xy_step, theta_step, new_position, path_dic)
+            # new_position = (pos[0] + offset[0],
+            #                 pos[1] + offset[1],
+            #                 pos[2])
+            # new_position = [new_position[0]/image_ratio[0],
+            #                 new_position[1]/image_ratio[1],
+            #                 new_position[2]]
+
+            pos = back_end.reverse_offset(pos, offset)
+            pos = back_end.scale_to_solver(xy_step, theta_step, pos, path_dic)
+
             pos = [pos[0], pos[1], pos[2]]
             app.final_solution.append([key_fragment.get_id(), pos])
             pass
@@ -734,6 +868,13 @@ def start_select_neighbour(self):
     app.show_button.disabled = True
     app.neighbour_button.disabled = True
 
+def toggle_program_lock(self):
+    if self.state == 'down':
+        # self.background_normal = 'Icons/play.png'  # Change to play icon
+        back_end.solver_toggle_lock(True)
+    else:
+        # self.background_normal = 'Icons/pause.png'  # Change to pause icon
+        back_end.solver_toggle_lock(False)
 
 def start_pl_solver(self):
     global universal_zoom_applied
@@ -789,11 +930,13 @@ def check_neighbouring_collision(grabbed_image):
                 neighbors.append(image)
     return neighbors
 
-def update_compatibility_matrix(grabbed_image, neighbors):
+def update_compatibility_matrix(current_image, neighbors, value):
+    offset = current_image.update_offset(center=[Window.size[0] / 2, Window.size[1] / 2])
     for image in neighbors:
         if image.is_anchor:
-            back_end.set_cm_elements(grabbed_image.name, image.name, 1.0)
-
+            current_image_pos = current_image.position_memory
+            image_pos = image.position_memory
+            back_end.set_cm_elements(current_image.name, image.name, current_image_pos, image_pos, offset, value)
 
 def set_probabilities(answer, probability, average_thresh_factor):
     for image in app.current_image_list:
@@ -1233,6 +1376,7 @@ if __name__ == '__main__':
     # erode_data()
 
     app = GUIApp()
+    back_end.set_main_app(app)
 
     test_thread = threading.Thread(target=communicate_thread, daemon=True)
     app.test_thread_started = True
