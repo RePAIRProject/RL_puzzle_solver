@@ -21,12 +21,16 @@ def set_p_elements(x, y, r, piece_name):
     r = int(r)
     puzzle_solver.set_p_matrix_element(x, y, r, piece_name, 1.0)
 
-def set_cm_element(piece_name_1, piece_name_2, value):
+def set_cm_element(main, neighbour, relative_position, value):
     value = float(value)
-    puzzle_solver.set_cm_element(piece_name_1, piece_name_2, value)
+    puzzle_solver.set_cm_element(main, neighbour, relative_position, value)
 
 def set_running(running):
     puzzle_solver.set_running(running)
+
+def toggle_lock(value):
+    puzzle_solver.repair_lock_toggle(value)
+
 
 def assemble(fragments_list, path_dic, return_solution_as='dict'):
     """
@@ -99,9 +103,7 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     # R = R[:, :, :, :, pieces_to_include]
     # if you want rotation which you shouldn't
     R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
-    R = R[:, :, 0:4, :, pieces_to_include]  # 0:4 works best for group 28 token check
-
-
+    R = R[:, :, 0:1, :, pieces_to_include]  # 0:4 works best for group 28 token check
 
     anchor = pieces_to_include.index(anchor)
 

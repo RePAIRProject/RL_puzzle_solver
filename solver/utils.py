@@ -24,6 +24,8 @@ class PuzzleSolver:
         self.running = True
         self.process = 0.0
 
+        self.repair_lock = Lock()
+
         self.p_matrix_lock = Lock()
         self.cm_matrix_lock = Lock()
 
@@ -119,9 +121,51 @@ class PuzzleSolver:
             self.probability_matrix[:, :, :, piece_number] = 0
             self.probability_matrix[x, y, r, piece_number] = 1
 
-    def set_cm_element(self, piece_name_1, piece_name_2, value):
-        print("piece_name_1", piece_name_1)
-        print("piece_name_2", piece_name_2)
+    def repair_lock_toggle(self, value):
+        print("here")
+
+        if value:  # If value is True, lock the program
+            if not self.repair_lock.locked():  # Ensure it's not already locked
+                self.repair_lock.acquire()
+                print("locked")
+                # self.program_lock()
+        else:  # If value is False, unlock the program
+            if self.repair_lock.locked():  # Ensure it's actually locked before unlocking
+                self.repair_lock.release()
+                print("unlocked")
+
+    def set_cm_element(self, main, neighbour, relative_position, value):
+        x = int(relative_position[0])
+        y = int(relative_position[1])
+        z = int(relative_position[2])
+        main_index = self.pieces_names.index(main)
+        neighbour_index = self.pieces_names.index(neighbour)
+        print('main', main)
+        print('neighbour', neighbour)
+
+        shape = self.compatibility_matrix.shape
+        x_center = int(shape[0] // 2)
+        y_center = int(shape[1] // 2)
+
+        x_new = x_center + x
+        y_new = y_center + y
+
+        x_new_prime = x_center - x
+        y_new_prime = y_center - y
+
+        current_value_main_neighbour = self.compatibility_matrix[x_new, y_new, z, main_index, neighbour_index]
+        current_value_neighbour_main = self.compatibility_matrix[x_new_prime, y_new_prime, z, neighbour_index, main_index]
+
+        # self.compatibility_matrix[x_new, y_new, z, main_index, neighbour_index] = value
+        # self.compatibility_matrix[-x, -y, z, neighbour_index, main_index] = value
+
+        if value:
+            self.compatibility_matrix[x_new, y_new, z, main_index, neighbour_index] = (current_value_main_neighbour + 1) * 2
+            self.compatibility_matrix[x_new_prime, y_new_prime, z, neighbour_index, main_index] = (current_value_neighbour_main + 1) * 2
+        else:
+            self.compatibility_matrix[x_new, y_new, z, main_index, neighbour_index] = 0
+            self.compatibility_matrix[x_new_prime, y_new_prime, z, neighbour_index, main_index] = 0
+
         pass
 
     def get_p_matrix(self):
@@ -141,7 +185,7 @@ class PuzzleSolver:
         init_pos, x0, y0, z0 = self.initialization(R, anchor, solved_pieces, pieces_names) # we do not pass p_size so it chooses automatically
         num_anchors = 1
         cfg = self.default_cfg(path_dic)
-        all_pay, all_sol, all_anc, eps, iter, num_anchors, m = self.RePairPuzz(R, num_anchors, cfg)
+        all_pay, all_sol, all_anc, eps, iter, num_anchors, m = self.RePairPuzz(num_anchors, cfg)
         p_final = self.probability_matrix
 
         fin_sol = all_sol[len(all_sol)-1]
@@ -184,13 +228,14 @@ class PuzzleSolver:
             print(f"Return type {return_as} not implemented - returning as a list")
             return fin_sol
 
-
     def initialization(self, R, anc, solved_pieces, pieces_names, p_size=0):
         z0 = 0  # rotation for anchored patch
         # Initialize reconstruction plan
         self.set_cm_matrix(R)
         no_grid_points = R.shape[0]
+
         print("no_grid_points", no_grid_points)
+
         no_patches = R.shape[3]
         no_rotations = R.shape[2]
 
@@ -247,11 +292,9 @@ class PuzzleSolver:
         return fin_sol, m
 
 
-    def RePairPuzz(self, R, na, cfg, verbosity=1, decimals=8):
-        R = np.maximum(R, -1)
+    def RePairPuzz(self, na, cfg, verbosity=1, decimals=8):
+        R = np.maximum(self.compatibility_matrix, -1)
         R_new = R
-
-        self.set_cm_matrix(R)
 
         faze = 0
         new_anc = []
@@ -291,9 +334,12 @@ class PuzzleSolver:
                         for jj_anc in range(noPatches):
                             if new_anc[jj_anc, 0] != 0:
                                 R_new[:, :, : , jj_anc, jj] = 0
+
             self.set_p_matrix(p)
             R_renorm = R_new / np.max(R_new)
             R_new = np.where((R_new > 0), R_renorm*1.5, R_new)
+
+            self.set_cm_matrix(R_new)
 
             Tmax = cfg.Tmax
 
@@ -303,8 +349,9 @@ class PuzzleSolver:
                 T = cfg.Tnext
 
             #pdb.set_trace()
-            payoff, eps, iter, total_iter = self.solver_rot_puzzle(R_new, R, T, iter, total_iter, Tmax, 0, verbosity=3, decimals=decimals, )
+            payoff, eps, iter, total_iter = self.solver_rot_puzzle(T, iter, total_iter, Tmax, 0, verbosity=3, decimals=decimals, )
             fin_sol, m = self.extract_info(self.probability_matrix)
+
             if verbosity > 0:
                 print("#" * 70)
                 print("ITERATION", iter)
@@ -341,11 +388,14 @@ class PuzzleSolver:
         return all_pay, all_sol, all_anc, eps, iter, na_new, m
 
 
-    def solver_rot_puzzle(self, R, R_orig, T, iter, total_iter, Tmax, visual, verbosity=1, decimals=8):
-        no_rotations = R.shape[2]
+    def solver_rot_puzzle(self, T, iter, total_iter, Tmax, visual, verbosity=1, decimals=8):
+
         # no_rotations = 4
-        print("No_Rotations", no_rotations)
-        no_patches = R.shape[3]
+
+        with self.cm_matrix_lock:
+            no_rotations = self.compatibility_matrix.shape[2]
+            no_patches = self.compatibility_matrix.shape[3]
+
         payoff = np.zeros(T+1)
         z_st = 360 / no_rotations
         z_rot = np.arange(0, 360 - z_st + 1, z_st)
@@ -360,10 +410,15 @@ class PuzzleSolver:
             total_iter += 1
             self.process = float(total_iter)/float(Tmax)
 
+            with self.cm_matrix_lock:
+                no_rotations = self.compatibility_matrix.shape[2]
+                no_patches = self.compatibility_matrix.shape[3]
+
             q = np.zeros_like(p)
             for i in range(no_patches):
+                with self.cm_matrix_lock:
 
-                ri = R[:, :, :, :, i]
+                    ri = self.compatibility_matrix[:, :, :, :, i]
                 #  ri = R[:, :, :, i, :]  # FOR ORACLE SQUARE ONLY
                 for zi in range(no_rotations):
                     rr = rotate(ri, z_rot[zi], reshape=False, mode='constant')
@@ -382,7 +437,8 @@ class PuzzleSolver:
                     q2 = (q1 + no_patches * no_rotations * 1)
                     q[:, :, zi, i] = q2
             with self.p_matrix_lock:
-                pq = self.probability_matrix * np.exp(q) # e = 1e-11
+                heat = 1
+                pq = self.probability_matrix * np.exp(heat * q) # e = 1e-11
                 self.delta_probs = pq - self.probability_matrix
                 self.probability_matrix = pq / (np.sum(pq, axis=(0, 1, 2)))
                 self.probability_matrix = np.where(np.isnan(self.probability_matrix), 0, self.probability_matrix)
@@ -392,11 +448,12 @@ class PuzzleSolver:
 
                 payoff[t] = pay
                 eps = abs(pay - payoff[t-1])
-                if verbosity > 1:
-                    if verbosity == 2:
-                        print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}', end='\r')
-                    else:
-                        print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}')
+                with self.repair_lock:
+                    if verbosity > 1:
+                        if verbosity == 2:
+                            print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}', end='\r')
+                        else:
+                            print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}')
                 self.probability_matrix = np.round(self.probability_matrix, decimals)
                 p = self.probability_matrix
                 fin_sol, m = self.extract_info(p)
