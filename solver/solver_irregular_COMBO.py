@@ -11,8 +11,8 @@ import configs.folder_names as fnames
 import argparse
 # from compatibility.line_matching_NEW_segments import read_info
 # import configs.solver_cfg as cfg
-from puzzle_utils.pieces_utils import calc_parameters_v2, crop_to_content
-from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas
+from puzzle_utils.pieces_utils import calc_parameters_v2
+from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas, crop_to_content
 import datetime
 import pdb
 import time

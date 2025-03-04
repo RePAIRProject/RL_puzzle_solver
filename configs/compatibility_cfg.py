@@ -9,3 +9,4 @@ canvas_size = pairwise_comp_range + 2 * p_hs + 1
 xy_step = pairwise_comp_range / (comp_matrix_shape[0] - 1)
 theta_step = (360 / comp_matrix_shape[2])
 
+

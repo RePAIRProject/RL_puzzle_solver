@@ -30,8 +30,22 @@ output_*/
 # personal scripts to copy/upload stuff
 **/*_lucap.sh
 
-.conda
+# macOS system files
 .DS_Store
+
+# Conda env
+.conda
+
+# Marco
 seg
+.ipynb_checkpoints
+*.ipynb
+
+# stuff
+runs/
+derech_results/
+detectors/
+yolov5/best.pt
+yolov8n-seg.pt
 
 

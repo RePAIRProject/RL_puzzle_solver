@@ -12,27 +12,107 @@ import shapely
 from shapely import transform
 from shapely.affinity import rotate
 import json
-from puzzle_utils.lines_ops import draw_lines
+
+def extract_from(lines_dict):
+    """
+    It just unravels the different parts of the extracted line dictionary 
+    """
+    angles = np.asarray(lines_dict['angles'])
+    dists = np.asarray(lines_dict['dists'])
+    p1s = np.asarray(lines_dict['p1s'])
+    p2s = np.asarray(lines_dict['p2s'])
+    # optional but used almost always now
+    if 'categories' in lines_dict.keys():
+        cats = np.asarray(lines_dict['categories'])
+    else:
+        print("Warning, missing categories")
+        cats = []
+    if 'colors' in lines_dict.keys():
+        colors = np.asarray(lines_dict['colors'])
+    else:
+        print("Warning, empty colors in the lines!")
+        colors = []
+    
+    return angles, dists, p1s, p2s, colors, cats
+
+# from puzzle_utils.lines_ops import draw_lines
+def draw_lines(lines_dict, img_shape, thickness=1, color=255, use_color=False):
+    angles, dists, p1s, p2s, colors, cats = extract_from(lines_dict)
+    if use_color == True:
+        print("WARNING: probably not working! Check the image creation")
+        lines_img = np.zeros(shape=img_shape, dtype=np.uint8)
+        if len(colors) > 0:
+            j = 0
+            assert(len(colors)==len(p1s)), f"different numbers of colors ({len(colors)}) and lines ({len(p1s)}) in the .json file!"
+    lines_img = np.zeros(shape=img_shape[:2], dtype=np.uint8)
+    for p1, p2 in zip(p1s, p2s):
+        if use_color == False:
+            lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(1), thickness=thickness)        
+        else:
+            if len(colors) > 0:
+                color = colors[j]
+                j += 1
+            lines_img = cv2.line(lines_img, np.round(p1).astype(int), np.round(p2).astype(int), color=(color), thickness=thickness)        
+    #cv2.imwrite(os.path.join(lin_output, f"{pieces_names[k][:-4]}_l.jpg"), 255-lines_img)
+    return lines_img 
 
 def get_polygon(binary_image):
     bin_img = binary_image.copy()
     bin_img = cv2.dilate(bin_img.astype(np.uint8), np.ones((2,2)), iterations=1)
     contours, _ = cv2.findContours(bin_img.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contour_points = contours[0]
-    shapely_points = [(point[0][0], point[0][1]) for point in contour_points]  # Shapely expects points in the format (x, y)
+    # should we remove 0.5 or it's just visualization?
+    #shapely_points = [(point[0][0]-0.5, point[0][1]-0.5) for point in contour_points]  # Shapely expects points in the format (x, y)
+    shapely_points = [(point[0][0]-0.5, point[0][1]-0.5) for point in contour_points]  # Shapely expects points in the format (x, y)
     if len(shapely_points) < 4:
         print('we have a problem, too few points', shapely_points)
         raise ValueError('\nWe have fewer than 4 points on the polygon, so we cannot create a Shapely polygon out of this points! Maybe something went wrong with the mask?')
     polygon = shapely.Polygon(shapely_points)
     return polygon
 
+def create_grid_v3(ppars):
+    step = ppars['xy_step']
+    canvas_size = ppars['canvas_size']
+    #breakpoint()
+    largest_val = ppars['piece_size'] * 2 #step*pts
+    # create a regularly spaced grid (the center value should be the center of th epiece)
+    axis_grid = np.arange(0, largest_val, step)
+    num_points = len(axis_grid)
+    #print(f"grid will have {num_points}x{num_points} points")
+    ppars['xy_grid_points'] = num_points
+    zero_aligned_axis_grid = axis_grid - axis_grid[np.floor(len(axis_grid) // 2).astype(int)]
+    # align to the canvas
+    canvas_alignment = canvas_size // 2 # - largest_val - step) / 2
+    pieces_grid = np.zeros((len(axis_grid), len(axis_grid), 2))
+    for b in range(len(axis_grid)):
+        for g in range(len(axis_grid)):
+            pieces_grid[g, b] = (axis_grid[g]+canvas_alignment, axis_grid[b]+canvas_alignment)
+    return pieces_grid.astype(int), ppars
+
+def create_grid_v2(ppars):
+    step = ppars['xy_step']
+    pts = ppars['xy_grid_points']
+    canvas_size = ppars['canvas_size']
+    largest_val = step*pts
+    # create a regularly spaced grid (the center value should be the center of th epiece)
+    axis_grid = np.linspace(step, largest_val, pts)
+    # align to the canvas
+    canvas_alignment = (canvas_size - largest_val - step) / 2
+    pieces_grid = np.zeros((pts, pts, 2))
+    for b in range(len(axis_grid)):
+        for g in range(len(axis_grid)):
+            pieces_grid[g, b] = (axis_grid[g]+canvas_alignment, axis_grid[b]+canvas_alignment)
+    return pieces_grid, step
+
 def create_grid(grid_size, padding, canvas_size):
-    axis_grid = np.linspace(padding, canvas_size - padding - 1, grid_size)
+    half_space = canvas_size - padding // 2
+    axis_grid = np.linspace(-half_space-1, half_space+1, grid_size+1)
     grid_step_size = axis_grid[1] - axis_grid[0]
     pieces_grid = np.zeros((grid_size, grid_size, 2))
     for b in range(len(axis_grid)):
         for g in range(len(axis_grid)):
-            pieces_grid[g, b] = (axis_grid[g], axis_grid[b])
+            pieces_grid[g, b] = (axis_grid[g]+half_space, axis_grid[b]+half_space)
+    breakpoint()
     return pieces_grid, grid_step_size
 
 def place_on_canvas(piece, coords, canvas_size, theta=0):
@@ -94,26 +174,29 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
 
     ## ROTATE
     if theta > 0:
-        piece_img = scipy.ndimage.rotate(piece_img, theta, reshape=False, mode='constant')
-        piece_mask = scipy.ndimage.rotate(piece_mask, theta, reshape=False, mode='constant', prefilter=False)
+        piece_img = scipy.ndimage.rotate(piece_img, theta, reshape=False, mode='constant', order=0)
+        piece_mask = scipy.ndimage.rotate(piece_mask, theta, reshape=False, mode='constant', prefilter=False, order=0)
         piece_mask = cv2.morphologyEx(piece_mask, cv2.MORPH_CLOSE, closing_kernel)
         #piece_mask = (piece_mask > eps_mh).astype(np.uint8)
         if 'sdf' in piece.keys():
-            piece_sdf = scipy.ndimage.rotate(piece_sdf, theta, reshape=False, mode='constant')
+            piece_sdf = scipy.ndimage.rotate(piece_sdf, theta, reshape=False, mode='constant', order=0)
         if 'lines_mask' in piece.keys():
-            piece_lines_mask = scipy.ndimage.rotate(piece_lines_mask, theta, reshape=False, mode='constant', prefilter=False)
+            piece_lines_mask = scipy.ndimage.rotate(piece_lines_mask, theta, reshape=False, mode='constant', order=0, prefilter=False)
             piece_lines_mask = cv2.morphologyEx(piece_lines_mask, cv2.MORPH_CLOSE, closing_kernel)
             #piece_lines_mask = (piece_lines_mask > eps_mh).astype(np.uint8)
         piece['cm'] = get_cm(piece_mask)
         ## NEW MOTIF-BASED
         if 'motif_mask' in piece.keys():
-            piece_motif_mask = scipy.ndimage.rotate(piece_motif_mask, theta, reshape=False, mode='constant')
+            piece_motif_mask = scipy.ndimage.rotate(piece_motif_mask, theta, reshape=False, mode='constant', order=0)
         #piece['cm'] = get_cm(piece_mask)
         if 'polygon' in piece.keys():
-            piece['polygon'] = rotate(piece['polygon'], -theta, origin=half_piece_shift)
-    
+            rotated_poly = rotate(piece['polygon'], -theta, origin=half_piece_shift)
+    else:
+        if 'polygon' in piece.keys():
+            rotated_poly = piece['polygon']
+        
     if 'polygon' in piece.keys():
-        poly_on_canvas = transform(piece['polygon'], lambda f: f + [x,y] - half_piece_shift)
+        poly_on_canvas = transform(rotated_poly, lambda f: f + [x,y] - half_piece_shift)
 
     if piece['img'].shape[0] % 2 == 0:
         msk_on_canvas[y_c0:y_c1, x_c0:x_c1] = piece_mask
@@ -166,9 +249,39 @@ def place_on_canvas(piece, coords, canvas_size, theta=0):
     # breakpoint()
     return piece_on_canvas
 
+def crop_to_content(image, padding=1, return_vals=False, max_noise=0):
 
-def get_mask(img, background=0, noisy=False, epsilon=0.1):
+    if len(image.shape) > 2:
+        x0 = np.clip(np.min(np.where(np.sum(image, axis=2) > max_noise)[1]) - padding, 0, image.shape[1])
+        x1 = np.clip(np.max(np.where(np.sum(image, axis=2) > max_noise)[1]) + padding, 0, image.shape[1])
+        y0 = np.clip(np.min(np.where(np.sum(image, axis=2) > max_noise)[0]) - padding, 0, image.shape[0])
+        y1 = np.clip(np.max(np.where(np.sum(image, axis=2) > max_noise)[0]) + padding, 0, image.shape[0])
+    else:
+        x0 = np.min(np.where(image > max_noise)[1]) - padding
+        x1 = np.max(np.where(image > max_noise)[1]) + padding
+        y0 = np.min(np.where(image > max_noise)[0]) - padding
+        y1 = np.max(np.where(image > max_noise)[0]) + padding
 
+    if return_vals == True:
+        return image[y0:y1, x0:x1, :], x0, x1, y0, y1
+    return image[y0:y1, x0:x1, :]
+
+def render_pair_at(piece_i, piece_j, ppars, coords_xyz, crop=True, padding=5):
+    
+    center_pos = ppars.canvas_size // 2
+    piece_i_on_canvas = place_on_canvas(piece_i, (center_pos, center_pos), ppars.canvas_size, 0)
+    piece_j_on_canvas = place_on_canvas(piece_j, (coords_xyz[0], coords_xyz[1]), ppars.canvas_size, coords_xyz[2])
+    rendered_image = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
+    if crop == True:
+        rendered_image = crop_to_content(rendered_image, padding=padding, max_noise=5)
+    rendered_image = cv2.cvtColor(rendered_image.astype(np.uint8), cv2.COLOR_BGR2RGB)
+    return rendered_image
+
+def get_mask(img, background=0, noisy=False, epsilon=0.1, black_bg=False):
+
+    if black_bg == True:
+        mask = 255 - (np.sum(img[:,:,:3], axis=2) == 0)
+        return mask
     if img.shape[2] == 4:
         img = img[:,:,3]
     else:
@@ -177,7 +290,7 @@ def get_mask(img, background=0, noisy=False, epsilon=0.1):
         mask = img > epsilon*np.max(img)
     else:
         mask = 1 - (img == background).astype(np.uint8)
-    return mask
+    return mask.astype(np.uint8)
 
 def get_sd(img, background=0):
     if img.shape[2] == 4:
@@ -196,6 +309,12 @@ def mask2sdf(mask, q=1):
     if q > 1: #quantize (stepwise sdf)
         sdf = (sdf // q) * q
     return sdf
+
+def dilate(mask, width=3):
+    kernel_size = width*2+1
+    kernel = np.ones((kernel_size, kernel_size))
+    dilated_mask = cv2.dilate(mask, kernel)
+    return dilated_mask 
 
 def get_outside_borders(mask, borders_width=3):
     """
@@ -389,7 +508,7 @@ def add_colors(image, borders_segments, thickness):
             if np.sum(left_part) > 10:
                 # good one
                  #scipy.ndimage.rotate(, 90)
-                colors = scipy.ndimage.rotate(left_part, 180)
+                colors = scipy.ndimage.rotate(left_part, 180, order=0)
                 # plt.subplot(132); plt.imshow(left_part); plt.title(f"left part ({st},{stt[0]} to {en})")
                 # plt.subplot(133); plt.imshow(colors); plt.title("no rotation needed")
                 # plt.show()
@@ -409,13 +528,13 @@ def add_colors(image, borders_segments, thickness):
             top_part = image[stt[1]-thickness:end[1], st:en]
             # vertical   
             if np.sum(top_part) > 10:
-                colors = scipy.ndimage.rotate(top_part, -90)
+                colors = scipy.ndimage.rotate(top_part, -90, order=0)
                 # plt.subplot(132); plt.imshow(top_part); plt.title(f"top part ({st} to {en})")
                 # plt.subplot(133); plt.imshow(colors); plt.title("rotated -90")
                 # plt.show()
             else:
                 bottom_part = image[stt[1]:thickness+end[1], st:en] 
-                colors = scipy.ndimage.rotate(bottom_part, 90)
+                colors = scipy.ndimage.rotate(bottom_part, 90, order=0)
                 # plt.subplot(132); plt.imshow(bottom_part); plt.title(f"bottom part ({st} to {en})")
                 # plt.subplot(133); plt.imshow(colors); plt.title("rotated 90")
                 # plt.show()
@@ -437,30 +556,32 @@ def encode_boundary_segments(pieces, fnames, dataset, puzzle, boundary_seg_len, 
         piece['boundary_seg'] = borders_segments
     return pieces
 
-def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1, line_based=True, sdf=False, motif_based=True):
+def include_shape_info(fnames, pieces, dataset, puzzle, lines_det_method, motif_det_method=None, line_thickness=1, line_based=True, sdf=False, motif_based=False):
 
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle)
     polygons_folder = os.path.join(root_folder, fnames.polygons_folder)
     polygons = os.listdir(polygons_folder)
     if line_based == True:
-        lines_folder = os.path.join(root_folder, fnames.lines_output_name, method)
+        lines_folder = os.path.join(root_folder, fnames.lines_output_name, lines_det_method)
         lines_files = os.listdir(lines_folder)
         lines = [line for line in lines_files if line.endswith('.json')]
         assert len(polygons) == len(lines), f'Error: have {len(polygons)} polygons files and {len(lines)} lines files, they should have the same length!'
 
     ## NEW MOTIVE PART
     if motif_based == True:
-        if method == 'yolo-obb':
+        if motif_det_method == 'yolo-obb':
             motif_subfolder = f"{fnames.motifs_output_name}_OBB"
-        elif method == 'yolo-bbox':
+        elif motif_det_method == 'yolo-bbox':
             motif_subfolder = f"{fnames.motifs_output_name}_BB"
         else:
-            print(f'No method, just reading from {fnames.motifs_output_name}')
+            print(f'###\n\nWARNING:\nNo method, just reading from {fnames.motifs_output_name}\n\n###')
             motif_subfolder = fnames.motifs_output_name
         motif_folder = os.path.join(root_folder, motif_subfolder)
-        # motif_folder = os.path.join(root_folder, fnames.motifs_output_name, method)  #TODO - add method to detection path !!! Yolo5 ect...
+        # motif_folder = os.path.join(root_folder, fnames.motifs_output_name, method)  
+        # TODO - add method to detection path !!! Yolo5 ect...
         motif_files = os.listdir(motif_folder)
         motif = [line for line in motif_files if line.endswith('.npy')]
+        motif.sort()
         assert len(polygons) == len(motif), f'Error: have {len(polygons)} polygons files and {len(motif)} motif files, they should have the same length!'
 
     for piece in pieces:
@@ -472,9 +593,8 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
             shapely_points = [(point[0], point[1]) for point in piece['polygon'][0]]
             piece['polygon'] = shapely.Polygon(shapely_points)
 
-        #assert(type(np.load(polygon_path, allow_pickle=True).tolist()) == shapely.Polygon), "The polygon is not a shapely.Polygon! Check the files!"
         if line_based == True:
-            lines_path = os.path.join(lines_folder, f"{piece_ID}.json")
+            lines_path = os.path.join(lines_folder, f"{piece['name']}.json")
             with open(lines_path, 'r') as file:
                 piece['extracted_lines'] = json.load(file)
             drawn_lines = draw_lines(piece['extracted_lines'], piece['img'].shape, line_thickness, use_color=False)
@@ -491,11 +611,30 @@ def include_shape_info(fnames, pieces, dataset, puzzle, method, line_thickness=1
 
     return pieces
 
+def prepare_piece_v2(path, mask_path='', background=0, verbose=False):
+    
+    piece_d = {}
+    img = cv2.imread(path)
+    piece_d['img'] = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if mask_path == '':
+        piece_d['mask'] = get_mask(piece_d['img'], background=background, noisy=True)
+    else:
+        mask = plt.imread(mask_full_path, cv2.IMREAD_GRAYSCALE)
+    piece_d['cm'] = get_cm(piece_d['mask'])
+    piece_name = path.split('/')[-1]
+    piece_d['id'] = piece_name[:10]  # piece_XXXXX.png
+    piece_d['name'] = piece_name[:-4]  # piece_XXXXX.png    
+    return piece_d
+
 def prepare_pieces_v2(fnames, dataset, puzzle_name, background=0, verbose=False):
     pieces = []
     root_folder = os.path.join(fnames.output_dir, dataset, puzzle_name)
     data_folder = os.path.join(root_folder, fnames.pieces_folder)
     masks_folder = os.path.join(root_folder, fnames.masks_folder)
+
+    #lines_folder = os.path.join(root_folder, fnames.lines_folder)
+    #motif_folder = os.path.join(root_folder, fnames.motif_folder)
+
     pieces_names = os.listdir(data_folder)
     pieces_names.sort()
     closing_kernel = np.ones((9, 9))
@@ -559,6 +698,12 @@ def prepare_pieces(cfg, fnames, dataset, puzzle_name, background=0):
         piece_d['id'] = piece_name[:9]
         pieces.append(piece_d)
     return pieces
+
+def shape_pairwise_compatibility_vis(piece_i, piece_j, x_j, y_j, theta_j, puzzle_cfg, grid, pieces, sigma=1):
+    """
+    Visualization of the shape compatibility 
+    """
+
 
 def shape_pairwise_compatibility(piece_i, piece_j, x_j, y_j, theta_j, puzzle_cfg, grid, sigma=1):
 
@@ -627,7 +772,116 @@ def process_region_map(region_map, perc_min=0.01):
     # pdb.set_trace()
     return rmap, rc-1
 
-def compute_SDF_cost_matrix(piece_i, piece_j, ids_to_score, ppars, verbosity=1):
+def compute_SDF_CM_matrix_vis(piece_i, piece_j, ids_to_score, ppars, verbosity=1):
+    """ 
+    It visualizes the SDF computation to debug it or create visuals for presentations
+    """
+    p = ppars['p']
+    alignment_grid = ppars['z_id']
+    m = ppars['m']
+    rot = ppars['rot']    
+    R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
+
+    # grid on the canvas
+    canv_cnt = ppars.canvas_size // 2
+    grid = alignment_grid + canv_cnt #alignment_grid has negative values
+
+    dilation_size = ppars['dilation_size'] #35
+    dil_kernel = np.ones((dilation_size, dilation_size))
+    sigma = ppars.p_hs
+    #plt.ion()
+    #plt.figure(figsize=(12,12))
+    for x,y,t in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+        theta = rot[t]
+        center_pos = (len(grid) - 1 ) // 2
+        x_c_pixel, y_c_pixel = grid[center_pos, center_pos]
+        x_j_pixel, y_j_pixel = grid[y, x]
+        piece_i_on_canvas = place_on_canvas(piece_i, (y_c_pixel, x_c_pixel), ppars.canvas_size, 0)
+        piece_j_on_canvas = place_on_canvas(piece_j, (y_j_pixel, x_j_pixel), ppars.canvas_size, theta)
+        #piece_i_on_canvas['mask'] = (piece_i_on_canvas['mask'] > 0.0005).astype(np.uint8)
+        #piece_j_on_canvas['mask'] = (piece_j_on_canvas['mask'] > 0.0005).astype(np.uint8)
+        dilated_pi_mask = cv2.dilate(piece_i_on_canvas['mask'], dil_kernel)
+        dilated_pj_mask = cv2.dilate(piece_j_on_canvas['mask'], dil_kernel)
+        inters_dilated_pi_mask_pj = ((dilated_pi_mask + piece_j_on_canvas['mask']) > 1).astype(np.uint8)      
+        inters_dilated_pj_mask_pi = ((dilated_pj_mask + piece_i_on_canvas['mask']) > 1).astype(np.uint8)      
+        touching_region = ((inters_dilated_pi_mask_pj + inters_dilated_pj_mask_pi) > 0).astype(np.uint8)
+        touching_region = cv2.morphologyEx(touching_region, cv2.MORPH_CLOSE, dil_kernel)
+        size_touching_region = np.sum(touching_region > 0)
+        #print(f"We have {size_touching_region} pixels in the touching region")
+        if size_touching_region < 2*ppars.p_hs:
+            shape_score = 0
+            #print(f"skipping as number of pixels < {2*ppars.p_hs}!")
+            #touching_region = ((dilated_pi_mask + dilated_pj_mask) > 1).astype(np.uint8)
+
+            # plt.subplot(231); plt.imshow(dilated_pi_mask)
+            # plt.subplot(234); plt.imshow(dilated_pj_mask)
+            # plt.subplot(232); plt.imshow(inters_dilated_pi_mask_pj)
+            # plt.subplot(235); plt.imshow(dilated_pj_mask)
+            # plt.subplot(233); plt.imshow((inters_dilated_pi_mask_pj + inters_dilated_pj_mask_pi))
+            # plt.subplot(236); plt.imshow(touching_region)
+            # plt.show()
+            # breakpoint()
+            # min_axis = min_axis_factor * np.minimum(np.sqrt(np.sum(piece_i['mask'])), np.sqrt(np.sum(piece_j['mask']))) # MAGIC NUMBER :/
+            # drawn_matching_region, mregion_mask = get_ellipsoid(piece_i_on_canvas['cm'], piece_j_on_canvas['cm'], min_axis, ppars.canvas_size)
+        else:
+            shape_score = compute_shape_score(piece_i_on_canvas, piece_j_on_canvas, touching_region, sigma=sigma)
+            #breakpoint()
+            plt.subplot(131)
+            plt.title("what the human sees")
+            reassembled_image = piece_i_on_canvas['img']+piece_j_on_canvas['img']
+            plt.imshow(reassembled_image)
+            plt.subplot(132)
+            plt.title("what the algorithm sees")
+            sdf_sum = piece_i_on_canvas['sdf'] + piece_j_on_canvas['sdf']
+            touching_region_size = np.sum(touching_region > 0)
+            sdf_val = np.sum(touching_region*np.square(sdf_sum)) / touching_region_size
+            plt.imshow(touching_region*np.square(sdf_sum), cmap='RdYlGn')
+            # plt.imshow(sdf_sum, cmap='RdYlGn')
+            plt.contour(touching_region)
+            plt.subplot(133)
+            plt.title(f"SDF-value: {sdf_val:.03f}\nshape score: {shape_score:.03f}")
+            plt.imshow(R_cost[:,:,0])
+            plt.show()
+            breakpoint()
+            # R_cost[x,y,t] = shape_score
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
+            plt.subplot(251); plt.imshow(piece_i_on_canvas['img']); plt.title("image piece i")
+            plt.subplot(256); plt.imshow(piece_j_on_canvas['img']); plt.title("image piece j")
+            plt.subplot(252); plt.imshow(piece_i_on_canvas['mask']); plt.title("mask piece i")
+            plt.subplot(257); plt.imshow(piece_j_on_canvas['mask']); plt.title("mask piece j")
+            plt.subplot(253); plt.imshow(piece_i_on_canvas['sdf']); plt.title("sdf piece i")
+            plt.subplot(258); plt.imshow(piece_j_on_canvas['sdf']); plt.title("sdf piece j")
+            sdf_sum = piece_i_on_canvas['sdf'] + piece_j_on_canvas['sdf']
+            plt.subplot(254); plt.imshow(touching_region); plt.title("touching_region")
+            touching_region_size = np.sum(touching_region > 0)
+            sdf_val = np.sum(touching_region*np.square(sdf_sum)) / touching_region_size
+            plt.subplot(259); plt.imshow(touching_region*np.square(sdf_sum), cmap='jet'); plt.title(f"SDF ellipsoid region (val={sdf_val:.03f})")
+            reassembled_image = piece_i_on_canvas['img']+piece_j_on_canvas['img']
+            plt.subplot(255); plt.imshow(reassembled_image); plt.title(f"reassembled image (score={shape_score:.03f})")
+            plt.subplot(2,5,10); plt.imshow(reassembled_image * np.dstack((touching_region, touching_region, touching_region))); plt.title("reassembled image ellipsoid region")
+            plt.suptitle(f"T: ({x},{y},{t}) # SDF-val: {sdf_val:.03f} # Score: {shape_score:.03f}")
+            plt.show()
+        #
+        R_cost[x,y,t] = shape_score
+    return R_cost
+
+def compute_SDF_CM_matrix(piece_i, piece_j, ids_to_score, ppars, verbosity=1):
     """ 
     It computes SDF-based cost matrix between piece_i and piece_j
     """
