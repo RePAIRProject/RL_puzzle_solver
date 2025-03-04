@@ -30,4 +30,8 @@ output_*/
 # personal scripts to copy/upload stuff
 **/*_lucap.sh
 
+.conda
+.DS_Store
+seg
+
 
