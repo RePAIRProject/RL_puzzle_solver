@@ -9,7 +9,8 @@ matplotlib.use('TkAgg')
 frag_num = 4
 
 #im = io.imread(f'/home/marina/Desktop/pigmentmaps_image/Decor1_ex2/tiff/Decor1_ex2_p{frag_num}.tiff')
-im = io.imread(f'/home/marina/Desktop/pigmentmaps_image/Decor1_ex4_all_colors.tiff')
+im = io.imread(f'/home/marina/Desktop/pigmentmaps_image/Decor1_ex4_all_colors.tiff', plugin='tifffile')
+metadata = im.metadata
 
 channel_num = np.shape(im)[0]
 plt.figure(figsize=(16, 8))
