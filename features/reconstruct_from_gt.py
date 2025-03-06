@@ -1,7 +1,8 @@
 import os, json  
 import numpy as np 
 from configs import folder_names as fnames
-from puzzle_utils.pieces_utils import place_at, crop_to_content
+from puzzle_utils.pieces_utils import place_at
+from puzzle_utils.shape_utils import crop_to_content
 import scipy
 import argparse 
 import matplotlib.pyplot as plt 

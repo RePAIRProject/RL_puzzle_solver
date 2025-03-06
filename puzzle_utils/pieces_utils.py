@@ -4,7 +4,7 @@ import shapely
 from shapely import transform
 from shapely.affinity import rotate as rotate_poly
 from puzzle_utils.puzzle_gen.generator import PuzzleGenerator
-from puzzle_utils.shape_utils import get_sd, get_mask, get_cm, shift_img
+from puzzle_utils.shape_utils import get_sd, get_mask, get_cm, shift_img, crop_to_content
 import numpy as np
 from scipy.ndimage import rotate as rotate_img
 import math
@@ -415,13 +415,4 @@ def place_at(piece, canvas, location):
         canvas[y0:y1, x0:x1, :] += piece
     return canvas
 
-def crop_to_content(image, padding=1, return_vals=False):
 
-    x0 = np.min(np.where(image > 0)[1]) - padding
-    x1 = np.max(np.where(image > 0)[1]) + padding
-    y0 = np.min(np.where(image > 0)[0]) - padding
-    y1 = np.max(np.where(image > 0)[0]) + padding
-
-    if return_vals == True:
-        return image[y0:y1, x0:x1, :], x0, x1, y0, y1
-    return image[y0:y1, x0:x1, :]

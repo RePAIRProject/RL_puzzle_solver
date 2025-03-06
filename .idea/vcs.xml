@@ -13,5 +13,6 @@
     <mapping directory="$PROJECT_DIR$/DeepLSD/third_party/pytlbd/pybind11" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/DeepLSD/third_party/pytlsd" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/DeepLSD/third_party/pytlsd/pybind11" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/repair_ground_truth" vcs="Git" />
   </component>
 </project>

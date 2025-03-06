@@ -17,9 +17,9 @@ from compatibility.utils import normalize_CM
 from solver.solver_utils_TEST import initialization_from_GT, initialization, select_anchor, save_vis_puzzle
 from solver.solver_utils_TEST import RePairPuzz, reconstruct_puzzle, sparsify_compatibility_matrix
 from solver.aggregation_CM import aggregate_CM_matrices
-from puzzle_utils.pieces_utils import calc_parameters_v2, crop_to_content
+from puzzle_utils.pieces_utils import calc_parameters_v2
 from puzzle_utils.visualization import save_vis
-from puzzle_utils.shape_utils import prepare_pieces_v2
+from puzzle_utils.shape_utils import prepare_pieces_v2, crop_to_content
 # from compatibility.line_matching_NEW_segments import read_info
 # from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas
 import datetime
