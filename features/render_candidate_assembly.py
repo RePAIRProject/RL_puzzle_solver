@@ -32,6 +32,10 @@ def main(args):
     ppars = load_as_cfg(args.pars)
     print("calculating RM")
     RM_ij = rmu.compute_pairwise_shape_based_RM(piece_i, piece_j, ppars, dilate=False, erode=True)
+    if ppars.motif_based == True:
+        print("NOT DONE YET!\nTODO:")
+        print("RM_ij_motifs = rmu.compute_pairwise_motif_based_RM(piece_i, piece_j, ppars, dilate=False, erode=True)")
+        breakpoint()
     if args.o == "":
         output_folder = f"candidate_assembly_{args.i.split('/')[-1][:-4]}_{args.j.split('/')[-1][:-4]}"
     else: 
