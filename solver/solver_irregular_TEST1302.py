@@ -146,10 +146,10 @@ def main(args, pieces=None):
     ## INITIALIZATION
     if args.use_GT == True:
         print('Using ground truth to calculate the grid')
-        p_initial, init_pos, x0, y0, z0 = initialization_from_GT(anc, puzzle_root_folder, all_pieces, pieces, num_rot)
+        p_initial, init_pos, anchor_pos = initialization_from_GT(anc, puzzle_root_folder, all_pieces, pieces, num_rot)
     else:
         print(f'Using a grid of {args.p_pts_x}x{args.p_pts_y} points!')
-        p_initial, init_pos, x0, y0, z0 = initialization(R, anc, args.p_pts_y, args.p_pts_x)
+        p_initial, init_pos, anchor_pos = initialization(R, anc, args.p_pts_y, args.p_pts_x)
 
     # print(p_initial.shape)
     solver_visualization_folder = os.path.join(puzzle_root_folder,
