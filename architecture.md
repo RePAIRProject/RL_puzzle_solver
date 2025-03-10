@@ -6,16 +6,20 @@
 │   └── repair_g3                   # example, uncentered/unprocessed images of the pieces
 │                               
 ├── preprocessing/                  # output from preprocessing
+│   ├── repair_g3                   # name of the puzzle
 │   │   ├── images                  # the images of single pieces (created)
 │   │   ├── masks                   # the binary masks of single pieces (created)
-│   │   └── polygons                # the Shapely polygons of single pieces (created)
-│   └── preprocessing.yaml          # the parameters used for preprocessing
+│   │   ├── polygons                # the Shapely polygons of single pieces (created)
+│   │   └── preprocessing.yaml      # the parameters used for preprocessing (copied/created)
+│   └── preprocessing_default.yaml  # the default parameters for preprocessing
 │
 ├── features/                       # the features extracted 
+│   ├── repair_g3                   # name of the puzzle
 │   │   ├── lines                   # lines 
 │   │   ├── motifs                  # motifs
-│   │   └── HSI                     # hyperspectral 
-│   └── features.yaml               # the parameters used for extracting them
+│   │   ├── HSI                     # hyperspectral 
+│   │   └── features.yaml           # the parameters used for extraction (copied/created) 
+│   └── features_default.yaml       # the default parameters for extracting features
 │
 ├── experiments/                    # experiments (running RM, CM, Solver)
 │   ├── exp_random                  # each single experiment has a folder with exp_{random string} as a name
@@ -50,6 +54,7 @@
 │   ├── compatibility_utils.py      # defines the R/CM class and the code ?
 │   ├── solver_utils.py             # defines the Solver class and the code ? 
 │   ├── evaluation_utils.py         # for the different metrics
+│   ├── parameters_utils.py         # for the code to load/write/merge .yaml files
 │   └── pieces_utils.py             # read and prepare the pieces - defines the Pieces class and the code ?
 │
 └── README.md                       # documentation
