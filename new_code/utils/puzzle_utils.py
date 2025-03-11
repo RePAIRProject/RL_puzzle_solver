@@ -8,8 +8,8 @@ import numpy as np
 import cv2 
 from parameters_utils import PuzzleDaedalus
 import scipy
-# please import List
 from typing import List
+import yaml
 
 # Preprocessor
 #
@@ -23,7 +23,6 @@ from typing import List
 #
 #
 #     piece.save_to_files(name)
-
 
 # p = PuzzlePiece()
 # p.id
@@ -39,7 +38,10 @@ class Puzzle:
         self.pieces = pieces
         self.num_of_pieces = len(self.pieces)
 
-    def load_from_files(self, puzzle_name: str):
+    def load_data_from_files(self, puzzle_name: str):
+        """
+        Loads the data (images, masks and polygon) and fill the properties of the Puzzle object
+        """
         images_subfolder = PuzzleDaedalus.get_puzzle_images_subfolder(puzzle_name=puzzle_name)
         masks_subfolder = PuzzleDaedalus.get_puzzle_masks_subfolder(puzzle_name=puzzle_name)
         polygons_subfolder = PuzzleDaedalus.get_puzzle_polygons_subfolder(puzzle_name=puzzle_name)
@@ -53,6 +55,65 @@ class Puzzle:
             piece.data.mask = plt.imread(os.path.join(masks_subfolder, f"{piece_name}".png), cv2.IMREAD_GRAYSCALE)
             piece.data.polygon = np.load(os.path.join(polygons_subfolder, piece.name), allow_pickle=True).tolist()
             self.pieces.append(piece)
+        self.num_of_pieces = len(self.pieces)
+
+    def load_features_from_files(self, puzzle_name: str):
+        """
+        TODO: Loads the features (whatever it finds in the `features` folder) already extracted!
+        """
+        # features_extracted = PuzzleDaedalus.get_features_extracted(puzzle_name=puzzle_name)
+        # puzzle_feats = PuzzleFeatures(puzzle_features_root_folder = PuzzleDaedalus.get_puzzle_features_subfolder(puzzle_name=puzzle_name))
+        # for piece in pieces:
+        #     for feature in features_extracted:
+        #         piece[feature] = puzzle_feats.extract_feature(piece, feature)
+        # return pieces
+
+    def load_parameters_from_file(self, yaml_file_path: str):
+        """
+        Loads the parameters from the .yaml file 
+        Some parameters are "consequences" of the loaded one (calculated from)
+        """
+        with open(yaml_file_path, 'r') as file:
+            parameters = yaml.safe_load(file)
+        self.piece_size = parameters['preprocessing']['piece_size']
+        self.p_hs = self.piece_size // 2
+        self.grid_pars = PuzzleGrid(parameters['compatibility']['grid'], self.piece_size)
+        self.regions_dilation = parameters['compatibility']['regions']['borders_dilation']
+        self.regions_erosion = parameters['compatibility']['regions']['borders_erosion']
+    
+    def save_parameters_to_file(self, yaml_file_path: str):
+        """
+        Save (the parameters) to the .yaml file 
+        """
+
+class PuzzleGrid():
+    def __init__(self, grid_parameters, piece_size):
+        # repetition?
+        # self.piece_size = piece_size
+        self.p_hs = self.piece_size // 2
+        self.xy_step = grid_parameters['xy_step']
+        self.xy_points = grid_parameters['xy_points']
+        self.theta_step = grid_parameters['theta_step']
+        self.theta_points = grid_parameters['theta_points']
+        self.pairwise_comp_range = self.xy_step * (self.xy_points - 1)
+        self.canvas_size = self.pairwise_comp_range + 2 * (self.p_hs + 1)
+        self.create_grid()
+
+    def create_grid(self):
+        # we can create using the `largest_val` or using the `step` and `points`
+        # largest_val = self.piece_size * 2 #step*pts
+        largest_val = self.xy_step * self.xy_points
+        # create a regularly spaced grid (the center value should be the center of th epiece)
+        axis_grid = np.arange(0, largest_val, self.xy_step)
+        zero_aligned_axis_grid = axis_grid - axis_grid[np.floor(len(axis_grid) // 2).astype(int)]
+        # align to the canvas
+        canvas_alignment = canvas_size // 2 # - largest_val - step) / 2
+        pieces_grid = np.zeros((len(axis_grid), len(axis_grid), 2))
+        for b in range(len(axis_grid)):
+            for g in range(len(axis_grid)):
+                pieces_grid[g, b] = (axis_grid[g]+canvas_alignment, axis_grid[b]+canvas_alignment)
+        self.grid = pieces_grid.astype(int)
+
 
 class Lines():
     def __init__(self):

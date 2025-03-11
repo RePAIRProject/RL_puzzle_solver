@@ -15,6 +15,19 @@ class PuzzleDaedalus:
     features_folder = 'features'
     features_params_name = 'features.yaml'
 
+    def get_puzzle_subfolders(puzzle_name: str):
+        """
+        Returns a dictionary with all the subfolders paths
+        """
+        subfolders = {
+            'preprocessing': os.path.join(preprocessing_folder, puzzle_name),
+            'images': os.path.join(preprocessing_folder, puzzle_name, images_subfolder),
+            'masks': os.path.join(preprocessing_folder, puzzle_name, masks_subfolder),
+            'polygons': os.path.join(preprocessing_folder, puzzle_name, polygons_subfolder),
+            'features': os.path.join(features_folder, puzzle_name)
+        }
+        return subfolders 
+        
     def get_puzzle_images_subfolder(puzzle_name: str):
         return os.path.join(preprocessing_folder, puzzle_name, images_subfolder)
 

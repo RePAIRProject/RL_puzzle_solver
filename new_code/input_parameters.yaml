@@ -1,0 +1,46 @@
+---  # yaml document beginning
+# comment syntax
+---
+preprocessing:
+  piece_size: 251
+
+---
+features:
+  lines:
+    detection_method: deeplsd
+  motif:
+    detection_method: yolo-seg
+
+---
+compatibility:
+  grid: 
+    xy_step: 3
+    theta_step: 90
+    xy_points: 101
+    theta_points: 4
+  # region matrix calculation
+  regions:
+    borders_dilation: 1
+    borders_erosion: 1
+  # actual compatibility score calculation
+  shape: 
+    sigma: 1
+    SDF_dilation: 35 # TODO: check if it should be different from borders dilstion!
+  lines:
+    thr_coef: 0.13
+    max_dist: 6 # could be changed during calculation (it is an upper bound)
+    badmatch_penalty: 5 # again upper bound
+    mismatch_penalty: 1 # repair
+    k: 3
+    cmp_cost: 'LAP'
+    # rmax: calculated 
+    # border_tolerance: calculated
+
+---
+solver:
+  T_first: 1000
+  T_next: 500
+  T_max: 3000
+
+
+
