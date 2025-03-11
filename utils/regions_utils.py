@@ -72,7 +72,7 @@ class RegionMatrix():
             self.RM = np.load(file_path)
             self.features = []
 
-    def compute(self):
+    def compute(self, verbose=1):
         """
         Computes the region matrix for all pairs of pieces 
         for all features we have extracted
@@ -89,14 +89,32 @@ class RegionMatrix():
         Just a wrapper, will decide which method to call depending on the feature
         """
         if feature == 'lines':
-            self.compute_pairwise_line_based_RM()
+            RM = self.compute_pairwise_line_based_RM()
+        elif feature == 'motif':
+            RM = self.compute_pairwise_motif_based_RM()
+        else:
+            raise Exception(f"{feature}-based RM not implemented yet!")
+
+        return RM 
 
     def compute_pairwise_line_based_RM(self, i: int, j: int):
         """
         Line based RM with "positive" 1 regions and "empty" 0 regions
         It should be used in combination with shape-based, as it does not have the -1 values!
         """
-        return 1
+        RM = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2]))
+        center_pos = self.canvas_size // 2
+        piece_i_on_canvas = pcs_uts.place_on_canvas(piece_i, (center_pos, center_pos), self.canvas_size, 0)
+        for t in range(self.RM_size[2]):
+            piece_j_on_canvas = pcs_uts.place_on_canvas(piece_j, (center_pos, center_pos), self.canvas_size, t * self.theta_step)
+            #  LINES case
+            overlap_lines = cv2.filter2D(piece_i_on_canvas['lines_mask'], -1, piece_j_on_canvas['lines_mask'])
+            dilated_overlap_lines = dilate(overlap_lines, width=np.floor(self.borders_regions_width_outside * self.xy_step).astype(int))
+            binary_overlap_lines = (dilated_overlap_lines > self.threshold_overlap_lines).astype(np.int32)
+            binary_overlap_lines_no_pad = binary_overlap_lines[self.p_hs + 1:-(self.p_hs + 1), self.p_hs + 1:-(self.p_hs + 1)]
+            resized_lines = np.array(Image.fromarray(binary_overlap_lines_no_pad).resize((self.RM_size[0], self.RM_size[1]), Image.Resampling.NEAREST))
+            RM[:,:,t] = (resized_lines.astype(np.int32) - 1)
+        return RM
 
     def compute_pairwise_shape_based_RM(self, i: int, j: int, dilate: bool = True, erode: bool = True):
         """
