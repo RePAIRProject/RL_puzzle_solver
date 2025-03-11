@@ -3,8 +3,9 @@ from typing import Union
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-import numpy as np 
+import numpy as np
 
+from GUI.RL_puzzle_solver.HIL.puzzle_solver import puzzle_solver
 app = FastAPI()
     
 pieces_names_g29: list = ['RPf_00204', 'RPf_00205', 'RPf_00206', 'RPf_00207', 'RPf_00208']
@@ -17,12 +18,6 @@ class G29(BaseModel):
     pieces_names: list = ['RPf_00204', 'RPf_00205', 'RPf_00206', 'RPf_00207', 'RPf_00208']
     pieces: dict = {'pieces':{}}
 
-    def __init__(self, pieces: dict):
-        self.pieces = pieces
-    
-    def run_update_loop(self, num_iterations: int = 100):
-        self.run_update_loop # NO
-
 class PuzzlePieces(BaseModel):
     pieces: dict = {'pieces': {}}
 
@@ -34,6 +29,7 @@ def read_root():
 def random_positions(puzzle: str):
     if puzzle == 'group_29':
         group = G29()
+        # print(group)
         for pname in group.pieces_names:
             group.pieces["pieces"][pname] = {"position": np.random.uniform(0, 1, 3).tolist(), "probability": 0}
     else:
@@ -46,7 +42,8 @@ def solve_puzzle(puzzle: str, anchor: int, pieces: PuzzlePieces):
     # P_ = update_P(..)
     # positions_ = P_to_positions(..)
     # response = {'pieces': {'RPf_XXX': {'position': [x, y, z], 'probability': 0.1}, 'RPf_XXX': {'position': [x, y, z], 'probability': 0.1}, .. } }
-    return 'will do'
+    response = "Will Do"
+    return response
 
 
 @app.get("/items/{item_id}")

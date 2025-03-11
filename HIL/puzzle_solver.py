@@ -3,7 +3,9 @@ import os
 import pdb
 
 from scipy.io import loadmat
-from utils import PuzzleSolver
+from GUI.RL_puzzle_solver.solver.utils import PuzzleSolver
+# from ..solver.utils import PuzzleSolver
+
 
 """
 This is the method which should be used from the HIL interface

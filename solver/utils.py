@@ -6,7 +6,7 @@ import json
 
 from threading import Lock
 
-from GUI.ReinforcementLearning import ReinforcementLearning
+# from GUI.ReinforcementLearning import ReinforcementLearning
 
 class CfgParameters(dict):
     __getattr__ = dict.__getitem__
@@ -17,7 +17,7 @@ class PuzzleSolver:
         self.compatibility_matrix = None
         self.maximum_probability = None
         self.delta_probs = None
-        self.reinforcement_learning = ReinforcementLearning(None, None)
+        # self.reinforcement_learning = ReinforcementLearning(None, None)
         self.final_solution = None
         self.ppars = args[0] if len(args) > 0 else None
         self.pieces_names = args[1] if len(args) > 1 else None
