@@ -3,8 +3,11 @@
 ```bash
 .
 ├── to be decided/                           # the raw data before preprocessing
-    └── data        
-    │   └── repair_g3                   # example, uncentered/unprocessed images of the pieces
+    ├── data        
+    │   ├── repair                      # dataset
+    │   │   └── g3                      # puzzle, uncentered/unprocessed images of the pieces
+    │   └── dafne                       # dataset 
+    │       └── p1                      # puzzle, uncentered/unprocessed images of the pieces
     │                               
     ├── preprocessing/                  # output from preprocessing
     │   ├── repair_g3                   # name of the puzzle
