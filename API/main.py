@@ -9,6 +9,20 @@ app = FastAPI()
     
 pieces_names_g29: list = ['RPf_00204', 'RPf_00205', 'RPf_00206', 'RPf_00207', 'RPf_00208']
 
+class G29(BaseModel):
+    name: str = 'group_29'
+    P_x: int = 101
+    P_y: int = 101
+    P_theta: int = 90 
+    pieces_names: list = ['RPf_00204', 'RPf_00205', 'RPf_00206', 'RPf_00207', 'RPf_00208']
+    pieces: dict = {'pieces':{}}
+
+    def __init__(self, pieces: dict):
+        self.pieces = pieces
+    
+    def run_update_loop(self, num_iterations: int = 100):
+        self.run_update_loop # NO
+
 class PuzzlePieces(BaseModel):
     pieces: dict = {'pieces': {}}
 
