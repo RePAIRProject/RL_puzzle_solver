@@ -116,6 +116,7 @@ class BackEnd:
 
         puzzle_solver.set_p_elements(pos[0], pos[1], pos[2], image_name)
 
+
     def reverse_offset(self, pos, offset):
         pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
         return pos
@@ -430,9 +431,10 @@ class BackEnd:
         # print(image2_bounding_box)
 
         # Check if they overlap or touch
-        if (max_x1 >= min_x2 and min_x1 <= max_x2) and (max_y1 >= min_y2 and min_y1 <= max_y2):
-            return True  # Collision or touching
-        return False  # No collision
+        # Check if the bounding boxes are completely separate
+        if max_x1 < min_x2 or max_x2 < min_x1 or max_y1 < min_y2 or max_y2 < min_y1:  # One is completely to the left/right of the other
+            return False
+        return True  # No collision
 
 
 

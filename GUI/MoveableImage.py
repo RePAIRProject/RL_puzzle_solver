@@ -86,6 +86,8 @@ class MovableImage(Image):
         self.is_locked = False
         self.status = Status.NEUTRAL
 
+        self.lock_movement = False
+
         with self.canvas.before:
             PushMatrix()
             # self.canvas.before.add(PushMatrix())
@@ -359,9 +361,19 @@ class MovableImage(Image):
         min_x, max_x = np.min(transformed_points[:, 0]), np.max(transformed_points[:, 0])
         min_y, max_y = np.min(transformed_points[:, 1]), np.max(transformed_points[:, 1])
 
-        min_x = min_x - 10
-        max_x = max_x + 10
-        min_y = min_y - 10
-        max_y = max_y + 10
+        edge_x = max_x - min_x
+        edge_y = max_y - min_y
+
+        x_offset = -1 * edge_x * 15/100
+        y_offset = -1 * edge_y * 15/100
+
+        print('x_offset:', x_offset, 'y_offset:', y_offset)
+
+        min_x = min_x - x_offset
+        max_x = max_x + x_offset
+        min_y = min_y - y_offset
+        max_y = max_y + y_offset
+
+
 
         return [min_x, min_y, max_x, max_y]

@@ -151,6 +151,9 @@ class GUIApp(MDApp):
         self.sidebar.col_grid.accept_button = ToggleButton()
         self.sidebar.col_grid.deny_button = ToggleButton()
 
+        self.lock_apply_solution = False
+        self.probability_matrix = None
+
         # self.test_monkey = Widget3D('3D/untitled.obj', '3D/simple.glsl')
 
     def build(self):
@@ -408,6 +411,7 @@ class GUIApp(MDApp):
         self.initial_image_updates = False
 
     def on_checkbox_active(self, checkbox, value):
+        print(value)
         if hasattr(self, 'grabbed_image') & (self.sidebar.opacity == 1):
             if self.grabbed_image is not None:
                 self.grabbed_image.is_anchor = value
@@ -416,6 +420,10 @@ class GUIApp(MDApp):
         # Toggle sidebar visibility
         if on_off:
             self.sidebar.opacity = 1
+
+            if self.grabbed_image.is_selected:
+                self.grabbed_image.lock_movement = True
+
             if self.grabbed_image.status == Status.NEUTRAL:
                 self.set_sidebar_neutral()
             elif self.grabbed_image.status == Status.ACCEPTED:
@@ -443,6 +451,10 @@ class GUIApp(MDApp):
             self.hold_left = False
             # if self.keyboard_input != 305:
             if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
+                if update_started:
+                    couple = (self.grabbed_image.name, self.grabbed_image.position_memory)
+                    back_end.set_p_elements(couple, self.image_offset)
+                    self.grabbed_image.is_anchor = True
                 self.grabbed_image.set_is_grabbed(False)
                 self.grabbed_image.deselect()
             if hasattr(self, 'selection_rect'):
@@ -692,7 +704,9 @@ class GUIApp(MDApp):
                 # ratio will apply in update_positions function
                 new_positions = np.array(
                     [position[0] + self.image_offset[0], position[1] + self.image_offset[1]])
-                if not image.is_grabbed:
+                if (not image.is_grabbed) and (not self.lock_apply_solution):
+                    if self.probability_matrix is not None:
+                        set_probabilities(self.pl_solution, self.probability_matrix, image)
                     image.update_positions(new_positions, positions[2])
             else:
                 image.update_positions([-1500, -1500], 0)
@@ -871,9 +885,11 @@ def start_select_neighbour(self):
 def toggle_program_lock(self):
     if self.state == 'down':
         # self.background_normal = 'Icons/play.png'  # Change to play icon
+        app.lock_apply_solution = True
         back_end.solver_toggle_lock(True)
     else:
         # self.background_normal = 'Icons/pause.png'  # Change to pause icon
+        app.lock_apply_solution = False
         back_end.solver_toggle_lock(False)
 
 def start_pl_solver(self):
@@ -938,18 +954,35 @@ def update_compatibility_matrix(current_image, neighbors, value):
             image_pos = image.position_memory
             back_end.set_cm_elements(current_image.name, image.name, current_image_pos, image_pos, offset, value)
 
-def set_probabilities(answer, probability, average_thresh_factor):
-    for image in app.current_image_list:
-        image.remove_score()
-        image_id = image.get_id()
+def set_probabilities(answer, probability, image):
+    image.remove_score()
+    image_id = image.get_id()
 
-        if image_id in answer:
-            image.set_probability(probability[image_id])
-    return answer
+    if image_id in answer:
+        image.set_probability(probability[image_id])
 
 update_counter = 0
 update_freq = 1 # in seconds
 update_started = False
+
+
+def save_parameters_to_json(answer, probability, process, filename="API-example.json"):
+    # Convert numpy arrays to lists for JSON serialization
+    if answer is not None and probability is not None and process is not None:
+        data = {
+            "pieces": {
+                key: {
+                    "position": value.tolist(),
+                    "probability": probability[key].tolist()
+                } for key, value in answer.items()
+            },
+            "process": process
+        }
+
+        # Save to JSON file
+        with open(filename, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
     global update_counter
     global update_started
@@ -957,11 +990,23 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         app.communicate_thread_lock.acquire()
         if update_counter>=(1/communication_freq)*update_freq:
             answer, probability, process = back_end.get_solution_dict()
+            print("answer", answer)
+            print("probability", probability)
+            print("process", process)
+            save_parameters_to_json(answer, probability, process)
             if answer is not None:
+                # for image in answer:
+                #     print(image)
+                #     try:
+                #         print(app.pl_solution[image])
+                #     except KeyError:
+                #         continue
                 average_thresh_factor = 0.00
-                answer = set_probabilities(answer, probability, average_thresh_factor)
-                answer = back_end.throw_away_1(answer, probability, average_thresh_factor)
                 app.pl_solution = answer
+                if not app.lock_apply_solution:
+                    answer = back_end.throw_away_1(answer, probability, average_thresh_factor)
+                    app.pl_solution = answer
+                app.probability_matrix = probability
                 app.apply_solution()
                 update_started = True
                 app.progress_bar.value = np.round(process * 100)
