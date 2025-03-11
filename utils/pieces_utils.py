@@ -8,7 +8,87 @@ import numpy as np
 import cv2 
 from parameters_utils import PuzzleDaedalus
 import scipy
-    
+# please import List
+from typing import List
+
+# Preprocessor
+#
+# for file in folder
+#
+#     img = cv2.imread(file)
+#     piece = PuzzlePiece(img)
+#     piece.mask =
+#     piece.dadad
+#     cm = get_center_of_mass(piece.mask)
+#
+#
+#     piece.save_to_files(name)
+
+
+# p = PuzzlePiece()
+# p.id
+# p.name
+# p.data.image
+# p.data.mask
+# p.data.polygon
+# p.features.lines
+# p.features.motives
+# p.features.sdf
+class Puzzle:
+    def __init__(self, pieces: List[PuzzlePiece] = []):
+        self.pieces = pieces
+        self.num_of_pieces = len(self.pieces)
+
+    def load_from_files(self, puzzle_name: str):
+        images_subfolder = PuzzleDaedalus.get_puzzle_images_subfolder(puzzle_name=puzzle_name)
+        masks_subfolder = PuzzleDaedalus.get_puzzle_masks_subfolder(puzzle_name=puzzle_name)
+        polygons_subfolder = PuzzleDaedalus.get_puzzle_polygons_subfolder(puzzle_name=puzzle_name)
+        pieces_names = os.listdir(images_subfolder)
+        pieces_names.sort()
+        for piece_name in pieces_names:
+            piece = PuzzlePiece()
+            piece.name = piece_name
+            piece.id = piece.name[:10]  # piece_XXXXX.png
+            sepiecelf.data.image = cv2.imread(os.path.join(images_subfolder, f"{piece_name}".png))
+            piece.data.mask = plt.imread(os.path.join(masks_subfolder, f"{piece_name}".png), cv2.IMREAD_GRAYSCALE)
+            piece.data.polygon = np.load(os.path.join(polygons_subfolder, piece.name), allow_pickle=True).tolist()
+            self.pieces.append(piece)
+
+class Lines():
+    def __init__(self):
+        self.detection_method = None
+
+class Motives():
+    def __init__(self):
+        self.segmentation_method = None
+
+class SDF():
+    def __init__(self):
+        self.method = None
+
+class Features():
+    def __init__(self):
+        self.lines = Lines()
+        self.motives = Motives()
+        self.sdf = SDF()
+
+class PuzzlePiece:
+    def __init__(self, *args, **kwargs):
+        self.id = None
+        self.name = None
+        self.centroid_preproc = None      # centroid
+        self.data.image = None
+        self.data.mask = None
+        self.data.polygon = None
+        self.features = Features()
+
+    # save preprocessed data
+    def save_to_files(self):
+        # TODO: save all the data to files
+        return True
+
+
+
 def get_center_of_mass(mask):
     """
     Calculates center of mass
@@ -100,6 +180,18 @@ def load_pieces(puzzle_name, background=0, verbose=False):
         pieces.append(piece_d)
 
     return pieces
+
+def load_features(pieces: list, puzzle_name: str):
+    """
+    defined as a method to be called without the need to initialize extra objects
+    """
+    features_extracted = PuzzleDaedalus.get_features_extracted(puzzle_name=puzzle_name)
+    puzzle_feats = PuzzleFeatures(puzzle_features_root_folder = PuzzleDaedalus.get_puzzle_features_subfolder(puzzle_name=puzzle_name))
+    for piece in pieces:
+        for feature in features_extracted:
+            piece[feature] = puzzle_feats.extract_feature(piece, feature)
+    return pieces
+
 
 def get_borders_around(mask, border_dilation=3, border_erosion=3):
     """
