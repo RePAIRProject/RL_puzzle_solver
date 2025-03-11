@@ -48,6 +48,8 @@
 ├── compute_compatibility_matrix.py # wrapper for compatibility matrices   
 ├── run_solver.py                   # wrapper for solving
 ├── evaluate_solutions.py           # wrapper for computing all metrics
+├── run_complete_pipeline.py        # wrapper for computing everything everywhere all at once
+
 ├── GUI/
     ├── backend/
     ├── frontend/
