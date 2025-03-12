@@ -24,17 +24,17 @@ from kivymd.uix.card import MDCard
 from kivy.core.window import Window
 from kivy.uix.progressbar import ProgressBar
 from PIL import Image as PILImage
-from Back_End import BackEnd
+from GUI.Back_End import BackEnd
 
-from RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
+from GUI.RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
 import threading
 import time
 import shutil
 import json
 import cv2
-from MoveableImage import MovableImage
-from MoveableImage import Status
-from Widget3D import Widget3D
+from GUI.MoveableImage import MovableImage
+from GUI.MoveableImage import Status
+# from Widget3D import Widget3D
 
 Window.clearcolor = (0, 0, 0, 0)
 
@@ -904,7 +904,9 @@ def start_pl_solver(self):
     # self.image_is_set = False
     # app.current_image_list = []
     update_started = False
-    back_end.start_pl_solver_thread(last_loop_solution=app.final_solution)
+    solved_piece = back_end.solved_pieces + app.final_solution
+    print("solved_piece", solved_piece)
+    back_end.start_pl_solver_thread(back_end.key_fragment, back_end.neighbour_ids, solved_piece)
     universal_zoom_applied = False
 
 
@@ -993,7 +995,7 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
             print("answer", answer)
             print("probability", probability)
             print("process", process)
-            save_parameters_to_json(answer, probability, process)
+            # save_parameters_to_json(answer, probability, process)
             if answer is not None:
                 # for image in answer:
                 #     print(image)
@@ -1121,115 +1123,6 @@ def eroding(directory_path):
             # name of the file without extension
             eroded_image = run_erode(image, file_name_without_extension)
             cv2.imwrite(save_path, eroded_image)
-
-
-def setting():  # unified path setting
-    global backend_path
-    global path_dic
-    global rotation_interval
-    global back_end
-    image_path = ""
-    mask_path = ""
-    comp_path = ""
-    pieces_path = ""
-    comp_folder = ""
-    comp_name = ""
-    ground_truth = ""
-    dataset_name = ""
-    cache_path = ""
-    icons_path = ""
-    apply_gt = False
-    number_of_neighbours = 3
-    number_of_anchors = 4
-    solver_parameters = ""
-    setting_dir = os.path.join(os.getcwd(), "GUI")
-    setting_path = os.path.join(setting_dir, "setting.txt")
-    if not os.path.exists(setting_path):
-        with open(setting_path, "w") as setting_file:
-            setting_file.writelines(["image_path: /GUI/DataBase/Images/RePAIR_plaque_2/RGBA_merged/",
-                                     "\n",
-                                     "mask_path: /GUI/DataBase/Images/RePAIR_plaque_2/FG_merged/",
-                                     "\n",
-                                     "backend_path: /GUI/DataBase/Images/RePAIR_plaque_2/",
-                                     "\n",
-                                     "comp_path: /GUI/DataBase/output/repair_g28/compatibility_parameters.json",
-                                     "\n",
-                                     "pieces_path: /GUI/DataBase/output/repair_g28/pieces/",
-                                     "\n",
-                                     "comp_folder: /GUI/DataBase/output/repair_g28/compatibility_matrix/",
-                                     "\n",
-                                     "comp_name: CM_linesdet_manual_cost_LAP.mat",
-                                     "\n",
-                                     "Rotation_Intervals: 1",
-                                     "\n",
-                                     "number_of_neighbours: 3",
-                                     "\n",
-                                     "comp_format: R_line",
-                                     "\n",
-                                     "apply_gt: False",
-                                     "\n",
-                                     "parameters: /GUI/DataBase/output/repair_g28/compatibility_parameters.json",
-                                     "\n",
-                                     "number_of_anchors: 4",
-                                     "\n",
-                                     "dataset_name: RePair_group_28",
-                                     "\n",
-                                     "icons: /GUI/Icons/",
-                                     "\n"
-                                     ])
-    os_path = os.getcwd()
-    if os.path.exists(setting_path):
-        with open(setting_path, 'r') as setting_file:
-            lines = setting_file.readlines()
-            for line in lines:
-                if line.startswith('image_path:'):
-                    image_path = os_path + line.split('image_path: ')[1].strip()
-                elif line.startswith('mask_path:'):
-                    mask_path = os_path + line.split('mask_path: ')[1].strip()
-                elif line.startswith('backend_path:'):
-                    backend_path = os_path + line.split('backend_path: ')[1].strip()
-                elif line.startswith('comp_path:'):
-                    comp_path = os_path + line.split('comp_path: ')[1].strip()
-                elif line.startswith('pieces_path:'):
-                    pieces_path = os_path + line.split('pieces_path: ')[1].strip()
-                elif line.startswith('comp_folder:'):
-                    comp_folder = os_path + line.split('comp_folder: ')[1].strip()
-                elif line.startswith('comp_name:'):
-                    comp_name = line.split('comp_name: ')[1].strip()
-                elif line.startswith('Rotation_Intervals:'):
-                    rotation_intervals = line.split('Rotation_Intervals: ')[1].strip()
-                elif line.startswith('ground_truth:'):
-                    ground_truth = os_path + line.split('ground_truth: ')[1].strip()
-                elif line.startswith('number_of_neighbours:'):
-                    number_of_neighbours = int(line.split('number_of_neighbours: ')[1].strip())
-                elif line.startswith('comp_format:'):
-                    comp_format = line.split('comp_format: ')[1].strip()
-                elif line.startswith('apply_gt:'):
-                    apply_gt = line.split('apply_gt: ')[1].strip()
-                elif line.startswith('parameters:'):
-                    parameters = os_path + line.split('parameters: ')[1].strip()
-                elif line.startswith('number_of_anchors:'):
-                    number_of_anchors = int(line.split('number_of_anchors: ')[1].strip())
-                elif line.startswith('dataset_name:'):
-                    dataset_name = line.split('dataset_name: ')[1].strip()
-                elif line.startswith('solver_parameters:'):
-                    solver_parameters = os_path + line.split('solver_parameters: ')[1].strip()
-                elif line.startswith('icons:'):
-                    icons_path = os_path + line.split('icons: ')[1].strip()
-    cache_path = "/GUI/pieces/"
-    cache_path = os_path + cache_path
-    path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path, 'comp_path': comp_path,
-                'pieces_path': pieces_path, 'comp_folder': comp_folder, 'comp_name': comp_name,
-                'rotation_intervals': rotation_intervals, 'ground_truth': ground_truth,
-                'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
-                'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors,
-                'dataset_name': dataset_name, 'cache_path': cache_path, 'solver_parameters': solver_parameters, 'icons': icons_path}
-    backend_path = backend_path
-    rotation_interval = float(rotation_intervals) / 2
-
-    copy_to_cache()
-
-    back_end.set_path(path_dic)
 
 
 def copy_to_cache(file_extension='.png'):
@@ -1409,8 +1302,20 @@ def remove_image_from_cache(image_id):
     else:
         print(f"File {file_name} does not exist in {cache}")
 
+def get_setting():
+    global path_dic
+    global rotation_interval
+    global back_end
+    global backend_path
+
+    path_dic, rotation_intervals, backend_path = back_end.setting()
+    rotation_interval = float(rotation_intervals) / 2
+
+    copy_to_cache()
+
 if __name__ == '__main__':
-    setting()
+    get_setting()
+
     Config.set('input', 'mouse', 'mouse, multitouch_on_demand')
 
     read_ground_truth()

@@ -14,12 +14,12 @@ from shapely.affinity import rotate
 
 from enum import Enum
 
-from point_Inside import is_inside_sm
+from GUI.point_Inside import is_inside_sm
 from os import getcwd
 import numpy as np
 
 import cv2
-from PuzzlePiece import PuzzlePiece
+from GUI.PuzzlePiece import PuzzlePiece
 
 class Status(Enum):
     ACCEPTED = "accepted"

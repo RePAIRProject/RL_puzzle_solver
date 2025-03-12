@@ -4,11 +4,11 @@ from threading import Thread, Event, Lock
 from scipy.io import loadmat
 from scipy.spatial import KDTree
 
-import select_anchor_RePAIR
-import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
+import GUI.select_anchor_RePAIR as select_anchor_RePAIR
+import GUI.RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
 import json
 import numpy as np
-from kivymd.app import MDApp
+# from kivymd.app import MDApp
 import math
 
 class BackEnd:
@@ -140,6 +140,10 @@ class BackEnd:
             answer = self.scale_solution(answer)
         return answer, probability, process
 
+    def get_API_solution(self):
+        answer, probability, process = puzzle_solver.get_solution_dict()
+        return answer, probability, process
+
     def solver_toggle_lock(self, value):
         puzzle_solver.toggle_lock(value)
 
@@ -157,8 +161,8 @@ class BackEnd:
         # pl_solution = combined_throw_away(pl_solution, probability, initial_thresh, min_remaining, average_thresh_factor)
         self.set_pl_solver_running(False)
         self.set_pl_solver_done(True)
-
-        self.main_app.show_solutions()
+        if self.main_app is not None:
+            self.main_app.show_solutions()
 
     def throw_away_1(self, solution, probability, thresh_hold):
         for key in list(solution.keys()):
@@ -318,9 +322,12 @@ class BackEnd:
         self.select_neighbour_thread = Thread(target=self.select_neighbour_thread_function, daemon=True)
         self.select_neighbour_thread.start()
 
-    def start_pl_solver_thread(self, last_loop_solution):
-        self.input_dict = {'anchor': self.key_fragment, 'neighbours': self.neighbour_ids, 'solved_pieces': self.solved_pieces, 'puzzle': "repair_g28"}
-        self.input_dict.update({'solved_pieces': last_loop_solution})
+    def start_pl_solver_thread(self, key_fragment, neighbour_ids, solved_pieces):
+        print('key_fragment', key_fragment)
+        print('neighbour_ids', neighbour_ids)
+        self.input_dict = {'anchor': key_fragment, 'neighbours': neighbour_ids, 'solved_pieces': solved_pieces}
+
+        print("input_dict", self.input_dict)
         select_pl_solver = Thread(target=self.pl_solver_thread_function, daemon=True)
         select_pl_solver.start()
 
@@ -435,6 +442,112 @@ class BackEnd:
         if max_x1 < min_x2 or max_x2 < min_x1 or max_y1 < min_y2 or max_y2 < min_y1:  # One is completely to the left/right of the other
             return False
         return True  # No collision
+
+    def setting(self):  # unified path setting
+        path_dic = ""
+        image_path = ""
+        mask_path = ""
+        comp_path = ""
+        pieces_path = ""
+        comp_folder = ""
+        comp_name = ""
+        ground_truth = ""
+        dataset_name = ""
+        cache_path = ""
+        icons_path = ""
+        apply_gt = False
+        number_of_neighbours = 3
+        number_of_anchors = 4
+        solver_parameters = ""
+        setting_dir = os.path.join(os.getcwd(), "GUI")
+        setting_path = os.path.join(setting_dir, "setting.txt")
+        if not os.path.exists(setting_path):
+            with open(setting_path, "w") as setting_file:
+                setting_file.writelines(["image_path: /GUI/DataBase/Images/RePAIR_plaque_2/RGBA_merged/",
+                                         "\n",
+                                         "mask_path: /GUI/DataBase/Images/RePAIR_plaque_2/FG_merged/",
+                                         "\n",
+                                         "backend_path: /GUI/DataBase/Images/RePAIR_plaque_2/",
+                                         "\n",
+                                         "comp_path: /GUI/DataBase/output/repair_g28/compatibility_parameters.json",
+                                         "\n",
+                                         "pieces_path: /GUI/DataBase/output/repair_g28/pieces/",
+                                         "\n",
+                                         "comp_folder: /GUI/DataBase/output/repair_g28/compatibility_matrix/",
+                                         "\n",
+                                         "comp_name: CM_linesdet_manual_cost_LAP.mat",
+                                         "\n",
+                                         "Rotation_Intervals: 1",
+                                         "\n",
+                                         "number_of_neighbours: 3",
+                                         "\n",
+                                         "comp_format: R_line",
+                                         "\n",
+                                         "apply_gt: False",
+                                         "\n",
+                                         "parameters: /GUI/DataBase/output/repair_g28/compatibility_parameters.json",
+                                         "\n",
+                                         "number_of_anchors: 4",
+                                         "\n",
+                                         "dataset_name: RePair_group_28",
+                                         "\n",
+                                         "icons: /GUI/Icons/",
+                                         "\n"
+                                         ])
+        os_path = os.getcwd()
+        if os.path.exists(setting_path):
+            with open(setting_path, 'r') as setting_file:
+                lines = setting_file.readlines()
+                for line in lines:
+                    if line.startswith('image_path:'):
+                        image_path = os_path + line.split('image_path: ')[1].strip()
+                    elif line.startswith('mask_path:'):
+                        mask_path = os_path + line.split('mask_path: ')[1].strip()
+                    elif line.startswith('backend_path:'):
+                        backend_path = os_path + line.split('backend_path: ')[1].strip()
+                    elif line.startswith('comp_path:'):
+                        comp_path = os_path + line.split('comp_path: ')[1].strip()
+                    elif line.startswith('pieces_path:'):
+                        pieces_path = os_path + line.split('pieces_path: ')[1].strip()
+                    elif line.startswith('comp_folder:'):
+                        comp_folder = os_path + line.split('comp_folder: ')[1].strip()
+                    elif line.startswith('comp_name:'):
+                        comp_name = line.split('comp_name: ')[1].strip()
+                    elif line.startswith('Rotation_Intervals:'):
+                        rotation_intervals = line.split('Rotation_Intervals: ')[1].strip()
+                    elif line.startswith('ground_truth:'):
+                        ground_truth = os_path + line.split('ground_truth: ')[1].strip()
+                    elif line.startswith('number_of_neighbours:'):
+                        number_of_neighbours = int(line.split('number_of_neighbours: ')[1].strip())
+                    elif line.startswith('comp_format:'):
+                        comp_format = line.split('comp_format: ')[1].strip()
+                    elif line.startswith('apply_gt:'):
+                        apply_gt = line.split('apply_gt: ')[1].strip()
+                    elif line.startswith('parameters:'):
+                        parameters = os_path + line.split('parameters: ')[1].strip()
+                    elif line.startswith('number_of_anchors:'):
+                        number_of_anchors = int(line.split('number_of_anchors: ')[1].strip())
+                    elif line.startswith('dataset_name:'):
+                        dataset_name = line.split('dataset_name: ')[1].strip()
+                    elif line.startswith('solver_parameters:'):
+                        solver_parameters = os_path + line.split('solver_parameters: ')[1].strip()
+                    elif line.startswith('icons:'):
+                        icons_path = os_path + line.split('icons: ')[1].strip()
+        cache_path = "/GUI/pieces/"
+        cache_path = os_path + cache_path
+        path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path,
+                    'comp_path': comp_path,
+                    'pieces_path': pieces_path, 'comp_folder': comp_folder, 'comp_name': comp_name,
+                    'rotation_intervals': rotation_intervals, 'ground_truth': ground_truth,
+                    'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
+                    'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors,
+                    'dataset_name': dataset_name, 'cache_path': cache_path, 'solver_parameters': solver_parameters,
+                    'icons': icons_path}
+
+        self.set_path(path_dic)
+
+        return path_dic, rotation_intervals, backend_path
+
 
 
 
