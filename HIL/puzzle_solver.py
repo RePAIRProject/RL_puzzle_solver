@@ -58,11 +58,17 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
 
     neighbours = fragments_list['neighbours']
     solved_pieces = fragments_list['solved_pieces']
-    puzzle = fragments_list['puzzle']
+    # puzzle = fragments_list['puzzle']
 
     pieces_folder = path_dic['pieces_path']
 
     cmp_parameter_path = path_dic['comp_path']
+
+    if not anchor_piece.endswith(".png"):
+        anchor_piece += ".png"
+
+    neighbours = [n + ".png" if not n.endswith(".png") else n for n in neighbours]
+
     if os.path.exists(cmp_parameter_path):
         ppars = {}
         with open(cmp_parameter_path, 'r') as cp:
@@ -114,8 +120,8 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     for i in range(len(pieces_to_include)):
         pieces_included.append(pieces_names[pieces_to_include[i]])
 
-    # print("piece names", pieces_included)
-    puzzle_solver.__init__(ppars, pieces_included)
+    print("piece names", pieces_included)
+    puzzle_solver.__init__(ppars, pieces_included)\
 
     solution = puzzle_solver.solve_puzzle(R, anchor, pieces_included, ppars, path_dic,
                             return_as=return_solution_as, solved_pieces=solved_pieces)
