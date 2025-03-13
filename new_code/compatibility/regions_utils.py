@@ -1,4 +1,5 @@
 import numpy as np 
+import os
 # import features_utils as fts_uts
 from utils.puzzle_utils import Puzzle 
 from compatibility.compatibility_utils import PuzzleGrid, PieceOnCanvas

@@ -26,22 +26,23 @@
 │   │   └── features_default.yaml       # the default parameters for extracting features
 │   │
 │   └── experiments/                    # experiments (running RM, CM, Solver)
-│       ├── exp_random                  # each single experiment has a folder with exp_{random string} as a name
-│       │   ├── experiment.yaml         # configuration file with input parameters (copy of input_parameters.yaml)
-│       │   ├── history.yaml            # configuration file with output parameters (computed)
-│       │   ├── regions/                # region matrix folder 
-│       │   │   ├── visualization       # visualization    
-│       │   │   └── RM.mat/npy          # file with values of RM
-│       │   ├── compatibilities/        # lines 
-│       │   │   ├── visualization       # visualization    
-│       │   │   └── R.mat/npy           # file with values of R
-│       │   ├── solution/        
-│       │   │   ├── visualization       # visualization    
-│       │   │   └── P.mat/npy           # file with final values of P   
-│       │   └── metrics/   
-│       │       └── evaluation.json     # numerical evaluation (when available)   
-│       ├── exp_rand02/..
-│       └── exp_rand03/..
+│       └── repair_g3                   # name of the puzzle
+│           ├── exp_random                  # each single experiment has a folder with exp_{random string} as a name
+│           │   ├── experiment.yaml         # configuration file with input parameters (copy of input_parameters.yaml)
+│           │   ├── history.yaml            # configuration file with output parameters (computed)
+│           │   ├── regions/                # region matrix folder 
+│           │   │   ├── visualization       # visualization    
+│           │   │   └── RM.mat/npy          # file with values of RM
+│           │   ├── compatibilities/        # lines 
+│           │   │   ├── visualization       # visualization    
+│           │   │   └── R.mat/npy           # file with values of R
+│           │   ├── solution/        
+│           │   │   ├── visualization       # visualization    
+│           │   │   └── P.mat/npy           # file with final values of P   
+│           │   └── metrics/   
+│           │       └── evaluation.json     # numerical evaluation (when available)   
+│           ├── exp_rand02/..
+│           └── exp_rand03/..
 │                                       # CODE-related part
 ├── input_parameters.yaml               # ALL (?) input parameters (including preproc? and features?)
 ├── default.yaml                        # default values (when they are not set, take these!)
