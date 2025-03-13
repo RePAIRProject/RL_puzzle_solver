@@ -1,17 +1,19 @@
 ---  # yaml document beginning
 # comment syntax
----
+
+puzzle_name: RPobj_g3_o0003_gt_rot
+
 preprocessing:
   piece_size: 251
 
----
 features:
   lines:
+    extracted: No
     detection_method: deeplsd
   motif:
+    extracted: Yes
     detection_method: yolo-seg
 
----
 compatibility:
   grid: 
     xy_step: 3
@@ -23,20 +25,24 @@ compatibility:
     borders_dilation: 1
     borders_erosion: 1
   # actual compatibility score calculation
-  shape: 
-    sigma: 1
-    SDF_dilation: 35 # TODO: check if it should be different from borders dilstion!
-  lines:
-    thr_coef: 0.13
-    max_dist: 6 # could be changed during calculation (it is an upper bound)
-    badmatch_penalty: 5 # again upper bound
-    mismatch_penalty: 1 # repair
-    k: 3
-    cmp_cost: 'LAP'
-    # rmax: calculated 
-    # border_tolerance: calculated
+  features:
+    shape: 
+      enabled: Yes
+      sigma: 1
+      SDF_dilation: 35 # TODO: check if it should be different from borders dilstion!
+    lines:
+      enabled: No
+      thr_coef: 0.13
+      max_dist: 6 # could be changed during calculation (it is an upper bound)
+      badmatch_penalty: 5 # again upper bound
+      mismatch_penalty: 1 # repair
+      k: 3
+      cmp_cost: 'LAP'
+      # rmax: calculated 
+      # border_tolerance: calculated
+    motives: 
+      enabled: No
 
----
 solver:
   T_first: 1000
   T_next: 500

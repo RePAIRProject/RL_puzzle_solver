@@ -1,5 +1,5 @@
 import numpy as np 
-from parameters_utils import PuzzleDaedalus
+from parameters_utils import Configuration
 
 class PuzzleFeatures:
     """
@@ -27,8 +27,8 @@ def load_features(pieces: list, puzzle_name: str):
     """
     defined as a method to be called without the need to initialize extra objects 
     """
-    features_extracted = PuzzleDaedalus.get_features_extracted(puzzle_name=puzzle_name)
-    puzzle_feats = PuzzleFeatures(puzzle_features_root_folder = PuzzleDaedalus.get_puzzle_features_subfolder(puzzle_name=puzzle_name))
+    features_extracted = Configuration.get_features_extracted(puzzle_name=puzzle_name)
+    puzzle_feats = PuzzleFeatures(puzzle_features_root_folder = Configuration.get_puzzle_features_subfolder(puzzle_name=puzzle_name))
     for piece in pieces:
         for feature in features_extracted:
             piece[feature] = puzzle_feats.extract_feature(piece, feature)
