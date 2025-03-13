@@ -24,6 +24,7 @@ compatibility:
   regions:
     borders_dilation: 1
     borders_erosion: 1
+    threshold_ovelrap_shapes: 
   # actual compatibility score calculation
   features:
     shape: 

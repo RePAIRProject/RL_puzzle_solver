@@ -83,8 +83,7 @@ class PieceOnCanvas:
         polygon = shapely.affinity.rotate(piece.data.polygon, -theta, origin=piece.data.img_center)
         #piece_mask = (piece_mask > eps_mh).astype(np.uint8)
         if enabled_features['shape'] == True:
-            breakpoint()
-            sdf = scipy.ndimage.rotate(piece.features.sdf, theta, reshape=False, mode='constant', order=0)
+            sdf = scipy.ndimage.rotate(piece.features.sdf.data, theta, reshape=False, mode='constant', order=0)
         if enabled_features['lines'] == True:
             lines_mask = scipy.ndimage.rotate(piece.features.lines_mask, theta, reshape=False, mode='constant', order=0, prefilter=False)
             lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_CLOSE, closing_kernel)
@@ -96,9 +95,9 @@ class PieceOnCanvas:
         # then we place them into their canvas version
         self.image[y_c0:y_c1, x_c0:x_c1, :] = image
         self.mask[y_c0:y_c1, x_c0:x_c1] = mask
-        self.polygon = shapely.affinity.transform(polygon, lambda f: f + [x,y] - piece.data.img_center)
+        self.polygon = shapely.transform(polygon, lambda f: f + [x,y] - piece.data.img_center)
         if enabled_features['shape'] == True:
-            self.sdf[y_c0:y_c1, x_c0:x_c1, :] = sdf
+            self.sdf[y_c0:y_c1, x_c0:x_c1] = sdf
         if enabled_features['lines'] == True:
             self.lines_mask[y_c0:y_c1, x_c0:x_c1, :] = lines_mask
         if enabled_features['motives'] == True:

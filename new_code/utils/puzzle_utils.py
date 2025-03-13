@@ -94,8 +94,8 @@ class Puzzle:
         """
         Loads the data (images, masks and polygon) and fill the properties of the Puzzle object
         """
-        self.puzzle_name = puzzle_name
-        cfg = Configuration(puzzle_name=puzzle_name)
+        self.name = puzzle_name
+        cfg = Configuration(puzzle_name=self.name)
         images_subfolder = cfg.get_puzzle_images_subfolder()
         masks_subfolder = cfg.get_puzzle_masks_subfolder()
         polygons_subfolder = cfg.get_puzzle_polygons_subfolder()

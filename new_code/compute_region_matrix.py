@@ -38,17 +38,17 @@ def main(args):
     puzzle.load('RPobj_g3_o0003_gt_rot') #, features=True)
 
     cfg = Configuration('RPobj_g3_o0003_gt_rot') # this contains all IO operations plus the folder structure
-    params = cfg.load('input_parameters.yaml') # basic reading in this case
+    params = cfg.load('input_parameters.yaml')   # basic reading in this case
 
     rmm = RegionMatrixModule(puzzle, params)    
     rmm.prepare() # creates grid, adjust/compute parameters and so on
     rmm.compute()
     rmm.save()
 
-    rmm = RegionMatrixModule(input&data, json)
-    rmm.prepare() # creates grid, adjust/compute parameters and so on
-    rmm.compute_CM()
-    rmm.save()
+    # rmm = RegionMatrixModule(input&data, json)
+    # rmm.prepare() # creates grid, adjust/compute parameters and so on
+    # rmm.compute_CM()
+    # rmm.save()
 
 
 

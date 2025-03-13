@@ -2,6 +2,9 @@ import numpy as np
 # import features_utils as fts_uts
 from utils.puzzle_utils import Puzzle 
 from compatibility.compatibility_utils import PuzzleGrid, PieceOnCanvas
+from utils.parameters_utils import Configuration
+import cv2 
+from PIL import Image
 
 class RegionMatrixModule:
     """
@@ -23,8 +26,9 @@ class RegionMatrixModule:
         # here we need to load stuff from the yaml file
         self.features_status = {}
         self.features = []
-        self.check_features_status()
-        
+        self.check_features_status()      
+        self.cfg = Configuration(puzzle.name) 
+        self.exp_folder = self.cfg.get_puzzle_single_run_random_folder_name()
 
     def check_features_status(self):
         features = self.params['compatibility']['features']
@@ -55,7 +59,10 @@ class RegionMatrixModule:
         self.grid = PuzzleGrid(self.params['compatibility']['grid'], self.piece_size)
         self.regions_dilation = self.params['compatibility']['regions']['borders_dilation']
         self.regions_erosion = self.params['compatibility']['regions']['borders_erosion']
-        self.RM_size = (self.grid.xy_points, self.grid.xy_points, self.grid.theta_points)
+        self.threshold_overlap_shapes = self.piece_size / 6 # it was /2 !
+        self.threshold_overlap_lines = self.piece_size / 8
+        self.threshold_overlap_motifs = self.piece_size / 5
+        self.RM_size = (self.grid.xy_points, self.grid.xy_points, self.grid.theta_points, self.puzzle.num_of_pieces, self.puzzle.num_of_pieces)
         self.RM = {
             'shape': np.zeros(self.RM_size)
         }
@@ -85,29 +92,39 @@ class RegionMatrixModule:
             self.RM = np.load(file_path)
             self.features = []
 
+    def save(self):
+        breakpoint()
+        os.makedirs(self.exp_folder, exist_ok=True)
+        rm_path = os.path.join(self.exp_folder, 'RM.npy')
+        np.save(rm_path, self.RM)
+
     def compute(self, verbose=1):
         """
         Computes the region matrix for all pairs of pieces 
         for all features we have extracted
+        This works calling the "pairwise" RM, can be good for debug
         """
         for i in range(self.puzzle.num_of_pieces):
             for j in range(self.puzzle.num_of_pieces):
                 # here we compute the "basic" shape-based RM
-                self.RM['shape'][:, :, :, j, i] = self.compute_pairwise_shape_based_RM(i, j)
+                # self.RM['shape'][:, :, :, j, i] = self.compute_pairwise_shape_based_RM(i, j)
                 for feature in self.features:
                     if self.features_status[feature] == True:
                         self.RM[feature][:, :, :, j, i] = self.compute_pairwise_feature_RM_wrapper(i, j, feature)
                     else:
-                        print(f"{feature} is disabled, skipping.")
+                        if verbose > 1:
+                            print(f"{feature} is disabled, skipping.")
 
     def compute_pairwise_feature_RM_wrapper(self, i: int, j: int, feature: str):
         """
         Just a wrapper, will decide which method to call depending on the feature
         """
-        if feature == 'lines':
-            RM = self.compute_pairwise_line_based_RM()
+        if feature == 'shape':
+            RM = self.compute_pairwise_shape_based_RM(i, j)
+        elif feature == 'lines':
+            RM = self.compute_pairwise_line_based_RM(i, j)
         elif feature == 'motif':
-            RM = self.compute_pairwise_motif_based_RM()
+            RM = self.compute_pairwise_motif_based_RM(i, j)
         else:
             raise Exception(f"{feature}-based RM not implemented yet!")
 
@@ -136,24 +153,23 @@ class RegionMatrixModule:
         """
         Shape based RM with 1, 0 and -1 regions
         """
-        breakpoint()
         RM = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2]))
         piece_i_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[i], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
         # piece_i_on_canvas = pcs_uts.place_on_canvas(piece_i, (center_pos, center_pos), self.canvas_size, 0)
         for theta_idx in range(self.RM_size[2]):
-            theta = theta_idx * self.theta_step
+            theta = theta_idx * self.grid.theta_step
             piece_j_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[j], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=theta, enabled_features=self.features_status)
             # piece_j_on_canvas = pcs_uts.place_on_canvas(piece_j, (center_pos, center_pos), self.canvas_size, t * self.theta_step)
             # SHAPE case - BASIC
             overlap_shapes = cv2.filter2D(piece_i_on_canvas.mask, -1, piece_j_on_canvas.mask)
-            thresholded_regions_map = (overlap_shapes > self.threshold_overlap).astype(np.int32)
+            thresholded_regions_map = (overlap_shapes > self.threshold_overlap_shapes).astype(np.int32)
             
             if dilate == True:
-                border_dilation = int(self.regions_dilation * self.xy_step)
+                border_dilation = int(self.regions_dilation * self.grid.xy_step)
             else:
                 border_dilation = 1
             if erode == True:
-                border_erosion = int(self.regions_erosion * self.xy_step)
+                border_erosion = int(self.regions_erosion * self.grid.xy_step)
             else:
                 border_erosion = 1
 
@@ -167,11 +183,11 @@ class RegionMatrixModule:
             thr_reg_map_shape_uint = (thresholded_regions_map + 1).astype(np.uint8)
             thr_reg_map_comp_range = thr_reg_map_shape_uint[self.p_hs + 1:-(self.p_hs + 1), self.p_hs + 1:-(self.p_hs + 1)]
             resized_shape = np.array(Image.fromarray(thr_reg_map_comp_range).resize((self.RM_size[0], self.RM_size[1]), Image.Resampling.NEAREST))
-            RM[:,:,t] = (resized_shape.astype(np.int32) - 1)
+            RM[:,:,theta_idx] = (resized_shape.astype(np.int32) - 1)
 
         return RM
 
-    def get_borders_around(mask, border_dilation=3, border_erosion=3):
+    def get_borders_around(self, mask, border_dilation=3, border_erosion=3):
         """
         Get the borders around the mask contour (border_erosion outside, border_dilation inside) 
         """
