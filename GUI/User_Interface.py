@@ -320,7 +320,7 @@ class GUIApp(MDApp):
         if update_started:
             # couple = (current_image.name, current_image.position_memory)
             # back_end.set_p_elements(couple, self.image_offset)
-            current_image.set_anchor(True)
+            # current_image.set_anchor(True)
             neighbour = check_neighbouring_collision(current_image)
             print('neighbour', neighbour)
             update_compatibility_matrix(current_image, neighbour, True)
@@ -343,7 +343,7 @@ class GUIApp(MDApp):
         if update_started:
             # couple = (current_image.name, current_image.position_memory)
             # back_end.set_p_elements(couple, self.image_offset)
-            current_image.set_anchor(False)
+            # current_image.set_anchor(False)
             neighbour = check_neighbouring_collision(current_image)
             print('neighbour', neighbour)
             update_compatibility_matrix(current_image, neighbour, False)
