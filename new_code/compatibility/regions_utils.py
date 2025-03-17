@@ -4,6 +4,7 @@ import os
 from utils.puzzle_utils import Puzzle 
 from compatibility.compatibility_utils import PuzzleGrid, PieceOnCanvas
 from utils.parameters_utils import Configuration
+from utils.visualization_utils import crop_to_content
 import cv2 
 from PIL import Image
 
@@ -64,6 +65,7 @@ class RegionMatrixModule:
         self.threshold_overlap_lines = self.piece_size / 8
         self.threshold_overlap_motifs = self.piece_size / 5
         self.RM_size = (self.grid.xy_points, self.grid.xy_points, self.grid.theta_points, self.puzzle.num_of_pieces, self.puzzle.num_of_pieces)
+        self.RM_computed = False
         self.RM = {
             'shape': np.zeros(self.RM_size)
         }
@@ -115,6 +117,9 @@ class RegionMatrixModule:
                     else:
                         if verbose > 1:
                             print(f"{feature} is disabled, skipping.")
+        self.RM_computed = True
+        if verbose > 1:
+            print("RM computed!")
 
     def compute_pairwise_feature_RM_wrapper(self, i: int, j: int, feature: str):
         """
@@ -198,8 +203,53 @@ class RegionMatrixModule:
         eroded_mask = cv2.erode(mask, kernel_erosion)
         return dilated_mask - eroded_mask
 
+    def save_candidate_alignments_to_file(self):
+        """
+        Save to files (images) the image-version of the points in the RM which are positive!
+        It is used to "see" the candidate alignments of each pairs "accepted" from the region_matrix computation
+        """
+        assert self.RM_computed == True, "Please run RMM.compute() first! Saving candidate alignments requires values on the RM matrix!"
+        self.combine_RMs()
+        for i in range(self.puzzle.num_of_pieces):
+            for j in range(self.puzzle.num_of_pieces):
+                relative_transformations_mat = self.combined_RM[:,:,:,j,i]
+                # path
+                relative_transformations_folder_pair = os.path.join(self.exp_folder, 'relative_transformations_images', f"pieces_{i}_vs_{j}")
+                os.makedirs(relative_transformations_folder_pair, exist_ok=True)
+                valid_rel_t_values = np.where(relative_transformations_mat > 0)
+                x_ids, y_ids, theta_ids = valid_rel_t_values
+                assert len(x_ids) == len(y_ids) == len(theta_ids), "something went wrong during the extraction of the values from the combined matrix!"
+                for k in range(len(x_ids)):
+                    image_relative_transf = self.render_pair_at(i, j, x_ids[k], y_ids[k], theta_ids[k])
+                breakpoint()
+                img_path = os.path.join(relative_transformations_folder_pair, f'candidate_assembly_{k}_x{x_ids[k]}_y{y_ids[k]}_theta{theta_ids[k]}')
+                cv2.imwrite(img_path, image_relative_transf)
+                plt.imsave(img_path, image_relative_transf)
+                # rm_path = os.path.join(self.exp_folder, 'RM.npy')
+                # np.save(rm_path, self.RM)
 
+    def render_pair_at(self, i: int, j: int, xj: int, yj: int, thetaj: int):
+        """
+        It places the two pieces on a virtual canvas with piece_i at the center and piece_j at xj, yj, thetaj and returns the image
+        """
+        piece_i_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[i], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
+        # TODO
+        # piece_j_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[j], grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+        rendered_image = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
+        if crop == True:
+            rendered_image = crop_to_content(rendered_image, padding=padding, max_noise=5)
+        rendered_image = cv2.cvtColor(rendered_image.astype(np.uint8), cv2.COLOR_BGR2RGB)
+        return rendered_image
 
-
-
-
+    def combine_RMs(self):
+        """
+        Combine the region matrices, knowing that:
+        - shape has positive, zero and negative values
+        - feature-based have positive and zero values
+        """
+        negative_region = self.RM['shape'] < 0
+        combined_positive_region = self.RM['shape'] * (self.RM['shape'] > 0).astype(int)
+        for feature in self.features:
+            if self.features_status[feature] == True:
+                combined_positive_region *= self.RM[feature] * (self.RM[feature] > 0).astype(int)
+        self.combined_RM = combined_positive_region - negative_region

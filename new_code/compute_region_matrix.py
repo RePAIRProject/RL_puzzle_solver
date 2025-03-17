@@ -43,6 +43,7 @@ def main(args):
     rmm = RegionMatrixModule(puzzle, params)    
     rmm.prepare() # creates grid, adjust/compute parameters and so on
     rmm.compute()
+    rmm.save_candidate_alignments_to_file()
     rmm.save()
 
     # rmm = RegionMatrixModule(input&data, json)
