@@ -111,19 +111,17 @@ class PuzzleSolver:
         gaussian_adjustment = np.exp(-((X - x) ** 2 + (Y - y) ** 2 + (R - r) ** 2) / (2 * sigma ** 2))
 
         # Update probabilities for the specific piece
-        with self.p_matrix_lock:
-            self.probability_matrix[:, :, :, piece_number] *= (1 - gaussian_adjustment)
-            self.probability_matrix[x, y, r, piece_number] += gaussian_adjustment[x, y, r]
+        # with self.p_matrix_lock:
+        self.probability_matrix[:, :, :, piece_number] *= (1 - gaussian_adjustment)
+        self.probability_matrix[x, y, r, piece_number] += gaussian_adjustment[x, y, r]
 
-            # Normalize probabilities to ensure they sum to 1
-            self.probability_matrix[:, :, :, piece_number] /= np.sum(self.probability_matrix[:, :, :, piece_number])
+        # Normalize probabilities to ensure they sum to 1
+        self.probability_matrix[:, :, :, piece_number] /= np.sum(self.probability_matrix[:, :, :, piece_number])
 
-            self.probability_matrix[:, :, :, piece_number] = 0
-            self.probability_matrix[x, y, r, piece_number] = 1
+        self.probability_matrix[:, :, :, piece_number] = 0
+        self.probability_matrix[x, y, r, piece_number] = 1
 
     def repair_lock_toggle(self, value):
-        print("here")
-
         if value:  # If value is True, lock the program
             if not self.repair_lock.locked():  # Ensure it's not already locked
                 self.repair_lock.acquire()
