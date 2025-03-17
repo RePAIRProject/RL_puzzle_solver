@@ -291,7 +291,10 @@ class MovableImage(Image):
 
     def deselect(self):
         self.is_selected = False
-        self.set_color((1, 1, 1, 1))
+        if self.is_anchor:
+            self.set_color((0.6, 1, 0.6, 1))
+        else:
+            self.set_color((1, 1, 1, 1))
 
     def set_probability(self, probability):
         probability = np.round(probability * 100)
@@ -299,7 +302,10 @@ class MovableImage(Image):
             self.set_color((1, 1, 1, 0.25)) # transparent
         else:
             alpha = probability / 100
-            self.set_color((1, 1, 1, alpha)) # gradually transparent to original
+            if self.is_anchor:
+                self.set_color((0.6, 1, 0.6, alpha))
+            else:
+                self.set_color((1, 1, 1, alpha)) # gradually transparent to original
 
     def select_toggle(self):
         if self.is_selected:
@@ -320,6 +326,14 @@ class MovableImage(Image):
 
     def set_is_grabbed(self, is_grabbed):
         self.is_grabbed = is_grabbed
+
+    def set_anchor(self, value):
+        if value:
+            self.is_anchor = True
+            self.set_color((0.6, 1, 0.6, 1))
+        else:
+            self.is_anchor = False
+            self.set_color((1, 1, 1, 1))
 
     def extract_bounding_box(self):
         """

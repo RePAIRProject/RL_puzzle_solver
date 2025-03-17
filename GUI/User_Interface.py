@@ -320,7 +320,7 @@ class GUIApp(MDApp):
         if update_started:
             # couple = (current_image.name, current_image.position_memory)
             # back_end.set_p_elements(couple, self.image_offset)
-            current_image.is_anchor = True
+            current_image.set_anchor(True)
             neighbour = check_neighbouring_collision(current_image)
             print('neighbour', neighbour)
             update_compatibility_matrix(current_image, neighbour, True)
@@ -343,7 +343,7 @@ class GUIApp(MDApp):
         if update_started:
             # couple = (current_image.name, current_image.position_memory)
             # back_end.set_p_elements(couple, self.image_offset)
-            current_image.is_anchor = False
+            current_image.set_anchor(False)
             neighbour = check_neighbouring_collision(current_image)
             print('neighbour', neighbour)
             update_compatibility_matrix(current_image, neighbour, False)
@@ -406,15 +406,21 @@ class GUIApp(MDApp):
             image = image_reader(i, scores[i], has_score)
             # image.fit_mode = "contain"
             if image.name in last_anchors:
-                image.is_anchor = True
+                image.set_anchor(True)
             self.current_image_list.append(image)
         self.initial_image_updates = False
 
     def on_checkbox_active(self, checkbox, value):
-        print(value)
+        print("here")
         if hasattr(self, 'grabbed_image') & (self.sidebar.opacity == 1):
             if self.grabbed_image is not None:
-                self.grabbed_image.is_anchor = value
+                self.grabbed_image.set_anchor(value)
+            if value:
+                if update_started:
+                    couple = (self.grabbed_image.name, self.grabbed_image.position_memory)
+                    back_end.set_p_elements(couple, self.image_offset)
+                    self.grabbed_image.set_anchor(True)
+
 
     def toggle_sidebar(self, on_off, true_false):
         # Toggle sidebar visibility
@@ -451,10 +457,10 @@ class GUIApp(MDApp):
             self.hold_left = False
             # if self.keyboard_input != 305:
             if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
-                if update_started:
-                    couple = (self.grabbed_image.name, self.grabbed_image.position_memory)
-                    back_end.set_p_elements(couple, self.image_offset)
-                    self.grabbed_image.is_anchor = True
+                # if update_started:
+                #     couple = (self.grabbed_image.name, self.grabbed_image.position_memory)
+                #     back_end.set_p_elements(couple, self.image_offset)
+                #     self.grabbed_image.is_anchor = True
                 self.grabbed_image.set_is_grabbed(False)
                 self.grabbed_image.deselect()
             if hasattr(self, 'selection_rect'):
@@ -823,7 +829,7 @@ def start_select_neighbour(self):
         elif image.get_id() == app.key_fragment_id:
             app.key_fragments.append(image)
             app.key_list.append(image.get_id())
-            image.is_anchor = True
+            image.set_anchor(True)
             # app.key_list.append(image.get_id())
 
     # # app.key_fragments = [app.key_fragment_id]
