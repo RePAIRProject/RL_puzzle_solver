@@ -76,9 +76,11 @@ class RegionMatrixModule:
         self.RM = {
             'shape': np.zeros(self.RM_size)
         }
-        for feature in self.features:
-            if self.features_status[feature] == True:
-                self.RM[feature] = np.zeros(self.RM_size)
+        # Not true, different features may have different RM sizes! 
+        # motives for example has one more channel
+        # for feature in self.features:
+        #     if self.features_status[feature] == True:
+        #         self.RM[feature] = np.zeros(self.RM_size)
         
 
     def load_from_file(self, file_path: str):
@@ -114,41 +116,153 @@ class RegionMatrixModule:
         for all features we have extracted
         This works calling the "pairwise" RM, can be good for debug
         """
-        for i in range(self.puzzle.num_of_pieces):
-            for j in range(self.puzzle.num_of_pieces):
-                # here we compute the "basic" shape-based RM
-                # self.RM['shape'][:, :, :, j, i] = self.compute_pairwise_shape_based_RM(i, j)
-                for feature in self.features:
-                    if self.features_status[feature] == True:
-                        self.RM[feature][:, :, :, j, i] = self.compute_pairwise_feature_RM_wrapper(i, j, feature)
-                    else:
-                        if verbose > 1:
-                            print(f"{feature} is disabled, skipping.")
-        self.RM_computed = True
-        if verbose > 1:
-            print("RM computed!")
+        for feature in self.features:
+            if self.features_status[feature] == True:
+                self.RM[feature] = self.compute_feature_based_RM_wrapper(feature, verbose=verbose)
+                if verbose > 1:
+                    print(f"{feature}-based RM computed!")
+            else:
+                if verbose > 1:
+                    print(f"{feature}-based RM skipped, as {feature} is disabled!")
 
-    def compute_pairwise_feature_RM_wrapper(self, i: int, j: int, feature: str):
+
+        # for i in range(self.puzzle.num_of_pieces):
+        #     for j in range(self.puzzle.num_of_pieces):
+                
+        #         self.RM['shape'][:, :, :, j, i] = self.compute_pairwise_shape_based_RM(i, j)
+                
+        #                 self.RM[feature][:, :, :, j, i] = self.compute_pairwise_feature_RM_wrapper(i, j, feature)
+        #             else:
+        #                 if verbose > 1:
+        #                     print(f"{feature} is disabled, skipping.")
+        # self.RM_computed = True
+        
+
+    def compute_feature_based_RM_wrapper(self, feature: str, verbose: int = 0):
         """
         Just a wrapper, will decide which method to call depending on the feature
         """
         if feature == 'shape':
-            RM = self.compute_pairwise_shape_based_RM(i, j)
+            RM = self.compute_shape_based_RM(verbose=verbose)
         elif feature == 'lines':
-            RM = self.compute_pairwise_line_based_RM(i, j)
-        elif feature == 'motif':
-            RM = self.compute_pairwise_motif_based_RM(i, j)
+            RM = self.compute_line_based_RM(verbose=verbose)
+        elif feature == 'motives':
+            RM = self.compute_motif_based_RM(verbose=verbose)
         else:
             raise Exception(f"{feature}-based RM not implemented yet!")
 
         return RM 
+
+    def compute_shape_based_RM(self, verbose: int = 0):
+        """Loops over pairs of pieces - not symmetric yet"""
+        RM_shape = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2], self.puzzle.num_of_pieces, self.puzzle.num_of_pieces))
+        if verbose > 1:
+            print()
+        for i in range(self.puzzle.num_of_pieces):
+            for j in range(self.puzzle.num_of_pieces):
+                if i != j:
+                    if verbose > 1:
+                        print(f'computing shape-based RM[:, :, :, {i:02d}, {j:02d}]', end='\r')
+                    RM_shape[:, :, :, j, i] = self.compute_pairwise_shape_based_RM(i, j)
+        if verbose > 1:
+            print()
+        return RM_shape
+
+    def compute_motif_based_RM(self, verbose: int = 0):
+        """Loops over pairs of pieces - not symmetric yet"""
+        RM_motives = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2], self.puzzle.num_of_pieces, self.puzzle.num_of_pieces, self.puzzle.pieces[0].features.motives.num_of_classes))
+        if verbose > 1:
+            print()
+        for i in range(self.puzzle.num_of_pieces):
+            for j in range(self.puzzle.num_of_pieces):
+                if i != j:
+                    if verbose > 1:
+                        print(f'computing motives-based RM[:, :, :, {i:02d}, {j:02d}]', end='\r')
+                    RM_motives[:, :, :, j, i, :] = self.compute_pairwise_motif_based_RM(i, j)
+        if verbose > 1:
+            print()
+        return RM_motives
+
+    def compute_line_based_RM(self, verbose: int = 0):
+        """Loops over pairs of pieces - not symmetric yet"""
+        RM_lines = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2], self.num_of_pieces, self.num_of_pieces))
+        if verbose > 1:
+            print()
+        for i in range(self.puzzle.num_of_pieces):
+            for j in range(self.puzzle.num_of_pieces):
+                if i != j:
+                    if verbose > 1:
+                        print(f'computing line-based RM[:, :, :, {i:02d}, {j:02d}]', end='\r')
+                    RM_lines[:, :, :, j, i] = self.compute_pairwise_line_based_RM(i, j)
+        if verbose > 1:
+            print()
+        return RM_lines
+
+    # def compute_pairwise_feature_RM_wrapper(self, i: int, j: int, feature: str):
+    def dilate(self, mask, width=3):
+        """dilate wrapper for opencv-python dilate method"""
+        kernel_size = width*2+1
+        kernel = np.ones((kernel_size, kernel_size))
+        dilated_mask = cv2.dilate(mask, kernel)
+        return dilated_mask 
+
+    def compute_pairwise_motif_based_RM(self, i: int, j: int, skip_first_n_classes=2):
+
+        num_of_motives = self.puzzle.pieces[i].features.motives.num_of_classes # the number of classes used in the segmentation
+        RM_ij_motives = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2], num_of_motives))
+        piece_i_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[i], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
+        for theta_idx in range(self.RM_size[2]):
+            theta = theta_idx * self.grid.theta_step
+            piece_j_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[j], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=theta, enabled_features=self.features_status)
+            RM_motives_motives = np.zeros_like(piece_i_on_canvas.motives_cube)         # motives masks
+            RM_poly_motives = np.zeros_like(piece_i_on_canvas.motives_cube)             # shapes of pieces masks
+            # mask_mt = (piece_i_on_canvas['motif_mask'].shape[0], piece_i_on_canvas['motif_mask'].shape[1], num_of_motives))        
+            # poly_mask_mt = np.zeros((piece_i_on_canvas['motif_mask'].shape[0], piece_i_on_canvas['motif_mask'].shape[1], num_of_motives))   
+            # mask_i = piece_i_on_canvas.mask
+            for motif_class in range(skip_first_n_classes, num_of_motives, 1):
+                motif_i_mask = piece_i_on_canvas.motives_cube[:, :, motif_class]
+                motif_j_mask = piece_j_on_canvas.motives_cube[:, :, motif_class]
+                motif_i_mask = self.dilate(motif_i_mask.astype(np.uint8), width=np.floor(1 * self.grid.xy_step).astype(int))
+                motif_j_mask = self.dilate(motif_j_mask.astype(np.uint8), width=np.floor(1 * self.grid.xy_step).astype(int))
+                # if there are some values
+                if np.sum(motif_i_mask) > 0 and np.sum(motif_j_mask) > 0:
+                    RM_motives_motives[:, :, motif_class] = cv2.filter2D(motif_i_mask, -1, motif_j_mask)
+                #mask_i = dilate(mask_i.astype(np.uint8), width=np.floor(1 * ppars.xy_step).astype(int))
+                if np.sum(motif_i_mask) > 0:
+                    poly_j_vs_motif_i = cv2.filter2D(piece_j_on_canvas.mask, -1, motif_i_mask) 
+                else:
+                    poly_j_vs_motif_i = np.zeros_like(piece_j_on_canvas.mask)
+                if np.sum(motif_j_mask) > 0:
+                    poly_i_vs_motif_j = cv2.filter2D(piece_i_on_canvas.mask, -1, motif_j_mask) 
+                else:
+                    poly_i_vs_motif_j = np.zeros_like(piece_i_on_canvas.mask)
+                    
+                RM_poly_motives[:, :, motif_class] = cv2.bitwise_or(poly_j_vs_motif_i, poly_i_vs_motif_j)
+
+            binary_overlap_motifs = (RM_motives_motives > self.threshold_overlap_motifs).astype(np.int32)
+            binary_overlap_motifs_no_pad = binary_overlap_motifs[self.p_hs + 1:-(self.p_hs + 1), self.p_hs + 1:-(self.p_hs + 1),:]
+            resized_motives = cv2.resize(binary_overlap_motifs_no_pad, dsize=(self.grid.xy_num_points, self.grid.xy_num_points),
+                        interpolation=cv2.INTER_NEAREST)
+
+            binary_overlap_poly_motifs = (RM_poly_motives > self.threshold_overlap_motifs).astype(np.int32)
+            binary_overlap_poly_motifs_no_pad = binary_overlap_poly_motifs[self.p_hs + 1:-(self.p_hs + 1),
+                                            self.p_hs + 1:-(self.p_hs + 1), :]
+            resized_poly_motives = cv2.resize(binary_overlap_poly_motifs_no_pad,
+                        dsize=(self.grid.xy_num_points, self.grid.xy_num_points), interpolation=cv2.INTER_NEAREST)
+                                        
+            # combine the two temporary RMs
+            # the matrix has positive values (1) where the two motives touch, 
+            # and has negative values (-1) where one motif touches an empty part (not continued!)
+            RM_ij_motives[:, :, theta_idx, :] = 1 * resized_motives - 1 * resized_poly_motives 
+        
+        return RM_ij_motives
 
     def compute_pairwise_line_based_RM(self, i: int, j: int):
         """
         Line based RM with "positive" 1 regions and "empty" 0 regions
         It should be used in combination with shape-based, as it does not have the -1 values!
         """
-        RM = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2]))
+        RM_ij = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2]))
         piece_i_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[i], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
         for theta_idx in range(self.RM_size[2]):
             theta = theta_idx * self.theta_step
@@ -159,14 +273,14 @@ class RegionMatrixModule:
             binary_overlap_lines = (dilated_overlap_lines > self.threshold_overlap_lines).astype(np.int32)
             binary_overlap_lines_no_pad = binary_overlap_lines[self.p_hs + 1:-(self.p_hs + 1), self.p_hs + 1:-(self.p_hs + 1)]
             resized_lines = np.array(Image.fromarray(binary_overlap_lines_no_pad).resize((self.RM_size[0], self.RM_size[1]), Image.Resampling.NEAREST))
-            RM[:,:,t] = (resized_lines.astype(np.int32) - 1)
-        return RM
+            RM_ij[:,:,t] = (resized_lines.astype(np.int32) - 1)
+        return RM_ij
 
     def compute_pairwise_shape_based_RM(self, i: int, j: int, dilate: bool = True, erode: bool = True):
         """
         Shape based RM with 1, 0 and -1 regions
         """
-        RM = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2]))
+        RM_ij = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2]))
         piece_i_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[i], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
         # piece_i_on_canvas = pcs_uts.place_on_canvas(piece_i, (center_pos, center_pos), self.canvas_size, 0)
         for theta_idx in range(self.RM_size[2]):
@@ -176,10 +290,6 @@ class RegionMatrixModule:
             # SHAPE case - BASIC
             overlap_shapes = cv2.filter2D(piece_i_on_canvas.mask, -1, piece_j_on_canvas.mask)
             thresholded_regions_map = (overlap_shapes > self.threshold_overlap_shapes).astype(np.int32)
-            breakpoint()
-            plt.imshow(overlap_shapes)
-            plt.show()
-            breakpoint()
 
             if dilate == True:
                 border_dilation = int(self.regions_dilation * self.grid.xy_step)
@@ -200,9 +310,9 @@ class RegionMatrixModule:
             thr_reg_map_shape_uint = (thresholded_regions_map + 1).astype(np.uint8)
             thr_reg_map_comp_range = thr_reg_map_shape_uint[self.p_hs + 1:-(self.p_hs + 1), self.p_hs + 1:-(self.p_hs + 1)]
             resized_shape = np.array(Image.fromarray(thr_reg_map_comp_range).resize((self.RM_size[0], self.RM_size[1]), Image.Resampling.NEAREST))
-            RM[:,:,theta_idx] = (resized_shape.astype(np.int32) - 1)
+            RM_ij[:,:,theta_idx] = (resized_shape.astype(np.int32) - 1)
 
-        return RM
+        return RM_ij
 
     def get_borders_around(self, mask, border_dilation=3, border_erosion=3):
         """
@@ -219,7 +329,7 @@ class RegionMatrixModule:
         Save to files (images) the image-version of the points in the RM which are positive!
         It is used to "see" the candidate alignments of each pairs which are consiedered "good candidates" from the region_matrix computation
         """
-        assert self.RM_computed == True, "Please run RMM.compute() first! Saving candidate alignments requires values on the RM matrix!"
+        # assert self.RM_computed == True, "Please run RMM.compute() first! Saving candidate alignments requires values on the RM matrix!"
         self.combine_RMs()
         for i in range(self.puzzle.num_of_pieces):
             for j in range(self.puzzle.num_of_pieces):
@@ -279,5 +389,7 @@ class RegionMatrixModule:
         combined_positive_region = self.RM['shape'] * (self.RM['shape'] > 0).astype(int)
         for feature in self.features:
             if self.features_status[feature] == True:
+                print("HERE THE ISSUE")
+                breakpoint()
                 combined_positive_region *= self.RM[feature] * (self.RM[feature] > 0).astype(int)
         self.combined_RM = combined_positive_region - negative_region

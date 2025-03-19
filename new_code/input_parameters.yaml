@@ -28,7 +28,7 @@ compatibility:
   # actual compatibility score calculation
   features:
     shape: 
-      enabled: Yes
+      enabled: No
       sigma: 1
       SDF_dilation: 35 # TODO: check if it should be different from borders dilstion!
     lines:
@@ -42,7 +42,7 @@ compatibility:
       # rmax: calculated 
       # border_tolerance: calculated
     motives: 
-      enabled: No
+      enabled: Yes
 
 solver:
   T_first: 1000

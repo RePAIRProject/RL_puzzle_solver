@@ -67,7 +67,7 @@ class PieceOnCanvas:
         if enabled_features['lines'] == True:
             self.lines_mask = np.zeros((grid.canvas_size, grid.canvas_size))
         if enabled_features['motives'] == True:
-            self.motives_map = np.zeros((grid.canvas_size, grid.canvas_size, piece.features.motives.shape[2]))
+            self.motives_cube = np.zeros((grid.canvas_size, grid.canvas_size, piece.features.motives.num_of_classes))
         # self.centroid = np.zeros((2,1))
 
         # each features should have their own abstract method
@@ -90,7 +90,7 @@ class PieceOnCanvas:
             lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_CLOSE, closing_kernel)
         ## NEW MOTIF-BASED
         if enabled_features['motives'] == True:
-            motives_map = scipy.ndimage.rotate(piece.features.motives_map, theta, reshape=False, mode='constant', order=0)
+            motives_cube = scipy.ndimage.rotate(piece.features.motives.motives_cube, theta, reshape=False, mode='constant', order=0)
             
         # PLACEMENT
         # then we place them into their canvas version
@@ -102,7 +102,7 @@ class PieceOnCanvas:
         if enabled_features['lines'] == True:
             self.lines_mask[y_c0:y_c1, x_c0:x_c1, :] = lines_mask
         if enabled_features['motives'] == True:
-            self.motives_map[y_c0:y_c1, x_c0:x_c1, :] = motives_map
+            self.motives_cube[y_c0:y_c1, x_c0:x_c1, :] = motives_cube
         self.centroid = np.asarray([x, y])
 
 

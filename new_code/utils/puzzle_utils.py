@@ -43,10 +43,11 @@ class Lines():
 
 class Motives():
     def __init__(self):
-        self.segmentation_method = None
+        self.segmentation_method = 'yolo-seg'
 
-    def load(self, cfg: Configuration):
-        return False
+    def load(self, path: str):
+        self.motives_cube = np.load(path)
+        self.num_of_classes = self.motives_cube.shape[2]
 
     def load_RM(self, path: str):
         """
@@ -111,14 +112,15 @@ class Puzzle:
         Loads the data (images, masks and polygon) and fill the properties of the Puzzle object
         """
         self.name = puzzle_name
-        cfg = Configuration(puzzle_name=self.name)
-        images_subfolder = cfg.get_puzzle_images_subfolder()
-        masks_subfolder = cfg.get_puzzle_masks_subfolder()
-        polygons_subfolder = cfg.get_puzzle_polygons_subfolder()
-        pieces_names = os.listdir(images_subfolder)
-        pieces_names.sort()
+        self.cfg = Configuration(puzzle_name=self.name)
+        images_subfolder = self.cfg.get_puzzle_images_subfolder()
+        masks_subfolder = self.cfg.get_puzzle_masks_subfolder()
+        polygons_subfolder = self.cfg.get_puzzle_polygons_subfolder()
+        self.pieces_names = os.listdir(images_subfolder)
+        self.pieces_names.sort()
+        
         # breakpoint()
-        for piece_name in pieces_names:
+        for piece_name in self.pieces_names:
             piece = PuzzlePiece()
             piece.name = piece_name[:-4]
             piece.id = piece.name[:10]  # piece_XXXXX.png
@@ -127,9 +129,17 @@ class Puzzle:
             piece.data.mask = plt.imread(os.path.join(masks_subfolder, f"{piece.name}.png"), cv2.IMREAD_GRAYSCALE)
             piece.data.polygon = np.load(os.path.join(polygons_subfolder, f"{piece.name}.npy"), allow_pickle=True).tolist()
             piece.features.sdf.compute(piece.data.mask)
+            piece.features.motives.load(os.path.join(self.cfg.get_puzzle_features_subfolder(), 'motifs_segmentation', f"motifs_cube_{piece_name[:-4]}.npy"))
             #piece.data.features = load_features(self)
             self.pieces.append(piece)
         self.num_of_pieces = len(self.pieces)
+
+    # write code to check which features folders exist?
+    # def check_extracted_features(self):
+    #     features = self.params['compatibility']['features']
+    #     for feature in features:
+    #         self.features.append(feature)
+    #         self.features_status[feature] = features[feature]['enabled']       
 
     def load_features(self):
         """
