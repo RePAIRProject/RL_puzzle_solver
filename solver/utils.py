@@ -138,8 +138,6 @@ class PuzzleSolver:
         z = int(relative_position[2])
         main_index = self.pieces_names.index(main)
         neighbour_index = self.pieces_names.index(neighbour)
-        print('main', main)
-        print('neighbour', neighbour)
 
         shape = self.compatibility_matrix.shape
         x_center = int(shape[0] // 2)
@@ -150,8 +148,6 @@ class PuzzleSolver:
 
         x_new_prime = x_center - x
         y_new_prime = y_center - y
-
-        print()
 
         current_value_main_neighbour = self.compatibility_matrix[x_new, y_new, z, main_index, neighbour_index]
         current_value_neighbour_main = self.compatibility_matrix[x_new_prime, y_new_prime, z, neighbour_index, main_index]
