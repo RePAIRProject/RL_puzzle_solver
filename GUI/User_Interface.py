@@ -322,11 +322,11 @@ class GUIApp(MDApp):
             # back_end.set_p_elements(couple, self.image_offset)
             # current_image.set_anchor(True)
             neighbour = check_neighbouring_collision(current_image)
-            print('neighbour', neighbour)
+            # print('neighbour', neighbour)
             update_compatibility_matrix(current_image, neighbour, True)
 
-        for image in neighbour:
-            print(image.name)
+        # for image in neighbour:
+        #     print(image.name)
 
         self.set_sidebar_accepted()
 
@@ -337,7 +337,7 @@ class GUIApp(MDApp):
         self.sidebar.col_grid.deny_button.disabled = True
 
     def set_image_denied(self, current_image):
-        print("Denied")
+        # print("Denied")
         current_image.status = Status.DENIED
         neighbour = []
         if update_started:
@@ -345,7 +345,7 @@ class GUIApp(MDApp):
             # back_end.set_p_elements(couple, self.image_offset)
             # current_image.set_anchor(False)
             neighbour = check_neighbouring_collision(current_image)
-            print('neighbour', neighbour)
+            # print('neighbour', neighbour)
             update_compatibility_matrix(current_image, neighbour, False)
 
         self.set_sidebar_denied()
@@ -357,7 +357,7 @@ class GUIApp(MDApp):
         self.sidebar.col_grid.deny_button.disabled = False
 
     def set_image_neutral(self, current_image):
-        print("Neutral")
+        # print("Neutral")
         current_image.status = Status.NEUTRAL
 
         self.set_sidebar_neutral()
@@ -411,15 +411,15 @@ class GUIApp(MDApp):
         self.initial_image_updates = False
 
     def on_checkbox_active(self, checkbox, value):
-        print("here")
+        # print("here")
         if hasattr(self, 'grabbed_image') & (self.sidebar.opacity == 1):
             if self.grabbed_image is not None:
                 self.grabbed_image.set_anchor(value)
-            if value:
-                if update_started:
-                    couple = (self.grabbed_image.name, self.grabbed_image.position_memory)
-                    back_end.set_p_elements(couple, self.image_offset)
-                    self.grabbed_image.set_anchor(True)
+                if value:
+                    if update_started:
+                        couple = (self.grabbed_image.name, self.grabbed_image.position_memory)
+                        back_end.set_p_elements(couple, self.image_offset)
+                        self.grabbed_image.set_anchor(True)
 
 
     def toggle_sidebar(self, on_off, true_false):
@@ -911,7 +911,7 @@ def start_pl_solver(self):
     # app.current_image_list = []
     update_started = False
     solved_piece = back_end.solved_pieces + app.final_solution
-    print("solved_piece", solved_piece)
+    # print("solved_piece", solved_piece)
     back_end.start_pl_solver_thread(back_end.key_fragment, back_end.neighbour_ids, solved_piece)
     universal_zoom_applied = False
 
@@ -960,6 +960,29 @@ def update_compatibility_matrix(current_image, neighbors, value):
         if image.is_anchor:
             current_image_pos = current_image.position_memory
             image_pos = image.position_memory
+
+            # Convert the masks to binary images
+            current_image_mask = current_image.mask
+            image_mask = image.mask
+
+            # Find the contours of the masks
+            contours_current, _ = cv2.findContours(current_image_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours_image, _ = cv2.findContours(image_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            print("calculating")
+
+            # Calculate the minimum distance between the contours
+            min_distance = float('inf')
+            for cnt1 in contours_current:
+                for cnt2 in contours_image:
+                    for point1 in cnt1:
+                        for point2 in cnt2:
+                            dist = np.linalg.norm(point1 - point2)
+                            if dist < min_distance:
+                                min_distance = dist
+
+            print("Minimum distance between masks:", min_distance)
+
             back_end.set_cm_elements(current_image.name, image.name, current_image_pos, image_pos, offset, value)
 
 def set_probabilities(answer, probability, image):
@@ -998,9 +1021,9 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         app.communicate_thread_lock.acquire()
         if update_counter>=(1/communication_freq)*update_freq:
             answer, probability, process = back_end.get_solution_dict()
-            print("answer", answer)
-            print("probability", probability)
-            print("process", process)
+            # print("answer", answer)
+            # print("probability", probability)
+            # print("process", process)
             # save_parameters_to_json(answer, probability, process)
             if answer is not None:
                 # for image in answer:

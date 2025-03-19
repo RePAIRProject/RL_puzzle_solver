@@ -66,6 +66,8 @@ class MovableImage(Image):
         self.image_bw = self.extract_cv_image()
         self.contours = self.extract_border_polygons()
 
+        self.mask = self.get_mask()
+
         self.rot = Rotate()
         self.rot.angle = self.angle
         self.rot.origin = self.center
@@ -130,6 +132,12 @@ class MovableImage(Image):
             if is_inside_sm(coords, point):
                 return True
         return False
+
+    def get_mask(self):
+        mask = np.zeros(self.image_bw.shape, dtype=np.uint8)
+        for j in range(len(self.contours)):
+            cv2.drawContours(mask, self.contours, j, 255, -1)
+        return mask
 
     def add_score(self, *args, **kwargs):
         if self.has_score:
@@ -380,8 +388,6 @@ class MovableImage(Image):
 
         x_offset = -1 * edge_x * 15/100
         y_offset = -1 * edge_y * 15/100
-
-        print('x_offset:', x_offset, 'y_offset:', y_offset)
 
         min_x = min_x - x_offset
         max_x = max_x + x_offset
