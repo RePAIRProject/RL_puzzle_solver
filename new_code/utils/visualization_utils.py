@@ -1,6 +1,6 @@
 import numpy as np 
 
-def crop_to_content(image, padding=1, return_vals=False, max_noise=0):
+def crop_to_content(image:np.ndarray, padding:int=1, return_vals:bool=False, max_noise:int=0):
 
     if len(image.shape) > 2:
         x0 = np.clip(np.min(np.where(np.sum(image, axis=2) > max_noise)[1]) - padding, 0, image.shape[1])

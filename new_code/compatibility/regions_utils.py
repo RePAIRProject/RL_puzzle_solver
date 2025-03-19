@@ -7,6 +7,7 @@ from utils.parameters_utils import Configuration
 from utils.visualization_utils import crop_to_content
 import cv2 
 from PIL import Image
+import matplotlib.pyplot as plt
 
 class RegionMatrixModule:
     """
@@ -56,6 +57,12 @@ class RegionMatrixModule:
                 self.RM[feat] = np.zeros(self.RM_size)
 
     def prepare(self):
+        """
+        All the parameters are set here
+        It should be self-explanatory as it's just setting values (with predefined factors we hard-coded)
+        It creates the shape-based RM as it is the baseline we decided to _always_ use
+        The `features_status` dict keeps track of which features we are using
+        """
         self.piece_size = self.params['preprocessing']['piece_size']
         self.p_hs = self.piece_size // 2
         self.grid = PuzzleGrid(self.params['compatibility']['grid'], self.piece_size)
@@ -64,7 +71,7 @@ class RegionMatrixModule:
         self.threshold_overlap_shapes = self.piece_size / 6 # it was /2 !
         self.threshold_overlap_lines = self.piece_size / 8
         self.threshold_overlap_motifs = self.piece_size / 5
-        self.RM_size = (self.grid.xy_points, self.grid.xy_points, self.grid.theta_points, self.puzzle.num_of_pieces, self.puzzle.num_of_pieces)
+        self.RM_size = (self.grid.xy_num_points, self.grid.xy_num_points, self.grid.theta_num_points, self.puzzle.num_of_pieces, self.puzzle.num_of_pieces)
         self.RM_computed = False
         self.RM = {
             'shape': np.zeros(self.RM_size)
@@ -203,43 +210,60 @@ class RegionMatrixModule:
         eroded_mask = cv2.erode(mask, kernel_erosion)
         return dilated_mask - eroded_mask
 
-    def save_candidate_alignments_to_file(self):
+    def save_candidate_alignments_to_file(self, folder_name='relative_transformations_images'):
         """
         Save to files (images) the image-version of the points in the RM which are positive!
-        It is used to "see" the candidate alignments of each pairs "accepted" from the region_matrix computation
+        It is used to "see" the candidate alignments of each pairs which are consiedered "good candidates" from the region_matrix computation
         """
         assert self.RM_computed == True, "Please run RMM.compute() first! Saving candidate alignments requires values on the RM matrix!"
         self.combine_RMs()
         for i in range(self.puzzle.num_of_pieces):
             for j in range(self.puzzle.num_of_pieces):
-                relative_transformations_mat = self.combined_RM[:,:,:,j,i]
-                # path
-                relative_transformations_folder_pair = os.path.join(self.exp_folder, 'relative_transformations_images', f"pieces_{i}_vs_{j}")
-                os.makedirs(relative_transformations_folder_pair, exist_ok=True)
-                valid_rel_t_values = np.where(relative_transformations_mat > 0)
-                x_ids, y_ids, theta_ids = valid_rel_t_values
-                assert len(x_ids) == len(y_ids) == len(theta_ids), "something went wrong during the extraction of the values from the combined matrix!"
-                for k in range(len(x_ids)):
-                    image_relative_transf = self.render_pair_at(i, j, x_ids[k], y_ids[k], theta_ids[k])
-                breakpoint()
-                img_path = os.path.join(relative_transformations_folder_pair, f'candidate_assembly_{k}_x{x_ids[k]}_y{y_ids[k]}_theta{theta_ids[k]}')
-                cv2.imwrite(img_path, image_relative_transf)
-                plt.imsave(img_path, image_relative_transf)
-                # rm_path = os.path.join(self.exp_folder, 'RM.npy')
-                # np.save(rm_path, self.RM)
+                if i != j:
+                    relative_transformations_mat = self.combined_RM[:,:,:,j,i]
+                    # path
+                    relative_transformations_folder_pair = os.path.join(self.exp_folder, folder_name, f"pieces_{i}_vs_{j}")
+                    os.makedirs(relative_transformations_folder_pair, exist_ok=True)
+                    valid_rel_t_values = np.where(relative_transformations_mat > 0)
+                    y_ids, x_ids, theta_ids = valid_rel_t_values
+                    assert len(x_ids) == len(y_ids) == len(theta_ids), "something went wrong during the extraction of the values from the combined matrix!"
+                    for k in range(len(x_ids)):
+                        xj, yj = self.grid.xy_values[x_ids[k], y_ids[k]]
+                        thetaj = self.grid.theta_values[theta_ids[k]]
+                        print(xj, yj, thetaj, self.puzzle.pieces[i].data.image.shape)
+                        image_relative_transf = self.render_pair_at(i, j, xj, yj, thetaj)
+                        img_path = os.path.join(relative_transformations_folder_pair, f'candidate_assembly_{k}_x{xj}_y{yj}_theta{thetaj}.png')
+                        cv2.imwrite(img_path, image_relative_transf)
+                        breakpoint()
+                        #plt.imsave(img_path, image_relative_transf)
+                        
+                    # rm_path = os.path.join(self.exp_folder, 'RM.npy')
+                    # np.save(rm_path, self.RM)
 
-    def render_pair_at(self, i: int, j: int, xj: int, yj: int, thetaj: int):
+    def render_pair_at(self, i: int, j: int, xj: int, yj: int, thetaj: int, crop: bool = True, padding: int = 3, max_noise: int = 0):
         """
         It places the two pieces on a virtual canvas with piece_i at the center and piece_j at xj, yj, thetaj and returns the image
         """
         piece_i_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[i], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
-        # TODO
-        # piece_j_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[j], grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
-        rendered_image = piece_i_on_canvas['img'] + piece_j_on_canvas['img']
+        piece_j_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[j], grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+        rendered_image = self.create_aligned_image(piece_i_on_canvas, piece_j_on_canvas)
         if crop == True:
-            rendered_image = crop_to_content(rendered_image, padding=padding, max_noise=5)
-        rendered_image = cv2.cvtColor(rendered_image.astype(np.uint8), cv2.COLOR_BGR2RGB)
+            rendered_image = crop_to_content(rendered_image, padding=padding, max_noise=max_noise)
+        #rendered_image = cv2.cvtColor(rendered_image.astype(np.uint8), cv2.COLOR_BGR2RGB)
         return rendered_image
+
+    def create_aligned_image(self, piece_i: PieceOnCanvas, piece_j: PieceOnCanvas):
+        """
+        Creates the combined image. If there is no overlap, is just piece_i + piece_j. 
+        This method should take care of small overlaps and also small holes (fill them/align the images)
+        """
+        combo_mask = (piece_i.mask + piece_j.mask)
+        combo_image = (piece_i.image + piece_j.image)
+        if np.sum(combo_mask) > 1:
+            # OVERLAP
+            mask = combo_mask == 2
+            combo_image[mask] /= 2
+        return combo_image
 
     def combine_RMs(self):
         """

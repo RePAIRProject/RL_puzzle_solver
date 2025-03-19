@@ -18,8 +18,8 @@ compatibility:
   grid: 
     xy_step: 3
     theta_step: 90
-    xy_points: 101
-    theta_points: 4
+    xy_num_points: 101
+    theta_num_points: 4
   # region matrix calculation
   regions:
     borders_dilation: 1

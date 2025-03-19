@@ -45,6 +45,22 @@ class Motives():
     def __init__(self):
         self.segmentation_method = None
 
+    def load(self, cfg: Configuration):
+        return False
+
+    def load_RM(self, path: str):
+        """
+        Loads and returns the RM for motives
+        Which has one more dimension (stores each motif as a layer) 
+        """
+        return True 
+    
+    def aggregate_RM(self, baseline_RM):
+        """
+        Aggregates it to the baseline_RM given, which should have positive, zero and negative values (between 1 and -1)
+        """
+        return False
+
 class SDF():
     def __init__(self):
         self.method = None

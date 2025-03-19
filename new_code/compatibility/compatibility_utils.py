@@ -11,10 +11,10 @@ class PuzzleGrid():
         self.piece_size = piece_size
         self.p_hs = self.piece_size // 2
         self.xy_step = grid_parameters['xy_step']
-        self.xy_points = grid_parameters['xy_points']
+        self.xy_num_points = grid_parameters['xy_num_points']
         self.theta_step = grid_parameters['theta_step']
-        self.theta_points = grid_parameters['theta_points']
-        self.pairwise_comp_range = self.xy_step * (self.xy_points - 1)
+        self.theta_num_points = grid_parameters['theta_num_points']
+        self.pairwise_comp_range = self.xy_step * (self.xy_num_points - 1)
         self.canvas_size = self.pairwise_comp_range + 2 * (self.p_hs + 1)
         self.canvas_center = self.canvas_size // 2
         self.create_grid_data()
@@ -22,7 +22,7 @@ class PuzzleGrid():
     def create_grid_data(self):
         # we can create using the `largest_val` or using the `step` and `points`
         # largest_val = self.piece_size * 2 #step*pts
-        largest_val = self.xy_step * self.xy_points
+        largest_val = self.xy_step * self.xy_num_points
         # create a regularly spaced grid (the center value should be the center of th epiece)
         axis_grid = np.arange(0, largest_val, self.xy_step)
         zero_aligned_axis_grid = axis_grid - axis_grid[np.floor(len(axis_grid) // 2).astype(int)]
@@ -31,8 +31,9 @@ class PuzzleGrid():
         pieces_grid = np.zeros((len(axis_grid), len(axis_grid), 2))
         for b in range(len(axis_grid)):
             for g in range(len(axis_grid)):
-                pieces_grid[g, b] = (axis_grid[g]+canvas_alignment, axis_grid[b]+canvas_alignment)
-        self.data = pieces_grid.astype(int)
+                pieces_grid[g, b] = (zero_aligned_axis_grid[g]+canvas_alignment, zero_aligned_axis_grid[b]+canvas_alignment)
+        self.xy_values = pieces_grid.astype(int)
+        self.theta_values = np.arange(0, 360, self.theta_step)            
 
 
 class PieceOnCanvas:
