@@ -6,15 +6,18 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')
 
-frag_num = 4
+fragment = 279
+
+url_image1  = f'/home/marina/PycharmProjects/RL_puzzle_solver/output/RePAIR_exp_batch3_clean_TEST/RPobi_g35_36_TEST/tiff/RPf_00{fragment}.tiff'
+url_image2 = f'/home/marina/PycharmProjects/RL_puzzle_solver/output/RePAIR_exp_batch3_clean_TEST/RPobi_g35_36_TEST/rgb/RPf_00{fragment}.png'
 
 #im = io.imread(f'/home/marina/Desktop/pigmentmaps_image/Decor1_ex2/tiff/Decor1_ex2_p{frag_num}.tiff')
-im = io.imread(f'/home/marina/Desktop/pigmentmaps_image/Decor1_ex4_all_colors.tiff', plugin='tifffile')
+im = io.imread(url_image1, plugin='tifffile')
 metadata = im.metadata
 
 channel_num = np.shape(im)[0]
 plt.figure(figsize=(16, 8))
-plt.suptitle(f'fragment_{frag_num}', fontsize=22)
+plt.suptitle(f'fragment_{fragment}', fontsize=22)
 image_0 = im[0,:,:,:]
 plt.subplot(2, channel_num//2, 1)
 plt.imshow(image_0)
@@ -31,3 +34,5 @@ for col_channel in range(1,channel_num):
     plt.imshow(denoised_layer, cmap='gray')
 
 plt.show()
+
+

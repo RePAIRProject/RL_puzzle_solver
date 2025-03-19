@@ -1,5 +1,4 @@
 
-
 import cv2
 import numpy as np
 from skimage import io
@@ -78,7 +77,6 @@ plt.suptitle(f'fragment_{frag_num}', fontsize=22)
 #image_0 = im[0,:,:,:]
 plt.subplot(2, channel_num//2, 1)
 plt.imshow(img2_color)
-
 
 for col_channel in range(1,channel_num):
     layer = im[col_channel, :, :, :]
