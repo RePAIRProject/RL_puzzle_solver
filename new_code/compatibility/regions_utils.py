@@ -176,7 +176,11 @@ class RegionMatrixModule:
             # SHAPE case - BASIC
             overlap_shapes = cv2.filter2D(piece_i_on_canvas.mask, -1, piece_j_on_canvas.mask)
             thresholded_regions_map = (overlap_shapes > self.threshold_overlap_shapes).astype(np.int32)
-            
+            breakpoint()
+            plt.imshow(overlap_shapes)
+            plt.show()
+            breakpoint()
+
             if dilate == True:
                 border_dilation = int(self.regions_dilation * self.grid.xy_step)
             else:
