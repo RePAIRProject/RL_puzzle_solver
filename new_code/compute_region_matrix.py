@@ -33,21 +33,21 @@ def main(args):
     # PSEUDOCODE # hopefully it will be that simple
     ##############
     
-
     puzzle = Puzzle()
     puzzle.load('RPobj_g3_o0003_gt_rot') #, features=True)
 
     cfg = Configuration('RPobj_g3_o0003_gt_rot') # this contains all IO operations plus the folder structure
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
 
-    rmm = RegionMatrixModule(puzzle, params)    
+    rmm = RegionMatrixModule(puzzle, params, cfg)  # it is redundant, we know 
     rmm.prepare() # creates grid, adjust/compute parameters and so on
-    rmm.compute(verbose=2)
-    breakpoint()
-    rmm.save_candidate_alignments_to_file()
+    rmm.compute(verbose=params['verbosity'])
+    # rmm.save_candidate_alignments_to_file(verbose=params['verbosity'])
     rmm.save()
 
-    # rmm = RegionMatrixModule(input&data, json)
+    # rmm.cfg.current_experiment_folder
+    # cfg.current_experiment_folder
+    # rmm = CompatibilityMatrixModule(input&data, json)
     # rmm.prepare() # creates grid, adjust/compute parameters and so on
     # rmm.compute_CM()
     # rmm.save()

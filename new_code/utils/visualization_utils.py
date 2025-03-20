@@ -1,4 +1,51 @@
 import numpy as np 
+import matplotlib.pyplot as plt 
+import pdb 
+import cv2 
+from typing import List
+from utils.puzzle_utils import PuzzlePiece
+
+def save_matrix_visualization(CM, pieces: List[PuzzlePiece], rot_step, path, title='', draw_figsize=(100, 100), all_rotation=False, save_every=6, img_format='jpg', vmin=-1, vmax=1):
+    
+    rotation_range = np.arange(CM.shape[2])
+    for rr in rotation_range:
+        theta = rr * rot_step
+        if all_rotation is True or (all_rotation is False and (rr % save_every) == 0):
+            fig, axs = plt.subplots(CM.shape[3]+1, CM.shape[4]+1, figsize=draw_figsize) #, sharex=True, sharey=True)
+            fig.suptitle(f"{title}(r{rr})", fontsize=44)  
+            mapping_image = np.zeros_like(CM[:, :, 0, 0, 0])
+            mapping_image[0, 0] = -1
+            mapping_image[-1, -1] = 1
+            axs[0, 0].set_title("only for colorbar", fontsize=14)
+            mim = axs[0, 0].imshow(mapping_image, vmin=-1, vmax=1, cmap='RdYlGn')
+            axs[0, 0].xaxis.set_visible(False)
+            axs[0, 0].yaxis.set_visible(False)
+            fig.colorbar(mim)
+            for x_plot in range(1, CM.shape[3]+1):
+                for y_plot in range(1, CM.shape[4]+1):
+                    # if x_plot == 8 and y_plot == 6 and rr == 3:
+                    #     breakpoint()
+                    axs[x_plot, y_plot].imshow(CM[:, :, rr, x_plot-1, y_plot-1], vmin=vmin, vmax=vmax, cmap='RdYlGn')
+                    axs[x_plot, y_plot].xaxis.set_visible(False)
+                    axs[x_plot, y_plot].yaxis.set_visible(False)
+                    
+            for a in range(1, CM.shape[3]+1):
+                axs[0, a].set_title(pieces[a-1]['id'], fontsize=32)
+                axs[0, a].imshow(cv2.cvtColor(pieces[a-1]['img'], cv2.COLOR_BGR2RGB), vmin=vmin, vmax=vmax, cmap='RdYlGn')
+                axs[0, a].xaxis.set_visible(False)
+                axs[0, a].yaxis.set_visible(False)
+                if theta > 0:
+                    rotated_img = scipy.ndimage.rotate(pieces[a-1]['img'], theta, reshape=False, mode='constant')
+                else:
+                    rotated_img = pieces[a-1]['img']
+                axs[a, 0].imshow(cv2.cvtColor(rotated_img, cv2.COLOR_BGR2RGB))
+                axs[a, 0].xaxis.set_visible(False)
+                axs[a, 0].yaxis.set_visible(False)
+                axs[a, 0].set_title(pieces[a-1]['id'], loc='left', fontsize=32)
+            plt.tight_layout()
+            plt.savefig(f"{path}_r{rr}.{img_format}")
+            plt.close()
+
 
 def crop_to_content(image:np.ndarray, padding:int=1, return_vals:bool=False, max_noise:int=0):
 
@@ -16,3 +63,4 @@ def crop_to_content(image:np.ndarray, padding:int=1, return_vals:bool=False, max
     if return_vals == True:
         return image[y0:y1, x0:x1, :], x0, x1, y0, y1
     return image[y0:y1, x0:x1, :]
+

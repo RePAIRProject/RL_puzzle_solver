@@ -5,7 +5,39 @@ It should not have dependencies and should handle files with less parameters (ta
 import os 
 import yaml 
 import random, string
+from io import TextIOWrapper
 
+
+
+##########################################
+#                                        #
+#  ██╗   ██╗ █████╗ ███╗   ███╗██╗       #
+#  ╚██╗ ██╔╝██╔══██╗████╗ ████║██║       #
+#   ╚████╔╝ ███████║██╔████╔██║██║       #
+#    ╚██╔╝  ██╔══██║██║╚██╔╝██║██║       #
+#     ██║   ██║  ██║██║ ╚═╝ ██║███████╗  #
+#     ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝  #
+#                                        #
+##########################################
+class CustomYAMLEncoder(yaml.SafeDumper):
+    def default(self, obj):
+        if isinstance(obj, TextIOWrapper):
+            return f"File object: {obj.name}"
+        return yaml.SafeDumper.default(self, obj)
+
+
+
+
+#############################################################
+#                                                           #
+#   ██████╗ ██████╗ ███╗   ██╗███████╗██╗ ██████╗ ███████╗  #
+#  ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝ ██╔════╝  #
+#  ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗███████╗  #
+#  ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║╚════██║  #
+#  ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝███████║  #
+#   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝ ╚══════╝  #
+#                                                           #
+#############################################################
 class Configuration:
     
     def __init__(self, puzzle_name: str):
@@ -18,6 +50,12 @@ class Configuration:
         self.features_params_name = 'features.yaml'
         self.puzzle_name = puzzle_name
         self.experiments_folder = 'experiments'
+        self.RM_name = 'RM.npy'
+        self.RM_input_parameters_path = 'RM_input_params.yaml'
+        self.RM_output_parameters_path = 'RM_output_params.yaml'
+        self.CM_name = 'CM.npy'
+        self.CM_input_parameters_path = 'CM_input_params.yaml'
+        self.CM_output_parameters_path = 'CM_output_params.yaml'
 
     def get_puzzle_subfolders(self):
         """
@@ -47,16 +85,42 @@ class Configuration:
     def get_puzzle_experiments_subfolder(self):
         return os.path.join(self.experiments_folder, self.puzzle_name)
 
-    def get_puzzle_single_run_random_folder_name(self):
-        return os.path.join(self.get_puzzle_experiments_subfolder(), f"exp_{self.randomword(6)}")
+    def new_puzzle_single_run_random_folder_name(self):
+        self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), f"exp_{self.randomword(6)}")
+        os.makedirs(self.current_experiment_folder, exist_ok=True)
 
-    def get_features_extracted(self, from_yaml: bool = True):
-        if from_yaml == True:
-            features_extracted = self.read_features_from_yaml(os.path.join(features_folder, features_params_name))
-        else:
-            features_folder_files = os.listdir(os.path.join(features_folder, puzzle_name))
-            features_extracted = [fsf for fsf in features_folder_files if os.isdir(os.path.join(features_folder, puzzle_name,fsf)) == True]
-        return features_extracted
+    def set_puzzle_single_run_random_folder_name(self, path: str):
+        """ set the folder name when using CM or solver on a previous experiment """
+        if path.find('#') < 0: # relative path
+            self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), path)
+        else:                   # full path
+            self.current_experiment_folder = path
+            
+    def get_RM_path(self):
+        return os.path.join(self.current_experiment_folder, self.RM_name)
+
+    def get_RM_input_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.RM_input_parameters_path)
+    
+    def get_RM_output_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.RM_output_parameters_path)
+    
+    def get_CM_path(self):
+        return os.path.join(self.current_experiment_folder, self.CM_name)
+
+    def get_CM_input_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.CM_input_parameters_path)
+    
+    def get_CM_output_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.CM_output_parameters_path)
+
+    # def get_features_extracted(self, from_yaml: bool = True):
+    #     if from_yaml == True:
+    #         features_extracted = self.read_features_from_yaml(os.path.join(features_folder, features_params_name))
+    #     else:
+    #         features_folder_files = os.listdir(os.path.join(features_folder, puzzle_name))
+    #         features_extracted = [fsf for fsf in features_folder_files if os.isdir(os.path.join(features_folder, puzzle_name,fsf)) == True]
+    #     return features_extracted
 
     def read_features_from_yaml(self, yaml_path: str):
         with open(yaml_path, 'r') as file:

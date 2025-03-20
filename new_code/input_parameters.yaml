@@ -2,10 +2,12 @@
 # comment syntax
 
 puzzle_name: RPobj_g3_o0003_gt_rot
+verbosity: 2
 
 preprocessing:
   piece_size: 251
 
+# extraction
 features:
   lines:
     extracted: No
@@ -16,20 +18,22 @@ features:
 
 compatibility:
   grid: 
-    xy_step: 3
+    xy_step: 9
     theta_step: 90
-    xy_num_points: 101
-    theta_num_points: 4
+    xy_num_points: 31
+    theta_num_points: 1
   # region matrix calculation
   regions:
     borders_dilation: 1
     borders_erosion: 1
     threshold_ovelrap_shapes: 
+    # maybe here to distinguish RM features and CM features
+    # features_list: [asda]
   # actual compatibility score calculation
   features:
     shape: 
-      enabled: No
-      sigma: 1
+      enabled: Yes
+      sigma: 1 # ?
       SDF_dilation: 35 # TODO: check if it should be different from borders dilstion!
     lines:
       enabled: No
