@@ -52,6 +52,7 @@ class API(FastAPI):
         return {"Hello": "World"}
 
     def get_results(self):
+        print(self.back_end.pl_solver_running)
         if self.back_end.pl_solver_running:
             answer, probability, process = self.back_end.get_API_solution()
             data = self.save_parameters_to_json(answer, probability, process)
@@ -74,25 +75,27 @@ class API(FastAPI):
         print(image_names)
 
         if not (key_fragment in image_names):
-            return "Key Fragment not found"
+            answer = "choose from this list"
+            answer = answer + str(image_names)
+            return answer
         else:
             neighbour_ids = image_names.copy()
             neighbour_ids.remove(key_fragment)
             print('neighbour', neighbour_ids)
             self.back_end.start_pl_solver_thread(key_fragment, neighbour_ids, [])
 
-    async def websocket_endpoint(self, websocket: WebSocket):
-        await websocket.accept()
-        while True:
-            if self.back_end.pl_solver_running:
-                answer, probability, process = self.back_end.get_API_solution()
-                data = self.save_parameters_to_json(answer, probability, process)
-                if data is not None:
-                    await websocket.send_json(data)
-                else:
-                    await websocket.send_text("error 404")
-            await asyncio.sleep(self.update_interval)
-        await websocket.close()
+    # async def websocket_endpoint(self, websocket: WebSocket):
+    #     await websocket.accept()
+    #     while True:
+    #         if self.back_end.pl_solver_running:
+    #             answer, probability, process = self.back_end.get_API_solution()
+    #             data = self.save_parameters_to_json(answer, probability, process)
+    #             if data is not None:
+    #                 await websocket.send_json(data)
+    #             else:
+    #                 await websocket.send_text("error 404")
+    #         await asyncio.sleep(self.update_interval)
+    #     await websocket.close()
     #
     # async def websocket_endpoint(self, websocket: WebSocket):
     #     await websocket.accept()
