@@ -42,11 +42,22 @@ compatibility:
       badmatch_penalty: 5 # again upper bound
       mismatch_penalty: 1 # repair
       k: 3
-      cmp_cost: 'LAP'
+      cmp_cost: LAP
       # rmax: calculated 
       # border_tolerance: calculated
     motives: 
       enabled: Yes
+      scoring_func: simple
+      # simple scoring mechanism (touching pixels)
+      simple_params: 
+        dilation: 9
+      # detection on aligned pairs of fragments (yolo based)
+      detection_params:
+        detector: yolo-seg
+      # geometric (use lines/curves? BGU?)
+      geometric_params:
+        something: 1
+          
 
 solver:
   T_first: 1000

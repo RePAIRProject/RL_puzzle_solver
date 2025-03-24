@@ -6,7 +6,7 @@ import shapely
 from utils.puzzle_utils import Puzzle 
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
 from compatibility.grid_utils import PuzzleGrid, PieceOnCanvas
-
+import yaml
 
 
 
@@ -100,7 +100,7 @@ class CompatibilityMatrixModule:
         elif feature == 'motives':
             if verbose > 1:
                 print("motives-based CM Computation")
-            CM = self._compute_motif_based_CM(verbose=verbose)
+            CM = self._compute_motives_based_CM(verbose=verbose)
         else:
             raise Exception(f"{feature}-based RM not implemented yet!")
 
@@ -150,14 +150,75 @@ class CompatibilityMatrixModule:
                     if verbose > 1:
                         print(f'computing motives-based CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
                     RM_ij = self.RM_dict['motives'][:, :, :, j, i]    
-                    CM_motives[:, :, :, j, i] = self._compute_pairwise_motives_based_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij)
+                    if np.sum(RM_ij > 0) > 0:
+                        CM_motives[:, :, :, j, i] = self._compute_pairwise_motives_based_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij)
         if verbose > 1:
             print()
         return CM_motives
 
     def _compute_pairwise_motives_based_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray):
-        # TODO
-        return True
+        """
+        For each pair of pieces, it places them on the canvas in the position `accepted` by RM_ij 
+        and calls the scoring function to fill the pairwise compatibility matrix CM_ij 
+        """
+        CM_ij = np.zeros((RM_ij.shape[0], RM_ij.shape[1], RM_ij.shape[2]))
+        ids_to_score = np.where(RM_ij > 0)
+
+        for x_idx, y_idx, theta_idx, motif_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2], ids_to_score[3]):
+            piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
+            xj, yj = self.grid.xy_values[x_idx, y_idx]
+            thetaj = self.grid.theta_values[theta_idx]
+            piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+
+            motives_based_score = self._compute_motives_score(piece_i_on_canvas, piece_j_on_canvas)
+            # touching_region = self._compute_touching_region(piece_i_on_canvas, piece_j_on_canvas, dil_kernel)
+            CM_ij[x_idx, y_idx, theta_idx] = motives_based_score
+
+        return CM_ij
+
+    def _compute_motives_score(self, piece_i: PieceOnCanvas, piece_j: PieceOnCanvas):
+        """
+        It receives two pieces already aligned, and it needs to give a score of how `good` this alignment is
+        There are multiple scoring functions, see the commented code below
+        """
+        scoring_func = self.params['compatibility']['features']['motives']['scoring_func']
+        score = -1
+        if scoring_func == 'simple':
+            # simple is the number of "touching" pixels, referring to the pixel shared by the two (slightly dilated) motives
+            # (we already avoided overlap at this point)
+            dilation_size = self.params['compatibility']['features']['motives']['simple_params']['dilation']
+            dil_kernel = np.ones((dilation_size, dilation_size))
+            num_pixels_kernel = np.sum(dil_kernel)
+            # for each motif class
+            simple_motives_score = 0
+            for m in range(piece_i.motives_cube.shape[2]):
+                touching_region_m = (cv2.dilate(piece_i.motives_cube[:,:,m].astype(np.uint8), dil_kernel) + cv2.dilate(piece_j.motives_cube[:,:,m].astype(np.uint8), dil_kernel)) > 0
+                num_pixels_touching_region =  np.sum(touching_region_m > 0)
+                if num_pixels_touching_region > (num_pixels_kernel / 4):
+                    simple_motives_score += 0.2
+            simple_motives_score = np.clip(simple_motives_score, -1, 1)
+            if simple_motives_score > 0:
+                score = simple_motives_score
+
+            # touching_region = self._compute_touching_region(piece_i_on_canvas, piece_j_on_canvas, dil_kernel)
+            # 
+            # if num_pixels_touching_region < 1:
+            #     score = -1
+            # elif num_pixels_touching_region < (num_pixels_kernel / 4):
+            #     score = 0
+            # elif num_pixels_touching_region < (num_pixels_kernel / 2):
+            #     score = 0.5
+            # else: 
+            #     score = 1
+        elif scoring_func == 'detector':
+            # in this case we use a detector on the aligned visualization of the two images 
+            # and we assign a score if the detector detects a single object across the two pieces
+            score = 0
+        elif scoring_func == 'geometric':
+            # in this case we use `geometric` motives (such as lines/curves) and we use their orientation
+            # to compute a good continuation score
+            score = 0
+        return score
 
 
     ##############################################
@@ -249,6 +310,6 @@ class CompatibilityMatrixModule:
         normalization_factor = np.sum(mregion_mask > 0)
         # sdf sum 
         sdf_sum = np.square(piece_i.sdf + piece_j.sdf)
-        dissim_score = np.sum(sdf_sum * mregion_mask.astype(float) # normalization_factor)
-        comp_score = np.exp(-(dissim_score # sigma))
+        dissim_score = np.sum(sdf_sum * mregion_mask.astype(float) * normalization_factor)
+        comp_score = np.exp(-(dissim_score * sigma))
         return comp_score
