@@ -19,9 +19,7 @@ import shapely
 class PuzzleGrid():
 
     def __init__(self, grid_parameters, piece_size):
-        # repetition? # may be needed in place_on_canvas
-        self.piece_size = piece_size
-        self.p_hs = self.piece_size // 2
+        self.p_hs = piece_size // 2
         self.xy_step = grid_parameters['xy_step']
         self.xy_num_points = grid_parameters['xy_num_points']
         self.theta_step = grid_parameters['theta_step']
@@ -29,9 +27,8 @@ class PuzzleGrid():
         self.pairwise_comp_range = self.xy_step * (self.xy_num_points - 1)
         self.canvas_size = self.pairwise_comp_range + 2 * (self.p_hs + 1)
         self.canvas_center = self.canvas_size // 2
-        self.create_grid_data()
 
-    def create_grid_data(self):
+
         # we can create using the `largest_val` or using the `step` and `points`
         # largest_val = self.piece_size * 2 #step*pts
         largest_val = self.xy_step * self.xy_num_points

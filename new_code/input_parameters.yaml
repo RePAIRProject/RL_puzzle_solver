@@ -75,7 +75,7 @@ solver:
     method: gt
     # this is used only when method is set to 'manual'
     manual_params:
-      size: [151,151]
+       p_xy_size: [151,151]
   
 
 

@@ -1,7 +1,7 @@
 from compatibility.compatibility_utils import CompatibilityMatrixModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
-from solver.solver_utils import SolverModule
+from new_code.solver.solver import SolverModule
 import argparse
 
 def main(args):
