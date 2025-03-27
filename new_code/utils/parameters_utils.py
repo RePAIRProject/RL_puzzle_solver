@@ -41,6 +41,7 @@ class CustomYAMLEncoder(yaml.SafeDumper):
 class Configuration:
     
     def __init__(self, puzzle_name: str):
+        self.data_folder = 'data'
         self.preprocessing_folder = 'preprocessing'
         self.preprocessing_params_name = 'preprocessing.yaml'
         self.images_subfolder = 'images'
@@ -62,6 +63,7 @@ class Configuration:
         Returns a dictionary with all the subfolders paths
         """
         subfolders = {
+            'data': os.path.join(self.data_folder, puzzle_name),
             'preprocessing': os.path.join(self.preprocessing_folder, puzzle_name),
             'images': os.path.join(self.preprocessing_folder, puzzle_name, images_subfolder),
             'masks': os.path.join(self.preprocessing_folder, puzzle_name, masks_subfolder),
@@ -71,19 +73,19 @@ class Configuration:
         return subfolders 
         
     def get_puzzle_images_subfolder(self):
-        return os.path.join(self.preprocessing_folder, self.puzzle_name, self.images_subfolder)
+        return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.images_subfolder)
 
     def get_puzzle_masks_subfolder(self):
-        return os.path.join(self.preprocessing_folder, self.puzzle_name, self.masks_subfolder)
+        return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.masks_subfolder)
 
     def get_puzzle_polygons_subfolder(self):
-        return os.path.join(self.preprocessing_folder, self.puzzle_name, self.polygons_subfolder)
+        return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.polygons_subfolder)
 
     def get_puzzle_features_subfolder(self):
-        return os.path.join(self.features_folder, self.puzzle_name)
+        return os.path.join(self.data_folder, self.features_folder, self.puzzle_name)
     
     def get_puzzle_experiments_subfolder(self):
-        return os.path.join(self.experiments_folder, self.puzzle_name)
+        return os.path.join(self.data_folder, self.experiments_folder, self.puzzle_name)
 
     def new_puzzle_single_run_random_folder_name(self):
         self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), f"exp_{self.randomword(6)}")
