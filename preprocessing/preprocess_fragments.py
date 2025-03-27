@@ -28,6 +28,7 @@ def main(args):
     groups_folders = [os.path.join(db_folder, f'group_{group}') for group in groups]
     output_root_folder = 'data'
     output_folders = [os.path.join(output_root_folder, f'repair_g{group}') for group in groups]
+
     for (group_folder, output_folder) in zip(groups_folders, output_folders):
         target_out_folder = os.path.join(output_folder, fnames.imgs_folder)
         target_out_folder_masks = os.path.join(output_folder, fnames.masks_folder)
