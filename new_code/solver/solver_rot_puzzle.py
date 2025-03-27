@@ -49,12 +49,13 @@ def solver_rot_puzzle(R, R_orig, P, T, iter, visual, verbosity=1, decimals=8):
                         cc = cv2.filter2D(P_j_beta, -1, R_ij_beta)
                         Q_temp[:, :, beta, j] = cc
 
-                # q1.shape = (num_x_p,num_y_p)
+                #Q_temp.shape = (num_x_p,num_y_p,num_rot,N)
                 Q_i_alpha = np.sum(Q_temp, axis=(2, 3))
 
-                # Shift to positive
+                
                 Q[:, :, alpha, i] = Q_i_alpha
         
+        # Shift the support to get non-negative values
         Q += Q + N * 1
 
         PQ = P * np.exp(Q)  # e = 1e-11
