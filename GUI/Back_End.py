@@ -136,12 +136,12 @@ class BackEnd:
         answer, probability, process = puzzle_solver.get_solution_dict()
 
         if answer is not None:
-            # answer = throw_away_2(pl_solution, probability, average_thresh_factor)
             answer = self.scale_solution(answer)
         return answer, probability, process
 
     def get_API_solution(self):
         answer, probability, process = puzzle_solver.get_solution_dict()
+        answer = self.scale_solution(answer)
         return answer, probability, process
 
     def solver_toggle_lock(self, value):

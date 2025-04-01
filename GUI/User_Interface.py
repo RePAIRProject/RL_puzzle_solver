@@ -1020,7 +1020,7 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
     while True:
         app.communicate_thread_lock.acquire()
         if update_counter>=(1/communication_freq)*update_freq:
-            answer, probability, process = back_end.get_solution_dict()
+            answer, probability, process = back_end.get_solution_dict( )
             # print("answer", answer)
             # print("probability", probability)
             # print("process", process)
@@ -1039,6 +1039,7 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
                     app.pl_solution = answer
                 app.probability_matrix = probability
                 app.apply_solution()
+                save_parameters_to_json(answer, probability, process)
                 update_started = True
                 app.progress_bar.value = np.round(process * 100)
             update_counter = 0

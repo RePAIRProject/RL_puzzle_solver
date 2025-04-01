@@ -2,96 +2,6 @@
     "pieces": {
         "RPf_00018_mesh.png": {
             "position": [
-                -87,
-                -3,
-                0
-            ],
-            "probability": [
-                6.747e-05
-            ]
-        },
-        "RPf_00019_mesh.png": {
-            "position": [
-                57,
-                -54,
-                0
-            ],
-            "probability": [
-                6.346e-05
-            ]
-        },
-        "RPf_00020_mesh.png": {
-            "position": [
-                39,
-                18,
-                0
-            ],
-            "probability": [
-                6.251e-05
-            ]
-        },
-        "RPf_00021_mesh.png": {
-            "position": [
-                21,
-                -63,
-                0
-            ],
-            "probability": [
-                6.214e-05
-            ]
-        },
-        "RPf_00023_mesh.png": {
-            "position": [
-                -48,
-                -9,
-                0
-            ],
-            "probability": [
-                2.322e-05
-            ]
-        },
-        "RPf_00024_mesh.png": {
-            "position": [
-                42,
-                33,
-                0
-            ],
-            "probability": [
-                6.503e-05
-            ]
-        },
-        "RPf_00025_mesh.png": {
-            "position": [
-                -30,
-                -81,
-                0
-            ],
-            "probability": [
-                6.101e-05
-            ]
-        },
-        "RPf_00026_mesh.png": {
-            "position": [
-                -12,
-                -57,
-                0
-            ],
-            "probability": [
-                6.575e-05
-            ]
-        },
-        "RPf_00027_mesh.png": {
-            "position": [
-                33,
-                -54,
-                0
-            ],
-            "probability": [
-                6.453e-05
-            ]
-        },
-        "RPf_00028_mesh.png": {
-            "position": [
                 0,
                 0,
                 0
@@ -100,16 +10,116 @@
                 1.0
             ]
         },
-        "RPf_00029_mesh.png": {
+        "RPf_00019_mesh.png": {
             "position": [
-                -27,
-                -24,
+                3,
+                -93,
                 0
             ],
             "probability": [
-                0.0001063
+                1.0
+            ]
+        },
+        "RPf_00020_mesh.png": {
+            "position": [
+                36,
+                -156,
+                0
+            ],
+            "probability": [
+                0.99943745
+            ]
+        },
+        "RPf_00021_mesh.png": {
+            "position": [
+                219,
+                -57,
+                0
+            ],
+            "probability": [
+                0.72355442
+            ]
+        },
+        "RPf_00022_mesh.png": {
+            "position": [
+                -156,
+                -138,
+                0
+            ],
+            "probability": [
+                0.37075296
+            ]
+        },
+        "RPf_00023_mesh.png": {
+            "position": [
+                96,
+                -105,
+                0
+            ],
+            "probability": [
+                0.83779069
+            ]
+        },
+        "RPf_00024_mesh.png": {
+            "position": [
+                156,
+                -78,
+                0
+            ],
+            "probability": [
+                0.99999998
+            ]
+        },
+        "RPf_00025_mesh.png": {
+            "position": [
+                -18,
+                -210,
+                0
+            ],
+            "probability": [
+                0.942666
+            ]
+        },
+        "RPf_00026_mesh.png": {
+            "position": [
+                -27,
+                -300,
+                0
+            ],
+            "probability": [
+                0.09684722
+            ]
+        },
+        "RPf_00027_mesh.png": {
+            "position": [
+                -126,
+                -180,
+                0
+            ],
+            "probability": [
+                0.99405215
+            ]
+        },
+        "RPf_00028_mesh.png": {
+            "position": [
+                84,
+                9,
+                0
+            ],
+            "probability": [
+                0.10040751
+            ]
+        },
+        "RPf_00029_mesh.png": {
+            "position": [
+                -114,
+                -138,
+                0
+            ],
+            "probability": [
+                0.31144935
             ]
         }
     },
-    "process": 0.002
+    "process": 1.0
 }
