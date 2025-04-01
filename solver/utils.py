@@ -452,8 +452,7 @@ class PuzzleSolver:
                     q2 = (q1 + no_patches * no_rotations * 1)
                     q[:, :, zi, i] = q2
             with self.p_matrix_lock:
-                heat = 2
-                print(heat)
+                heat = 1
                 pq = self.probability_matrix * np.exp(heat * q) # e = 1e-11
                 self.delta_probs = pq - self.probability_matrix
                 self.probability_matrix = pq / (np.sum(pq, axis=(0, 1, 2)))
