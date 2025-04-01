@@ -141,7 +141,7 @@ class BackEnd:
 
     def get_API_solution(self):
         answer, probability, process = puzzle_solver.get_solution_dict()
-        answer = self.scale_solution(answer)
+        # answer = self.scale_solution(answer)
         return answer, probability, process
 
     def solver_toggle_lock(self, value):
