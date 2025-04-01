@@ -34,26 +34,29 @@ def solver_rot_puzzle(R, R_orig, P, T, iter, visual, verbosity=1, decimals=8):
             R_i = R[:, :, :, :, i]
 
             # alpha: rotation index of piece i
-            for alpha in range(num_rot):
-                R_i_rotated = scipy.ndimage.rotate(R_i, rot_values[alpha], reshape=False, mode='constant', order=0)
-                R_i_rotated = np.roll(R_i_rotated, alpha, axis=2)
+            for alpha_idx in range(num_rot):
+                # apply a rotation of alpha to the matrix, is the same as applying a rotation -alpha to the input
+                R_i_rotated = scipy.ndimage.rotate(R_i, rot_values[alpha_idx], reshape=False, mode='constant', order=0)
+                # subtract -alpha from beta, but since the angle is periodic, we need to roll the matrix
+                R_i_rotated = np.roll(R_i_rotated, alpha_idx, axis=2)
             
                 Q_temp = np.zeros(P.shape)
                 for j in range(N):
 
+                    # maybe do not roll and do a 3D conv?
+
                     # This could be vectorized ?
                     # beta: rotation index of piece j
-                    for beta in range(num_rot):
-                        R_ij_beta = R_i_rotated[:, :, beta, j]
-                        P_j_beta = P[:, :, beta, j]
-                        cc = cv2.filter2D(P_j_beta, -1, R_ij_beta)
-                        Q_temp[:, :, beta, j] = cc
+                    for beta_idx in range(num_rot):
+                        R_ij_beta = R_i_rotated[:, :, beta_idx, j]
+                        P_j_beta = P[:, :, beta_idx, j]
+                        Q_temp[:, :, beta_idx, j] = cv2.filter2D(P_j_beta, -1, R_ij_beta)
 
                 #Q_temp.shape = (num_x_p,num_y_p,num_rot,N)
                 Q_i_alpha = np.sum(Q_temp, axis=(2, 3))
 
                 
-                Q[:, :, alpha, i] = Q_i_alpha
+                Q[:, :, alpha_idx, i] = Q_i_alpha
         
         # Shift the support to get non-negative values
         Q += Q + N * 1
