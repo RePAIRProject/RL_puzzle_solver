@@ -29,6 +29,8 @@ class PuzzleSolver:
         self.p_matrix_lock = Lock()
         self.cm_matrix_lock = Lock()
 
+        self.locked_pieces = []
+
     def default_cfg(self, path_dic):
         cfg = CfgParameters()
         solver_parameters = path_dic['solver_parameters']
@@ -120,6 +122,20 @@ class PuzzleSolver:
 
         self.probability_matrix[:, :, :, piece_number] = 0
         self.probability_matrix[x, y, r, piece_number] = 1
+
+        if piece_number not in self.locked_pieces:
+            self.locked_pieces.append(piece_number)
+
+        # self.reinit_p_matrix()
+
+    def reinit_p_matrix(self):
+        Y, X, Z, noPatches = self.probability_matrix.shape
+
+        for piece in range(noPatches):
+            if piece not in self.locked_pieces:
+                # Reset to uniform distribution
+                self.probability_matrix[:, :, :, piece] = 1 / (Y * X * Z)
+
 
     def repair_lock_toggle(self, value):
         if value:  # If value is True, lock the program
@@ -255,8 +271,11 @@ class PuzzleSolver:
         p[:, :, :, anc] = 0
         p[y0, x0, :, :] = 0
         p[y0, x0, z0, anc] = 1
+        self.locked_pieces.append(anc)
         for piece in solved_pieces:
+            b = self.extract_piece_number(piece[0])
             b = pieces_names.index(piece[0])
+            self.locked_pieces.append(b)
             pos = (piece[1][0], piece[1][1], piece[1][2])
 
             pos = (round(pos[0]), round(pos[1]), round(pos[2]))
@@ -433,7 +452,8 @@ class PuzzleSolver:
                     q2 = (q1 + no_patches * no_rotations * 1)
                     q[:, :, zi, i] = q2
             with self.p_matrix_lock:
-                heat = 1
+                heat = 2
+                print(heat)
                 pq = self.probability_matrix * np.exp(heat * q) # e = 1e-11
                 self.delta_probs = pq - self.probability_matrix
                 self.probability_matrix = pq / (np.sum(pq, axis=(0, 1, 2)))

@@ -41,7 +41,7 @@ class API(FastAPI):
 
         self.get("/results")(self.get_results)
 
-        self.websocket("/ws")(self.websocket_endpoint)
+        # self.websocket("/ws")(self.websocket_endpoint)
         # self.websocket("/ws")(self.websocket_endpoint)
 
     def set_paths(self):
