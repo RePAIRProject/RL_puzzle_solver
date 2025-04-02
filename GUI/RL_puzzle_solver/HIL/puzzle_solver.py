@@ -22,6 +22,9 @@ puzzle_solver = PuzzleSolver()
 def get_solution_dict():
     return puzzle_solver.get_dict()
 
+def solver_alive(alive_flag):
+    puzzle_solver.set_alive(alive_flag)
+
 def set_p_elements(x, y, r, piece_name):
     x = int(x)
     y = int(y)

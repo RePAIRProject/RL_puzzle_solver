@@ -90,13 +90,14 @@ class API(FastAPI):
             return answer
         else:
             if self.back_end.pl_solver_running:
-                print('solver is running')
-                return "solver is running"
+                self.back_end.kill_puzzle_solver()
+                return "solver is running but it will die in few seconds"
             else:
                 neighbour_ids = image_names.copy()
                 neighbour_ids.remove(self.KEY_FRAGMENT)
                 print('neighbour', neighbour_ids)
                 self.back_end.start_pl_solver_thread(self.KEY_FRAGMENT, neighbour_ids, [])
+                return "has been started"
 
     # async def websocket_endpoint(self, websocket: WebSocket):
     #     await websocket.accept()

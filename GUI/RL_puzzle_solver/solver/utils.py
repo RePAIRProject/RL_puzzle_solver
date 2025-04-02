@@ -22,6 +22,8 @@ class PuzzleSolver:
         self.ppars = args[0] if len(args) > 0 else None
         self.pieces_names = args[1] if len(args) > 1 else None
         self.running = True
+
+        self.alive_flag = True
         self.process = 0.0
 
         self.repair_lock = Lock()
@@ -187,6 +189,9 @@ class PuzzleSolver:
     def extract_piece_number(self, piece_name):
         return self.pieces_names.index(piece_name)
 
+    def set_alive(self, alive_flag):
+        self.alive_flag = alive_flag
+
     def solve_puzzle(self, R, anchor, pieces_names, ppars, path_dic, return_as='dict', solved_pieces=None):
         self.ppars = ppars
         self.pieces_names = pieces_names
@@ -329,7 +334,7 @@ class PuzzleSolver:
 
         # while not np.isclose(eps, 0)
         print("started solving..")
-        while eps != 0 and iter < cfg.Tmax:
+        while eps != 0 and iter < cfg.Tmax and self.alive_flag:
             if na_new > na:
                 na = na_new
                 faze += 1
@@ -419,7 +424,7 @@ class PuzzleSolver:
         t = 0
         eps = np.inf
         p = self.get_p_matrix().copy()
-        while t < T and eps > 0:
+        while t < T and eps > 0 and self.alive_flag:
             t += 1
             iter += 1
             total_iter += 1

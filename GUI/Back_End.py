@@ -318,6 +318,10 @@ class BackEnd:
         position = [x + bias, y + bias, rotation]
         return position
 
+    def kill_puzzle_solver(self):
+        if self.pl_solver_running:
+            puzzle_solver.solver_alive(False)
+
     def start_anchor_thread(self):
         self.select_anchor_thread = Thread(target=self.select_anchor_thread_function, daemon=True)
         self.select_anchor_thread.start()
