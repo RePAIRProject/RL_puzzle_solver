@@ -55,6 +55,7 @@ class API(FastAPI):
         print(self.back_end.pl_solver_running)
         if self.back_end.pl_solver_running:
             answer, probability, process = self.back_end.get_API_solution()
+            print(answer)
             data = self.save_parameters_to_json(answer, probability, process)
             if data is not None:
                 return data
@@ -130,6 +131,8 @@ class API(FastAPI):
 
 
 
+
+
         # self.back_end.start_pl_solver_thread(last_loop_solution=app.final_solution)
         #
         # app.final_solution = back_end.loop_finalization(solved_pieces, app.image_offset)
@@ -161,6 +164,9 @@ class API(FastAPI):
             }
             return data  # Returning dictionary (FastAPI auto-converts to JSON)
         return None
+
+    def scale_to_solver(self, answer, probability, process):
+        return probability
 
 interval = 2 # in seconds
 app = API(interval)
