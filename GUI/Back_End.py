@@ -4,8 +4,8 @@ from threading import Thread, Event, Lock
 from scipy.io import loadmat
 from scipy.spatial import KDTree
 
-import GUI.select_anchor_RePAIR as select_anchor_RePAIR
-import GUI.RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
+import select_anchor_RePAIR as select_anchor_RePAIR
+import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
 import json
 import numpy as np
 # from kivymd.app import MDApp
@@ -459,7 +459,7 @@ class BackEnd:
         number_of_neighbours = 3
         number_of_anchors = 4
         solver_parameters = ""
-        setting_dir = os.path.join(os.getcwd(), "GUI")
+        setting_dir = ""
         setting_path = os.path.join(setting_dir, "setting.txt")
         if not os.path.exists(setting_path):
             with open(setting_path, "w") as setting_file:

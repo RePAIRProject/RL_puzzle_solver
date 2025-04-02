@@ -6,3 +6,5 @@
 
 /GUI/pieces/*
 !/GUI/pieces/.gitkeep
+
+.venv/

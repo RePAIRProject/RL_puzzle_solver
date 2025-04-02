@@ -24,16 +24,17 @@ from kivymd.uix.card import MDCard
 from kivy.core.window import Window
 from kivy.uix.progressbar import ProgressBar
 from PIL import Image as PILImage
-from GUI.Back_End import BackEnd
+from Back_End import BackEnd
 
-from GUI.RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
+from RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
 import threading
 import time
 import shutil
 import json
 import cv2
-from GUI.MoveableImage import MovableImage
-from GUI.MoveableImage import Status
+from MoveableImage import MovableImage
+from MoveableImage import Status
+
 # from Widget3D import Widget3D
 
 Window.clearcolor = (0, 0, 0, 0)

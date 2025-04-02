@@ -3,7 +3,7 @@ import os
 import pdb
 
 from scipy.io import loadmat
-from GUI.RL_puzzle_solver.solver.utils import PuzzleSolver
+from RL_puzzle_solver.solver.utils import PuzzleSolver
 # from ..solver.utils import PuzzleSolver
 
 

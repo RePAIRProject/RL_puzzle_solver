@@ -11,9 +11,9 @@ import pdb
 import cv2
 import shapely
 
-from GUI.RL_puzzle_solver.puzzle_utils.puzzle_gen import utils
-from GUI.RL_puzzle_solver.puzzle_utils.puzzle_gen.vector import Vector
-from GUI.RL_puzzle_solver.puzzle_utils.shape_utils import get_cm, get_polygon
+from RL_puzzle_solver.puzzle_utils.puzzle_gen import utils
+from RL_puzzle_solver.puzzle_utils.puzzle_gen.vector import Vector
+from RL_puzzle_solver.puzzle_utils.shape_utils import get_cm, get_polygon
 
 # from puzzle_utils.puzzle_gen import utils
 # from puzzle_utils.puzzle_gen.vector import Vector
