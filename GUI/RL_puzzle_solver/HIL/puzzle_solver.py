@@ -1,0 +1,131 @@
+import json
+import os
+import pdb
+
+from scipy.io import loadmat
+from GUI.RL_puzzle_solver.solver.utils import PuzzleSolver
+# from ..solver.utils import PuzzleSolver
+
+
+"""
+This is the method which should be used from the HIL interface
+
+- v1 - 2024/04/11
+Now it actually assumes RM and CM are precomputed and just launches the solver
+"""
+puzzle_solver = PuzzleSolver()
+def get_solution_dict():
+    return puzzle_solver.get_dict()
+
+def set_p_elements(x, y, r, piece_name):
+    x = int(x)
+    y = int(y)
+    r = int(r)
+    puzzle_solver.set_p_matrix_element(x, y, r, piece_name, 1.0)
+
+def set_cm_element(main, neighbour, relative_position, value):
+    value = float(value)
+    puzzle_solver.set_cm_element(main, neighbour, relative_position, value)
+
+def set_running(running):
+    puzzle_solver.set_running(running)
+
+def toggle_lock(value):
+    puzzle_solver.repair_lock_toggle(value)
+
+
+def assemble(fragments_list, path_dic, return_solution_as='dict'):
+    """
+    Assemble a small subset of the puzzle given one anchor and some neighbours:
+    ---
+    Input Parameters:
+    - fragments_list: a dictionary with the following keys():
+        - anchor: the id (RPf_XXXXX) of the anchor piece
+        - neighbours: a list of ids of the neighbour pieces
+        - puzzle: the puzzle they refer to (ex: repair_g28)
+    ---
+    Output:
+    if return_solution_as == "dict":
+        - solution: a dictionary with as key the pieces (RPf_XXXXX) and as value the correct 
+                    position (x, y, theta)
+    if return_solution_as == "list":
+        - solution: a list (same length as fragments_list) with tuples (x, y, theta)
+    if return_solution_as == "nparray":
+        - solution: a numpy array (shape: [len(fragments_list), 3] ) with (x, y, theta) values  
+    """
+
+    anchor_piece = fragments_list['anchor']
+
+    neighbours = fragments_list['neighbours']
+    solved_pieces = fragments_list['solved_pieces']
+    # puzzle = fragments_list['puzzle']
+
+    pieces_folder = path_dic['pieces_path']
+
+    cmp_parameter_path = path_dic['comp_path']
+
+    if not anchor_piece.endswith(".png"):
+        anchor_piece += ".png"
+
+    neighbours = [n + ".png" if not n.endswith(".png") else n for n in neighbours]
+
+    if os.path.exists(cmp_parameter_path):
+        ppars = {}
+        with open(cmp_parameter_path, 'r') as cp:
+            ppars = json.load(cp)
+
+    pieces_names = os.listdir(pieces_folder)
+    pieces_names.sort()
+    
+    # get pieces as a list
+    anchor = 0
+    neighbours_as_list = []
+    pieces_to_include = []
+    for k, p_name in enumerate(pieces_names):
+        to_include = False
+        if p_name == anchor_piece or anchor_piece in p_name:
+            anchor = k
+            to_include = True
+        if p_name in neighbours:
+            neighbours_as_list.append(k)
+            print("neighbour", k, ":", p_name)
+            to_include = True
+        if len(solved_pieces) > 0:
+            if p_name in solved_pieces[0]:
+                print("solved_pieces", k, ":", p_name)
+                to_include = True
+        if to_include is True:
+            pieces_to_include.append(k)
+
+    # extract from R matrix
+    # THIS IS HARDCODED WE NEED TO CHANGE LATER
+    comp_folder = path_dic['comp_folder']
+    comp_name = path_dic['comp_name']
+    # print(comp_name)
+    # comp_name = eval("f'{}'".format(comp_name))
+    mat = loadmat(os.path.join(comp_folder, comp_name)) # load the new compatibility matrix
+
+    R = mat[path_dic['comp_format']]
+
+    # R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
+    # R = R[:, :, :, :, pieces_to_include]
+    # if you want rotation which you shouldn't
+    R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
+    R = R[:, :, 0:1, :, pieces_to_include]  # 0:4 works best for group 28 token check
+
+    anchor = pieces_to_include.index(anchor)
+
+    pieces_included = []
+
+    for i in range(len(pieces_to_include)):
+        pieces_included.append(pieces_names[pieces_to_include[i]])
+
+    print("piece names", pieces_included)
+    puzzle_solver.__init__(ppars, pieces_included)\
+
+    solution = puzzle_solver.solve_puzzle(R, anchor, pieces_included, ppars, path_dic,
+                            return_as=return_solution_as, solved_pieces=solved_pieces)
+
+    return solution
+    
+    

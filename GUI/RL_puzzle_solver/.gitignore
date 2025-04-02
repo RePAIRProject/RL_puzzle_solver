@@ -1,0 +1,33 @@
+# Add file data types or folders here that should not be uploaded.
+
+# the input data (will be shared somewhere else)
+data 
+
+# ignore visualization
+**/visualization
+# no compatibility matirx
+**/CompatibilityMatrix
+# no regions matrix (too large)
+**/RegionsMatrix
+# no cm matrix somewhere else
+*.mat
+
+# ignore images 
+**LinesDetection/*.png
+**/MotifSegmentation/Motif/*.png
+**/MotifSegmentation/Lines/*.png
+
+# except the lines segmentation maps!
+#!/MotifSegmentation/Lines/*.png
+
+# output files!
+output/*
+output_*/
+
+# pycache
+**/__pycache__/**
+
+# personal scripts to copy/upload stuff
+**/*_lucap.sh
+
+

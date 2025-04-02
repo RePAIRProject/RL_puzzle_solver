@@ -1,0 +1,308 @@
+import numpy as np
+import scipy
+import argparse 
+import pdb
+import matplotlib.pyplot as plt 
+import cv2
+import json, os 
+
+#from configs import repair_cfg as cfg
+from configs import folder_names as fnames
+
+from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, shape_pairwise_compatibility, \
+    get_outside_borders, place_on_canvas, get_borders_around
+from puzzle_utils.pieces_utils import calc_parameters
+from puzzle_utils.visualization import save_vis
+
+def main(args):
+
+    if args.puzzle == '':  
+        puzzles = os.listdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset))
+        puzzles = [puz for puz in puzzles if os.path.isdir(os.path.join(os.getcwd(), fnames.output_dir, args.dataset,puz)) is True]
+    else:
+        puzzles = [args.puzzle]
+
+    print(f"\nWill calculate regions masks for: {puzzles}\n")
+    for puzzle in puzzles:
+
+        ######
+        # PREPARE PIECES AND GRIDS
+        # 
+        # pieces is a list of dictionaries with the pieces (and mask, cm, id)
+        # img_parameters contains the size of the image and of the pieces
+        # ppars contains all the values needed for computing stuff (p_hs, comp_range..)
+        # ppars is a dict but can be accessed by pieces_paramters.property!
+        print()
+        print("-" * 50)
+        print(puzzle)
+        pieces, img_parameters = prepare_pieces_v2(fnames, args.dataset, puzzle, args.num_pieces, verbose=True)
+        ppars = calc_parameters(img_parameters)
+
+        pdb.set_trace()
+        grid_size_xy = ppars.comp_matrix_shape[0]
+        grid_size_rot = ppars.comp_matrix_shape[2]
+        grid, grid_step_size = create_grid(grid_size_xy, ppars.p_hs, ppars.canvas_size)
+
+        print()
+        print('#' * 50)
+        print('SETTINGS')
+        print(f"The puzzle (maybe rescaled) has size {ppars.img_size[0]}x{ppars.img_size[1]} pixels")
+        print(f'Pieces are squared images of {ppars.piece_size}x{ppars.piece_size} pixels (p_hs={ppars.p_hs})')
+        print(f"This puzzle has {ppars.num_pieces} pieces")
+        print(f'The region matrix has shape: [{grid_size_xy}, {grid_size_xy}, {grid_size_rot}, {len(pieces)}, {len(pieces)}]')
+        print(f'Using a grid on xy and {grid_size_rot} rotations on {len(pieces)} pieces')
+        print(f'\txy_step: {ppars.xy_step}, rot_step: {ppars.theta_step}')
+        print(f'Canvas size: {ppars.canvas_size}x{ppars.canvas_size}')
+        print('#' * 50)
+        print()
+
+        ## CREATE MATRIX
+        debug = False
+        if debug is True:
+            plt.ion()
+        RM = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+        #RM_big = np.zeros((3001, 3001, grid_size_rot, len(pieces), len(pieces)))
+        overlap_M = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+        borders_M = np.zeros((grid_size_xy, grid_size_xy, grid_size_rot, len(pieces), len(pieces)))
+        for i in range(len(pieces)):
+            for j in range(len(pieces)):
+                print(f"regions for pieces {i:>2} and {j:>2}", end='\r')
+                if i == j:
+                    RM[:,:,:,i,j] = -1
+                else:
+                    #pdb.set_trace()
+                    center_pos = ppars.canvas_size // 2
+                    piece_i_on_canvas = place_on_canvas(pieces[i], (center_pos, center_pos), ppars.canvas_size, 0)
+                    mask_i = cv2.resize(piece_i_on_canvas['mask'], (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                    #outside_borders_i = get_outside_borders(mask_i, borders_width=1)
+                    for t in range(grid_size_rot):
+                        piece_j_on_canvas = place_on_canvas(pieces[j], (center_pos, center_pos), ppars.canvas_size, t * ppars.theta_step)
+                        mask_j = cv2.resize(piece_j_on_canvas['mask'], (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                        #outside_borders_j = get_outside_borders(mask_j, bordpers_width=1)
+                        overlap_conv = cv2.filter2D(piece_i_on_canvas['mask'], -1, piece_j_on_canvas['mask'])
+                        #overlap_conv_scp = scipy.ndimage.convolve(piece_i_on_canvas['mask'], piece_j_on_canvas['mask'])
+                        thresholded_regions_map = (overlap_conv > ppars.threshold_overlap).astype(np.int32)
+                        thresholded_regions_map *= -1
+                        around_borders_trm = get_borders_around(thresholded_regions_map.astype(np.uint8), border_dilation=int(ppars.borders_regions_width_outside*ppars.xy_step), border_erosion=int(ppars.borders_regions_width_inside*ppars.xy_step))
+                        thresholded_regions_map += 2*(around_borders_trm > 0)
+                        thresholded_regions_map = np.clip(thresholded_regions_map, -1, 1)
+
+                        # we convert the matrix to resize the image without losing the values
+                        converted = (thresholded_regions_map+1).astype(np.uint8)
+                        resized = cv2.resize(converted, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]), cv2.INTER_NEAREST)
+
+                        # These are the matrices
+                        RM[:,:,t,i,j] = (resized.astype(np.int32) - 1)
+                        overlap_M[:,:,t,i,j] = cv2.resize(overlap_conv, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                        borders_M[:,:,t,i,j] = cv2.resize(around_borders_trm, (ppars.comp_matrix_shape[0], ppars.comp_matrix_shape[1]))
+                        
+
+                    #####################################################
+                    #####################################################
+                    #####################################################
+                    if debug is True:
+                        #plt.figure(figsize=(32,32))
+                        plt.subplot(251)
+                        plt.title(f"mask {i}")
+                        plt.imshow(piece_i_on_canvas['mask'])
+                        plt.subplot(256)
+                        plt.title(f"mask {j}")
+                        plt.imshow(piece_j_on_canvas['mask'])
+                        xshift = 736    # 702
+                        yshift = -108   #  25
+                        debug_angles = [0, 90, 180, 270]
+                        for k, ang in enumerate(debug_angles):
+                            plt.subplot(2, 5, 2 + k)
+                            plt.title(f"{i}vs{j} at ({center_pos+yshift}, {center_pos+xshift}, {ang})")
+                            two_shapes = np.zeros((ppars.canvas_size, ppars.canvas_size))
+                            two_shapes += piece_i_on_canvas['mask']
+                            piece_j_hyp = place_on_canvas(pieces[j], (center_pos+yshift, center_pos+xshift), ppars.canvas_size, ang)
+                            two_shapes += 2*piece_j_hyp['mask']
+                            plt.imshow(two_shapes)
+                            plt.subplot(2, 5, 7 + k)
+                            
+                            ccrm = [(center_pos+yshift) // 30, (center_pos+xshift) // 30]
+                            rm_rot = RM_big[:,:,ang//90,i,j]
+                            val = rm_rot[ccrm[0], ccrm[1]]
+                            plt.title(f'region map ({ccrm[0], ccrm[1]}) = {val}')
+                            rm_rot[ccrm[0], ccrm[1]] = 2
+                            rm_rot[ccrm[1], ccrm[0]] = 3
+                            plt.imshow(rm_rot)
+                        pdb.set_trace()
+                    #####################################################
+                    #####################################################
+                    #####################################################
+
+        print("\n")
+        print('Done calculating')
+        print('#' * 50)
+        print('Saving the matrix..')     
+        if args.num_pieces == 8:
+            output_root_dir = f"{fnames.output_dir}_8x8"
+        else:
+            output_root_dir = fnames.output_dir
+        
+        cmp_parameter_path = os.path.join(output_root_dir, 'compatibility_parameters.json')
+        with open(cmp_parameter_path, 'w') as pp:
+            json.dump(ppars, pp, indent=2)
+        output_folder = os.path.join(output_root_dir, args.dataset, puzzle, fnames.rm_output_name)
+        # should we add this to the folder? it will create a subfolder that we may not need
+        # f"{ppars.rm_output_dir}_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}")
+        vis_folder = os.path.join(output_folder, fnames.visualization_folder_name)
+        os.makedirs(vis_folder, exist_ok=True)
+        RM_D = {}
+        RM_D['RM'] = RM
+        if args.save_everything is True:
+            RM_D['overlap'] = overlap_M
+            RM_D['borders'] = borders_M
+        filename = f'{output_folder}/RM_{puzzle}'
+        scipy.io.savemat(f'{filename}.mat', RM_D)
+        if args.save_visualization is True:
+            print('Creating visualization')
+            save_vis(RM, pieces, os.path.join(vis_folder, f'visualization_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"regions matrix {puzzle}", all_rotation=False)
+            if args.save_everything:
+                save_vis(overlap_M, pieces, os.path.join(vis_folder, f'visualization_overlap_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"overlap {puzzle}", all_rotation=False)
+                save_vis(borders_M, pieces, os.path.join(vis_folder, f'visualization_borders_{puzzle}_{grid_size_xy}x{grid_size_xy}x{grid_size_rot}x{len(pieces)}x{len(pieces)}'), f"borders {puzzle}", all_rotation=False)
+        print(f'Done with {puzzle}\n')
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='Computing compatibility matrix')
+    parser.add_argument('--dataset', type=str, default='repair', help='dataset (name of the folders)')
+    parser.add_argument('--puzzle', type=str, default='', help='puzzle to work on - leave empty to generate for the whole dataset')
+    parser.add_argument('--save_everything', type=bool, default=False, help='save also overlap and borders matrices')
+    parser.add_argument('--save_visualization', type=bool, default=True, help='save an image that showes the matrices color-coded')
+    parser.add_argument('-np', '--num_pieces', type=int, default=0, help='number of pieces (per side) - use 0 (default value) for synthetic pieces')  # 8
+    args = parser.parse_args()
+    main(args)
+
+
+# % MASKs of pairs of fragments
+
+# pieces = [194:198, 200:203];
+
+# ang = 45;              % rotation stem in gradi
+# rot = 0:ang:360-ang;
+
+# ni = 9;
+# nj = 9;
+
+# zerCR = zeros(51,51,8);
+# CR    = zeros(51,51,8,9,9);
+# CRm   = CR;
+# CRneg = CR;
+# CRcont= CR;
+# %CR_new = CR;
+
+# for i=1:ni
+#     im_num  = pieces(i);
+#     in_file = (sprintf('%s%s%s','C:\Users\Marina\PycharmProjects\WP3-PuzzleSolving\Compatibility\data\repair\group_28\ready\RPf_00',num2str(im_num),'.png'));
+    
+#     [Im,~,alfa] = imread(in_file);
+#     A = im2double(alfa); 
+#     A = ceil(A);
+#     %figure; imshow(A);
+    
+#     for j=1:nj
+#         if eq(i,j)
+#             CR(:,:,:,j,i) = zerCR-1;
+#         else
+#         im_num  = pieces(j);
+#         in_file = (sprintf('%s%s%s','C:\Users\Marina\PycharmProjects\WP3-PuzzleSolving\Compatibility\data\repair\group_28\ready\RPf_00',num2str(im_num),'.png'));
+#         [Im,~,alfa] = imread(in_file);
+#         B = im2double(alfa);
+#         B = ceil(B);
+
+#         for t=1:size(rot,2)            
+#             Br = imrotate(B,rot(t),'crop'); % figure; imshow(B); %figure; imshow(Br);
+#             C = conv2(A,rot90(Br,2));               
+            
+#             C1 = imresize(C,[51,51],'nearest');
+#             CR(:,:,t,j,i) = C1;
+            
+#             C0 = C1; 
+#             C0(C0>0)=-1; 
+#             CRneg(:,:,t,j,i) = C0;
+            
+#             cc = contourc(double(C1),[1 1]); % will be silent and faster%
+#             ix = round(cc(1,2:end)'); 
+#             iy = round(cc(2,2:end)'); 
+            
+#             C2 = zeros(size(C1));
+#             for ii=1:size(ix,1), C2(iy(ii),ix(ii))=10; end              
+#             CRcont(:,:,t,j,i) = C2;
+            
+#             CRm(:,:,t,j,i) = C2+C0;
+#             %figure; imshow(C2);            
+#         end
+#         end
+#     end
+# end
+
+# %% compute and plot overlap area of each pair of pieces
+
+# CRm(CRm>0) = 1;
+# % CR_new = CR;
+# % CR_new(CR_new>5) = -1;
+# % CR_new(CR_new>0) = 1;
+
+# %% Plot contour matrices
+# t=2;
+# % figure;
+# % jj=0;
+# % nii = 9;
+# % njj = 9;
+# % for i=1:nii
+# %     for j=1:njj        
+# %         Rr = CR(:,:,t,j,i);
+# %         jj=jj+1;
+# %         subplot(nii,njj,jj); image(Rr,'CDataMapping','scaled'); colorbar;       
+# %     end
+# % end
+# % 
+# % % Plot neg-matrices
+# % figure;
+# % jj=0;
+# % nii = 9;
+# % njj = 9;
+# % for i=1:nii
+# %     for j=1:njj
+# %         t=1;
+# %         Rr = CRneg(:,:,t,j,i);
+# %         jj=jj+1;
+# %         subplot(nii,njj,jj); image(Rr,'CDataMapping','scaled'); colorbar;       
+# %     end
+# % end
+# % 
+# % % Plot count-matrices
+# % figure;
+# % jj=0;
+# % nii = 9;
+# % njj = 9;
+# % for i=1:nii
+# %     for j=1:njj
+# %         t=1;
+# %         Rr = CRcont(:,:,t,j,i);
+# %         jj=jj+1;
+# %         subplot(nii,njj,jj); image(Rr,'CDataMapping','scaled'); colorbar;       
+# %     end
+# % end
+
+# % Plot mask-matrices
+# t=7;
+
+# figure;
+# jj=0;
+# nii = 9;
+# njj = 9;
+# for i=1:nii
+#     for j=1:njj
+#         Rr = CRm(:,:,t,j,i);
+#         jj=jj+1;
+#         subplot(nii,njj,jj); image(Rr,'CDataMapping','scaled'); colorbar;       
+#     end
+# end
+
+
+# R_mask = CRm;
+# save('R_mask51_45cont2.mat', 'R_mask')
