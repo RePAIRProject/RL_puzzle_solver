@@ -1,0 +1,11 @@
+Kivy==2.3.1
+kivymd==1.2.0
+matplotlib==3.10.1
+numpy==2.2.4
+opencv-python==4.11.0.86
+scikit-fmm==2025.1.29
+scikit-image==0.25.2
+scikit-learn==1.6.1
+scipy==1.15.2
+screeninfo==0.8.1
+shapely==2.0.7
