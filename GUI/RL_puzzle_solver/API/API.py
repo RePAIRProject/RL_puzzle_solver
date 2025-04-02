@@ -34,16 +34,19 @@ class PuzzlePieces(BaseModel):
     pieces: dict = {'pieces': {}}
 
 class API(FastAPI):
+    FACTOR = 7.369 # 3D.mm * FACTOR = 2D.pixel
+    KEY_FRAGMENT = 'RPf_00018_mesh'
     def __init__(self, update_interval):
         super().__init__()
         self.path_dic = {}
         self.update_interval = update_interval
         self.back_end = BackEnd()
         self.set_paths()
-        self.get("/")(self.read_root)
-        self.get("/solve")(self.solve_puzzle)
+        # self.get("/")(self.read_root)
 
-        self.get("/results")(self.get_results)
+        self.get("/start/restart")(self.solve_puzzle)
+
+        self.get("/get_results")(self.get_results)
 
         # self.websocket("/ws")(self.websocket_endpoint)
         # self.websocket("/ws")(self.websocket_endpoint)
@@ -69,7 +72,7 @@ class API(FastAPI):
                 return "error 404"
         return "not running"
 
-    def solve_puzzle(self, key_fragment):
+    def solve_puzzle(self):
         xy_step, theta_step = self.back_end.extract_steps()
 
         print(xy_step, theta_step)
@@ -81,15 +84,19 @@ class API(FastAPI):
 
         print(image_names)
 
-        if not (key_fragment in image_names):
-            answer = "choose from this list"
+        if not (self.KEY_FRAGMENT in image_names):
+            answer = "fix the server and choose among these:"
             answer = answer + str(image_names)
             return answer
         else:
-            neighbour_ids = image_names.copy()
-            neighbour_ids.remove(key_fragment)
-            print('neighbour', neighbour_ids)
-            self.back_end.start_pl_solver_thread(key_fragment, neighbour_ids, [])
+            if self.back_end.pl_solver_running:
+                print('solver is running')
+                return "solver is running"
+            else:
+                neighbour_ids = image_names.copy()
+                neighbour_ids.remove(self.KEY_FRAGMENT)
+                print('neighbour', neighbour_ids)
+                self.back_end.start_pl_solver_thread(self.KEY_FRAGMENT, neighbour_ids, [])
 
     # async def websocket_endpoint(self, websocket: WebSocket):
     #     await websocket.accept()
@@ -170,8 +177,6 @@ class API(FastAPI):
             }
             return data  # Returning dictionary (FastAPI auto-converts to JSON)
         return None
-
-    FACTOR = 7.369 # 3D.mm * FACTOR = 2D.pixel
 
     def scale_to_3D(self, answer):
         scaled_answer = {}

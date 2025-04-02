@@ -1,0 +1,15 @@
+image_path: /GUI/DataBase/Images/RePAIR_plaque_2/RGBA_merged/
+mask_path: /GUI/DataBase/Images/RePAIR_plaque_2/FG_merged/
+backend_path: /GUI/DataBase/Images/RePAIR_plaque_2/
+comp_path: /GUI/DataBase/output/repair_g28/compatibility_parameters.json
+pieces_path: /GUI/DataBase/output/repair_g28/pieces/
+comp_folder: /GUI/DataBase/output/repair_g28/compatibility_matrix/
+comp_name: CM_linesdet_manual_cost_LAP.mat
+Rotation_Intervals: 1
+number_of_neighbours: 3
+comp_format: R_line
+apply_gt: False
+parameters: /GUI/DataBase/output/repair_g28/compatibility_parameters.json
+number_of_anchors: 4
+dataset_name: RePair_group_28
+icons: /GUI/Icons/
