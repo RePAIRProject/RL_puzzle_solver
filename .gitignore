@@ -1,3 +1,8 @@
 /GUI/DataBase/*
+!/GUI/DataBase/.gitkeep
+
 /GUI/Cache/*
+!/GUI/Cache/.gitkeep
+
 /GUI/pieces/*
+!/GUI/pieces/.gitkeep
