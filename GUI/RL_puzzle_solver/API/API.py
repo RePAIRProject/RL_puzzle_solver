@@ -1,3 +1,9 @@
+
+import sys
+import os
+
+os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+
 from typing import Union
 
 from fastapi import FastAPI, WebSocket
@@ -8,8 +14,6 @@ import asyncio
 import numpy as np
 
 import json
-
-import os
 
 from GUI.RL_puzzle_solver.HIL.puzzle_solver import puzzle_solver, assemble
 from GUI.Back_End import BackEnd

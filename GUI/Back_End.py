@@ -1,8 +1,13 @@
-import os
 from threading import Thread, Event, Lock
 
 from scipy.io import loadmat
 from scipy.spatial import KDTree
+
+
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import select_anchor_RePAIR as select_anchor_RePAIR
 import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
@@ -460,7 +465,9 @@ class BackEnd:
         number_of_anchors = 4
         solver_parameters = ""
         setting_dir = ""
+        print("os_path", os.path)
         setting_path = os.path.join(setting_dir, "setting.txt")
+        print("setting_path", setting_path)
         if not os.path.exists(setting_path):
             with open(setting_path, "w") as setting_file:
                 setting_file.writelines(["image_path: /GUI/DataBase/Images/RePAIR_plaque_2/RGBA_merged/",
@@ -495,6 +502,7 @@ class BackEnd:
                                          "\n"
                                          ])
         os_path = os.getcwd()
+        print("os_path", os_path)
         if os.path.exists(setting_path):
             with open(setting_path, 'r') as setting_file:
                 lines = setting_file.readlines()

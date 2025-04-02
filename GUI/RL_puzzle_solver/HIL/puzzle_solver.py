@@ -1,9 +1,14 @@
 import json
-import os
 import pdb
 
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+
 from scipy.io import loadmat
-from RL_puzzle_solver.solver.utils import PuzzleSolver
+from GUI.RL_puzzle_solver.solver.utils import PuzzleSolver
 # from ..solver.utils import PuzzleSolver
 
 
