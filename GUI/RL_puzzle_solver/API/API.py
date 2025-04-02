@@ -60,6 +60,8 @@ class API(FastAPI):
         if self.back_end.pl_solver_running:
             answer, probability, process = self.back_end.get_API_solution()
             print(answer)
+            answer = self.scale_to_3D(answer)
+            print(answer)
             data = self.save_parameters_to_json(answer, probability, process)
             if data is not None:
                 return data
@@ -169,8 +171,13 @@ class API(FastAPI):
             return data  # Returning dictionary (FastAPI auto-converts to JSON)
         return None
 
-    def scale_to_solver(self, answer, probability, process):
-        return probability
+    FACTOR = 7.369 # 3D.mm * FACTOR = 2D.pixel
+
+    def scale_to_3D(self, answer):
+        scaled_answer = {}
+        for key, value in answer.items():
+            scaled_answer[key] = value / self.FACTOR
+        return scaled_answer # return in millimeters
 
 interval = 2 # in seconds
 app = API(interval)
