@@ -1,50 +1,42 @@
 [
   {
-    "img_name": "RPf_00018_mesh.png",
-    "score": 0.012237548828125
+    "img_name": "gr45_RPf_00375_intact_mesh.png",
+    "score": 0.5145645141601562
   },
   {
-    "img_name": "RPf_00025_mesh.png",
-    "score": 0.01084136962890625
+    "img_name": "gr43_RPf_00352_intact_mesh.png",
+    "score": 0.5135879516601562
   },
   {
-    "img_name": "RPf_00026_mesh.png",
-    "score": 0.00717926025390625
+    "img_name": "gr43_RPf_00357_intact_mesh.png",
+    "score": 0.5121536254882812
   },
   {
-    "img_name": "RPf_00024_mesh.png",
-    "score": 0.00710296630859375
+    "img_name": "gr44_RPf_00365_intact_mesh.png",
+    "score": 0.510650634765625
   },
   {
-    "img_name": "RPf_00023_mesh.png",
-    "score": 0.006103515625
+    "img_name": "gr45_RPf_00368_intact_mesh.png",
+    "score": 0.01692962646484375
   },
   {
-    "img_name": "RPf_00027_mesh.png",
-    "score": 0.0060577392578125
+    "img_name": "gr42_RPf_00345_intact_mesh.png",
+    "score": 0.0150604248046875
   },
   {
-    "img_name": "RPf_00019_mesh.png",
-    "score": 0.0059356689453125
+    "img_name": "gr46_RPf_00378_intact_mesh.png",
+    "score": 0.013427734375
   },
   {
-    "img_name": "RPf_00020_mesh.png",
-    "score": 0.0057830810546875
+    "img_name": "gr44_RPf_00363_intact_mesh.png",
+    "score": 0.0132598876953125
   },
   {
-    "img_name": "RPf_00021_mesh.png",
-    "score": 0.005584716796875
+    "img_name": "gr44_RPf_00366_intact_mesh.png",
+    "score": 0.0132293701171875
   },
   {
-    "img_name": "RPf_00028_mesh.png",
-    "score": 0.00399017333984375
-  },
-  {
-    "img_name": "RPf_00029_mesh.png",
-    "score": 0.002960205078125
-  },
-  {
-    "img_name": "RPf_00022_mesh.png",
-    "score": 0.0020904541015625
+    "img_name": "gr42_RPf_00350_intact_mesh.png",
+    "score": 0.01314544677734375
   }
 ]
