@@ -8,6 +8,7 @@ from typing import Union
 
 from fastapi import FastAPI, WebSocket
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 import asyncio
 
@@ -38,6 +39,15 @@ class API(FastAPI):
     KEY_FRAGMENT = 'RPf_00018_mesh'
     def __init__(self, update_interval):
         super().__init__()
+
+        self.add_middleware(
+            CORSMiddleware,
+            allow_origins=["https://re-pair.netlify.app"],  # or ["*"] for dev
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
         self.path_dic = {}
         self.update_interval = update_interval
         self.back_end = BackEnd()
