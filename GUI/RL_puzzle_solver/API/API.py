@@ -94,12 +94,12 @@ class API(FastAPI):
         return "not running"
 
     def solve_puzzle(self, group_number):
-        # try:
-        setting_path = "API/setting_group_" + str(group_number) + ".txt"
-        print(setting_path)
-        self.set_paths(setting_path)
-        # except FileNotFoundError:
-        #     return str(FileNotFoundError.filename)
+        try:
+            setting_path = "API/setting_group_" + str(group_number) + ".txt"
+            print(setting_path)
+            self.set_paths(setting_path)
+        except FileNotFoundError:
+            return "group not found"
 
         xy_step, theta_step = self.back_end.extract_steps()
 
@@ -113,7 +113,7 @@ class API(FastAPI):
         print(image_names)
 
         if not (self.KEY_FRAGMENT in image_names):
-            answer = "fix the server and choose among these:"
+            answer = "Key fragment is set correctly"
             answer = answer + str(image_names)
             return answer
         else:
