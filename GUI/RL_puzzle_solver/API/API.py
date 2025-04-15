@@ -54,15 +54,26 @@ class API(FastAPI):
         self.set_paths()
         # self.get("/")(self.read_root)
 
-        self.get("/start/restart")(self.solve_puzzle)
+        self.get("/start_group_{group_number}")(self.solve_puzzle)
+
+        self.get("/stop")(self.kill_puzzle_solver)
 
         self.get("/get_results")(self.get_results)
 
+        # self.get("/get_results/{number}")(self.read_root)
+
         # self.websocket("/ws")(self.websocket_endpoint)
         # self.websocket("/ws")(self.websocket_endpoint)
 
-    def set_paths(self):
-        path_dic = self.back_end.setting()
+    def set_paths(self, setting_path="setting.txt"):
+        path_dic = self.back_end.setting(setting_path)
+
+    def kill_puzzle_solver(self):
+        if self.back_end.pl_solver_running:
+            self.back_end.kill_puzzle_solver()
+            return "solver is running but it will die in few seconds"
+        else:
+            return "solver is not running"
 
 
     def read_root(self, number):
@@ -82,7 +93,14 @@ class API(FastAPI):
                 return "error 404"
         return "not running"
 
-    def solve_puzzle(self):
+    def solve_puzzle(self, group_number):
+        # try:
+        setting_path = "API/setting_group_" + str(group_number) + ".txt"
+        print(setting_path)
+        self.set_paths(setting_path)
+        # except FileNotFoundError:
+        #     return str(FileNotFoundError.filename)
+
         xy_step, theta_step = self.back_end.extract_steps()
 
         print(xy_step, theta_step)
@@ -100,14 +118,13 @@ class API(FastAPI):
             return answer
         else:
             if self.back_end.pl_solver_running:
-                self.back_end.kill_puzzle_solver()
-                return "solver is running but it will die in few seconds"
+                return "solver is running kill it before proceeding"
             else:
                 neighbour_ids = image_names.copy()
                 neighbour_ids.remove(self.KEY_FRAGMENT)
                 print('neighbour', neighbour_ids)
                 self.back_end.start_pl_solver_thread(self.KEY_FRAGMENT, neighbour_ids, [])
-                return "has been started"
+                return "server has been started"
 
     # async def websocket_endpoint(self, websocket: WebSocket):
     #     await websocket.accept()

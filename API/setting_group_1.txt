@@ -1,0 +1,17 @@
+image_path: /GUI/DataBase/new_looks/database/RPobj_g1_o0001_gt_rot/pieces/
+mask_path: /GUI/DataBase/new_looks/database/RPobj_g1_o0001_gt_rot/masks/
+backend_path: /GUI/DataBase/new_looks/database/RPobj_g3RPobj_g1_o0001_gt_rot_o0003_gt_rot/
+comp_path: /GUI/DataBase/new_looks/database/RPobj_g1_o0001_gt_rot/compatibility_parameters_v2.json
+pieces_path: /GUI/DataBase/new_looks/database/RPobj_g1_o0001_gt_rot/pieces/
+comp_folder: /GUI/DataBase/new_looks/database/RPobj_g1_o0001_gt_rot/compatibility_matrix/
+comp_name: CM_combo_SLMS_v2.mat
+Rotation_Intervals: 90
+number_of_neighbours: 11
+number_of_anchors: 11
+comp_format: R
+ground_truth: /GUI/DataBase/new_looks/database/RPobj_g1_o0001_gt_rot/parameters_RPobj_g1_o0001_gt_rot.json
+apply_gt: False
+parameters: /GUI/DataBase/new_looks/database/RPobj_g1_o0001_gt_rot/compatibility_parameters_v2.json
+solver_parameters: /GUI/DataBase/new_looks/database/RPobj_g1_o0001_gt_rot/solver_parameters.json
+dataset_name: RPobj_g1_o0001_gt_rot
+icons: /GUI/Icons/

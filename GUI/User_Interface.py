@@ -1339,7 +1339,7 @@ def get_setting():
     global back_end
     global backend_path
 
-    path_dic, rotation_intervals, backend_path = back_end.setting()
+    path_dic, rotation_intervals, backend_path = back_end.setting("setting.txt")
     rotation_interval = float(rotation_intervals) / 2
 
     copy_to_cache()

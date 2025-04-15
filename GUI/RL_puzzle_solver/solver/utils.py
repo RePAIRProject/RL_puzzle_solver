@@ -128,7 +128,7 @@ class PuzzleSolver:
         if piece_number not in self.locked_pieces:
             self.locked_pieces.append(piece_number)
 
-        # self.reinit_p_matrix()
+        self.reinit_p_matrix()
 
     def reinit_p_matrix(self):
         Y, X, Z, noPatches = self.probability_matrix.shape

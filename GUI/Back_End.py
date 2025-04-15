@@ -452,7 +452,7 @@ class BackEnd:
             return False
         return True  # No collision
 
-    def setting(self):  # unified path setting
+    def setting(self, setting_type):  # unified path setting
         path_dic = ""
         image_path = ""
         mask_path = ""
@@ -470,7 +470,7 @@ class BackEnd:
         solver_parameters = ""
         setting_dir = ""
         print("os_path", os.path)
-        setting_path = os.path.join(setting_dir, "setting.txt")
+        setting_path = os.path.join(setting_dir, setting_type)
         print("setting_path", setting_path)
         if not os.path.exists(setting_path):
             with open(setting_path, "w") as setting_file:
