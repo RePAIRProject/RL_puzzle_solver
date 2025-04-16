@@ -136,7 +136,7 @@ class API(FastAPI):
         print(image_names)
 
         if not (self.key_fragment in image_names):
-            answer = "The key fragment was not set correctly, Choose among these images: "
+            answer = "The key fragment (" + str(self.key_fragment) + ") was not set correctly, Choose among these images: "
             answer = answer + str(image_names)
             return answer
         else:
