@@ -1,4 +1,4 @@
-
+import shutil
 import sys
 import os
 
@@ -94,12 +94,26 @@ class API(FastAPI):
         return "not running"
 
     def solve_puzzle(self, group_number):
-        try:
-            setting_path = "API/setting_group_" + str(group_number) + ".txt"
+        cache_path = "GUI/Cache"
+        file_name = "setting_group_" + str(group_number) + ".txt"
+        original_setting_path = "API/" + file_name
+        if os.path.exists(original_setting_path):
+            setting_path = cache_path + "/" + file_name
+            shutil.copy(original_setting_path, setting_path)
             print(setting_path)
+        else:
+            return "group setting not found"
+        try:
             self.set_paths(setting_path)
+
+            # clear cache
+            if os.path.exists(setting_path):
+                os.remove(setting_path)
         except FileNotFoundError:
-            return "group not found"
+            # delete setting_path if not found
+            if os.path.exists(setting_path):
+                os.remove(setting_path)
+            return "Database not found"
 
         xy_step, theta_step = self.back_end.extract_steps()
 
@@ -113,7 +127,7 @@ class API(FastAPI):
         print(image_names)
 
         if not (self.KEY_FRAGMENT in image_names):
-            answer = "Key fragment is set correctly"
+            answer = "The key fragment was not set correctly, Choose among these images: "
             answer = answer + str(image_names)
             return answer
         else:
@@ -188,8 +202,8 @@ class API(FastAPI):
         # P_ = update_P(..)
         # positions_ = P_to_positions(..)
         # response = {'pieces': {'RPf_XXX': {'position': [x, y, z], 'probability': 0.1}, 'RPf_XXX': {'position': [x, y, z], 'probability': 0.1}, .. } }
-        response = "Will Do"
-        return xy_step, theta_step
+        # response = "Will Do"
+        # return xy_step, theta_step
 
     def save_parameters_to_json(self, answer, probability, process, filename="API-example.json"):
         # Convert numpy arrays to lists for JSON serialization
