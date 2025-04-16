@@ -36,7 +36,6 @@ class PuzzlePieces(BaseModel):
 
 class API(FastAPI):
     FACTOR = 7.369 # 3D.mm * FACTOR = 2D.pixel
-    KEY_FRAGMENT = 'RPf_00018_mesh'
     def __init__(self, update_interval):
         super().__init__()
 
@@ -59,6 +58,8 @@ class API(FastAPI):
         self.get("/stop")(self.kill_puzzle_solver)
 
         self.get("/get_results")(self.get_results)
+
+        self.key_fragment = 'RPf_00018_mesh'
 
         # self.get("/get_results/{number}")(self.read_root)
 
@@ -115,6 +116,14 @@ class API(FastAPI):
                 os.remove(setting_path)
             return "Database not found"
 
+        if group_number == "1":
+            print("here")
+            self.key_fragment = 'RPf_00008_mesh'
+        elif group_number == "3":
+            self.key_fragment = 'RPf_00018_mesh'
+        elif group_number == "39":
+            self.key_fragment = 'RPf_00317_intact_mesh'
+
         xy_step, theta_step = self.back_end.extract_steps()
 
         print(xy_step, theta_step)
@@ -126,7 +135,7 @@ class API(FastAPI):
 
         print(image_names)
 
-        if not (self.KEY_FRAGMENT in image_names):
+        if not (self.key_fragment in image_names):
             answer = "The key fragment was not set correctly, Choose among these images: "
             answer = answer + str(image_names)
             return answer
@@ -135,9 +144,9 @@ class API(FastAPI):
                 return "solver is running kill it before proceeding"
             else:
                 neighbour_ids = image_names.copy()
-                neighbour_ids.remove(self.KEY_FRAGMENT)
+                neighbour_ids.remove(self.key_fragment)
                 print('neighbour', neighbour_ids)
-                self.back_end.start_pl_solver_thread(self.KEY_FRAGMENT, neighbour_ids, [])
+                self.back_end.start_pl_solver_thread(self.key_fragment, neighbour_ids, [])
                 return "server has been started"
 
     # async def websocket_endpoint(self, websocket: WebSocket):
