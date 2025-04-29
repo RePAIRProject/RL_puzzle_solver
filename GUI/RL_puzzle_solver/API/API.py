@@ -91,7 +91,7 @@ class API(FastAPI):
             if data is not None:
                 return data
             else:
-                return "error 404"
+                return "error 404, solver answer is None"
         return "not running"
 
     def solve_puzzle(self, group_number):
@@ -231,6 +231,8 @@ class API(FastAPI):
 
     def scale_to_3D(self, answer):
         scaled_answer = {}
+        if answer is None:
+            return "solver parameters not set correctly"
         for key, value in answer.items():
             scaled_answer[key] = value / self.FACTOR
         return scaled_answer # return in millimeters
