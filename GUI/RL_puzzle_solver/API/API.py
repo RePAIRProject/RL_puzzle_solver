@@ -75,7 +75,7 @@ class API(FastAPI):
             answer = self.scale_to_3D(answer)
 
             # for key, value in answer.items():
-            #     answer[key] = np.array([0,0,0])
+            #     answer[key] = np.array([0,0,0]) # how
 
             data = self.save_parameters_to_json(answer, probability, process, iteration)
             if data is not None:
