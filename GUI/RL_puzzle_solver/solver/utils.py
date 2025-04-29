@@ -26,6 +26,8 @@ class PuzzleSolver:
         self.alive_flag = True
         self.process = 0.0
 
+        self.iteration = 0
+
         self.repair_lock = Lock()
 
         self.p_matrix_lock = Lock()
@@ -87,7 +89,7 @@ class PuzzleSolver:
             # # Display the results
             # # print("Highest values for each slice along the j dimension:")
             # # print(highest_values)
-        return sol_dict, probability_dict, self.process
+        return sol_dict, probability_dict, self.process, self.iteration
 
     def set_p_matrix(self, p_matrix):
         with self.p_matrix_lock:
@@ -429,6 +431,7 @@ class PuzzleSolver:
             iter += 1
             total_iter += 1
             self.process = float(total_iter)/float(Tmax)
+            self.iteration = float(total_iter)
 
             with self.cm_matrix_lock:
                 no_rotations = self.compatibility_matrix.shape[2]

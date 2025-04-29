@@ -83,11 +83,11 @@ class API(FastAPI):
     def get_results(self):
         print(self.back_end.pl_solver_running)
         if self.back_end.pl_solver_running:
-            answer, probability, process = self.back_end.get_API_solution()
+            answer, probability, process, iteration = self.back_end.get_API_solution()
             print(answer)
             answer = self.scale_to_3D(answer)
             print(answer)
-            data = self.save_parameters_to_json(answer, probability, process)
+            data = self.save_parameters_to_json(answer, probability, process, iteration)
             if data is not None:
                 return data
             else:
@@ -214,7 +214,7 @@ class API(FastAPI):
         # response = "Will Do"
         # return xy_step, theta_step
 
-    def save_parameters_to_json(self, answer, probability, process, filename="API-example.json"):
+    def save_parameters_to_json(self, answer, probability, process, iteration, filename="API-example.json"):
         # Convert numpy arrays to lists for JSON serialization
         if answer is not None and probability is not None and process is not None:
             data = {
@@ -224,7 +224,8 @@ class API(FastAPI):
                         "probability": probability[key].tolist()
                     } for key, value in answer.items()
                 },
-                "process": process
+                "process": process,
+                "iteration": iteration
             }
             return data  # Returning dictionary (FastAPI auto-converts to JSON)
         return None

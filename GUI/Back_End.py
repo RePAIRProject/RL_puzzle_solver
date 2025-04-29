@@ -138,16 +138,16 @@ class BackEnd:
         return xy_step, theta_step
 
     def get_solution_dict(self):
-        answer, probability, process = puzzle_solver.get_solution_dict()
+        answer, probability, process, iteration = puzzle_solver.get_solution_dict()
 
         if answer is not None:
             answer = self.scale_solution(answer)
         return answer, probability, process
 
     def get_API_solution(self):
-        answer, probability, process = puzzle_solver.get_solution_dict()
+        answer, probability, process, iteration = puzzle_solver.get_solution_dict()
         # answer = self.scale_solution(answer)
-        return answer, probability, process
+        return answer, probability, process, iteration
 
     def solver_toggle_lock(self, value):
         puzzle_solver.toggle_lock(value)
