@@ -7,4 +7,5 @@
 /GUI/pieces/*
 !/GUI/pieces/.gitkeep
 
+.idea/
 .venv/
