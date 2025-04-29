@@ -1351,8 +1351,8 @@ if __name__ == '__main__':
 
     read_ground_truth()
 
-    # transparent_path = os.getcwd() + "/GUI/pieces/"
-    # transparent_data(transparent_path)
+    transparent_path = os.getcwd() + "/GUI/pieces/"
+    transparent_data(transparent_path)
 
     # erode_data()
 

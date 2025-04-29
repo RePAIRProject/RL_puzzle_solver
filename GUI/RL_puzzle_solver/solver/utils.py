@@ -68,9 +68,27 @@ class PuzzleSolver:
             probability_dict = {}
             for j in range(final_solution_bank.shape[0]):
                 sol_dict[self.pieces_names[j]] = final_solution_bank[j, :]
-
+                # probability_dict[pieces_names[j]] = np.round(highest_values[j], 3)
                 probability_dict[self.pieces_names[j]] = self.maximum_probability[j]
-
+            # highest_values = []
+            #
+            # # Iterate over the `j` dimension
+            # for i in range(self.probability_matrix.shape[3]):  # p_final.shape[3] gives the size of the `j` dimension
+            #     # Extract the slice for the current `i`
+            #     current_slice = self.probability_matrix[:, :, 0, i]  # Slice along (243, 243)
+            #
+            #     # Find the maximum value in the current slice
+            #     max_value = np.max(current_slice)
+            #
+            #     # Append the result to the list
+            #     highest_values.append(max_value)
+            #
+            # # Convert the list to a numpy array for easier manipulation (if needed)
+            # highest_values = np.array(highest_values)
+            #
+            # # Display the results
+            # # print("Highest values for each slice along the j dimension:")
+            # # print(highest_values)
         return sol_dict, probability_dict, self.process, self.iteration
 
     def set_p_matrix(self, p_matrix):
@@ -443,7 +461,7 @@ class PuzzleSolver:
                     q[:, :, zi, i] = q2
             with self.p_matrix_lock:
                 heat = 1
-                pq = self.probability_matrix * np.exp(heat * q) # e = 1e-11
+                pq = self.probability_matrix * np.exp(heat * q)
                 self.delta_probs = pq - self.probability_matrix
                 self.probability_matrix = pq / (np.sum(pq, axis=(0, 1, 2)))
                 self.probability_matrix = np.where(np.isnan(self.probability_matrix), 0, self.probability_matrix)
