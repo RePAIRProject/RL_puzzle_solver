@@ -20,19 +20,6 @@ from GUI.RL_puzzle_solver.HIL.puzzle_solver import puzzle_solver, assemble
 from GUI.Back_End import BackEnd
 
 # app = FastAPI()
-    
-pieces_names_g29: list = ['RPf_00204', 'RPf_00205', 'RPf_00206', 'RPf_00207', 'RPf_00208']
-
-class G29(BaseModel):
-    name: str = 'group_29'
-    P_x: int = 101
-    P_y: int = 101
-    P_theta: int = 90 
-    pieces_names: list = ['RPf_00204', 'RPf_00205', 'RPf_00206', 'RPf_00207', 'RPf_00208']
-    pieces: dict = {'pieces':{}}
-
-class PuzzlePieces(BaseModel):
-    pieces: dict = {'pieces': {}}
 
 class API(FastAPI):
     FACTOR = 7.369 # 3D.mm * FACTOR = 2D.pixel
@@ -120,7 +107,7 @@ class API(FastAPI):
             print("here")
             self.key_fragment = 'RPf_00008_mesh'
         elif group_number == "3":
-            self.key_fragment = 'RPf_00018_mesh'
+            self.key_fragment = 'RPf_00018_intact_mesh'
         elif group_number == "39":
             self.key_fragment = 'RPf_00317_intact_mesh'
 
