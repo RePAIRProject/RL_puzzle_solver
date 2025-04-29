@@ -45,8 +45,8 @@ path_dic = {}
 back_end = BackEnd()
 
 rotation_interval = 0.5
-communication_freq = 0.10  # in seconds
-graphic_freq = 0.10  # in seconds
+communication_freq = 0.01  # in seconds
+graphic_freq = 0.01  # in seconds
 
 
 class MainLayout(GridLayout):  # might need to change GridLayout to sth else to be fix some bugs (not as important)

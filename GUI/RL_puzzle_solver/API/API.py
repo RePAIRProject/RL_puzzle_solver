@@ -71,9 +71,14 @@ class API(FastAPI):
         print(self.back_end.pl_solver_running)
         if self.back_end.pl_solver_running:
             answer, probability, process, iteration = self.back_end.get_API_solution()
-            print(answer)
+
             answer = self.scale_to_3D(answer)
-            print(answer)
+
+            print("probability", probability)
+
+            for key, value in answer.items():
+                answer[key] = np.array([value[1], value[0], value[2]])
+
             data = self.save_parameters_to_json(answer, probability, process, iteration)
             if data is not None:
                 return data
@@ -105,7 +110,7 @@ class API(FastAPI):
 
         if group_number == "1":
             print("here")
-            self.key_fragment = 'RPf_00008_mesh'
+            self.key_fragment = 'RPf_00008_intact_mesh'
         elif group_number == "3":
             self.key_fragment = 'RPf_00018_intact_mesh'
         elif group_number == "39":
