@@ -8,4 +8,5 @@
 !/GUI/pieces/.gitkeep
 
 .idea/
+.idea/*
 .venv/
