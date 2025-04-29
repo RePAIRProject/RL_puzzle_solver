@@ -457,7 +457,7 @@ class PuzzleSolver:
 
                     q1 = np.sum(c1, axis=(2, 3))
                     # q2 = (q1 != 0) * (q1 + no_patches * no_rotations * 0.5) ## new_experiment
-                    q2 = (q1 + no_patches * no_rotations * 1)
+                    q2 = (q1 + no_patches * 1) # with removing no_rotations it is faster
                     q[:, :, zi, i] = q2
             with self.p_matrix_lock:
                 heat = 1
