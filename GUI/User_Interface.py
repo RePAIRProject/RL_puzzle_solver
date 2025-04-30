@@ -1027,8 +1027,8 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
             # print("process", process)
             # save_parameters_to_json(answer, probability, process)
             if answer is not None:
-                if iteration % 5 == 0:
-                    back_end.evaluate(answer)
+                # if iteration % 5 == 0:
+                #     back_end.evaluate(answer)
                 # for image in answer:
                 #     print(image)
                 #     try:

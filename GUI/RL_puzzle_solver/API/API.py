@@ -37,7 +37,7 @@ class API(FastAPI):
         self.path_dic = {}
         self.update_interval = update_interval
         self.back_end = BackEnd()
-        self.set_paths()
+        # self.set_paths()
         # self.get("/")(self.read_root)
 
         self.get("/start_group_{group_number}")(self.solve_puzzle)
@@ -67,10 +67,34 @@ class API(FastAPI):
     def read_root(self, number):
         return {"Hello": "World"}
 
+    def scale_solution_key_fragment(self, solution):
+        key_fragment_png = str(self.key_fragment) + '.png'
+
+        key_x, key_y, key_rotation = solution[key_fragment_png]
+
+        adjusted_solution = {}
+
+        for piece, (x, y, rotation) in solution.items():
+
+            new_x = x - key_x
+            new_y = y - key_y
+
+            adjusted_solution[piece] = np.array([new_x, new_y, rotation])
+
+        return adjusted_solution
+
     def get_results(self):
         print(self.back_end.pl_solver_running)
         if self.back_end.pl_solver_running:
             answer, probability, process, iteration = self.back_end.get_API_solution()
+
+            key_fragment_png = str(self.key_fragment) + '.png'
+
+            print('old answer', answer)
+
+            answer = self.scale_solution_key_fragment(answer)
+
+            print('new answer', answer)
 
             answer = self.scale_to_3D(answer)
 
