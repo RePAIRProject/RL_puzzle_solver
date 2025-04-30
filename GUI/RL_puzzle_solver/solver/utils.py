@@ -431,7 +431,7 @@ class PuzzleSolver:
             iter += 1
             total_iter += 1
             self.process = float(total_iter)/float(Tmax)
-            self.iteration = float(total_iter)
+            self.iteration = int(total_iter)
 
             with self.cm_matrix_lock:
                 no_rotations = self.compatibility_matrix.shape[2]

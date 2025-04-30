@@ -7,12 +7,16 @@ from scipy.spatial import KDTree
 import sys
 import os
 
+from GUI.Evaluation import Evaluation
+from GUI.RL_puzzle_solver.configs.folder_names import ground_truth
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import select_anchor_RePAIR as select_anchor_RePAIR
 import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
 import json
 import numpy as np
+import re
 # from kivymd.app import MDApp
 import math
 
@@ -60,6 +64,8 @@ class BackEnd:
 
         self.mat = None
         self.R = None
+
+        self.evaluation = Evaluation()
 
     def set_path(self, path_dic):
         self.path_dic = path_dic
@@ -121,10 +127,86 @@ class BackEnd:
 
         puzzle_solver.set_p_elements(pos[0], pos[1], pos[2], image_name)
 
-
     def reverse_offset(self, pos, offset):
         pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
         return pos
+
+    def evaluate(self, answer):
+        pieces, results = self.extract_pieces(answer)
+        ground_truth_path = self.path_dic['ground_truth']
+        ground_truth = self.extract_ground_truth(ground_truth_path)
+        path_lists = self.extract_path_lists(pieces, self.path_dic['pieces_path'])
+        print("pieces", pieces)
+        print("ground_truth", ground_truth)
+        print("results", results)
+        print("path_lists", path_lists)
+
+        q_pos, rmse_rot, rmse_translation = self.evaluation.evaluate(pieces, ground_truth, results, path_lists)
+
+        print("q_pos", q_pos)
+        print("rmse_rot", rmse_rot)
+        print("rmse_translation", rmse_translation)
+
+    def extract_pieces(self, answer):
+        """
+            Takes a dictionary of full piece names with position arrays,
+            and returns:
+            - a list of normalized piece IDs (e.g. ['00018', '00019'])
+            - a dictionary mapping these IDs to their arrays
+
+            Normalization extracts the numeric part from the piece name.
+            """
+        pieces = []
+        results = {}
+
+        for full_name, array in answer.items():
+            match = re.search(r'\d+', full_name)
+            if match:
+                piece_id = match.group(0).zfill(5)  # Normalize to 5-digit string
+                pieces.append(piece_id)
+                results[piece_id] = array.tolist()  # Convert NumPy array to list
+
+        return pieces, results
+
+    def extract_ground_truth(self, ground_truth_path):
+        "ground truth should be .txt format"
+        ground_truth = {}
+
+        with open(ground_truth_path, 'r') as file:
+            lines = file.readlines()
+
+            for line in lines[1:]:  # Skip header
+                parts = line.strip().split(',')
+                if len(parts) >= 5:
+                    raw_piece_name = parts[1]
+                    # Extract the first sequence of digits (e.g., '02313')
+                    match = re.search(r'\d+', raw_piece_name)
+                    if not match:
+                        continue  # Skip if no numeric ID found
+                    piece_id = match.group(0).zfill(5)  # zero-pad to 5 digits if needed
+                    x = float(parts[2])
+                    y = float(parts[3])
+                    rot = float(parts[4])
+                    ground_truth[piece_id] = [x, y, rot]
+
+        return ground_truth
+
+    def extract_path_lists(self, pieces, path):
+        path_lists = {}
+        all_files = os.listdir(path)
+
+        for piece_id in pieces:
+            # Construct part of the filename to search for (e.g., "00232")
+            matching_file = next(
+                (f for f in all_files if piece_id in f and f.lower().endswith(('.png', '.jpg'))),
+                None
+            )
+            if matching_file:
+                path_lists[piece_id] = os.path.join(path, matching_file)
+            else:
+                path_lists[piece_id] = None  # Or skip, or raise an error
+
+        return path_lists
 
     def extract_steps(self):
         parameters = self.path_dic['parameters']
@@ -142,7 +224,7 @@ class BackEnd:
 
         if answer is not None:
             answer = self.scale_solution(answer)
-        return answer, probability, process
+        return answer, probability, process, iteration
 
     def get_API_solution(self):
         answer, probability, process, iteration = puzzle_solver.get_solution_dict()

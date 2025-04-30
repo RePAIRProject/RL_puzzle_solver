@@ -1021,12 +1021,14 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
     while True:
         app.communicate_thread_lock.acquire()
         if update_counter>=(1/communication_freq)*update_freq:
-            answer, probability, process = back_end.get_solution_dict( )
+            answer, probability, process, iteration = back_end.get_solution_dict()
             # print("answer", answer)
             # print("probability", probability)
             # print("process", process)
             # save_parameters_to_json(answer, probability, process)
             if answer is not None:
+                if iteration % 5 == 0:
+                    back_end.evaluate(answer)
                 # for image in answer:
                 #     print(image)
                 #     try:
