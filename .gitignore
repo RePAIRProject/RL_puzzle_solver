@@ -10,3 +10,6 @@
 .idea/
 .idea/*
 .venv/
+.conda/
+
+.DS_Store
