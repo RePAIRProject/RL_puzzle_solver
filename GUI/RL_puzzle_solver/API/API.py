@@ -90,11 +90,11 @@ class API(FastAPI):
 
             key_fragment_png = str(self.key_fragment) + '.png'
 
-            print('old answer', answer)
+            # print('old answer', answer)
 
             answer = self.scale_solution_key_fragment(answer)
 
-            print('new answer', answer)
+            # print('new answer', answer)
 
             answer = self.scale_to_3D(answer)
 
