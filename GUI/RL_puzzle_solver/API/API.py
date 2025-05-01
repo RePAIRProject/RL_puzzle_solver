@@ -137,7 +137,7 @@ class API(FastAPI):
         elif group_number == "3":
             self.key_fragment = 'RPf_00018_intact_mesh'
         elif group_number == "39":
-            self.key_fragment = 'RPf_00317_intact_mesh'
+            self.key_fragment = 'RPf_00313_intact_mesh'
 
         xy_step, theta_step = self.back_end.extract_steps()
 
