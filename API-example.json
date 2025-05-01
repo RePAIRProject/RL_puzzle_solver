@@ -1,99 +1,119 @@
 {
     "pieces": {
-        "RPf_00001_intact_mesh.png": {
+        "RPf_00309_intact_mesh.png": {
             "position": [
-                249,
-                45,
+                105,
+                3,
                 0
             ],
             "probability": [
                 1.0
             ]
         },
-        "RPf_00002_intact_mesh.png": {
+        "RPf_00310_intact_mesh.png": {
             "position": [
-                192,
-                78,
+                138,
+                -132,
                 0
             ],
             "probability": [
-                1.0
+                0.92918322
             ]
         },
-        "RPf_00003_intact_mesh.png": {
-            "position": [
-                171,
-                -15,
-                0
-            ],
-            "probability": [
-                1.0
-            ]
-        },
-        "RPf_00004_intact_mesh.png": {
-            "position": [
-                99,
-                69,
-                0
-            ],
-            "probability": [
-                1.0
-            ]
-        },
-        "RPf_00005_intact_mesh.png": {
-            "position": [
-                111,
-                -3,
-                0
-            ],
-            "probability": [
-                1.0
-            ]
-        },
-        "RPf_00006_intact_mesh.png": {
+        "RPf_00311_intact_mesh.png": {
             "position": [
                 81,
-                -33,
+                -135,
                 0
             ],
             "probability": [
                 1.0
             ]
         },
-        "RPf_00007_intact_mesh.png": {
+        "RPf_00312_intact_mesh.png": {
+            "position": [
+                -30,
+                63,
+                0
+            ],
+            "probability": [
+                1.0
+            ]
+        },
+        "RPf_00313_intact_mesh.png": {
+            "position": [
+                0,
+                0,
+                0
+            ],
+            "probability": [
+                1.0
+            ]
+        },
+        "RPf_00314_intact_mesh.png": {
+            "position": [
+                42,
+                -60,
+                0
+            ],
+            "probability": [
+                1.0
+            ]
+        },
+        "RPf_00315_intact_mesh.png": {
             "position": [
                 -6,
-                84,
+                -99,
                 0
             ],
             "probability": [
                 1.0
             ]
         },
-        "RPf_00008_intact_mesh.png": {
+        "RPf_00316_intact_mesh.png": {
             "position": [
-                0,
-                0,
+                -87,
+                63,
                 0
             ],
             "probability": [
                 1.0
             ]
         },
-        "RPf_00009_intact_mesh.png": {
+        "RPf_00317_intact_mesh.png": {
             "position": [
-                -84,
-                72,
+                -138,
+                96,
                 0
             ],
             "probability": [
                 1.0
             ]
         },
-        "RPf_00010_intact_mesh.png": {
+        "RPf_00318_intact_mesh.png": {
+            "position": [
+                -123,
+                18,
+                0
+            ],
+            "probability": [
+                1.0
+            ]
+        },
+        "RPf_00319_intact_mesh.png": {
             "position": [
                 -117,
-                -3,
+                -48,
+                0
+            ],
+            "probability": [
+                1.0
+            ]
+        },
+        "RPf_00320_intact_mesh.png": {
+            "position": [
+                -99,
+                -114,
                 0
             ],
             "probability": [
@@ -101,5 +121,5 @@
             ]
         }
     },
-    "process": 0.74
+    "process": 0.52
 }
