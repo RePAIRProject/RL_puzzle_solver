@@ -119,7 +119,7 @@ class API(FastAPI):
             if probability[key] < thresh_hold:
                 x, y, theta = value
                 answer[key] = np.array([-2500, -2500, theta])
-        return answer, probability
+        return answer
 
     def solve_puzzle(self, group_number):
         cache_path = "GUI/Cache"
