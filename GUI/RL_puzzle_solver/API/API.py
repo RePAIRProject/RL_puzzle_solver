@@ -111,7 +111,7 @@ class API(FastAPI):
                 return "error 404, solver answer is None"
         return "not running"
 
-    def throw_away_low_probability(self, answer, probability, thresh_hold=0.25):
+    def throw_away_low_probability(self, answer, probability, thresh_hold=0.01):
         """
         Remove pieces with probability lower than the threshold
         """
