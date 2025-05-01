@@ -23,6 +23,7 @@ from GUI.Back_End import BackEnd
 
 class API(FastAPI):
     FACTOR = 7.369 # 3D.mm * FACTOR = 2D.pixel
+    NEW_IMAGE_FACTOR = 2000/251
     def __init__(self, update_interval):
         super().__init__()
 
@@ -140,7 +141,7 @@ class API(FastAPI):
 
         xy_step, theta_step = self.back_end.extract_steps()
 
-        print(xy_step, theta_step)
+        print('xy_step', xy_step, 'theta_step', theta_step)
 
         image_path = self.back_end.path_dic["image_path"]
 
@@ -249,7 +250,8 @@ class API(FastAPI):
         if answer is None:
             return "solver parameters not set correctly"
         for key, value in answer.items():
-            scaled_answer[key] = value / self.FACTOR
+            scaled_answer[key] = value * self.NEW_IMAGE_FACTOR / self.FACTOR
+
         return scaled_answer # return in millimeters
 
 interval = 2 # in seconds

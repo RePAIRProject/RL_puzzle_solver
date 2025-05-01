@@ -20,6 +20,8 @@ class PuzzleSolver:
         # self.reinforcement_learning = ReinforcementLearning(None, None)
         self.final_solution = None
         self.ppars = args[0] if len(args) > 0 else None
+
+        print("ppars", self.ppars)
         self.pieces_names = args[1] if len(args) > 1 else None
         self.running = True
 
