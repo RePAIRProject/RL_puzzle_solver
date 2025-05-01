@@ -250,7 +250,10 @@ class API(FastAPI):
         if answer is None:
             return "solver parameters not set correctly"
         for key, value in answer.items():
-            scaled_answer[key] = value * self.NEW_IMAGE_FACTOR / self.FACTOR
+            x, y, theta = value
+            scaled_x = x * self.NEW_IMAGE_FACTOR / self.FACTOR
+            scaled_y = y * self.NEW_IMAGE_FACTOR / self.FACTOR
+            scaled_answer[key] = [scaled_y, scaled_x, theta]
 
         return scaled_answer # return in millimeters
 
