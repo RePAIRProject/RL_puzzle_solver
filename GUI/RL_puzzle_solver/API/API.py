@@ -253,7 +253,7 @@ class API(FastAPI):
             x, y, theta = value
             scaled_x = x * self.NEW_IMAGE_FACTOR / self.FACTOR
             scaled_y = y * self.NEW_IMAGE_FACTOR / self.FACTOR
-            scaled_answer[key] = [scaled_y, scaled_x, theta]
+            scaled_answer[key] = np.array([scaled_y, scaled_x, theta])
 
         return scaled_answer # return in millimeters
 
