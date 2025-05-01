@@ -99,7 +99,7 @@ class API(FastAPI):
 
             answer = self.scale_to_3D(answer)
 
-            answer = self.throw_away_low_probability(answer, probability, thresh_hold=0.5)
+            answer = self.throw_away_low_probability(answer, probability)
 
             # for key, value in answer.items():
             #     answer[key] = np.array([0,0,0]) # how
@@ -111,7 +111,7 @@ class API(FastAPI):
                 return "error 404, solver answer is None"
         return "not running"
 
-    def throw_away_low_probability(self, answer, probability, thresh_hold=0.5):
+    def throw_away_low_probability(self, answer, probability, thresh_hold=0.25):
         """
         Remove pieces with probability lower than the threshold
         """
