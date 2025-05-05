@@ -160,8 +160,6 @@ class BackEnd:
         base_fragment = re.search(r'\d+', base_fragment)
         key_id = str(base_fragment.group(0)).zfill(5)  # zero-pad to 5 digits if needed
 
-        print("key_id", key_id)
-
         if key_id not in results or key_id not in ground_truth:
             raise KeyError(f"'{key_id}' missing in results or ground_truth")
 
@@ -172,9 +170,6 @@ class BackEnd:
         gt = {pid: [x - gx, y - gy, theta] for pid, (x, y, theta) in ground_truth.items()}
         res = {pid: [x - rx, y - ry, theta] for pid, (x, y, theta) in results.items()}
 
-        print("res", res[key_id])
-        print("gt", gt[key_id])
-
         # --- 2) shift both so GT bbox min(x,y)=0,0 ---------------------------
         min_x = min(p[0] for p in gt.values())
         min_y = min(p[1] for p in gt.values())
@@ -183,9 +178,6 @@ class BackEnd:
 
         gt = {pid: [x + dx, y + dy, theta] for pid, (x, y, theta) in gt.items()}
         res = {pid: [x + dx, y + dy, theta] for pid, (x, y, theta) in res.items()}
-
-        print("res", res[key_id])
-        print("gt", gt[key_id])
 
         # --- 3) rotate results so key fragment’s theta matches GT theta -------------
         d_theta = (g_theta - r_theta) % 360
@@ -197,9 +189,6 @@ class BackEnd:
                 y2 = sin_t * x + cos_t * y
                 res_rot[pid] = [x2, y2, (theta + d_theta) % 360]
             res = res_rot
-
-        print("res", res[key_id])
-        print("gt", gt[key_id])
 
         return gt, res
 
@@ -587,8 +576,9 @@ class BackEnd:
         apply_gt = self.path_dic['apply_gt']
         if apply_gt == "True":
             self.pl_solution = self.apply_ground_truth()
+        original_pl_solution = self.pl_solution.copy()
         self.pl_solution = self.scale_solution(self.pl_solution)
-        return self.pl_solution
+        return self.pl_solution, original_pl_solution
 
     def scale_solution(self, solution):
         key_x, key_y, key_rotation = solution[self.key_fragment]
