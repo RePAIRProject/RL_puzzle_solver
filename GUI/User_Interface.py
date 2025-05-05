@@ -81,6 +81,7 @@ class GUIApp(MDApp):
 
         self.keyboard_input = 0
         self.ratio = 1
+        self.last_eval_bucket = -1
         self.time_stamp = 0
         self.selected_pic = 0
 
@@ -751,6 +752,8 @@ class GUIApp(MDApp):
         self.sidebar.col_grid.label1.text = "Accept"
         self.pl_solution = back_end.get_pl_solution()
         self.apply_solution()
+        answer, probability, process, iteration = back_end.get_solution_dict()
+        calculate_results(self.pl_solution, iteration, -1)
         self.solution_applied = True
         self.pl_solver_button.disabled = True
         self.show_button.text = 'Next Loop'
@@ -913,6 +916,7 @@ def start_pl_solver(self):
     update_started = False
     solved_piece = back_end.solved_pieces + app.final_solution
     # print("solved_piece", solved_piece)
+    app.last_eval_bucket = -1
     back_end.start_pl_solver_thread(back_end.key_fragment, back_end.neighbour_ids, solved_piece)
     universal_zoom_applied = False
 
@@ -1018,8 +1022,14 @@ def save_parameters_to_json(answer, probability, process, filename="API-example.
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
     global update_counter
     global update_started
+    answer = None
     while True:
         app.communicate_thread_lock.acquire()
+        iteration = back_end.get_iteration()
+        if answer is not None and iteration is not None and iteration > 4:
+            bucket = iteration // 5
+            if bucket > app.last_eval_bucket:
+                calculate_results(answer, iteration, bucket)
         if update_counter>=(1/communication_freq)*update_freq:
             answer, probability, process, iteration = back_end.get_solution_dict()
             # print("answer", answer)
@@ -1027,8 +1037,7 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
             # print("process", process)
             # save_parameters_to_json(answer, probability, process)
             if answer is not None:
-                # if iteration % 5 == 0:
-                #     back_end.evaluate(answer)
+                # back_end.save_results(answer)
                 # for image in answer:
                 #     print(image)
                 #     try:
@@ -1070,6 +1079,15 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
             app.toolbar_color = 0
         app.communicate_thread_lock.release()
         time.sleep(communication_freq)  # Thread sleep timerfasd
+
+
+def calculate_results(answer, iteration, bucket):
+    q_pos, rmse_rot, rmse_translation = back_end.evaluate(answer)
+    print(
+        f"iteration {iteration:3d} : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}")
+    app.last_eval_bucket = bucket
+
+
 universal_zoom_applied = False
 def universal_zoom(factor):
     global universal_zoom_applied

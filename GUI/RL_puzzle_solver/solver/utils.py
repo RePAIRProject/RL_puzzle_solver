@@ -37,6 +37,9 @@ class PuzzleSolver:
 
         self.locked_pieces = []
 
+    def get_iteration(self):
+        return self.iteration
+
     def default_cfg(self, path_dic):
         cfg = CfgParameters()
         solver_parameters = path_dic['solver_parameters']

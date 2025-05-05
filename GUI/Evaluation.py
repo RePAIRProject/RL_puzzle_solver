@@ -6,7 +6,15 @@ from PIL import Image
 
 class Evaluation:
     def __init__(self):
+        self._img_cache: dict[str, Image.Image] = {}
         pass
+
+    def _get_img(self, pid: str, path_lists: dict[str, str]) -> Image.Image:
+        img = self._img_cache.get(pid)
+        if img is None:
+            img = Image.open(path_lists[pid]).convert("RGBA")
+            self._img_cache[pid] = img
+        return img
 
     def evaluate(self, pieces, results, ground_truth, path_lists):
         """
@@ -16,6 +24,7 @@ class Evaluation:
             - a list corresponds to the piece id which gives the position in form of [x, y, theta]
         path_lists is a dictionary with the normalized id and the path to the correspondign image (.png)
         """
+
         scores_df = pd.DataFrame(columns=['object_name', 'Q_pos', 'RMSE_rot', 'RMSE_translation'])
 
         # for piece in pieces:
@@ -23,8 +32,6 @@ class Evaluation:
         q_pos = 0
         q_pos = self.calculate_q_pos(pieces, results, ground_truth, path_lists)
         rmse_value = self.calculate_rmse(pieces, results, ground_truth, path_lists)
-
-        print("rsme_value", rmse_value)
 
         new_row = pd.DataFrame([{'object_name': 3, 'Q_pos': q_pos, 'RMSE_rot': rmse_value['RMSE_rot'],
                                  'RMSE_translation': rmse_value['RMSE_translation']}])
@@ -61,7 +68,6 @@ class Evaluation:
 
         # Merge the DataFrames on the 'rpf' column to align the results with the ground truth
         merged_df = pd.merge(results_df, ground_truth_df, on='rpf', suffixes=('_result', '_gt'))
-        print("merged_df", merged_df)
 
         # Get the transformation for the largest piece
         additional_transformation = self.get_transformation_for_largest_piece(pieces, results_df, ground_truth_df, path_lists)
@@ -132,12 +138,11 @@ class Evaluation:
             x = int(row['x'])
             y = int(row['y'])
             rot = row['rot']
-            gt_x = int(gt_transformations[gt_transformations['rpf'] == piece_filename].iloc[0]['x'])
-            gt_y = int(gt_transformations[gt_transformations['rpf'] == piece_filename].iloc[0]['y'])
-            gt_rot = int(gt_transformations[gt_transformations['rpf'] == piece_filename].iloc[0]['rot'])
+            gt_x = int(gt_transformations_df[gt_transformations_df['rpf'] == piece_filename].iloc[0]['x'])
+            gt_y = int(gt_transformations_df[gt_transformations_df['rpf'] == piece_filename].iloc[0]['y'])
+            gt_rot = int(gt_transformations_df[gt_transformations_df['rpf'] == piece_filename].iloc[0]['rot'])
 
-            piece_path = os.path.join(pieces_dir, piece_filename)
-            piece_img = Image.open(piece_path)
+            piece_img = self._get_img(piece_filename, path_lists)
 
             new_piece = self.apply_transformations_on_piece(piece_img, x, y, rot, additional_x, additional_y)
             new_canvas = Image.new('RGBA', (shared_canvas_width, shared_canvas_height), (0, 0, 0, 0))
@@ -155,14 +160,14 @@ class Evaluation:
         non_alpha_bbox = Image.fromarray(np.array(largest_piece)[:, :, 3]).getbbox()
         center_x = (non_alpha_bbox[2] + non_alpha_bbox[0]) / 2
         center_y = (non_alpha_bbox[3] + non_alpha_bbox[1]) / 2
-        rotated_largest_piece = largest_piece.rotate(additional_rot, expand=False, center=(center_x, center_y))
+        rotated_largest_piece = largest_piece.rotate(additional_rot, expand=True, center=(center_x, center_y))
         rotated_image_canvases[f'{additional_transformation["largest_piece_name"]}'] = rotated_largest_piece
         for piece_filename in image_canvases:
             if piece_filename == f'{additional_transformation["largest_piece_name"]}':
                 continue
             else:
                 piece = image_canvases[piece_filename]
-                rotated_piece = piece.rotate(additional_rot, expand=False, center=(center_x, center_y))
+                rotated_piece = piece.rotate(additional_rot, expand=True, center=(center_x, center_y))
                 rotated_image_canvases[piece_filename] = rotated_piece
 
         # Calculate the Q_pos score
@@ -215,40 +220,15 @@ class Evaluation:
         return transformation
 
     def find_largest_fragment(self, pieces, path_lists):
-        max_area = 0
-        largest_image = None
-
-        for piece in pieces:
-            img_path = path_lists[piece]
-            if img_path.endswith(".png"):
-                img = Image.open(img_path)
-                img_array = np.array(img)
-
-                alpha_channel = img_array[:, :, 3]
-                non_transparent_pixels = np.sum(alpha_channel > 0)
-
-                if non_transparent_pixels > max_area:
-                    max_area = non_transparent_pixels
-                    largest_image = piece
-
-            else: return None
-
-        return largest_image
-
-        # for filename in os.listdir(input_dir):
-        #     if filename.endswith(".png"):
-        #         img_path = os.path.join(input_dir, filename)
-        #         img = Image.open(img_path)
-        #         img_array = np.array(img)
-        #
-        #         alpha_channel = img_array[:, :, 3]
-        #         non_transparent_pixels = np.sum(alpha_channel > 0)
-        #
-        #         if non_transparent_pixels > max_area:
-        #             max_area = non_transparent_pixels
-        #             largest_image = filename
-        #
-        # return largest_image
+        max_area, largest_piece = 0, None
+        for pid in pieces:
+            if not path_lists[pid].endswith(".png"):
+                continue
+            mask = np.array(self._get_img(pid, path_lists))[:, :, 3] > 0
+            area = mask.sum()
+            if area > max_area:
+                max_area, largest_piece = area, pid
+        return largest_piece
 
     def calculate_shared_canvas_size(self, pieces, transformations_df, gt_transformations_df, path_lists):
         """
@@ -257,7 +237,7 @@ class Evaluation:
         # Find the largest piece
         largest_piece = self.find_largest_fragment(pieces, path_lists)
         largest_piece_path = path_lists[largest_piece]
-        largest_piece_img = Image.open(largest_piece_path)
+        largest_piece_img =self._get_img(largest_piece, path_lists)
         largest_piece_array = np.array(largest_piece_img)
 
         # Read transformations
@@ -275,8 +255,7 @@ class Evaluation:
             y = int(row['y'])
             rot = row['rot']
 
-            piece_path = os.path.join(pieces_dir, piece_filename)
-            piece_img = Image.open(piece_path)
+            piece_img = self._get_img(piece_filename, path_lists)
 
             # Apply rotation directly on the PIL image
             rotated_piece = piece_img.rotate(rot, expand=True)
@@ -305,8 +284,7 @@ class Evaluation:
             y = int(row['y'])
             rot = row['rot']
 
-            piece_path = os.path.join(pieces_dir, piece_filename)
-            piece_img = Image.open(piece_path)
+            piece_img = self._get_img(piece_filename, path_lists)
 
             # Apply rotation directly on the PIL image
             rotated_piece = piece_img.rotate(rot, expand=True)
@@ -364,9 +342,9 @@ class Evaluation:
 
     def apply_transformations_on_piece(self, piece_img, x, y, rot, additional_x=0, additional_y=0, additional_rot=0):
         # Apply rotation directly on the PIL image
-        rotated_piece = piece_img.rotate(rot, expand=False)
+        rotated_piece = piece_img.rotate(rot, expand=True)
         if additional_rot != 0:
-            rotated_piece = rotated_piece.rotate(additional_rot, expand=False)
+            rotated_piece = rotated_piece.rotate(additional_rot, expand=True)
 
         # Calculate new canvas size
         new_width = max(rotated_piece.width, rotated_piece.width + abs(x) + abs(additional_x))
@@ -391,12 +369,11 @@ class Evaluation:
     def calculate_pieces_weights(self, pieces, path_lists, exclude_largest_piece=False, largest_piece=None):
         pieces_weights = {}
         pieces_areas = {}
-        for piece in pieces:
-            if path_lists[piece].endswith(".png"):
-                piece_path = path_lists[piece]
-                piece = Image.open(piece_path)
+        for pid in pieces:
+            if path_lists[pid].endswith(".png"):
+                piece = self._get_img(pid, path_lists)
                 area = self.calculate_area(piece)
-                pieces_areas[filename] = area
+                pieces_areas[pid] = area
         if exclude_largest_piece and largest_piece is not None:
             del pieces_areas[largest_piece]
         areas_sum = sum(pieces_areas.values())

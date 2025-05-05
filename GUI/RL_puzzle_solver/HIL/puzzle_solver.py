@@ -22,6 +22,9 @@ puzzle_solver = PuzzleSolver()
 def get_solution_dict():
     return puzzle_solver.get_dict()
 
+def get_iteration():
+    return puzzle_solver.get_iteration()
+
 def solver_alive(alive_flag):
     puzzle_solver.set_alive(alive_flag)
 

@@ -17,6 +17,7 @@ import RL_puzzle_solver.HIL.puzzle_solver as puzzle_solver
 import json
 import numpy as np
 import re
+from pathlib import Path
 # from kivymd.app import MDApp
 import math
 
@@ -136,16 +137,118 @@ class BackEnd:
         ground_truth_path = self.path_dic['ground_truth']
         ground_truth = self.extract_ground_truth(ground_truth_path)
         path_lists = self.extract_path_lists(pieces, self.path_dic['pieces_path'])
-        print("pieces", pieces)
-        print("ground_truth", ground_truth)
-        print("results", results)
-        print("path_lists", path_lists)
 
-        q_pos, rmse_rot, rmse_translation = self.evaluation.evaluate(pieces, ground_truth, results, path_lists)
+        #make both results absolute to one first fragment in ground_truth
+        ground_truth, results = self.normalize_results_gt(results, ground_truth)
 
-        print("q_pos", q_pos)
-        print("rmse_rot", rmse_rot)
-        print("rmse_translation", rmse_translation)
+        q_pos, rmse_rot, rmse_translation = None, None, None
+
+        if results != {} and ground_truth != {}:
+            q_pos, rmse_rot, rmse_translation = self.evaluation.evaluate(pieces, ground_truth, results, path_lists)
+
+        return q_pos, rmse_rot, rmse_translation
+
+    def normalize_results_gt(self, results, ground_truth):
+        """
+        Shift & optionally rotate *results* so its bounding‑box origin and the
+        orientation of the first common fragment match those of *ground_truth*.
+
+        The function returns a *new* results dict; the originals are untouched.
+        """
+
+        base_fragment = self.key_fragment
+        base_fragment = re.search(r'\d+', base_fragment)
+        key_id = str(base_fragment.group(0)).zfill(5)  # zero-pad to 5 digits if needed
+
+        print("key_id", key_id)
+
+        if key_id not in results or key_id not in ground_truth:
+            raise KeyError(f"'{key_id}' missing in results or ground_truth")
+
+            # --- 1) translate so key fragment sits at (0,0) in each frame --------
+        gx, gy, g_theta = ground_truth[key_id]
+        rx, ry, r_theta = results[key_id]
+
+        gt = {pid: [x - gx, y - gy, theta] for pid, (x, y, theta) in ground_truth.items()}
+        res = {pid: [x - rx, y - ry, theta] for pid, (x, y, theta) in results.items()}
+
+        print("res", res[key_id])
+        print("gt", gt[key_id])
+
+        # --- 2) shift both so GT bbox min(x,y)=0,0 ---------------------------
+        min_x = min(p[0] for p in gt.values())
+        min_y = min(p[1] for p in gt.values())
+        dx = -min_x if min_x < 0 else 0.0
+        dy = -min_y if min_y < 0 else 0.0
+
+        gt = {pid: [x + dx, y + dy, theta] for pid, (x, y, theta) in gt.items()}
+        res = {pid: [x + dx, y + dy, theta] for pid, (x, y, theta) in res.items()}
+
+        print("res", res[key_id])
+        print("gt", gt[key_id])
+
+        # --- 3) rotate results so key fragment’s theta matches GT theta -------------
+        d_theta = (g_theta - r_theta) % 360
+        if d_theta:
+            sin_t, cos_t = math.sin(math.radians(d_theta)), math.cos(math.radians(d_theta))
+            res_rot = {}
+            for pid, (x, y, theta) in res.items():
+                x2 = cos_t * x - sin_t * y
+                y2 = sin_t * x + cos_t * y
+                res_rot[pid] = [x2, y2, (theta + d_theta) % 360]
+            res = res_rot
+
+        print("res", res[key_id])
+        print("gt", gt[key_id])
+
+        return gt, res
+
+    def save_results(self, answer: dict[str, list | tuple | float]) -> None:
+        """
+        Shift all (x, y) so the most‑negative fragment sits at (0, 0) and write
+        ',rpf,x,y,rot' text to <cache_path>/solution.txt.
+        """
+        cache_path = self.path_dic['cache_path']
+        out_path   = Path(os.path.join(cache_path, "solution.txt"))
+
+        # ---------------------------------------------------------------
+        # 1) compute global min_x, min_y
+        # ---------------------------------------------------------------
+        xs = [float(v[0]) for v in answer.values()]
+        ys = [float(v[1]) for v in answer.values()]
+        shift_x = -min(xs) if min(xs) < 0 else 0.0
+        shift_y = -min(ys) if min(ys) < 0 else 0.0
+
+        # ---------------------------------------------------------------
+        # 2) deterministic ordering by numeric part of the key
+        # ---------------------------------------------------------------
+        def numeric(k: str) -> int:
+            m = re.search(r"(\\d+)", k)
+            return int(m.group(1)) if m else 0
+        sorted_keys = sorted(answer.keys(), key=numeric)
+
+        # ---------------------------------------------------------------
+        # 3) write file
+        # ---------------------------------------------------------------
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with out_path.open("w", encoding="utf-8") as fh:
+            fh.write(",rpf,x,y,rot\n")                 # header with leading ,
+
+            for idx, key in enumerate(sorted_keys, start=0):  # 0‑based index
+                x, y, rot = (float(v) for v in answer[key])
+                x += shift_x
+                y += shift_y
+
+                # normalise key to 'RPf_00001'
+                if key.startswith("RPf_"):
+                    rpf = key.split("_mesh")[0]
+                else:
+                    rpf = f"RPf_{int(key):05d}"
+
+                fh.write(f"{idx},{rpf},{x},{y},{rot}\n")
+
+        print(f"saved {len(sorted_keys)} rows → {out_path} "
+              f"(shift_x={shift_x}, shift_y={shift_y})")
 
     def extract_pieces(self, answer):
         """
@@ -218,6 +321,10 @@ class BackEnd:
                 xy_step = data['xy_step']
                 theta_step = data['theta_step']
         return xy_step, theta_step
+
+    def get_iteration(self):
+        iteration = puzzle_solver.get_iteration()
+        return iteration
 
     def get_solution_dict(self):
         answer, probability, process, iteration = puzzle_solver.get_solution_dict()
