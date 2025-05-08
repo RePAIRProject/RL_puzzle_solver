@@ -3,6 +3,7 @@ from scipy.ndimage import rotate
 import cv2 as cv
 import os
 import json
+import time
 
 from threading import Lock
 
@@ -17,12 +18,21 @@ class PuzzleSolver:
         self.compatibility_matrix = None
         self.maximum_probability = None
         self.delta_probs = None
+        self.cfg = None
+        self.cache_path = None
         # self.reinforcement_learning = ReinforcementLearning(None, None)
         self.final_solution = None
         self.ppars = args[0] if len(args) > 0 else None
 
         print("ppars", self.ppars)
         self.pieces_names = args[1] if len(args) > 1 else None
+
+        if len(args) > 2:
+            self.path_dic = args[2]
+            self.cache_path = self.path_dic['cache_path']
+        else:
+            self.path_dic = None
+
         self.running = True
 
         self.alive_flag = True
@@ -41,20 +51,24 @@ class PuzzleSolver:
         return self.iteration
 
     def default_cfg(self, path_dic):
-        cfg = CfgParameters()
+        self.cfg = CfgParameters()
         solver_parameters = path_dic['solver_parameters']
         solver_parameter = {}
         if os.path.exists(solver_parameters):
             solver_parameter = {}
             with open(solver_parameters, 'r') as cp:
                 solver_parameter = json.load(cp)
-        cfg['Tfirst'] = solver_parameter['Tfirst']
-        cfg['Tnext'] = solver_parameter['Tnext']
-        cfg['Tmax'] = solver_parameter['Tmax']
-        cfg['anc_fix_tresh'] = solver_parameter['anc_fix_tresh']
-        cfg['p_matrix_shape_x'] = solver_parameter['p_matrix_shape_x']
-        cfg['p_matrix_shape_y'] = solver_parameter['p_matrix_shape_y']
-        return cfg
+        self.cfg['Tfirst'] = solver_parameter['Tfirst']
+        self.cfg['Tnext'] = solver_parameter['Tnext']
+        self.cfg['Tmax'] = solver_parameter['Tmax']
+        self.cfg['anc_fix_tresh'] = solver_parameter['anc_fix_tresh']
+        self.cfg['p_matrix_shape_x'] = solver_parameter['p_matrix_shape_x']
+        self.cfg['p_matrix_shape_y'] = solver_parameter['p_matrix_shape_y']
+
+        string = ("Tfirst: " + str(self.cfg['Tfirst']) + "   Tfirst: " + str(self.cfg['Tnext']) + "   Tmax: " + str(self.cfg['Tmax']) + "   anc_fix_tresh: " +
+                  str(self.cfg['anc_fix_tresh']) + "   p_matrix_shape_x: " + str(self.cfg['p_matrix_shape_x']) + "   p_matrix_shape_y: " + str(self.cfg['p_matrix_shape_y']))
+
+        self.logger(string)
 
     def set_running(self, running):
         self.running = running
@@ -132,14 +146,15 @@ class PuzzleSolver:
         self.probability_matrix[:, :, :, piece_number] = 0
         self.probability_matrix[x, y, r, piece_number] = 1
 
+        self.lock_piece(piece_name)
+
+    def lock_piece(self, piece_number):
         if piece_number not in self.locked_pieces:
             self.locked_pieces.append(piece_number)
-
-        self.reinit_p_matrix()
+            self.reinit_p_matrix()
 
     def reinit_p_matrix(self):
         Y, X, Z, noPatches = self.probability_matrix.shape
-
         for piece in range(noPatches):
             if piece not in self.locked_pieces:
                 # Reset to uniform distribution
@@ -208,8 +223,8 @@ class PuzzleSolver:
 
         init_pos, x0, y0, z0 = self.initialization(R, anchor, solved_pieces, pieces_names) # we do not pass p_size so it chooses automatically
         num_anchors = 1
-        cfg = self.default_cfg(path_dic)
-        all_pay, all_sol, all_anc, eps, iter, num_anchors, m = self.RePairPuzz(num_anchors, cfg)
+        self.default_cfg(path_dic)
+        all_pay, all_sol, all_anc, eps, iter, num_anchors, m = self.RePairPuzz(num_anchors)
         p_final = self.probability_matrix
 
         fin_sol = all_sol[len(all_sol)-1]
@@ -319,7 +334,7 @@ class PuzzleSolver:
         return fin_sol, m
 
 
-    def RePairPuzz(self, na, cfg, verbosity=1, decimals=8):
+    def RePairPuzz(self, na, verbosity=1, decimals=8):
         R = np.maximum(self.compatibility_matrix, -1)
         R_new = R
 
@@ -341,7 +356,7 @@ class PuzzleSolver:
 
         # while not np.isclose(eps, 0)
         print("started solving..")
-        while eps != 0 and iter < cfg.Tmax and self.alive_flag:
+        while eps != 0 and iter < self.cfg.Tmax and self.alive_flag:
             if na_new > na:
                 na = na_new
                 faze += 1
@@ -368,12 +383,12 @@ class PuzzleSolver:
 
             self.set_cm_matrix(R_new)
 
-            Tmax = cfg.Tmax
+            Tmax = self.cfg.Tmax
 
             if faze == 0:
-                T = cfg.Tfirst
+                T = self.cfg.Tfirst
             else:
-                T = cfg.Tnext
+                T = self.cfg.Tnext
 
             #pdb.set_trace()
             payoff, eps, iter, total_iter = self.solver_rot_puzzle(T, iter, total_iter, Tmax, 0, verbosity=3, decimals=decimals, )
@@ -388,15 +403,21 @@ class PuzzleSolver:
 
 
             if na < (noPatches-2):
-                fix_tresh = cfg.anc_fix_tresh
+                fix_tresh = self.cfg.anc_fix_tresh
             elif na > (noPatches-2):
                 fix_tresh = 0.11   ## just fix last 2 pieces  !!!
             else:
                 fix_tresh = 0.33   ## just fix last 2 pieces  !!!
 
             a = (m > fix_tresh).astype(int)
+            locked_piece_indices = np.where(a == 1)[0]
+            for i in range(len(locked_piece_indices)):
+                if locked_piece_indices[i] not in self.locked_pieces:
+                    self.locked_pieces.append(locked_piece_indices[i])
             new_anc = np.array(fin_sol*a)
             na_new = np.sum(a)
+
+
             # if verbosity > 0:
             #     print("#" * 70)
             #     print(f"fixed solution for a new piece (at iteration {iter}):")
@@ -486,4 +507,9 @@ class PuzzleSolver:
                 p = self.probability_matrix
                 fin_sol, m = self.extract_info(p)
         return payoff, eps, iter, total_iter
+
+    def logger(self, string):
+        timestamp = str(time.time())  # seconds since epoch (as float, converted to string)
+        with open(self.cache_path + "solver_log.txt", "a") as f:
+            f.write(timestamp + " " + string + "\n")
 

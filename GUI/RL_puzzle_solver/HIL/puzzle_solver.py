@@ -132,7 +132,7 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
         pieces_included.append(pieces_names[pieces_to_include[i]])
 
     print("piece names", pieces_included)
-    puzzle_solver.__init__(ppars, pieces_included)\
+    puzzle_solver.__init__(ppars, pieces_included, path_dic)
 
     solution = puzzle_solver.solve_puzzle(R, anchor, pieces_included, ppars, path_dic,
                             return_as=return_solution_as, solved_pieces=solved_pieces)

@@ -753,7 +753,7 @@ class GUIApp(MDApp):
         self.sidebar.col_grid.label1.text = "Accept"
         iteration = back_end.get_iteration()
         self.pl_solution, original_answer = back_end.get_pl_solution()
-        calculate_results(original_answer, None, iteration, -1)
+        back_end.calculate_results(original_answer, None, iteration, -1)
         self.apply_solution()
         self.solution_applied = True
         self.pl_solver_button.disabled = True
@@ -1031,7 +1031,7 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         if answer is not None and probability is not None and iteration is not None and iteration > 4:
             bucket = iteration // 5
             if bucket > app.last_eval_bucket:
-                calculate_results(answer, probability, iteration, bucket)
+                back_end.calculate_results(answer, probability, iteration, bucket)
         if update_counter>=(1/communication_freq)*update_freq:
             answer, probability, process, iteration = back_end.get_solution_dict()
 
@@ -1084,35 +1084,35 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
         time.sleep(communication_freq)  # Thread sleep timerfasd
 
 
-def calculate_results(answer, probability, iteration, bucket):
-    q_pos = 0
-    rmse_translation = 0
-    rmse_rot = 0
-    threshold = 0.75
-    if probability is None:
-        evaluated_answer = answer
-    else:
-        # Create a filtered copy of `answer` based on `probability`
-        evaluated_answer = {
-            k: v for k, v in answer.items()
-            if probability.get(k, 0) >= threshold
-        }
-
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")  # catch all warnings
-
-        q_pos, rmse_rot, rmse_translation = back_end.evaluate(evaluated_answer)
-
-        for warning in w:
-            if issubclass(warning.category, RuntimeWarning):
-                pass #if you have 1 item in the evaluated which means that the probability of other pieces are not high enough, you will get RuntimeWarning
-
-    if probability is None:
-        print(
-            f"iteration {iteration:3d} (last_iteration, Final result) : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}")
-    print(
-        f"iteration {iteration:3d} : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}")
-    app.last_eval_bucket = bucket
+# def calculate_results(answer, probability, iteration, bucket):
+#     q_pos = 0
+#     rmse_translation = 0
+#     rmse_rot = 0
+#     threshold = 0.0
+#     if probability is None:
+#         evaluated_answer = answer
+#     else:
+#         # Create a filtered copy of `answer` based on `probability`
+#         evaluated_answer = {
+#             k: v for k, v in answer.items()
+#             if probability.get(k, 0) >= threshold
+#         }
+#
+#     with warnings.catch_warnings(record=True) as w:
+#         warnings.simplefilter("always")  # catch all warnings
+#
+#         q_pos, rmse_rot, rmse_translation = back_end.evaluate(evaluated_answer)
+#
+#         for warning in w:
+#             if issubclass(warning.category, RuntimeWarning):
+#                 pass #if you have 1 item in the evaluated which means that the probability of other pieces are not high enough, you will get RuntimeWarning
+#
+#     if probability is None:
+#         print(
+#             f"iteration {iteration:3d} (last_iteration, Final result) : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}")
+#     print(
+#         f"iteration {iteration:3d} : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}")
+#     app.last_eval_bucket = bucket
 
 
 universal_zoom_applied = False

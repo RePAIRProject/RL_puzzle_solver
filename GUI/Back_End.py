@@ -1,3 +1,5 @@
+import time
+import warnings
 from threading import Thread, Event, Lock
 
 from scipy.io import loadmat
@@ -47,6 +49,8 @@ class BackEnd:
         self.select_anchor_done = False
         self.select_neighbour_done = False
         self.pl_solver_done = False
+
+        self.cache_path = None
 
         self.key_fragment = ""
         self.solved_pieces = []
@@ -516,6 +520,8 @@ class BackEnd:
 
         print("input_dict", self.input_dict)
         select_pl_solver = Thread(target=self.pl_solver_thread_function, daemon=True)
+        string = self.path_dic['dataset_name'] + "         " + self.path_dic['comp_name'] + "         "
+        self.logger(string)
         select_pl_solver.start()
 
     def get_select_anchor_running(self):
@@ -641,7 +647,6 @@ class BackEnd:
         comp_name = ""
         ground_truth = ""
         dataset_name = ""
-        cache_path = ""
         icons_path = ""
         apply_gt = False
         number_of_neighbours = 3
@@ -725,19 +730,56 @@ class BackEnd:
                     elif line.startswith('icons:'):
                         icons_path = os_path + line.split('icons: ')[1].strip()
         cache_path = "/GUI/pieces/"
-        cache_path = os_path + cache_path
+        self.cache_path = os_path + cache_path
         path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path,
                     'comp_path': comp_path,
                     'pieces_path': pieces_path, 'comp_folder': comp_folder, 'comp_name': comp_name,
                     'rotation_intervals': rotation_intervals, 'ground_truth': ground_truth,
                     'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
                     'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors,
-                    'dataset_name': dataset_name, 'cache_path': cache_path, 'solver_parameters': solver_parameters,
+                    'dataset_name': dataset_name, 'cache_path': self.cache_path, 'solver_parameters': solver_parameters,
                     'icons': icons_path}
 
         self.set_path(path_dic)
 
         return path_dic, rotation_intervals, backend_path
+
+    def calculate_results(self, answer, probability, iteration, bucket):
+        q_pos = 0
+        rmse_translation = 0
+        rmse_rot = 0
+        threshold = 0.0
+        if probability is None:
+            evaluated_answer = answer
+        else:
+            # Create a filtered copy of `answer` based on `probability`
+            evaluated_answer = {
+                k: v for k, v in answer.items()
+                if probability.get(k, 0) >= threshold
+            }
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")  # catch all warnings
+
+            q_pos, rmse_rot, rmse_translation = self.evaluate(evaluated_answer)
+
+            for warning in w:
+                if issubclass(warning.category, RuntimeWarning):
+                    pass  # if you have 1 item in the evaluated which means that the probability of other pieces are not high enough, you will get RuntimeWarning
+
+        if probability is None:
+            string = f"iteration {iteration:3d} (last_iteration, Final result) : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}"
+            print(string)
+        else:
+            string = f"iteration {iteration:3d} : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}"
+            print(string)
+        self.logger(string)
+        self.main_app.last_eval_bucket = bucket
+
+    def logger(self, string):
+        timestamp = str(time.time())  # seconds since epoch (as float, converted to string)
+        with open(self.cache_path + "solver_log.txt", "a") as f:
+            f.write(timestamp + " " + string + "\n")
 
 
 
