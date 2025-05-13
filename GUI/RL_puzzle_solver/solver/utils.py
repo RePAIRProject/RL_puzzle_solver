@@ -160,23 +160,23 @@ class PuzzleSolver:
 
     def lock_piece(self, piece_number, pos, value = True):
         print("piece_number", piece_number)
-        if piece_number not in self.locked_pieces.keys():
-            self.locked_pieces.update({piece_number: pos})
-            print(self.locked_pieces)
+        self.locked_pieces.update({piece_number: pos})
+        print(self.locked_pieces)
         if value:
             self.reinit_p_matrix()
 
     def reinit_p_matrix(self):
+        print("RESETTING THE PROBABILITY MATRIX")
         Y, X, Z, noPatches = self.probability_matrix.shape
         for piece in range(noPatches):
             if piece not in self.locked_pieces.keys():
                 print("piece_number", piece)
                 # Reset to uniform distribution
                 self.probability_matrix[:, :, :, piece] = 1 / (Y * X * Z)
-            else:
-                self.probability_matrix[:, :, :, piece] = 0
-                pos = self.locked_pieces[piece]
-                self.probability_matrix[pos[0], pos[1], pos[2], piece] = 1
+            # else:
+            #     self.probability_matrix[:, :, :, piece] = 0
+            #     pos = self.locked_pieces[piece]
+            #     self.probability_matrix[pos[0], pos[1], pos[2], piece] = 1
 
 
     def repair_lock_toggle(self, value):
@@ -384,34 +384,36 @@ class PuzzleSolver:
         # while not np.isclose(eps, 0)
         print("started solving..")
         while eps != 0 and iter < self.cfg.Tmax and self.alive_flag:
-            # na_new = len(self.locked_pieces.keys())
-            # if na_new > na:
-            #     na = na_new
-            #     faze += 1
+            na_new = len(self.locked_pieces.keys())
             #     p = np.ones((Y, X, Z, noPatches)) / (Y * X)
             #     for piece in self.locked_pieces.keys():
             # check this
+            print("na_new", na_new)
+            print(len(self.locked_pieces.keys()))
+            na = na_new
+            faze += 1
+            self.reinit_p_matrix()
             if na_new > na:
-                na = na_new
-                faze += 1
+                for piece_1 in self.locked_pieces.keys():
+                    for piece_2 in self.locked_pieces.keys():
+                        R_new[:,:,:, piece_1, piece_2] = 0
 
-                p = np.ones((Y, X, Z, noPatches)) / (Y * X)
+                # for jj in range(noPatches):
+                #     if new_anc[jj, 0] != 0:
+                #         y = new_anc[jj, 0]
+                #         x = new_anc[jj, 1]
+                #         z = new_anc[jj, 2]
+                #         p[:, :, :, jj] = 0
+                #         p[y, x, :, :] = 0
+                #         p[y, x, z, jj] = 1
+                #
+                #         ## NEW: Re-normalization of R after anchoring
+                #         for jj_anc in range(noPatches):
+                #             if new_anc[jj_anc, 0] != 0:
+                #                 R_new[:, :, : , jj_anc, jj] = 0
 
-                for jj in range(noPatches):
-                    if new_anc[jj, 0] != 0:
-                        y = new_anc[jj, 0]
-                        x = new_anc[jj, 1]
-                        z = new_anc[jj, 2]
-                        p[:, :, :, jj] = 0
-                        p[y, x, :, :] = 0
-                        p[y, x, z, jj] = 1
+            # self.set_p_matrix(p)
 
-                        ## NEW: Re-normalization of R after anchoring
-                        for jj_anc in range(noPatches):
-                            if new_anc[jj_anc, 0] != 0:
-                                R_new[:, :, : , jj_anc, jj] = 0
-
-            self.set_p_matrix(p)
             R_renorm = R_new / np.max(R_new)
             R_new = np.where((R_new > 0), R_renorm*1.5, R_new)
 
@@ -452,9 +454,7 @@ class PuzzleSolver:
                     self.locked_pieces.update({piece: new_anc[piece]})
                 else:
                     print("piece", piece, "is already locked")
-            print("new_anc", new_anc)
             na_new = np.sum(a)
-            print("na_new", na_new)
 
 
             # if verbosity > 0:
