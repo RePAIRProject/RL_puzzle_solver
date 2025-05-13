@@ -390,6 +390,7 @@ class PuzzleSolver:
             #     faze += 1
             #     p = np.ones((Y, X, Z, noPatches)) / (Y * X)
             #     for piece in self.locked_pieces.keys():
+            # check this
             if na_new > na:
                 na = na_new
                 faze += 1
