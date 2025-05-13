@@ -2,12 +2,12 @@
     "pieces": {
         "RPf_00309_intact_mesh.png": {
             "position": [
-                -99,
-                -30,
+                90,
+                -3,
                 0
             ],
             "probability": [
-                3.231e-05
+                2.345e-05
             ]
         },
         "RPf_00310_intact_mesh.png": {
@@ -17,7 +17,7 @@
                 0
             ],
             "probability": [
-                0.0020087
+                0.00018011
             ]
         },
         "RPf_00311_intact_mesh.png": {
@@ -27,7 +27,7 @@
                 0
             ],
             "probability": [
-                0.00255707
+                0.00020317
             ]
         },
         "RPf_00312_intact_mesh.png": {
@@ -37,7 +37,7 @@
                 0
             ],
             "probability": [
-                0.00206875
+                0.00018285
             ]
         },
         "RPf_00313_intact_mesh.png": {
@@ -47,7 +47,7 @@
                 0
             ],
             "probability": [
-                0.00276378
+                0.00021791
             ]
         },
         "RPf_00314_intact_mesh.png": {
@@ -57,7 +57,7 @@
                 0
             ],
             "probability": [
-                0.00158929
+                0.00015449
             ]
         },
         "RPf_00315_intact_mesh.png": {
@@ -67,7 +67,7 @@
                 0
             ],
             "probability": [
-                3.285e-05
+                2.349e-05
             ]
         },
         "RPf_00316_intact_mesh.png": {
@@ -77,7 +77,7 @@
                 0
             ],
             "probability": [
-                0.00291326
+                0.00021266
             ]
         },
         "RPf_00317_intact_mesh.png": {
@@ -97,7 +97,7 @@
                 0
             ],
             "probability": [
-                3.293e-05
+                2.305e-05
             ]
         },
         "RPf_00319_intact_mesh.png": {
@@ -107,19 +107,19 @@
                 0
             ],
             "probability": [
-                0.00202671
+                0.00018449
             ]
         },
         "RPf_00320_intact_mesh.png": {
             "position": [
-                -21,
+                -24,
                 66,
                 0
             ],
             "probability": [
-                0.00224791
+                0.00019707
             ]
         }
     },
-    "process": 0.028
+    "process": 0.016
 }

@@ -4,6 +4,8 @@ import pdb
 import sys
 import os
 
+import numpy as np
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 
@@ -28,11 +30,14 @@ def get_iteration():
 def solver_alive(alive_flag):
     puzzle_solver.set_alive(alive_flag)
 
-def set_p_elements(x, y, r, piece_name):
+def set_p_elements(x, y, r, piece_name, value = True):
     x = int(x)
     y = int(y)
     r = int(r)
-    puzzle_solver.set_p_matrix_element(x, y, r, piece_name, 1.0)
+    puzzle_solver.set_p_matrix_element(x, y, r, piece_name, 1.0, value)
+
+def removed_from_locked(piece):
+    puzzle_solver.remove_from_locked(piece)
 
 def set_cm_element(main, neighbour, relative_position, value):
     value = float(value)
@@ -124,6 +129,27 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
     R = R[:, :, 0:1, :, pieces_to_include]  # 0:4 works best for group 28 token check
 
+    # group 1
+    factor = 0.8
+    R = R * factor
+    R = np.clip(R, -1  * factor, factor)
+    R = np.where(R < 0, -1 * factor, R)
+
+    # group 3
+    # factor = 5
+    # R = R * factor
+    # R = np.clip(R, -1 * factor, factor)
+    # R = np.where(R < 0, -1 * factor, R)
+
+    # group 39
+    # factor = 0.8
+    # R = R * factor
+    # R = np.clip(R, -1 * factor, factor)
+    # R = np.where(R < 0, -1 * factor, R)
+
+    print("R max/min")
+    print(np.max(R))
+    print(np.min(R))
     anchor = pieces_to_include.index(anchor)
 
     pieces_included = []

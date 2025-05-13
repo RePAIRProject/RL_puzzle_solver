@@ -66,6 +66,7 @@ class BackEnd:
         self.path_dic = None
         self.sorted_neighbour_images = None
         self.neighbour_after = 0
+        self.interaction_counter = 0
 
         self.mat = None
         self.R = None
@@ -96,6 +97,20 @@ class BackEnd:
         self.set_select_anchor_done(True)
         self.main_app.show_anchors()
 
+    def removed_from_locked(self, main_image):
+        print(self.key_fragment)
+        print(main_image)
+        main_image_name = main_image.name
+        if main_image_name == self.key_fragment:
+            print("YOU CANNOT REMOVE MAIN ANCHOR")
+            return
+        if main_image.is_anchor:
+            main_image.set_anchor(False)
+        self.interaction_counter += 1
+        self.logger(
+            "Human interacted " + str(self.interaction_counter) + " times, denied a position of the piece " + str(main_image_name))
+        puzzle_solver.removed_from_locked(main_image_name)
+
     def set_cm_elements(self, main, neighbour, current_image_pos, image_pos, offset, value):
         xy_step, theta_step = self.extract_steps()
         pos = self.reverse_offset(current_image_pos, offset)
@@ -116,9 +131,14 @@ class BackEnd:
         print("scaled_neighbour_pos", scaled_neighbour_pos)
         print("relative_position", relative_position)
 
+        # if value:
+        #     self.logger("Human interacted " + str(self.interaction_counter) + " times, accepted a relative position of the piece " + str(main))
+        # else:
+        #     self.logger("Human interacted " + str(self.interaction_counter) + " times, denied a position of the piece " + str(main))
+
         puzzle_solver.set_cm_element(main, neighbour, relative_position, value)
 
-    def set_p_elements(self, couple, offset):
+    def set_p_elements(self, couple, offset, value = True):
         image_name = couple[0]
         image_pos = couple[1]
         pos = image_pos
@@ -130,7 +150,20 @@ class BackEnd:
 
         pos = self.scale_to_solver(xy_step, theta_step, pos, self.path_dic)
 
-        puzzle_solver.set_p_elements(pos[0], pos[1], pos[2], image_name)
+        if value:
+            puzzle_solver.set_p_elements(pos[0], pos[1], pos[2], image_name)
+            self.interaction_counter += 1
+            self.logger(
+                "Human Interacted " + str(self.interaction_counter) + " times, moved piece (" + str(
+                    image_name) + ") to:   " + "x: " + str(pos[0]) + " y: " + str(
+                    pos[1]) + " tetha: " + str(pos[2]))
+        else:
+            puzzle_solver.set_p_elements(pos[0], pos[1], pos[2], image_name, value)
+            self.logger(
+                "Human Interacted, unlocked piece (" + str(image_name) + ") from fixed position:   " + "x: " + str(
+                    pos[0]) + " y: " + str(
+                    pos[1]) + " tetha: " + str(pos[2]))
+
 
     def reverse_offset(self, pos, offset):
         pos = [pos[0] - offset[0], pos[1] - offset[1], pos[2]]
@@ -332,6 +365,7 @@ class BackEnd:
         return answer, probability, process, iteration
 
     def solver_toggle_lock(self, value):
+        self.logger("solver_toggle_lock:   " + str(value))
         puzzle_solver.toggle_lock(value)
 
     def pl_solver_thread_function(self):
@@ -520,8 +554,13 @@ class BackEnd:
 
         print("input_dict", self.input_dict)
         select_pl_solver = Thread(target=self.pl_solver_thread_function, daemon=True)
-        string = self.path_dic['dataset_name'] + "         " + self.path_dic['comp_name'] + "         "
-        self.logger(string)
+        self.interaction_counter = 0
+        self.logger("dataset_name: " + self.path_dic['dataset_name'] + "   comp_name: " + self.path_dic[
+            'comp_name'] + "   key_fragment: " + str(key_fragment))
+        self.logger(str(len(neighbour_ids)) + " pieces are getting solved, " + str(len(solved_pieces) + 1) + " solved in previous runs")
+        self.logger("id of the neighbours: " + ''.join(
+            str(x) for x in neighbour_ids) + "\n" + "id of the anchors/solved pieces: " + ''.join(
+            str(x) for x in solved_pieces) + " anchor_piece:" + str(key_fragment))
         select_pl_solver.start()
 
     def get_select_anchor_running(self):
@@ -729,7 +768,7 @@ class BackEnd:
                         solver_parameters = os_path + line.split('solver_parameters: ')[1].strip()
                     elif line.startswith('icons:'):
                         icons_path = os_path + line.split('icons: ')[1].strip()
-        cache_path = "/GUI/pieces/"
+        cache_path = "/GUI/Cache/"
         self.cache_path = os_path + cache_path
         path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path,
                     'comp_path': comp_path,
@@ -768,18 +807,17 @@ class BackEnd:
                     pass  # if you have 1 item in the evaluated which means that the probability of other pieces are not high enough, you will get RuntimeWarning
 
         if probability is None:
-            string = f"iteration {iteration:3d} (last_iteration, Final result) : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}"
-            print(string)
+            self.logger(f"(last_iteration, Final result) : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}")
         else:
-            string = f"iteration {iteration:3d} : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}"
-            print(string)
-        self.logger(string)
+            self.logger(f"q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}")
         self.main_app.last_eval_bucket = bucket
 
     def logger(self, string):
+        iteration = f"iteration {self.get_iteration():3d}"
         timestamp = str(time.time())  # seconds since epoch (as float, converted to string)
         with open(self.cache_path + "solver_log.txt", "a") as f:
-            f.write(timestamp + " " + string + "\n")
+            f.write(timestamp + " " + iteration + ": " + string + "\n")
+            print(timestamp + " " + iteration + ": " + string + "\n")
 
 
 

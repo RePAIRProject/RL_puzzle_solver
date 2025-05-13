@@ -45,7 +45,9 @@ class PuzzleSolver:
         self.p_matrix_lock = Lock()
         self.cm_matrix_lock = Lock()
 
-        self.locked_pieces = []
+        self.locked_pieces = {}
+        self.auto_locked = {}
+        self.manual_locked = {}
 
     def get_iteration(self):
         return self.iteration
@@ -118,12 +120,18 @@ class PuzzleSolver:
         with self.cm_matrix_lock:
             self.compatibility_matrix = cm_matrix
 
-    def set_p_matrix_element(self, x, y, r, piece_name, value):
+    def set_p_matrix_element(self, x, y, r, piece_name, prob, value = True):
 
         # self.reinforcement_enforcement_learning.update_probability_matrix(x, y, r, self.extract_piece_number(piece_name))
 
-
         piece_number = self.extract_piece_number(piece_name)
+
+        if not value:
+            if piece_number in self.locked_pieces.keys():
+                self.locked_pieces.pop(piece_number)
+                Y, X, Z, noPatches = self.probability_matrix.shape
+                self.probability_matrix[:, :, :, piece_number] = 1 / (Y * X * Z)
+            return
 
         # Shape of the probability matrix for the current piece
         shape_x, shape_y, shape_r = self.probability_matrix.shape[:3]
@@ -131,34 +139,44 @@ class PuzzleSolver:
         # Generate coordinate grids for the matrix
         X, Y, R = np.meshgrid(np.arange(shape_x), np.arange(shape_y), np.arange(shape_r), indexing="ij")
 
-        # Compute Gaussian adjustment
-        sigma = value  # Spread of the Gaussian
-        gaussian_adjustment = np.exp(-((X - x) ** 2 + (Y - y) ** 2 + (R - r) ** 2) / (2 * sigma ** 2))
-
-        # Update probabilities for the specific piece
-        # with self.p_matrix_lock:
-        self.probability_matrix[:, :, :, piece_number] *= (1 - gaussian_adjustment)
-        self.probability_matrix[x, y, r, piece_number] += gaussian_adjustment[x, y, r]
-
-        # Normalize probabilities to ensure they sum to 1
-        self.probability_matrix[:, :, :, piece_number] /= np.sum(self.probability_matrix[:, :, :, piece_number])
+        # # Compute Gaussian adjustment
+        # sigma = prob  # Spread of the Gaussian
+        # gaussian_adjustment = np.exp(-((X - x) ** 2 + (Y - y) ** 2 + (R - r) ** 2) / (2 * sigma ** 2))
+        #
+        # # Update probabilities for the specific piece
+        # # with self.p_matrix_lock:
+        # self.probability_matrix[:, :, :, piece_number] *= (1 - gaussian_adjustment)
+        # self.probability_matrix[x, y, r, piece_number] += gaussian_adjustment[x, y, r]
+        #
+        # # Normalize probabilities to ensure they sum to 1
+        # self.probability_matrix[:, :, :, piece_number] /= np.sum(self.probability_matrix[:, :, :, piece_number])
 
         self.probability_matrix[:, :, :, piece_number] = 0
         self.probability_matrix[x, y, r, piece_number] = 1
 
-        self.lock_piece(piece_name)
+        pos = [x,y,r]
 
-    def lock_piece(self, piece_number):
-        if piece_number not in self.locked_pieces:
-            self.locked_pieces.append(piece_number)
+        self.lock_piece(piece_number, pos, True)
+
+    def lock_piece(self, piece_number, pos, value = True):
+        print("piece_number", piece_number)
+        if piece_number not in self.locked_pieces.keys():
+            self.locked_pieces.update({piece_number: pos})
+            print(self.locked_pieces)
+        if value:
             self.reinit_p_matrix()
 
     def reinit_p_matrix(self):
         Y, X, Z, noPatches = self.probability_matrix.shape
         for piece in range(noPatches):
-            if piece not in self.locked_pieces:
+            if piece not in self.locked_pieces.keys():
+                print("piece_number", piece)
                 # Reset to uniform distribution
                 self.probability_matrix[:, :, :, piece] = 1 / (Y * X * Z)
+            else:
+                self.probability_matrix[:, :, :, piece] = 0
+                pos = self.locked_pieces[piece]
+                self.probability_matrix[pos[0], pos[1], pos[2], piece] = 1
 
 
     def repair_lock_toggle(self, value):
@@ -172,11 +190,19 @@ class PuzzleSolver:
                 self.repair_lock.release()
                 print("unlocked")
 
+    def remove_from_locked(self, piece_name):
+        piece_id = self.pieces_names.index(piece_name)
+        if piece_id in self.locked_pieces.keys():
+            self.locked_pieces.pop(piece_id)
+            print(piece_id, "has been removed")
+        self.reinit_p_matrix()
+
     def set_cm_element(self, main, neighbour, relative_position, value):
         x = int(relative_position[0])
         y = int(relative_position[1])
         z = int(relative_position[2])
         main_index = self.pieces_names.index(main)
+        self.remove_from_locked(main)
         neighbour_index = self.pieces_names.index(neighbour)
 
         shape = self.compatibility_matrix.shape
@@ -201,7 +227,7 @@ class PuzzleSolver:
         else:
             self.compatibility_matrix[x_new, y_new, z, main_index, neighbour_index] = 0
             self.compatibility_matrix[x_new_prime, y_new_prime, z, neighbour_index, main_index] = 0
-
+        self.reinit_p_matrix()
         pass
 
     def get_p_matrix(self):
@@ -298,12 +324,13 @@ class PuzzleSolver:
         p[:, :, :, anc] = 0
         p[y0, x0, :, :] = 0
         p[y0, x0, z0, anc] = 1
-        self.locked_pieces.append(anc)
+        pos = [y0, x0, z0]
+        self.locked_pieces.update({anc: pos})
         for piece in solved_pieces:
             b = self.extract_piece_number(piece[0])
             b = pieces_names.index(piece[0])
-            self.locked_pieces.append(b)
             pos = (piece[1][0], piece[1][1], piece[1][2])
+            self.locked_pieces.update({b: pos})
 
             pos = (round(pos[0]), round(pos[1]), round(pos[2]))
             p[:, :, :, b] = 0
@@ -357,6 +384,12 @@ class PuzzleSolver:
         # while not np.isclose(eps, 0)
         print("started solving..")
         while eps != 0 and iter < self.cfg.Tmax and self.alive_flag:
+            # na_new = len(self.locked_pieces.keys())
+            # if na_new > na:
+            #     na = na_new
+            #     faze += 1
+            #     p = np.ones((Y, X, Z, noPatches)) / (Y * X)
+            #     for piece in self.locked_pieces.keys():
             if na_new > na:
                 na = na_new
                 faze += 1
@@ -410,12 +443,17 @@ class PuzzleSolver:
                 fix_tresh = 0.33   ## just fix last 2 pieces  !!!
 
             a = (m > fix_tresh).astype(int)
+            new_anc = np.array(fin_sol * a)
             locked_piece_indices = np.where(a == 1)[0]
             for i in range(len(locked_piece_indices)):
-                if locked_piece_indices[i] not in self.locked_pieces:
-                    self.locked_pieces.append(locked_piece_indices[i])
-            new_anc = np.array(fin_sol*a)
+                piece = int(locked_piece_indices[i])
+                if piece not in self.locked_pieces.keys():
+                    self.locked_pieces.update({piece: new_anc[piece]})
+                else:
+                    print("piece", piece, "is already locked")
+            print("new_anc", new_anc)
             na_new = np.sum(a)
+            print("na_new", na_new)
 
 
             # if verbosity > 0:
@@ -506,6 +544,14 @@ class PuzzleSolver:
                 self.probability_matrix = np.round(self.probability_matrix, decimals)
                 p = self.probability_matrix
                 fin_sol, m = self.extract_info(p)
+                # fix_tresh = 0.8
+                # a = (m > fix_tresh).astype(int)
+                # locked_piece_indices = np.where(a == 1)[0]
+                # for i in range(len(locked_piece_indices)):
+                #     if locked_piece_indices[i] not in self.locked_pieces:
+                #         self.locked_pieces.append(int(locked_piece_indices[i]))
+                #         print("LOCKED")
+                #         self.reinit_p_matrix()
         return payoff, eps, iter, total_iter
 
     def logger(self, string):

@@ -1,4 +1,5 @@
 import os
+import pathlib
 import re
 import warnings
 
@@ -423,6 +424,11 @@ class GUIApp(MDApp):
                         couple = (self.grabbed_image.name, self.grabbed_image.position_memory)
                         back_end.set_p_elements(couple, self.image_offset)
                         self.grabbed_image.set_anchor(True)
+                else:
+                    if update_started:
+                        couple = (self.grabbed_image.name, self.grabbed_image.position_memory)
+                        back_end.set_p_elements(couple, self.image_offset, False)
+                        self.grabbed_image.set_anchor(False)
 
 
     def toggle_sidebar(self, on_off, true_false):
@@ -690,7 +696,7 @@ class GUIApp(MDApp):
             image.update_positions(position, 0)
 
     @mainthread
-    def apply_solution(self):
+    def apply_solution(self, value = True):
         # Calculate the center of the window
         center = [Window.size[0] / 2, Window.size[1] / 2]
 
@@ -699,6 +705,10 @@ class GUIApp(MDApp):
             image_id = image.get_id()
 
             if image_id in self.pl_solution:
+                if value:
+                    if self.probability_matrix is not None:
+                        if self.probability_matrix[image_id] > 0.99:
+                            image.set_anchor(True)
                 positions = self.pl_solution[image_id]
                 position = np.array([positions[1], (-1 * positions[0])])  # fix the coordinate system
 
@@ -754,7 +764,7 @@ class GUIApp(MDApp):
         iteration = back_end.get_iteration()
         self.pl_solution, original_answer = back_end.get_pl_solution()
         back_end.calculate_results(original_answer, None, iteration, -1)
-        self.apply_solution()
+        self.apply_solution(True)
         self.solution_applied = True
         self.pl_solver_button.disabled = True
         self.show_button.text = 'Next Loop'
@@ -932,7 +942,7 @@ def get_next_neighbour(self, *args, **kwargs):
     else:
         solved_pieces = get_solved_pieces()
 
-        build_meta_fragment(solved_pieces)
+        # build_meta_fragment(solved_pieces)
 
         loop_finalization(solved_pieces)
 
@@ -962,6 +972,8 @@ def check_neighbouring_collision(grabbed_image):
 
 def update_compatibility_matrix(current_image, neighbors, value):
     offset = current_image.update_offset(center=[Window.size[0] / 2, Window.size[1] / 2])
+    if not value:
+        back_end.removed_from_locked(current_image)
     for image in neighbors:
         if image.is_anchor:
             current_image_pos = current_image.position_memory
@@ -1005,6 +1017,8 @@ update_started = False
 
 def save_parameters_to_json(answer, probability, process, filename="API-example.json"):
     # Convert numpy arrays to lists for JSON serialization
+    cache = path_dic['cache_path']
+    file_path = os.path.join(cache, filename)
     if answer is not None and probability is not None and process is not None:
         data = {
             "pieces": {
@@ -1017,7 +1031,7 @@ def save_parameters_to_json(answer, probability, process, filename="API-example.
         }
 
         # Save to JSON file
-        with open(filename, "w") as json_file:
+        with open(file_path, "w") as json_file:
             json.dump(data, json_file, indent=4)
 
 def communicate_thread():  # communication thread, to communicate between UI, Graphic and BackEnd
@@ -1053,8 +1067,8 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
                     answer = back_end.throw_away_1(answer, probability, average_thresh_factor)
                     app.pl_solution = answer
                 app.probability_matrix = probability
-                app.apply_solution()
-                save_parameters_to_json(answer, probability, process)
+                app.apply_solution(False)
+                # save_parameters_to_json(answer, probability, process)
                 update_started = True
                 app.progress_bar.value = np.round(process * 100)
             update_counter = 0
