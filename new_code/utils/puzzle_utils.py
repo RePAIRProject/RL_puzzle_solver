@@ -210,6 +210,7 @@ class Puzzle:
             #piece.data.features = load_features(self)
             self.pieces.append(piece)
         self.num_of_pieces = len(self.pieces)
+        self.img_piece_size = self.pieces[0].data.image.shape
 
     # write code to check which features folders exist?
     # def check_extracted_features(self):

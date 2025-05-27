@@ -115,6 +115,12 @@ class PieceOnCanvas:
             
         # PLACEMENT
         # then we place them into their canvas version
+        if x_c0 < 0 or y_c0 < 0 or y_c1 > grid.canvas_size or x_c1 > grid.canvas_size:
+            print("#" * 50)
+            print("WARNING: seems like the piece is being placed outside of the canvas! Check the code")
+            print(f"we are trying:\n\tself.image[{y_c0}:{y_c1}, {x_c0}:{x_c1}, :] = image\nwhere")
+            print(f"\timage.shape = {image.shape}\n\tgrid.canvas_size = {grid.canvas_size}")
+            print("#" * 50)
         self.image[y_c0:y_c1, x_c0:x_c1, :] = image
         self.mask[y_c0:y_c1, x_c0:x_c1] = mask
         self.polygon = shapely.transform(polygon, lambda f: f + [x,y] - piece.data.img_center)

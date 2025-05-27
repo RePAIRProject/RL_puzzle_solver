@@ -32,7 +32,7 @@ compatibility:
   # actual compatibility score calculation
   features:
     shape: 
-      enabled: Yes
+      enabled: No
       sigma: 1 # ?
       SDF_dilation: 35 # TODO: check if it should be different from borders dilstion!
     lines:
@@ -46,7 +46,7 @@ compatibility:
       # rmax: calculated 
       # border_tolerance: calculated
     motives: 
-      enabled: Yes
+      enabled: No
       scoring_func: simple
       # simple scoring mechanism (touching pixels)
       simple_params: 
@@ -57,6 +57,14 @@ compatibility:
       # geometric (use lines/curves? BGU?)
       geometric_params:
         something: 1
+    oracle:
+      enabled: Yes
+      gt_root_folder: /media/lucap/big_data/datasets/repair/ground_truth/NeurIPS_2024/2D_Fragments_v1/2D_Ground_Truth
+      gt_puzzle_name: RPobj_g3_o0003
+      gt_puzzle_name_extension: txt
+      gt_img_size: 2000
+      correct_alignment_folder: /media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/correct
+      incorrect_alignment_folder: /media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/incorrect
           
 
 solver:
