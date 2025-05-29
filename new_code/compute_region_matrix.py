@@ -32,12 +32,12 @@ def main(args):
     ##############
     # PSEUDOCODE # hopefully it will be that simple
     ##############
-    
-    puzzle = Puzzle()
-    puzzle.load('RPobj_g3_o0003_gt_rot') #, features=True)
 
-    cfg = Configuration('RPobj_g3_o0003_gt_rot') # this contains all IO operations plus the folder structure
+    cfg = Configuration() # this contains all IO operations plus the folder structure
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
+
+    puzzle = Puzzle()
+    puzzle.load(cfg.get_puzzle_name()) #, features=True)
 
     rmm = RegionMatrixModule(puzzle, params, cfg)  # it is redundant, we know 
     rmm.prepare() # creates grid, adjust/compute parameters and so on

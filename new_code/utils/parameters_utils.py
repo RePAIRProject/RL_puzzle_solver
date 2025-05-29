@@ -40,7 +40,7 @@ class CustomYAMLEncoder(yaml.SafeDumper):
 #############################################################
 class Configuration:
     
-    def __init__(self, puzzle_name: str):
+    def __init__(self):
         self.data_folder = 'data'
         self.preprocessing_folder = 'preprocessing'
         self.preprocessing_params_name = 'preprocessing.yaml'
@@ -49,7 +49,6 @@ class Configuration:
         self.polygons_subfolder = 'polygons'
         self.features_folder = 'features'
         self.features_params_name = 'features.yaml'
-        self.puzzle_name = puzzle_name
         self.experiments_folder = 'experiments'
         self.RM_name = 'RM.npy'
         self.RM_input_parameters_path = 'RM_input_params.yaml'
@@ -57,6 +56,16 @@ class Configuration:
         self.CM_name = 'CM.npy'
         self.CM_input_parameters_path = 'CM_input_params.yaml'
         self.CM_output_parameters_path = 'CM_output_params.yaml'
+        self.solution_name = 'solution.npy'
+        self.solution_txt = 'solution.txt'
+        self.solution_input_parameters_path = 'solution_input_params.yaml'
+        self.solution_output_parameters_path = 'solution_output_params.yaml'
+
+    def get_puzzle_name(self):
+        return self.puzzle_name
+
+    def set_puzzle_name(self, puzzle_name: str):
+        self.puzzle_name = puzzle_name
 
     def get_puzzle_subfolders(self):
         """
@@ -116,6 +125,18 @@ class Configuration:
     def get_CM_output_parameters_path(self):
         return os.path.join(self.current_experiment_folder, self.CM_output_parameters_path)
 
+    def get_solution_path(self):
+        return os.path.join(self.current_experiment_folder, self.solution_name)
+
+    def get_solution_as_txt_path(self):
+        return os.path.join(self.current_experiment_folder, self.solution_txt)
+
+    def get_solution_input_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.solution_input_parameters_path)
+    
+    def get_solution_output_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.solution_output_parameters_path)
+
     # def get_features_extracted(self, from_yaml: bool = True):
     #     if from_yaml == True:
     #         features_extracted = self.read_features_from_yaml(os.path.join(features_folder, features_params_name))
@@ -137,6 +158,7 @@ class Configuration:
         """
         with open(yaml_file_path, 'r') as file:
             parameters = yaml.safe_load(file)
+        self.puzzle_name = parameters['puzzle_name']
         return parameters 
         
     def save(self, yaml_file_path: str):

@@ -172,7 +172,33 @@ class SolverModule:
         #     print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
         # all_sol.append(fin_sol)
     
-    
+    def save(self):
+        """ save """
+        context_params = {}
+        context_params['input_params'] = self.params
+        context_params['grid_params'] = {'xy_num_points': self.grid.xy_num_points, 'theta_num_points': self.grid.theta_num_points, 'xy_step':self.grid.xy_step, 'theta_step':self.grid.theta_step, 
+            'canvas_size': self.grid.canvas_size, 'pairwise_comp_range': self.grid.pairwise_comp_range}
+        context_params['features'] = self.features_status
+        context_params['puzzle'] = {'puzzle_name': self.puzzle.name, 'num_pieces': self.puzzle.num_of_pieces, 'piece_size': self.piece_size}
+        context_params['solver'] = {'T_first': self.T_first, 'T_next': self.T_next, 'T_max': self.T_max}
+        # values of the matrix  
+        self.solution_dict['__context'] = context_params
+        self.solution_dict['solution'] = self.solutions[-1]
+        self.solution_dict['__solutions'] = self.solutions
+        self.solution_dict['__payoffs'] = self.payoffs
+
+        np.save(self.cfg.get_solution_path(), self.solution_dict)
+
+        np.savetxt(self.cfg.get_solution_as_txt_path(), self.solutions[-1])
+        # input parameters
+        input_params_path = self.cfg.get_solution_input_parameters_path() 
+        with open(input_params_path, 'w') as f:
+            yaml.dump(self.params, f, Dumper=CustomYAMLEncoder, default_flow_style=False)
+        # output parameters
+        context_params_path = self.cfg.get_solution_output_parameters_path() 
+        with open(context_params_path, 'w') as f:
+            yaml.dump(context_params, f, Dumper=CustomYAMLEncoder, default_flow_style=False)
+
 
     # def save(self):
         
