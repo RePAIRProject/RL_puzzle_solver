@@ -3,14 +3,65 @@ import scipy
 import cv2
 import warnings
 
-def solver_rot_puzzle(R, R_orig, P, T, iter, visual, verbosity=1, decimals=8):
+def fix_anchors(P,num_anchors,threshold):
+
+    N = P.shape[-2]
+
+    grid_sol = extract_grid_sol_from_P(P)
+
+    if threshold <= 1:
+        threshold  = threshold * 100
+
+    anchor_mask = (grid_sol[:,-1] > threshold).astype(int)
+
+    new_anc = np.array(grid_sol * anchor_mask)
+    num_anchors_new = np.sum(anchor_mask)
+
+    # if we have more anchors than before, we fix those, otherwise we keep running
+    if num_anchors_new > num_anchors:
+        num_anchors = num_anchors_new
+        # uniform distribution
+        P = np.ones_like(P) / (P.size()/N)
+
+        for i in range(N):
+            # if new_anc[i, 0] != 0:
+            if anchor_mask[i, 0] == 1:
+                y, x, theta = new_anc[i, :3]
+
+                P[:, :, :, i] = 0
+                P[y, x, :, :] = 0
+                P[y, x, theta, i] = 1
+
+    return P, grid_sol
+
+def extract_grid_sol_from_P(P):
+
+    N = P.shape[-1]
+     
+    I = np.zeros(N)
+    score = np.zeros(N)
+
+    for j in range(N):
+        pj_final = P[:, :, :, j]
+        # TODO: what about multiple maxima?
+        score[j], I[j] = np.max(pj_final), np.argmax(pj_final)
+
+    i_x, i_y, i_theta = np.unravel_index(I.astype(int), P[:, :, :, 1].shape)
+
+    # TODO: Check this works as expected
+    sol = np.concatenate((i_x, i_y, i_theta, score * 100), axis=1).astype(int)
+
+    return sol
+
+
+
+def solver_rot_puzzle(R, P, T, verbosity=1, decimals=8):
     """
+    Solves the puzzle using Relaxation Labelling adapted to puzzle solving
+
     R : Compatibility Matrix (num_x_r,num_y_r,num_rot,N,N)
-    R_orig : Not used!
     p : Probability Matrix (num_x_p,num_y_p,num_rot,N)
     T : number iterations
-    iter : total iteration counter (to be removed)
-    visual : to be removed
     verbosity : logging verbosity
     decimals : precision of p
     """
@@ -82,6 +133,5 @@ def solver_rot_puzzle(R, R_orig, P, T, iter, visual, verbosity=1, decimals=8):
         P = np.round(P_new, decimals)
         
         t += 1
-        iter += 1 # to be removed
 
-    return P, payoff, eps, iter
+    return P, payoff, eps
