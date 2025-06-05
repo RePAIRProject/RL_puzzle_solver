@@ -1,10 +1,10 @@
-from new_code.compatibility.compatibility import CompatibilityMatrixModule
+from compatibility.compatibility import CompatibilityMatrixModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
 from solver.solver import SolverModule
 import argparse
 
-def main(args):
+def main():
 
     ##############
     # PSEUDOCODE # hopefully it will be that simple
@@ -19,8 +19,11 @@ def main(args):
 
     sm = SolverModule(params, cfg)
 
-    sm.solve(verbose=params['verbosity'])
+    breakpoint()
+    sm.solve(verbosity=params['verbosity'])
     sm.save()
 
+if __name__ == '__main__':
+    main()
 
 

@@ -1,9 +1,9 @@
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
-from new_code.compatibility.grid import PuzzleGrid
+from compatibility.grid import PuzzleGrid
 
 from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors
 from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT
-from ..utils.human_readable_duration import format_duration
+from utils.human_readable_duration import format_duration
 
 import numpy as np
 import time
@@ -44,11 +44,12 @@ class SolverModule:
         # self.exp_folder is already set when we create the object
         # self.exp_folder = self.cfg.new_puzzle_single_run_random_folder_name()
 
-        self.T_first = self.params['T_first']
-        self.T_next = self.params['T_next']
-        self.T_max = self.params['T_max']
-
-
+        self.solver_params = self.params['solver']
+        self.T_first = self.solver_params['T_first']
+        self.T_next = self.solver_params['T_next']
+        self.T_max = self.solver_params['T_max']
+        self.threshold = self.solver_params['accept_threshold']
+        
         self._init()
 
     def _init(self):
@@ -59,41 +60,42 @@ class SolverModule:
         """
         # load compatibility matrix
         self.CM_dict = np.load(self.cfg.get_CM_path(), allow_pickle=True).item()
+        print("REMOVEEE")
+        # we need to know which one to use!
+        self.R = self.CM_dict['oracle']
+        self.grid_params = self.CM_dict['__context']['grid_params']
 
-        R = self.CM_dict['R']
-
-
-        if self.params['no_rotations']:
+        if self.solver_params['no_rotations']:
             # Keep only the 0-th rotation but do not change R.ndim (= 5)
-            R = R[:, :, 0:1, :, :]
+            self.R = self.R[:, :, 0:1, :, :]
         
-        assert R.ndim == 5, f"R should have 5 dimensions: expecting (x,y,theta,N,N), got R.shape = {R.shape}"
+        assert self.R.ndim == 5, f"R should have 5 dimensions: expecting (x,y,theta,N,N), got R.shape = {R.shape}"
 
         # numper of pieces
-        N = R.shape[-1]
+        N = self.R.shape[-1]
         # number of rotations
-        num_rot = R.shape[2]
+        num_rot = self.R.shape[2]
 
 
         # !!! Anchor number must be changed if some pieces were excluded
-        if self.params['anchor_index'] < 0:
+        if self.solver_params['anchor_index'] < 0:
             self.anchor_index = np.random.choice(N)  # select_anchor(detect_output)
         else:
-            self.anchor_index = self.params['anchor_index']
+            self.anchor_index = solver_params['anchor_index']
 
         print(f"Using anchor the piece with id: {self.anchor_index}")
 
 
-        grid_method = self.params['solver']['grid']['method']
+        grid_method = self.solver_params['grid']['method']
 
         # initialize the probability / assignement matrix
         # this could?/should? be split into 2 phases parts: 1) compute the grid 2) initialize p  
         if grid_method == 'manual':
-            p_xy_size = self.params['solver']['grid']['manual_params']['p_xy_size']
-            self.P, self.init_pos, self.anchor_pos = initialize_p(R, self.anchor_index, p_xy_size[0], p_xy_size[1])
+            p_xy_size = self.solver_params['grid']['manual_params']['p_xy_size']
+            self.P, self.init_pos, self.anchor_pos = initialize_p(self.R, self.anchor_index, p_xy_size[0], p_xy_size[1])
             print(f'Using a grid of size {self.P.shape} points [manual]')
         elif grid_method == 'auto':
-            self.P, self.init_pos, self.anchor_pos = initialize_p(R, self.anchor_index)
+            self.P, self.init_pos, self.anchor_pos = initialize_p(self.R, self.anchor_index)
             print(f'Using a grid of size {self.P.shape} points [auto]')
         elif grid_method == 'gt':
             raise NotImplementedError()
@@ -115,7 +117,7 @@ class SolverModule:
         # saving_stuff = (anc, pieces, pieces_files, pieces_folder, ppars, solver_visualization_folder)
 
 
-    def solve(self):
+    def solve(self, verbosity=1):
         time_start = time.monotonic()
 
         self.payoffs = []
@@ -124,11 +126,11 @@ class SolverModule:
 
         self.P_initial = self.P
 
-        self._solve()
+        self._solve(verbosity=verbosity)
 
         self.final_grid_solution = self.grid_solutions[-1]
 
-        self.final_pixel_solution = compute_pixel_solution(self.final_grid_solution,self.grid.xy_step,self.grid.theta_step)
+        self.final_pixel_solution = compute_pixel_solution(self.final_grid_solution, self.grid_params['xy_step'], self.grid_params['theta_step'])
 
         print("-" * 50)
         time_in_seconds = time.monotonic() - time_start
@@ -141,6 +143,7 @@ class SolverModule:
         f = 0
         iter = 0
         eps = np.inf
+        num_anchors = 1
 
         # while not np.isclose(eps, 0)
         print("started solving..")
@@ -152,7 +155,7 @@ class SolverModule:
 
             self.P, payoff, eps = solver_rot_puzzle(self.R, self.P, T, verbosity=verbosity, decimals=decimals)
 
-            self.P, sol  = fix_anchors(self.P)
+            self.P, sol, num_anchors = fix_anchors(self.P, num_anchors, self.threshold)
 
             # if save_each_phase == True:
             #     save_vis_puzzle(sol, P, saving_stuff, iter, show_borders=False)
@@ -182,17 +185,18 @@ class SolverModule:
     
     def save(self):
         """ save """
-        context_params = {}
-        context_params['input_params'] = self.params
-        context_params['grid_params'] = {'xy_num_points': self.grid.xy_num_points, 'theta_num_points': self.grid.theta_num_points, 'xy_step':self.grid.xy_step, 'theta_step':self.grid.theta_step, 
-            'canvas_size': self.grid.canvas_size, 'pairwise_comp_range': self.grid.pairwise_comp_range}
-        context_params['features'] = self.features_status
-        context_params['puzzle'] = {'puzzle_name': self.puzzle.name, 'num_pieces': self.puzzle.num_of_pieces, 'piece_size': self.piece_size}
+        context_params = self.CM_dict['__context']
+        # context_params['input_params'] = self.params
+        # context_params['grid_params'] = {'xy_num_points': self.grid.xy_num_points, 'theta_num_points': self.grid.theta_num_points, 'xy_step':self.grid.xy_step, 'theta_step':self.grid.theta_step, 
+        #     'canvas_size': self.grid.canvas_size, 'pairwise_comp_range': self.grid.pairwise_comp_range}
+        # context_params['features'] = self.features_status
+        # context_params['puzzle'] = {'puzzle_name': self.puzzle.name, 'num_pieces': self.puzzle.num_of_pieces, 'piece_size': self.piece_size}
         context_params['solver'] = {'T_first': self.T_first, 'T_next': self.T_next, 'T_max': self.T_max}
         
         # values of the matrix  
+        self.solver_dict = {}
         self.solver_dict['__context'] = context_params
-
+        self.solver_dict['solver_data'] = {}
         data = self.solver_dict['solver_data']
         data['grid_solutions'] = self.grid_solutions
         data['grid_solution'] = self.final_grid_solution
@@ -200,10 +204,8 @@ class SolverModule:
 
         self.solver_dict['solution'] = self.final_pixel_solution
 
-
         np.save(self.cfg.get_solution_path(), self.solver_dict)
-
-        np.savetxt(self.cfg.get_solution_as_txt_path(), self.grid_solutions[-1])
+        np.savetxt(self.cfg.get_solution_as_txt_path(), self.final_pixel_solution, fmt='%d %d %d %d')
         # input parameters
         input_params_path = self.cfg.get_solution_input_parameters_path() 
         with open(input_params_path, 'w') as f:

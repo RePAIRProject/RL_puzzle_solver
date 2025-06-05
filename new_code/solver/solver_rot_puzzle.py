@@ -3,7 +3,7 @@ import scipy
 import cv2
 import warnings
 
-def fix_anchors(P,num_anchors,threshold):
+def fix_anchors(P, num_anchors: int, threshold: float):
 
     N = P.shape[-2]
 
@@ -12,7 +12,7 @@ def fix_anchors(P,num_anchors,threshold):
     if threshold <= 1:
         threshold  = threshold * 100
 
-    anchor_mask = (grid_sol[:,-1] > threshold).astype(int)
+    anchor_mask = (grid_sol[:,-2:-1] > threshold).astype(int)
 
     new_anc = np.array(grid_sol * anchor_mask)
     num_anchors_new = np.sum(anchor_mask)
@@ -32,7 +32,7 @@ def fix_anchors(P,num_anchors,threshold):
                 P[y, x, :, :] = 0
                 P[y, x, theta, i] = 1
 
-    return P, grid_sol
+    return P, grid_sol, num_anchors_new
 
 def extract_grid_sol_from_P(P):
 
@@ -49,7 +49,7 @@ def extract_grid_sol_from_P(P):
     i_x, i_y, i_theta = np.unravel_index(I.astype(int), P[:, :, :, 1].shape)
 
     # TODO: Check this works as expected
-    sol = np.concatenate((i_x, i_y, i_theta, score * 100), axis=1).astype(int)
+    sol = np.transpose(np.stack((i_x, i_y, i_theta, np.round(score * 100))).astype(int))
 
     return sol
 
