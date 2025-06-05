@@ -1,4 +1,4 @@
-from compatibility.compatibility_utils import CompatibilityMatrixModule
+from new_code.compatibility.compatibility import CompatibilityMatrixModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
 import argparse

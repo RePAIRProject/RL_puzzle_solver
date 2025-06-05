@@ -2,7 +2,7 @@ import numpy as np
 import os
 # import features_utils as fts_uts
 from utils.puzzle_utils import Puzzle 
-from compatibility.grid_utils import PuzzleGrid, PieceOnCanvas
+from new_code.compatibility.grid import PuzzleGrid, PieceOnCanvas
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
 from utils.visualization_utils import crop_to_content
 import cv2 

@@ -1,12 +1,13 @@
-from utils.parameters_utils import Configuration
-from compatibility.grid_utils import PuzzleGrid
+from utils.parameters_utils import Configuration, CustomYAMLEncoder
+from new_code.compatibility.grid import PuzzleGrid
 
 from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors
-from .solver_utils import initialize_p, initialize_p_from_GT
+from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT
+from ..utils.human_readable_duration import format_duration
 
 import numpy as np
 import time
-from ..utils.human_readable_duration import format_duration
+import yaml
 
 
 class SolverModule:
@@ -118,12 +119,16 @@ class SolverModule:
         time_start = time.monotonic()
 
         self.payoffs = []
-        self.solutions = []
+        self.grid_solutions = []
         self.anchors = []
 
         self.P_initial = self.P
 
-        all_pay, all_sol, all_anc, p_final, eps, iter, na = self._solve()
+        self._solve()
+
+        self.final_grid_solution = self.grid_solutions[-1]
+
+        self.final_pixel_solution = compute_pixel_solution(self.final_grid_solution,self.grid.xy_step,self.grid.theta_step)
 
         print("-" * 50)
         time_in_seconds = time.monotonic() - time_start
@@ -156,7 +161,7 @@ class SolverModule:
             iter += T
 
             self.payoffs.append(payoff[2:])
-            self.solutions.append(sol)
+            self.grid_solutions.append(sol)
             #self.anchors.append(new_anc)
 
             if verbosity > 0:
@@ -171,6 +176,9 @@ class SolverModule:
         #     print("#" * 70)
         #     print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
         # all_sol.append(fin_sol)
+
+    
+        
     
     def save(self):
         """ save """
@@ -181,15 +189,21 @@ class SolverModule:
         context_params['features'] = self.features_status
         context_params['puzzle'] = {'puzzle_name': self.puzzle.name, 'num_pieces': self.puzzle.num_of_pieces, 'piece_size': self.piece_size}
         context_params['solver'] = {'T_first': self.T_first, 'T_next': self.T_next, 'T_max': self.T_max}
+        
         # values of the matrix  
-        self.solution_dict['__context'] = context_params
-        self.solution_dict['solution'] = self.solutions[-1]
-        self.solution_dict['__solutions'] = self.solutions
-        self.solution_dict['__payoffs'] = self.payoffs
+        self.solver_dict['__context'] = context_params
 
-        np.save(self.cfg.get_solution_path(), self.solution_dict)
+        data = self.solver_dict['solver_data']
+        data['grid_solutions'] = self.grid_solutions
+        data['grid_solution'] = self.final_grid_solution
+        data['payoffs'] = self.payoffs
 
-        np.savetxt(self.cfg.get_solution_as_txt_path(), self.solutions[-1])
+        self.solver_dict['solution'] = self.final_pixel_solution
+
+
+        np.save(self.cfg.get_solution_path(), self.solver_dict)
+
+        np.savetxt(self.cfg.get_solution_as_txt_path(), self.grid_solutions[-1])
         # input parameters
         input_params_path = self.cfg.get_solution_input_parameters_path() 
         with open(input_params_path, 'w') as f:

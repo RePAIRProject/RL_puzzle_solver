@@ -26,6 +26,18 @@ import json
 # from puzzle_utils.visualization import save_vis
 import copy
 
+def compute_pixel_solution(grid_solution: np.ndarray, grid_xy_step : int, grid_theta_step : int):
+
+    pixel_solution = np.zeros_like(grid_solution)
+    # multiply x,y by xy_step
+    pixel_solution[:,:2] = grid_solution[:,:2] * grid_xy_step
+    # multiply theta by theta_step
+    pixel_solution[:,2] = grid_solution[:,2] * grid_theta_step
+    # leave the probabilities as they are
+    pixel_solution[:,3] = grid_solution[:,3]
+
+    return pixel_solution
+
 
 def initialize_p_from_GT(anc, puzzle_root_folder, all_pieces, pieces_incl, no_rotations):
     border_points = 20  # xy_grid_points//10 ???

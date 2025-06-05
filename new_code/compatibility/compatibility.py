@@ -5,7 +5,7 @@ from utils.puzzle_utils import PuzzlePiece
 import shapely 
 from utils.puzzle_utils import Puzzle 
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
-from compatibility.grid_utils import PuzzleGrid, PieceOnCanvas
+from new_code.compatibility.grid import PuzzleGrid, PieceOnCanvas
 import yaml
 # only for debug, they should not be used here
 import pandas as pd 
