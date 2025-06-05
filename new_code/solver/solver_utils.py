@@ -11,19 +11,19 @@ from scipy.io import savemat, loadmat
 from scipy.ndimage import rotate
 from PIL import Image
 import os
-import configs.folder_names as fnames
 import argparse
 # from compatibility.line_matching_NEW_segments import read_info
-from compatibility.utils import normalize_CM
+# from compatibility.compatibiliy_utils import normalize_CM
 # import configs.solver_cfg as cfg
-from puzzle_utils.pieces_utils import calc_parameters_v2
-from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas, crop_to_content
+# from puzzle_utils.pieces_utils import calc_parameters_v2
+# from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid, place_on_canvas, 
+from utils.visualization_utils import crop_to_content
 import datetime
 import pdb
 import time
 import json
-from puzzle_utils.regions import combine_region_masks
-from puzzle_utils.visualization import save_vis
+# from puzzle_utils.regions import combine_region_masks
+# from puzzle_utils.visualization import save_vis
 import copy
 
 
