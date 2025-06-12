@@ -49,3 +49,5 @@ yolov5/best.pt
 yolov8n-seg.pt
 
 
+# PyCharm
+.idea
