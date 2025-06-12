@@ -65,10 +65,11 @@ compatibility:
       gt_img_size: 2000
       correct_alignment_folder: /media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/correct
       incorrect_alignment_folder: /media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/incorrect
-          
+
+aggregation:
+  method: 'shape'  
 
 solver:
- 
   T_first: 100 #1000
   T_next: 100 #500
   T_max: 500 #3000

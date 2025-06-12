@@ -109,7 +109,7 @@ class CompatibilityMatrixModule:
                 print("oracle CM computation")
             CM = self._compute_oracle_CM(verbose=verbose)
         else:
-            raise Exception(f"{feature}-based RM not implemented yet!")
+            raise Exception(f"{feature}-based CM not implemented yet!")
 
         return CM 
 
@@ -124,7 +124,7 @@ class CompatibilityMatrixModule:
         context_params['features'] = self.features_status
         context_params['puzzle'] = {'puzzle_name': self.puzzle.name, 'num_pieces': self.puzzle.num_of_pieces, 'piece_size': self.piece_size}
         # values of the matrix  
-        self.CM['__context'] = context_params
+        self.CM_dict['__context'] = context_params
         np.save(self.cfg.get_CM_path(), self.CM)
         # input parameters
         input_params_path = self.cfg.get_CM_input_parameters_path() 

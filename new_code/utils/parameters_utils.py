@@ -124,6 +124,12 @@ class Configuration:
     
     def get_CM_output_parameters_path(self):
         return os.path.join(self.current_experiment_folder, self.CM_output_parameters_path)
+    
+    def get_aggregation_input_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.CM_input_parameters_path)
+    
+    def get_aggregation_output_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.CM_output_parameters_path)
 
     def get_solution_path(self):
         return os.path.join(self.current_experiment_folder, self.solution_name)

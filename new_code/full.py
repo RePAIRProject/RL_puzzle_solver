@@ -29,10 +29,6 @@ from utils.parameters_utils import Configuration
 
 def main():
 
-    ##############
-    # PSEUDOCODE # hopefully it will be that simple
-    ##############
-
     cfg = Configuration() # this contains all IO operations plus the folder structure
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
 
@@ -51,6 +47,12 @@ def main():
     cmm.compute(verbose=params['verbosity'])
     # rmm.save_candidate_alignments_to_file(verbose=params['verbosity'])
     cmm.save()
+
+    am = AggregationModule(puzzle, params, cfg) 
+
+    # am.prepare() # read the data creates grid, adjust/compute parameters and so on
+    am.compute(verbose=params['verbosity']) # merge the data
+    am.save()
 
     sm = SolverModule(params, cfg)
 
