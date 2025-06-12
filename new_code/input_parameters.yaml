@@ -1,7 +1,8 @@
 ---  # yaml document beginning
 # comment syntax
 
-puzzle_name: RPobj_g3_o0003_gt_rot
+dataset_root: 
+puzzle_name: puzzle_0000002_RP_group_2
 verbosity: 2
 
 preprocessing:
@@ -13,7 +14,7 @@ features:
     extracted: No
     detection_method: deeplsd
   motif:
-    extracted: Yes
+    extracted: No
     detection_method: yolo-seg
 
 compatibility:
@@ -59,15 +60,11 @@ compatibility:
         something: 1
     oracle:
       enabled: Yes
-      gt_root_folder: /media/lucap/big_data/datasets/repair/ground_truth/NeurIPS_2024/2D_Fragments_v1/2D_Ground_Truth
-      gt_puzzle_name: RPobj_g3_o0003
-      gt_puzzle_name_extension: txt
-      gt_img_size: 2000
-      correct_alignment_folder: /media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/correct
-      incorrect_alignment_folder: /media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/incorrect
+      create_pairwise_alignments_dataset: True
+      pairwise_alignments_dataset_folder: /media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/
 
 aggregation:
-  method: 'shape'  
+  method: 'oracle'  
 
 solver:
   T_first: 100 #1000

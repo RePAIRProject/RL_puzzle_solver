@@ -23,7 +23,10 @@ WIP:
 probably should just read the .yaml file, create a RegionMatrix object, call .compute and that's it
 most likely it will not be that easy  
 """
-from new_code.compatibility.region import RegionMatrixModule
+from compatibility.region import RegionMatrixModule
+from compatibility.compatibility import CompatibilityMatrixModule
+from compatibility.aggregation import AggregationModule
+from solver.solver import SolverModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
 
@@ -33,7 +36,7 @@ def main():
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
 
     puzzle = Puzzle()
-    puzzle.load(cfg.get_puzzle_name()) #, features=True)
+    puzzle.load(cfg.get_puzzle_name(), load_features=False) #, features=True)
 
     rmm = RegionMatrixModule(puzzle, params, cfg)  # it is redundant, we know 
     rmm.prepare() # creates grid, adjust/compute parameters and so on
@@ -58,3 +61,8 @@ def main():
 
     sm.solve(verbose=params['verbosity'])
     sm.save()
+
+
+if __name__ == '__main__':
+
+    main()

@@ -11,6 +11,7 @@ import yaml
 import pandas as pd 
 import os
 import random
+import json
 
 ############################################################################
 #                                                                          #
@@ -124,7 +125,7 @@ class CompatibilityMatrixModule:
         context_params['features'] = self.features_status
         context_params['puzzle'] = {'puzzle_name': self.puzzle.name, 'num_pieces': self.puzzle.num_of_pieces, 'piece_size': self.piece_size}
         # values of the matrix  
-        self.CM_dict['__context'] = context_params
+        self.CM['__context'] = context_params
         np.save(self.cfg.get_CM_path(), self.CM)
         # input parameters
         input_params_path = self.cfg.get_CM_input_parameters_path() 
@@ -150,18 +151,19 @@ class CompatibilityMatrixModule:
     def _compute_oracle_CM(self, verbose: int = 3):
         
         """Loops over pairs of pieces - not symmetric yet"""
-        oracle_info = self.params['compatibility']['features']['oracle']
-        gt_data = pd.read_csv(os.path.join(oracle_info['gt_root_folder'], f"{oracle_info['gt_puzzle_name']}.{oracle_info['gt_puzzle_name_extension']}"))
-        save_correct_matches = False 
-        if save_correct_matches == True:
-            print("\n\nWE ARE SAVING THE ALIGNMENTS IMAGES FOR AN EXPERIMENT! PLEASE REMOVE AFTERWARDS\n\n")
-            alignment_folder = os.path.join(oracle_info['correct_alignment_folder'])#, oracle_info['gt_puzzle_name']) 
-            os.makedirs(alignment_folder, exist_ok=True)
-            wrong_alignment_folder = os.path.join(oracle_info['incorrect_alignment_folder'])#, oracle_info['gt_puzzle_name']) 
-            os.makedirs(wrong_alignment_folder, exist_ok=True)
-        else:
-            alignment_folder = ''
-            wrong_alignment_folder = ''
+        self.oracle_params = self.params['compatibility']['features']['oracle']
+        with open(self.cfg.get_GT_path(), 'r') as gtjf:
+            self.gt = json.load(gtjf)
+        with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
+            self.puzzle_info = json.load(pijf)
+        # gt_data = pd.read_csv(os.path.join(oracle_info['gt_root_folder'], f"{oracle_info['gt_puzzle_name']}.{oracle_info['gt_puzzle_name_extension']}"))
+
+        if self.oracle_params['create_pairwise_alignments_dataset'] == True:
+            print("\nCreating pairwise alignment datasets..\n\n")
+            self.oracle_params['correct_alignment_folder'] = os.path.join(self.oracle_params['pairwise_alignments_dataset_folder'], 'correct')#, oracle_info['gt_puzzle_name']) 
+            os.makedirs(self.oracle_params['correct_alignment_folder'], exist_ok=True)
+            self.oracle_params['wrong_alignment_folder'] = os.path.join(self.oracle_params['pairwise_alignments_dataset_folder'], 'wrong')#, oracle_info['gt_puzzle_name']) 
+            os.makedirs(self.oracle_params['wrong_alignment_folder'], exist_ok=True)
 
         CM_oracle = np.zeros(self.CM_size)
         if verbose > 1:
@@ -172,21 +174,27 @@ class CompatibilityMatrixModule:
                     if verbose > 1:
                         print(f'computing oracle CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
                     RM_ij = np.ones((CM_oracle.shape[0], CM_oracle.shape[1], CM_oracle.shape[2]))
-                    if save_correct_matches == True:
+                    if self.oracle_params['create_pairwise_alignments_dataset'] == True:
                         RM_ij = self.RM_dict['shape'][:, :, :, j, i]
                     #if np.sum(RM_ij > 0) > 0:
                     # breakpoint()
-                    gt_pos_i = np.asarray([gt_data.x[i], gt_data.y[i]]) / oracle_info['gt_img_size'] * self.puzzle.img_piece_size[0]
-                    gt_pos_j = np.asarray([gt_data.x[j], gt_data.y[j]]) / oracle_info['gt_img_size'] * self.puzzle.img_piece_size[0]
+                    gt_piece_i = self.gt['pieces'][f'{i}']
+                    gt_piece_j = self.gt['pieces'][f'{j}']
+                    gt_pos_i = np.asarray([gt_piece_i['x'], gt_piece_i['y']]) / self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0]
+                    gt_pos_j = np.asarray([gt_piece_j['x'], gt_piece_j['y']]) / self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0]
                     gt_rel_j_vs_i = np.round((gt_pos_j - gt_pos_i)).astype(int) # / self.grid.xy_step).astype(int)
                     if verbose > 2:
                         print("\nrelative GT:", gt_rel_j_vs_i)
-                    CM_oracle[:, :, :, j, i] = self._compute_pairwise_oracle_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, alignment_folder=alignment_folder, wrong_alignment_folder=wrong_alignment_folder, save_correct_matches=save_correct_matches, gt_rel_pos=gt_rel_j_vs_i, verbose=verbose)
+                    CM_oracle[:, :, :, j, i] = self._compute_pairwise_oracle_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, gt_rel_pos=gt_rel_j_vs_i, verbose=verbose)
         if verbose > 1:
             print()
         return CM_oracle
     
-    def _compute_pairwise_oracle_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, gt_rel_pos: np.ndarray, alignment_folder: str, wrong_alignment_folder: str, save_correct_matches: bool = False, verbose: int = 0):
+    def _prepare_gt_data(self):
+        """ just reorganizes the gt as a list with the index to be more `in line` with the rest of the data """
+
+
+    def _compute_pairwise_oracle_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, gt_rel_pos: np.ndarray, verbose: int = 0):
         """
         For each pair of pieces, it places them on the canvas in the position `accepted` by RM_ij 
         and calls the scoring function to fill the pairwise compatibility matrix CM_ij 
@@ -211,21 +219,23 @@ class CompatibilityMatrixModule:
             if np.sum(cv2.dilate(piece_i_on_canvas.mask, kernel) * cv2.dilate(piece_j_on_canvas.mask, kernel) > 0): 
                 CM_ij[x_idx, y_idx, theta_idx] = 1
 
-                if save_correct_matches == True:
+                if self.oracle_params['create_pairwise_alignments_dataset'] == True:
                     import matplotlib.pyplot as plt 
                     
-                    correctly_aligned = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
-                    plt.imsave(os.path.join(alignment_folder, f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_gt.png'), np.clip(correctly_aligned, 0, 1))
+                    breakpoint()
+
+                    correctly_aligned = piece_i_on_canvas.image / 255 * (piece_i_on_canvas.mask > 0.005) + piece_j_on_canvas.image / 255 * (piece_j_on_canvas.mask > 0.005)
+                    plt.imsave(os.path.join(self.oracle_params['correct_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_gt.png'), np.clip(correctly_aligned, 0, 1))
 
                     # on the grid
                     xj_grid, yj_grid = self.grid.xy_values[x_idx, y_idx]
                     thetaj = self.grid.theta_values[theta_idx]
                     piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid, y=yj_grid, theta=thetaj, enabled_features=self.features_status)
                     grid_aligned = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
-                    plt.imsave(os.path.join(alignment_folder, f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.png'), np.clip(grid_aligned, 0, 1))
+                    plt.imsave(os.path.join(self.oracle_params['correct_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.png'), np.clip(grid_aligned, 0, 1))
 
                     # get two "wrong" images
-                    # breakpoint()
+                    breakpoint()
                     # RM_ij = self.RM_dict['motives'][:, :, 0, j, i]
                     plausible_pos = np.where(RM_ij > 0)
                     rnd_idx = int(random.uniform(0, len(plausible_pos[0])))
@@ -235,12 +245,12 @@ class CompatibilityMatrixModule:
                     yj = random.choice(self.grid.xy_values[:,:,1].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
                     piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
                     wrong_alignment1 = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
-                    plt.imsave(os.path.join(wrong_alignment_folder, f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong1.png'), np.clip(wrong_alignment1, 0, 1))
+                    plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong1.png'), np.clip(wrong_alignment1, 0, 1))
                     xj = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
                     yj = random.choice(self.grid.xy_values[:,:,1].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
                     piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
                     wrong_alignment2 = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
-                    plt.imsave(os.path.join(wrong_alignment_folder, f'vis_{piece_i.name}_{piece_j.name}_{xj}_{yj}_{0}_wrong2.png'), np.clip(wrong_alignment2, 0, 1))
+                    plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{xj}_{yj}_{0}_wrong2.png'), np.clip(wrong_alignment2, 0, 1))
             else:            
                 # we consider these two as "not neighbours"
                 if verbose > 2:

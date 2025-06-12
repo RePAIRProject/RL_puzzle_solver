@@ -12,6 +12,7 @@ from typing import List
 import yaml
 import matplotlib.pyplot as plt 
 import skfmm
+import natsort
 
 # Preprocessor
 #
@@ -194,22 +195,25 @@ class Puzzle:
         images_subfolder = self.cfg.get_puzzle_images_subfolder()
         masks_subfolder = self.cfg.get_puzzle_masks_subfolder()
         polygons_subfolder = self.cfg.get_puzzle_polygons_subfolder()
-        self.pieces_names = os.listdir(images_subfolder)
-        self.pieces_names.sort()
+        self.computer_ordered_pieces_names = os.listdir(images_subfolder)
+        self.pieces_names = natsort.natsorted(self.computer_ordered_pieces_names)
         
         # breakpoint()
-        for piece_name in self.pieces_names:
+        for j, piece_name in enumerate(self.pieces_names):
             piece = PuzzlePiece()
             piece.name = piece_name[:-4]
-            piece.id = piece.name[:10]  # piece_XXXXX.png
+            piece.id = j  
+            piece.repair_id = piece.name[:10]  # piece_XXXXX.png
             piece.data.image = cv2.imread(os.path.join(images_subfolder, f"{piece.name}.png"))
             piece.data.img_center = np.asarray(piece.data.image.shape[:2]) // 2
             piece.data.mask = plt.imread(os.path.join(masks_subfolder, f"{piece.name}.png"), cv2.IMREAD_GRAYSCALE)
             piece.data.polygon = np.load(os.path.join(polygons_subfolder, f"{piece.name}.npy"), allow_pickle=True).tolist()
-            piece.features.sdf.compute(piece.data.mask)
-            piece.features.motives.load(os.path.join(self.cfg.get_puzzle_features_subfolder(), 'motifs_segmentation', f"motifs_cube_{piece_name[:-4]}.npy"))
+            if load_features == True:
+                piece.features.sdf.compute(piece.data.mask)
+                piece.features.motives.load(os.path.join(self.cfg.get_puzzle_features_subfolder(), 'motifs_segmentation', f"motifs_cube_{piece_name[:-4]}.npy"))
             #piece.data.features = load_features(self)
             self.pieces.append(piece)
+
         self.num_of_pieces = len(self.pieces)
         self.img_piece_size = self.pieces[0].data.image.shape
 

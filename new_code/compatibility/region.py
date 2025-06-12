@@ -2,7 +2,7 @@ import numpy as np
 import os
 # import features_utils as fts_uts
 from utils.puzzle_utils import Puzzle 
-from new_code.compatibility.grid import PuzzleGrid, PieceOnCanvas
+from compatibility.grid import PuzzleGrid, PieceOnCanvas
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
 from utils.visualization_utils import crop_to_content
 import cv2 
@@ -208,6 +208,10 @@ class RegionMatrixModule:
             if verbose > 1:
                 print("motives-based RM Computation")
             RM = self.compute_motif_based_RM(verbose=verbose)
+        elif feature == 'oracle':
+            if verbose > 1:
+                print("WARNING:\nfor the oracle compatibility, we still use shape-based RM Computation")
+            RM = self.compute_shape_based_RM(verbose=verbose)
         else:
             raise Exception(f"{feature}-based RM not implemented yet!")
 

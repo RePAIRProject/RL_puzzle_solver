@@ -45,11 +45,13 @@ class Configuration:
         self.preprocessing_folder = 'preprocessing'
         self.preprocessing_params_name = 'preprocessing.yaml'
         self.images_subfolder = 'images'
-        self.masks_subfolder = 'masks'
+        self.masks_subfolder = 'binary_masks'
         self.polygons_subfolder = 'polygons'
         self.features_folder = 'features'
         self.features_params_name = 'features.yaml'
         self.experiments_folder = 'experiments'
+        self.ground_truth_filename = 'ground_truth.json'
+        self.puzzle_info_filename = 'puzzle_info.json'
         self.RM_name = 'RM.npy'
         self.RM_input_parameters_path = 'RM_input_params.yaml'
         self.RM_output_parameters_path = 'RM_output_params.yaml'
@@ -95,7 +97,13 @@ class Configuration:
     
     def get_puzzle_experiments_subfolder(self):
         return os.path.join(self.data_folder, self.experiments_folder, self.puzzle_name)
-
+       
+    def get_GT_path(self):
+    	return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.ground_truth_filename)
+    	
+    def get_puzzle_info_path(self):
+    	return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.puzzle_info_filename)
+    	
     def new_puzzle_single_run_random_folder_name(self):
         self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), f"exp_{self.randomword(6)}")
         os.makedirs(self.current_experiment_folder, exist_ok=True)
