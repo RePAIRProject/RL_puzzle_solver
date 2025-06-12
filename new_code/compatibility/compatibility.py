@@ -171,21 +171,24 @@ class CompatibilityMatrixModule:
         for i in range(self.puzzle.num_of_pieces):
             for j in range(self.puzzle.num_of_pieces):
                 if i != j:
-                    if verbose > 1:
-                        print(f'computing oracle CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
-                    RM_ij = np.ones((CM_oracle.shape[0], CM_oracle.shape[1], CM_oracle.shape[2]))
-                    if self.oracle_params['create_pairwise_alignments_dataset'] == True:
-                        RM_ij = self.RM_dict['shape'][:, :, :, j, i]
-                    #if np.sum(RM_ij > 0) > 0:
-                    # breakpoint()
-                    gt_piece_i = self.gt['pieces'][f'{i}']
-                    gt_piece_j = self.gt['pieces'][f'{j}']
-                    gt_pos_i = np.asarray([gt_piece_i['x'], gt_piece_i['y']]) / self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0]
-                    gt_pos_j = np.asarray([gt_piece_j['x'], gt_piece_j['y']]) / self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0]
-                    gt_rel_j_vs_i = np.round((gt_pos_j - gt_pos_i)).astype(int) # / self.grid.xy_step).astype(int)
-                    if verbose > 2:
-                        print("\nrelative GT:", gt_rel_j_vs_i)
-                    CM_oracle[:, :, :, j, i] = self._compute_pairwise_oracle_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, gt_rel_pos=gt_rel_j_vs_i, verbose=verbose)
+                    if [i,j] in self.gt['adjacency'] or [j,i] in self.gt['adjacency']:
+                        if verbose > 1:
+                            print(f'computing oracle CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
+                        RM_ij = np.ones((CM_oracle.shape[0], CM_oracle.shape[1], CM_oracle.shape[2]))
+                        if self.oracle_params['create_pairwise_alignments_dataset'] == True:
+                            RM_ij = self.RM_dict['shape'][:, :, :, j, i]
+                        #if np.sum(RM_ij > 0) > 0:
+                        # breakpoint()
+                        gt_piece_i = self.gt['pieces'][f'{i}']
+                        gt_piece_j = self.gt['pieces'][f'{j}']
+                        gt_pos_i = np.asarray([gt_piece_i['x'], gt_piece_i['y']]) #/ self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
+                        gt_pos_j = np.asarray([gt_piece_j['x'], gt_piece_j['y']]) #/self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
+                        gt_rel_j_vs_i = np.round((gt_pos_j - gt_pos_i)).astype(int) #* 1.5 # / self.grid.xy_step).astype(int)
+                        if verbose > 2:
+                            print("\nrelative GT:", gt_rel_j_vs_i)
+                        CM_oracle[:, :, :, j, i] = self._compute_pairwise_oracle_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij=RM_ij, gt_rel_pos=gt_rel_j_vs_i, verbose=verbose)
+                    # else: # it should already be zero!
+                    #     CM_oracle[:, :, :, j, i] = np.zeros_like(CM_oracle[:, :, :, j, i])
         if verbose > 1:
             print()
         return CM_oracle
@@ -203,11 +206,11 @@ class CompatibilityMatrixModule:
         kernel = np.ones((kernel_size, kernel_size))
         
         CM_ij = np.zeros((RM_ij.shape[0], RM_ij.shape[1], RM_ij.shape[2]))
-        xj, yj = (np.asarray([self.grid.canvas_center, self.grid.canvas_center]) + gt_rel_pos).tolist()
+        xj, yj = (np.asarray([self.grid.canvas_center, self.grid.canvas_center]) + np.asarray([gt_rel_pos[0], -gt_rel_pos[1]])).tolist()
         x_idx = np.round(self.grid.xy_num_points / 2 + gt_rel_pos[0] / self.grid.xy_step).astype(int)
-        y_idx = np.round(self.grid.xy_num_points / 2 + gt_rel_pos[1] / self.grid.xy_step).astype(int)
+        y_idx = np.round(self.grid.xy_num_points / 2 - gt_rel_pos[1] / self.grid.xy_step).astype(int)
         
-        if np.max(abs(gt_rel_pos)) < (self.grid.p_hs): 
+        if 1 > 0: #np.max(abs(gt_rel_pos)) < (self.grid.p_hs): 
             # y_idx = np.round(yj / self.grid.xy_step).astype(int)
             theta_idx = 0
             thetaj = self.grid.theta_values[0]
@@ -222,35 +225,38 @@ class CompatibilityMatrixModule:
                 if self.oracle_params['create_pairwise_alignments_dataset'] == True:
                     import matplotlib.pyplot as plt 
                     
-                    breakpoint()
+                    # breakpoint()
 
-                    correctly_aligned = piece_i_on_canvas.image / 255 * (piece_i_on_canvas.mask > 0.005) + piece_j_on_canvas.image / 255 * (piece_j_on_canvas.mask > 0.005)
+                    # correctly_aligned = piece_i_on_canvas.image / 255 * (piece_i_on_canvas.mask > 0.005) + piece_j_on_canvas.image / 255 * (piece_j_on_canvas.mask > 0.005)
+                    correctly_aligned = piece_i_on_canvas.image + piece_j_on_canvas.image 
+                    # correctly_aligned[:,:,3] = ((piece_i_on_canvas.mask > 0) + (piece_j_on_canvas.mask > 0) > 0)
                     plt.imsave(os.path.join(self.oracle_params['correct_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_gt.png'), np.clip(correctly_aligned, 0, 1))
 
                     # on the grid
                     xj_grid, yj_grid = self.grid.xy_values[x_idx, y_idx]
                     thetaj = self.grid.theta_values[theta_idx]
                     piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid, y=yj_grid, theta=thetaj, enabled_features=self.features_status)
-                    grid_aligned = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
+                    grid_aligned = piece_i_on_canvas.image + piece_j_on_canvas.image
+                    # grid_aligned[:,:,3] = ((piece_i_on_canvas.mask > 0) + (piece_j_on_canvas.mask > 0) > 0)
                     plt.imsave(os.path.join(self.oracle_params['correct_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.png'), np.clip(grid_aligned, 0, 1))
 
                     # get two "wrong" images
                     breakpoint()
                     # RM_ij = self.RM_dict['motives'][:, :, 0, j, i]
-                    plausible_pos = np.where(RM_ij > 0)
-                    rnd_idx = int(random.uniform(0, len(plausible_pos[0])))
-                    x_idx = plausible_pos[0][rnd_idx] # = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                    y_idx = plausible_pos[1][rnd_idx] # = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                    xj, yj = self.grid.xy_values[x_idx, y_idx]
-                    yj = random.choice(self.grid.xy_values[:,:,1].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                    piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
-                    wrong_alignment1 = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
-                    plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong1.png'), np.clip(wrong_alignment1, 0, 1))
-                    xj = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                    yj = random.choice(self.grid.xy_values[:,:,1].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                    piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
-                    wrong_alignment2 = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
-                    plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{xj}_{yj}_{0}_wrong2.png'), np.clip(wrong_alignment2, 0, 1))
+                    # plausible_pos = np.where(RM_ij > 0)
+                    # rnd_idx = int(random.uniform(0, len(plausible_pos[0])))
+                    # x_idx = plausible_pos[0][rnd_idx] # = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
+                    # y_idx = plausible_pos[1][rnd_idx] # = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
+                    # xj, yj = self.grid.xy_values[x_idx, y_idx]
+                    # yj = random.choice(self.grid.xy_values[:,:,1].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
+                    # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+                    # wrong_alignment1 = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
+                    # plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong1.png'), np.clip(wrong_alignment1, 0, 1))
+                    # xj = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
+                    # yj = random.choice(self.grid.xy_values[:,:,1].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
+                    # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+                    # wrong_alignment2 = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
+                    # plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{xj}_{yj}_{0}_wrong2.png'), np.clip(wrong_alignment2, 0, 1))
             else:            
                 # we consider these two as "not neighbours"
                 if verbose > 2:

@@ -7,22 +7,7 @@ import pdb
 import matplotlib.pyplot as plt
 import cv2
 import json, os
-from PIL import Image
 
-# # from configs import repair_cfg as cfg
-# from configs import folder_names as fnames
-
-# from puzzle_utils.shape_utils import prepare_pieces_v2, create_grid_v2, create_grid_v3, get_outside_borders, \
-#         place_on_canvas, get_borders_around, include_shape_info, dilate
-# # from puzzle_utils.shape_utils import prepare_pieces, shape_pairwise_compatibility
-# from puzzle_utils.pieces_utils import calc_parameters_v2
-# from puzzle_utils.visualization import save_vis
-
-"""
-WIP: 
-probably should just read the .yaml file, create a RegionMatrix object, call .compute and that's it
-most likely it will not be that easy  
-"""
 from compatibility.region import RegionMatrixModule
 from compatibility.compatibility import CompatibilityMatrixModule
 from compatibility.aggregation import AggregationModule

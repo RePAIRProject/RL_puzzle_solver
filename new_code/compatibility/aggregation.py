@@ -21,6 +21,9 @@ class AggregationModule:
         self.input_params = params
         self.params = params['aggregation']
         self.method = self.params['method']
+        self.cfg = cfg 
+        
+        self._init()
 
     def _init(self):
         """ Loads the data """
@@ -33,7 +36,7 @@ class AggregationModule:
 
         self.RM_dict = np.load(self.cfg.get_RM_path(), allow_pickle=True).item()
 
-    def compute(self):
+    def compute(self, verbose:int = 1):
         """ The wrapper that computes the aggregation """
         if self.method == 'SLM':
             R = _aggregate_shape_lines_motives(self)
@@ -57,7 +60,7 @@ class AggregationModule:
         """ save the data in a .npy file, context parameters and values """
 
         # read the context values and add the aggregation ones
-        context_params = self.CM_dict['context_params']
+        context_params = self.CM_dict['__context']
         context_params['aggregation'] = self.params
         self.CM_dict['__context'] = context_params
 

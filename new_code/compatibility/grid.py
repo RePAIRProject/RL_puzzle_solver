@@ -123,6 +123,8 @@ class PieceOnCanvas:
             print("#" * 50)
         self.image[y_c0:y_c1, x_c0:x_c1, :] = image
         self.mask[y_c0:y_c1, x_c0:x_c1] = mask
+        for ch in range(self.image.shape[2]):
+            self.image[:,:,ch] *= (self.mask > 0)
         self.polygon = shapely.transform(polygon, lambda f: f + [x,y] - piece.data.img_center)
         if enabled_features['shape'] == True:
             self.sdf[y_c0:y_c1, x_c0:x_c1] = sdf

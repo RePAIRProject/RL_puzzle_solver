@@ -60,8 +60,8 @@ compatibility:
         something: 1
     oracle:
       enabled: Yes
-      create_pairwise_alignments_dataset: True
-      pairwise_alignments_dataset_folder: /media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/
+      create_pairwise_alignments_dataset: False
+      pairwise_alignments_dataset_folder: '/home/palma/Datasets/RePAIR_pairwise' #/media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/
 
 aggregation:
   method: 'oracle'  

@@ -60,7 +60,6 @@ class SolverModule:
         """
         # load compatibility matrix
         self.CM_dict = np.load(self.cfg.get_CM_path(), allow_pickle=True).item()
-        print("REMOVEEE")
         # We use `R` as the aggregated matrix
         if 'R' not in self.CM_dict.keys():
             print("\nWARNING:")
@@ -126,7 +125,7 @@ class SolverModule:
         # saving_stuff = (anc, pieces, pieces_files, pieces_folder, ppars, solver_visualization_folder)
 
 
-    def solve(self, verbosity=1):
+    def solve(self, verbose:int=1):
         time_start = time.monotonic()
 
         self.payoffs = []
@@ -135,7 +134,7 @@ class SolverModule:
 
         self.P_initial = self.P
 
-        self._solve(verbosity=verbosity)
+        self._solve(verbosity=verbose)
 
         self.final_grid_solution = self.grid_solutions[-1]
 
