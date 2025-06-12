@@ -61,7 +61,16 @@ class SolverModule:
         # load compatibility matrix
         self.CM_dict = np.load(self.cfg.get_CM_path(), allow_pickle=True).item()
         print("REMOVEEE")
-        # we need to know which one to use!
+        # We use `R` as the aggregated matrix
+        if 'R' not in self.CM_dict.keys():
+            print("\nWARNING:")
+            print("In the CM file we did not find the `R` key (the aggregated compatibility). \nDid you forget to run the aggregation?")
+            print("We found the following keys:")
+            for cmk in self.CM_dict.keys():
+                print("\t -", cmk)
+            print("\nPlease run the aggregation step on this CM\n")
+            raise Exception("Missing the aggregation")
+
         self.R = self.CM_dict['oracle']
         self.grid_params = self.CM_dict['__context']['grid_params']
 
