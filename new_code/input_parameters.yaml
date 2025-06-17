@@ -2,7 +2,7 @@
 # comment syntax
 
 dataset_root: 
-puzzle_name: RPobj_g3_o0003_gt_rot
+puzzle_name: puzzle_0000005_RP_group_5
 verbosity: 2
 
 preprocessing:
@@ -60,7 +60,7 @@ compatibility:
         something: 1
     oracle:
       enabled: Yes
-      create_pairwise_alignments_dataset: True
+      create_pairwise_alignments_dataset: False
       # pairwise_alignments_dataset_folder: '/home/palma/Datasets/RePAIR_pairwise' #
       pairwise_alignments_dataset_folder: '/media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/'
 
