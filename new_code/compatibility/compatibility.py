@@ -206,9 +206,11 @@ class CompatibilityMatrixModule:
         kernel = np.ones((kernel_size, kernel_size))
         
         CM_ij = np.zeros((RM_ij.shape[0], RM_ij.shape[1], RM_ij.shape[2]))
-        xj, yj = (np.asarray([self.grid.canvas_center, self.grid.canvas_center]) + np.asarray([gt_rel_pos[0], -gt_rel_pos[1]])).tolist()
+        xj, yj = (np.asarray([self.grid.canvas_center, self.grid.canvas_center]) + np.asarray([gt_rel_pos[0], gt_rel_pos[1]])).tolist()
         x_idx = np.round(self.grid.xy_num_points / 2 + gt_rel_pos[0] / self.grid.xy_step).astype(int)
-        y_idx = np.round(self.grid.xy_num_points / 2 - gt_rel_pos[1] / self.grid.xy_step).astype(int)
+        y_idx = np.round(self.grid.xy_num_points / 2 + gt_rel_pos[1] / self.grid.xy_step).astype(int)
+
+        print(f"idx: {x_idx}, {y_idx}, pix: {xj}, {yj}\n")
         
         if 1 > 0: #np.max(abs(gt_rel_pos)) < (self.grid.p_hs): 
             # y_idx = np.round(yj / self.grid.xy_step).astype(int)
@@ -216,51 +218,59 @@ class CompatibilityMatrixModule:
             thetaj = self.grid.theta_values[0]
             if verbose > 2:
                 print(f"CM[{x_idx}, {y_idx}, {theta_idx}] = 1")
-            piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
-            piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
-            #
-            if np.sum(cv2.dilate(piece_i_on_canvas.mask, kernel) * cv2.dilate(piece_j_on_canvas.mask, kernel) > 0): 
-                CM_ij[x_idx, y_idx, theta_idx] = 1
+            
+            y_c0 = np.ceil(yj-self.grid.p_hs).astype(int)
+            y_c1 = np.ceil(yj+self.grid.p_hs+1).astype(int)
+            x_c0 = np.ceil(xj-self.grid.p_hs).astype(int)
+            x_c1 = np.ceil(xj+self.grid.p_hs+1).astype(int)
+            if x_c0 < 0 or y_c0 < 0 or y_c1 > self.grid.canvas_size or x_c1 > self.grid.canvas_size:
+                print("Out of the canvas! Error, skipping for now to see successive results.")
+            else:
+                piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
+                piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+                #
+                if np.sum(cv2.dilate(piece_i_on_canvas.mask, kernel) * cv2.dilate(piece_j_on_canvas.mask, kernel) > 0): 
+                    CM_ij[x_idx, y_idx, theta_idx] = 1
 
-                if self.oracle_params['create_pairwise_alignments_dataset'] == True:
-                    import matplotlib.pyplot as plt 
-                    
-                    # breakpoint()
+                    if self.oracle_params['create_pairwise_alignments_dataset'] == True:
+                        import matplotlib.pyplot as plt 
+                        
+                        # breakpoint()
 
-                    # correctly_aligned = piece_i_on_canvas.image / 255 * (piece_i_on_canvas.mask > 0.005) + piece_j_on_canvas.image / 255 * (piece_j_on_canvas.mask > 0.005)
-                    correctly_aligned = piece_i_on_canvas.image + piece_j_on_canvas.image 
-                    # correctly_aligned[:,:,3] = ((piece_i_on_canvas.mask > 0) + (piece_j_on_canvas.mask > 0) > 0)
-                    plt.imsave(os.path.join(self.oracle_params['correct_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_gt.png'), np.clip(correctly_aligned, 0, 1))
+                        # correctly_aligned = piece_i_on_canvas.image / 255 * (piece_i_on_canvas.mask > 0.005) + piece_j_on_canvas.image / 255 * (piece_j_on_canvas.mask > 0.005)
+                        correctly_aligned = piece_i_on_canvas.image + piece_j_on_canvas.image 
+                        # correctly_aligned[:,:,3] = ((piece_i_on_canvas.mask > 0) + (piece_j_on_canvas.mask > 0) > 0)
+                        plt.imsave(os.path.join(self.oracle_params['correct_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_gt.png'), np.clip(correctly_aligned, 0, 1))
 
-                    # on the grid
-                    xj_grid, yj_grid = self.grid.xy_values[x_idx, y_idx]
-                    thetaj = self.grid.theta_values[theta_idx]
-                    piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid, y=yj_grid, theta=thetaj, enabled_features=self.features_status)
-                    grid_aligned = piece_i_on_canvas.image + piece_j_on_canvas.image
-                    # grid_aligned[:,:,3] = ((piece_i_on_canvas.mask > 0) + (piece_j_on_canvas.mask > 0) > 0)
-                    plt.imsave(os.path.join(self.oracle_params['correct_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.png'), np.clip(grid_aligned, 0, 1))
+                        # on the grid
+                        xj_grid, yj_grid = self.grid.xy_values[x_idx, y_idx]
+                        thetaj = self.grid.theta_values[theta_idx]
+                        piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid, y=yj_grid, theta=thetaj, enabled_features=self.features_status)
+                        grid_aligned = piece_i_on_canvas.image + piece_j_on_canvas.image
+                        # grid_aligned[:,:,3] = ((piece_i_on_canvas.mask > 0) + (piece_j_on_canvas.mask > 0) > 0)
+                        plt.imsave(os.path.join(self.oracle_params['correct_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.png'), np.clip(grid_aligned, 0, 1))
 
-                    # get two "wrong" images
-                    breakpoint()
-                    # RM_ij = self.RM_dict['motives'][:, :, 0, j, i]
-                    # plausible_pos = np.where(RM_ij > 0)
-                    # rnd_idx = int(random.uniform(0, len(plausible_pos[0])))
-                    # x_idx = plausible_pos[0][rnd_idx] # = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                    # y_idx = plausible_pos[1][rnd_idx] # = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                    # xj, yj = self.grid.xy_values[x_idx, y_idx]
-                    # yj = random.choice(self.grid.xy_values[:,:,1].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                    # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
-                    # wrong_alignment1 = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
-                    # plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong1.png'), np.clip(wrong_alignment1, 0, 1))
-                    # xj = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                    # yj = random.choice(self.grid.xy_values[:,:,1].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                    # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
-                    # wrong_alignment2 = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
-                    # plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{xj}_{yj}_{0}_wrong2.png'), np.clip(wrong_alignment2, 0, 1))
-            else:            
-                # we consider these two as "not neighbours"
-                if verbose > 2:
-                    print("we have values but they are not considered neighbours, we do not write")
+                        # get two "wrong" images
+                        breakpoint()
+                        # RM_ij = self.RM_dict['motives'][:, :, 0, j, i]
+                        # plausible_pos = np.where(RM_ij > 0)
+                        # rnd_idx = int(random.uniform(0, len(plausible_pos[0])))
+                        # x_idx = plausible_pos[0][rnd_idx] # = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
+                        # y_idx = plausible_pos[1][rnd_idx] # = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
+                        # xj, yj = self.grid.xy_values[x_idx, y_idx]
+                        # yj = random.choice(self.grid.xy_values[:,:,1].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
+                        # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+                        # wrong_alignment1 = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
+                        # plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong1.png'), np.clip(wrong_alignment1, 0, 1))
+                        # xj = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
+                        # yj = random.choice(self.grid.xy_values[:,:,1].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
+                        # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+                        # wrong_alignment2 = piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255
+                        # plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{xj}_{yj}_{0}_wrong2.png'), np.clip(wrong_alignment2, 0, 1))
+                else:            
+                    # we consider these two as "not neighbours"
+                    if verbose > 2:
+                        print("we have values but they are not considered neighbours, we do not write")
             
 
             
