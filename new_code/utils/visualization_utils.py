@@ -1,9 +1,10 @@
 import numpy as np 
-import matplotlib.pyplot as plt 
-import pdb 
+import matplotlib.pyplot as plt
 import cv2 
-from typing import List
+from typing import List, Optional
 from utils.puzzle_utils import PuzzlePiece
+import matplotlib as mpl
+from scipy.ndimage import rotate
 
 def save_compatibility_matrix_visualization_to_file(CM, pieces: List[PuzzlePiece], rot_step, output_folder, title='', draw_figsize=(100, 100), all_rotation=False, save_every=6, img_format='jpg', vmin=-1, vmax=1):
     
@@ -47,68 +48,54 @@ def save_compatibility_matrix_visualization_to_file(CM, pieces: List[PuzzlePiece
             plt.savefig(os.path.join(output_folder, f"CM_r{rr}.{img_format}"))
             plt.close()
 
-def get_visual_reconstruction_from(pixel_solution: List, pieces: List[PuzzlePiece], solution_params: dict, show_borders:bool=True, colormap_name:str='jet'):
 
-    # TO BE REFACTORED 
+def reconstruct(pixel_solution,
+                pieces: List[PuzzlePiece],
+                dimension: Optional[tuple[int, int]] = None,
+                confidence_threshold : float = 0,
+                show_borders : bool = True,
+                colormap_name : str = 'jet') -> np.ndarray:
     
-    step = np.ceil(ppars.xy_step)
-    #ang = ppars.theta_step # 360 / Z    
-    ang = 360 / Z
-    z_rot = np.arange(0, 360, ang)
-    pos = fin_sol
-    fin_im = np.zeros(((Y * step + (ppars.p_hs+1) * 2).astype(int), (X * step + (ppars.p_hs+1) * 2).astype(int), 3))
-    borders_cmap = mpl.colormaps['jet'].resampled(len(pieces))
+    piece_size = pieces[0].data.image.shape
+
+    # half piece sizes
+    hps_x = piece_size[0]//2
+    hps_y = piece_size[1]//2
+
+    if hps_x != hps_y:
+        raise Exception('only square images of pieces are supported')
+    
+    offset = 1 if hps_x * 2 < piece_size[0] else 0
+
+    if dimension is None:
+        # TODO calculate best dimensions from solution
+        dimension = (len(pieces) * piece_size[0], len(pieces) * piece_size[1])
+    
+    image = np.zeros(dimension + (4,)) # (dimension[0], dimension[1], 4)
+
     if show_borders == True:
-        # plt.ion()
-        borders_cmap = mpl.colormaps['jet'].resampled(len(pieces))
-        # deprecated
-        # borders_cmap = mpl.cm.get_cmap('jet').resampled(len(pieces))
+        borders_cmap = mpl.colormaps[colormap_name].resampled(len(pieces))
+
     for i in range(len(pieces)):
-        image = pieces_files[pieces[i]]  # read image 1
-        im_file = os.path.join(pieces_folder, image)
+        # TODO: confidence should be optional
+        x, y, theta, confidence = pixel_solution[i]
 
-        Im0 = Image.open(im_file).convert('RGBA')
-        Im = np.array(Im0) / 255.0
-        Im1 = Image.open(im_file).convert('RGBA').split()
-        alfa = np.array(Im1[3]) / 255.0
-        Im = np.multiply(Im, alfa[:, :, np.newaxis])
-        Im = Im[:, :, 0:3]
+        if confidence > confidence_threshold:
+            rotated_piece_img = rotate(pieces[i].data.image, theta, reshape=False, mode='constant', order=0)
 
-        cc = ppars.p_hs
 
-        if np.sum(pos[i, :2])>0:
+            image[x - hps_x:x + hps_x + offset, y - hps_y:y + hps_y + offset,:] += rotated_piece_img
 
-            ids = (pos[i, :2] * step + cc).astype(int)
-            if pos.shape[1] == 3:
-                rot = z_rot[pos[i, 2]]
-                Im = rotate(Im, rot, reshape=False, mode='constant', order=0)
-
-                if i == anc:
-                    mask = (Im > 0.05).astype(np.uint8)
-                    em = cv2.erode(mask, np.ones((5, 5)))
-                    bordered_im = Im * em + (mask - em) * borders_cmap(i)[:3]
-                    Im = bordered_im
-
-                if show_borders == True:
-                    mask = (Im > 0.05).astype(np.uint8)
-                    em = cv2.erode(mask, np.ones((5, 5)))
-                    bordered_im = Im * em + (mask - em) * borders_cmap(i)[:3]
-                    Im = bordered_im
-            if ppars.p_hs * 2 < ppars.piece_size:
-                fin_im[ids[0] - cc:ids[0] + cc + 1, ids[1] - cc:ids[1] + cc + 1, :] = Im + fin_im[
-                                                                                           ids[0] - cc:ids[0] + cc + 1,
-                                                                                           ids[1] - cc:ids[1] + cc + 1,
-                                                                                           :]
-            else:
-                fin_im[ids[0] - cc:ids[0] + cc, ids[1] - cc:ids[1] + cc, :] = Im + fin_im[ids[0] - cc:ids[0] + cc,
-                                                                                   ids[1] - cc:ids[1] + cc, :]
-
-        # if show_borders == True:
-        #     plt.imshow(fin_im)
-        #     breakpoint()
-    return fin_im
+            # if show_borders == True:
+            #         mask = (Im > 0.05).astype(np.uint8)
+            #         em = cv2.erode(mask, np.ones((5, 5)))
+            #         bordered_im = Im * em + (mask - em) * borders_cmap(i)[:3]
+            #         Im = bordered_im
+           
+    return image
 
 def save_visual_reconstruction_to_file(solution: List):
+    pass
 
 
 def crop_to_content(image:np.ndarray, padding:int=1, return_vals:bool=False, max_noise:int=0):

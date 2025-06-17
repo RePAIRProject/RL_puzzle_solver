@@ -14,6 +14,7 @@ from compatibility.aggregation import AggregationModule
 from solver.solver import SolverModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
+from utils.visualization_utils import reconstruct
 
 def main():
 
@@ -44,8 +45,12 @@ def main():
 
     sm = SolverModule(params, cfg)
 
-    sm.solve(verbose=params['verbosity'])
+    pixel_solution = sm.solve(verbose=params['verbosity'])
     sm.save()
+
+    image_solution = reconstruct(pixel_solution, puzzle.pieces)
+
+    breakpoint()
 
 
 if __name__ == '__main__':

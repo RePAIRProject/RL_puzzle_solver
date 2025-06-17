@@ -2,7 +2,7 @@
 # comment syntax
 
 dataset_root: 
-puzzle_name: puzzle_0000002_RP_group_2
+puzzle_name: RPobj_g3_o0003_gt_rot
 verbosity: 2
 
 preprocessing:

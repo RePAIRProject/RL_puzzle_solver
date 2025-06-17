@@ -8,7 +8,6 @@ from utils.parameters_utils import Configuration, CustomYAMLEncoder
 from compatibility.grid import PuzzleGrid, PieceOnCanvas
 import yaml
 # only for debug, they should not be used here
-import pandas as pd 
 import os
 import random
 

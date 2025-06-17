@@ -59,7 +59,7 @@ class Configuration:
         self.CM_input_parameters_path = 'CM_input_params.yaml'
         self.CM_output_parameters_path = 'CM_output_params.yaml'
         self.solution_name = 'solution.npy'
-        self.solution_txt = 'solution.txt'
+        self.solution_csv = 'solution.txt'
         self.solution_input_parameters_path = 'solution_input_params.yaml'
         self.solution_output_parameters_path = 'solution_output_params.yaml'
 
@@ -81,8 +81,8 @@ class Configuration:
             'polygons': os.path.join(self.preprocessing_folder, puzzle_name, polygons_subfolder),
             'features': os.path.join(self.features_folder, puzzle_name)
         }
-        return subfolders 
-        
+        return subfolders
+     
     def get_puzzle_images_subfolder(self):
         return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.images_subfolder)
 
@@ -142,8 +142,8 @@ class Configuration:
     def get_solution_path(self):
         return os.path.join(self.current_experiment_folder, self.solution_name)
 
-    def get_solution_as_txt_path(self):
-        return os.path.join(self.current_experiment_folder, self.solution_txt)
+    def get_solution_as_csv_path(self):
+        return os.path.join(self.current_experiment_folder, self.solution_csv)
 
     def get_solution_input_parameters_path(self):
         return os.path.join(self.current_experiment_folder, self.solution_input_parameters_path)

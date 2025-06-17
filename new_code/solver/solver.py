@@ -4,7 +4,7 @@ from compatibility.grid import PuzzleGrid
 from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors
 from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT
 from utils.human_readable_duration import format_duration
-from utils.visualization_utils import get_visual_reconstruction_from
+from utils.visualization_utils import reconstruct
 
 import numpy as np
 import time
@@ -141,10 +141,13 @@ class SolverModule:
 
         self.final_pixel_solution = compute_pixel_solution(self.final_grid_solution, self.grid_params['xy_step'], self.grid_params['theta_step'])
 
+
         print("-" * 50)
         time_in_seconds = time.monotonic() - time_start
         print(f"Solving this puzzle took {format_duration(time_in_seconds)}")
         print("-" * 50)
+
+        return self.final_pixel_solution
 
     def _solve(self, verbosity=1, decimals=8, save_each_phase=False, saving_stuff=[]):
 
@@ -211,10 +214,8 @@ class SolverModule:
 
         self.solver_dict['solution'] = self.final_pixel_solution
 
-        vis_solution = get_visual_reconstruction_from(self.final_pixel_solution, )
-
         np.save(self.cfg.get_solution_path(), self.solver_dict)
-        np.savetxt(self.cfg.get_solution_as_txt_path(), self.final_pixel_solution, fmt='%d %d %d %d')
+        np.savetxt(self.cfg.get_solution_as_csv_path(), self.final_pixel_solution, fmt='%d %d %d %d')
         # input parameters
         input_params_path = self.cfg.get_solution_input_parameters_path() 
         with open(input_params_path, 'w') as f:
