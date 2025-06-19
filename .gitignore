@@ -51,3 +51,6 @@ yolov8n-seg.pt
 
 # PyCharm
 .idea
+
+# parameteers
+input_parameters.yaml
