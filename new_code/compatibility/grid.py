@@ -102,7 +102,7 @@ class PieceOnCanvas:
         image = scipy.ndimage.rotate(piece.data.image, theta, reshape=False, mode='constant', order=0)
         mask = scipy.ndimage.rotate(piece.data.mask, theta, reshape=False, mode='constant', prefilter=False, order=0)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, closing_kernel)
-        polygon = shapely.affinity.rotate(piece.data.polygon, -theta, origin=piece.data.img_center)
+        polygon = shapely.affinity.rotate(piece.data.polygon, -theta, origin=tuple(piece.data.img_center))
         #piece_mask = (piece_mask > eps_mh).astype(np.uint8)
         if enabled_features['shape'] == True:
             sdf = scipy.ndimage.rotate(piece.features.sdf.data, theta, reshape=False, mode='constant', order=0)

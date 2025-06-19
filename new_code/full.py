@@ -14,7 +14,7 @@ from compatibility.aggregation import AggregationModule
 from solver.solver import SolverModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
-from utils.visualization_utils import reconstruct
+from utils.visualization_utils import reconstruct, reconstruct_pil, crop_to_content
 
 def main():
 
@@ -49,8 +49,15 @@ def main():
     sm.save()
 
     image_solution = reconstruct(pixel_solution, puzzle.pieces)
+    
 
-    breakpoint()
+    plt.imshow(crop_to_content(image_solution))
+    plt.show()
+
+    image_solution_pil = reconstruct_pil(pixel_solution, puzzle.pieces)
+
+    plt.imshow(image_solution_pil)
+    plt.show()
 
 
 if __name__ == '__main__':
