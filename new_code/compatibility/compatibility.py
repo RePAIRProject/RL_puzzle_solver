@@ -180,8 +180,8 @@ class CompatibilityMatrixModule:
                         # breakpoint()
                         gt_piece_i = self.gt['pieces'][f'{i}']
                         gt_piece_j = self.gt['pieces'][f'{j}']
-                        gt_pos_i = np.asarray([gt_piece_i['x'], gt_piece_i['y']]) #/ self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
-                        gt_pos_j = np.asarray([gt_piece_j['x'], gt_piece_j['y']]) #/self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
+                        gt_pos_i = np.asarray([gt_piece_i['_x'], gt_piece_i['_y']]) #/ self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
+                        gt_pos_j = np.asarray([gt_piece_j['_x'], gt_piece_j['_y']]) #/self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
                         gt_rel_j_vs_i = np.round((gt_pos_j - gt_pos_i)).astype(int) #* 1.5 # / self.grid.xy_step).astype(int)
                         if verbose > 2:
                             print("\nrelative GT:", gt_rel_j_vs_i)
@@ -209,7 +209,7 @@ class CompatibilityMatrixModule:
         x_idx = np.round(self.grid.xy_num_points / 2 + gt_rel_pos[0] / self.grid.xy_step).astype(int)
         y_idx = np.round(self.grid.xy_num_points / 2 + gt_rel_pos[1] / self.grid.xy_step).astype(int)
 
-        print(f"idx: {x_idx}, {y_idx}, pix: {xj}, {yj}\n")
+        # print(f"idx: {x_idx}, {y_idx}, pix: {xj}, {yj}\n")
         
         if 1 > 0: #np.max(abs(gt_rel_pos)) < (self.grid.p_hs): 
             # y_idx = np.round(yj / self.grid.xy_step).astype(int)
@@ -250,7 +250,7 @@ class CompatibilityMatrixModule:
                         plt.imsave(os.path.join(self.oracle_params['correct_alignment_folder'], f'vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.png'), np.clip(grid_aligned, 0, 1))
 
                         # get two "wrong" images
-                        breakpoint()
+                        # breakpoint()
                         # RM_ij = self.RM_dict['motives'][:, :, 0, j, i]
                         # plausible_pos = np.where(RM_ij > 0)
                         # rnd_idx = int(random.uniform(0, len(plausible_pos[0])))
@@ -283,9 +283,9 @@ class CompatibilityMatrixModule:
             piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
             
             thetaj = self.grid.theta_values[0]
-            print(xj, yj)
+            # print(xj, yj)
             piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
-            plt.imshow(piece_i_on_canvas.image / 255 + piece_j_on_canvas.image / 255)
+            plt.imshow(piece_i_on_canvas.image  + piece_j_on_canvas.image)
             plt.title(f"GT_rel: {gt_rel_pos}, pieces_size: {self.puzzle.img_piece_size}")
             plt.show()
             breakpoint()
