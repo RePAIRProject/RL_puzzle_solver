@@ -180,8 +180,8 @@ class CompatibilityMatrixModule:
                         # breakpoint()
                         gt_piece_i = self.gt['pieces'][f'{i}']
                         gt_piece_j = self.gt['pieces'][f'{j}']
-                        gt_pos_i = np.asarray([gt_piece_i['_x'], gt_piece_i['_y']]) #/ self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
-                        gt_pos_j = np.asarray([gt_piece_j['_x'], gt_piece_j['_y']]) #/self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
+                        gt_pos_i = np.asarray([gt_piece_i['x'], gt_piece_i['y']]) #/ self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
+                        gt_pos_j = np.asarray([gt_piece_j['x'], gt_piece_j['y']]) #/self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
                         gt_rel_j_vs_i = np.round((gt_pos_j - gt_pos_i)).astype(int) #* 1.5 # / self.grid.xy_step).astype(int)
                         if verbose > 2:
                             print("\nrelative GT:", gt_rel_j_vs_i)

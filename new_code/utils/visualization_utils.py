@@ -137,8 +137,8 @@ def reconstruct_pil(
 
         piece_img = Image.fromarray(piece_img, mode="RGBA")
 
-        plt.imshow(piece_img)
-        plt.show()
+        # plt.imshow(piece_img)
+        # plt.show()
 
         if theta != 0:
             piece_img = piece_img.rotate(theta, expand=expand_on_rotate, fillcolor=(0,0,0,0))

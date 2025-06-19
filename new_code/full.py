@@ -48,11 +48,11 @@ def main():
     pixel_solution = sm.solve(verbose=params['verbosity'])
     sm.save()
 
-    image_solution = reconstruct(pixel_solution, puzzle.pieces)
+    # image_solution = reconstruct(pixel_solution, puzzle.pieces)
     
 
-    plt.imshow(crop_to_content(image_solution))
-    plt.show()
+    # plt.imshow(crop_to_content(image_solution))
+    # plt.show()
 
     image_solution_pil = reconstruct_pil(pixel_solution, puzzle.pieces)
 
