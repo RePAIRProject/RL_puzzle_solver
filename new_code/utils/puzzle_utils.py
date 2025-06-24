@@ -206,7 +206,7 @@ class Puzzle:
             piece.repair_id = piece.name[:10]  # piece_XXXXX.png
             piece.data.image = plt.imread(os.path.join(images_subfolder, f"{piece.name}.png"))
             piece.data.img_center = np.asarray(piece.data.image.shape[:2]) // 2
-            piece.data.mask = plt.imread(os.path.join(masks_subfolder, f"{piece.name}.png"), cv2.IMREAD_GRAYSCALE)
+            piece.data.mask = cv2.imread(os.path.join(masks_subfolder, f"{piece.name}.png"), cv2.IMREAD_GRAYSCALE)
             piece.data.polygon = np.load(os.path.join(polygons_subfolder, f"{piece.name}.npy"), allow_pickle=True).tolist()
             if load_features == True:
                 piece.features.sdf.compute(piece.data.mask)
