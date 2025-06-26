@@ -52,6 +52,9 @@ class Configuration:
         self.experiments_folder = 'experiments'
         self.ground_truth_filename = 'ground_truth.json'
         self.puzzle_info_filename = 'puzzle_info.json'
+        #####
+        self.VIS_name = 'final_reconstruction.png'
+        #####
         self.RM_name = 'RM.npy'
         self.RM_input_parameters_path = 'RM_input_params.yaml'
         self.RM_output_parameters_path = 'RM_output_params.yaml'
@@ -115,6 +118,11 @@ class Configuration:
         else:                   # full path
             self.current_experiment_folder = path
             
+    ### NEW ###
+    def get_VIS_path(self):
+        return os.path.join(self.current_experiment_folder, self.VIS_name)
+    ###
+
     def get_RM_path(self):
         return os.path.join(self.current_experiment_folder, self.RM_name)
 

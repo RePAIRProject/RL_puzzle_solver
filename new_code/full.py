@@ -14,7 +14,13 @@ from compatibility.aggregation import AggregationModule
 from solver.solver import SolverModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
-from utils.visualization_utils import reconstruct, reconstruct_pil, crop_to_content
+from utils.visualization_utils import reconstruct, reconstruct_pil, crop_to_content, get_path_to_save_image
+
+
+def save(self):
+    image_path = self.cfg.get_VIS_path()
+    plt.imsave(self.cfg.get_VIS_path(), image_solution_pil)
+
 
 def main():
 
@@ -55,9 +61,14 @@ def main():
     # plt.show()
 
     image_solution_pil = reconstruct_pil(pixel_solution, puzzle.pieces)
+    # SAVE
+    #output_file = get_path_to_save_image
+    plt.imsave(get_path_to_save_image, image_solution_pil)
 
-    plt.imshow(image_solution_pil)
-    plt.show()
+
+
+    #plt.imshow(image_solution_pil)
+    #plt.show()
 
 
 if __name__ == '__main__':

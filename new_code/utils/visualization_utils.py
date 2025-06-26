@@ -188,3 +188,8 @@ def crop_to_content(image:np.ndarray, padding:int=1, return_vals:bool=False, max
         return image[y0:y1, x0:x1, :], x0, x1, y0, y1
     return image[y0:y1, x0:x1, :]
 
+##############################
+# SAVE
+def get_path_to_save_image(self):
+    image_path = self.cfg.get_VIS_path()
+    return image_path
