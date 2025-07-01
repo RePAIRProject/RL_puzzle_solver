@@ -201,7 +201,7 @@ class SolverModule:
         #     'canvas_size': self.grid.canvas_size, 'pairwise_comp_range': self.grid.pairwise_comp_range}
         # context_params['features'] = self.features_status
         # context_params['puzzle'] = {'puzzle_name': self.puzzle.name, 'num_pieces': self.puzzle.num_of_pieces, 'piece_size': self.piece_size}
-        context_params['solver'] = {'T_first': self.T_first, 'T_next': self.T_next, 'T_max': self.T_max}
+        context_params['solver'] = {'T_first': self.T_first, 'T_next': self.T_next, 'T_max': self.T_max, 'anchor_idx':self.anchor_index}
         
         # values of the matrix  
         self.solver_dict = {}

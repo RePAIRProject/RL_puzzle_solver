@@ -17,11 +17,6 @@ from utils.parameters_utils import Configuration
 from utils.visualization_utils import reconstruct, reconstruct_pil, crop_to_content, get_path_to_save_image
 
 
-def save(self):
-    image_path = self.cfg.get_VIS_path()
-    plt.imsave(self.cfg.get_VIS_path(), image_solution_pil)
-
-
 def main():
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
@@ -54,22 +49,13 @@ def main():
     pixel_solution = sm.solve(verbose=params['verbosity'])
     sm.save()
 
-    # image_solution = reconstruct(pixel_solution, puzzle.pieces)
-    
-
-    # plt.imshow(crop_to_content(image_solution))
-    # plt.show()
 
     image_solution_pil = reconstruct_pil(pixel_solution, puzzle.pieces)
-    # SAVE
-    #output_file = get_path_to_save_image
-    plt.imsave(get_path_to_save_image, image_solution_pil)
+    # save final image
+    #image_solution_pil.save(cfg.get_VIS_path())
 
 
-
-    #plt.imshow(image_solution_pil)
-    #plt.show()
-
+    plt.imsave(cfg.get_VIS_path(), image_solution_pil)
 
 if __name__ == '__main__':
 
