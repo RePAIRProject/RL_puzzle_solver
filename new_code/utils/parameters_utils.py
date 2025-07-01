@@ -71,6 +71,13 @@ class Configuration:
 
     def set_puzzle_name(self, puzzle_name: str):
         self.puzzle_name = puzzle_name
+    #
+    def get_data_folder(self):
+        return self.data_folder
+
+    def set_data_folder(self, data_folder: str):
+        self.data_folder = data_folder
+    #
 
     def get_puzzle_subfolders(self):
         """
@@ -181,6 +188,7 @@ class Configuration:
         with open(yaml_file_path, 'r') as file:
             parameters = yaml.safe_load(file)
         self.puzzle_name = parameters['puzzle_name']
+        self.data_folder = parameters['data_folder']
         return parameters 
         
     def save(self, yaml_file_path: str):

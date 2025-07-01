@@ -185,12 +185,15 @@ class Puzzle:
         self.pieces = pieces
         self.num_of_pieces = len(self.pieces)
 
-    def load(self, puzzle_name: str, load_features: bool = True):
+    def load(self, puzzle_name: str, data_folder: str, load_features: bool = True):
         """
         Loads the data (images, masks and polygon) and fill the properties of the Puzzle object
         """
         self.name = puzzle_name
         self.cfg = Configuration()
+        ##
+        self.cfg.set_data_folder(data_folder)
+        ##
         self.cfg.set_puzzle_name(puzzle_name)
         images_subfolder = self.cfg.get_puzzle_images_subfolder()
         masks_subfolder = self.cfg.get_puzzle_masks_subfolder()
