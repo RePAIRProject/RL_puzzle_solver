@@ -46,7 +46,6 @@ class PuzzleGrid():
 
 
 
-
 #########################################################
 #                                                       #
 #   ██████╗ █████╗ ███╗   ██╗██╗   ██╗ █████╗ ███████╗  #
@@ -133,3 +132,15 @@ class PieceOnCanvas:
         if enabled_features['motives'] == True:
             self.motives_cube[y_c0:y_c1, x_c0:x_c1, :] = motives_cube
         self.centroid = np.asarray([x, y])
+
+    def blend_with(self, piece: "PieceOnCanvas", blend_mode:str='average'):
+        aligned_image = self.image + piece.image
+        aligned_mask = self.mask + piece.mask
+        if np.max(aligned_mask) > 1:
+            if blend_mode == 'average':
+                aligned_mask = np.clip(aligned_mask, 1, 2)
+                aligned_image /= np.dstack((aligned_mask, aligned_mask, aligned_mask, (aligned_mask>-1)))
+            else:
+                raise NotImplementedError()
+
+        return aligned_image

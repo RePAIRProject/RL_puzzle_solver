@@ -1,6 +1,8 @@
 ---  # yaml document beginning
 # comment syntax
 
+# dataset_root: 
+# puzzle_name: puzzle_0000005_RP_group_5
 verbosity: 2
 
 preprocessing:
@@ -62,12 +64,13 @@ compatibility:
       # pairwise_alignments_dataset_folder: '/home/palma/Datasets/RePAIR_pairwise' #
       pairwise_alignments_dataset_folder: '/media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/'
           
+aggregation:
+  method: 'oracle'  
 
 solver:
- 
-  T_first: 1000
-  T_next: 500
-  T_max: 3000
+  T_first: 100
+  T_next: 100
+  T_max: 500
   no_rotations: True
   # TODO: switch to anchor ID
   anchor_index: -1 # TODO: null, None?
