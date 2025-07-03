@@ -53,8 +53,6 @@ def main():
     image_solution = reconstruct_pil(pixel_solution, puzzle.pieces)
     # save final image
     #image_solution_pil.save(cfg.get_VIS_path())
-
-
     plt.imsave(cfg.get_VIS_path(), image_solution)
 
 if __name__ == '__main__':
