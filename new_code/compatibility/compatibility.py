@@ -160,10 +160,10 @@ class CompatibilityMatrixModule:
 
         if self.oracle_params['create_pairwise_alignments_dataset'] == True:
             print("\nCreating pairwise alignment datasets..\n\n")
-            self.oracle_params['correct_alignment_folder'] = os.path.join(self.oracle_params['pairwise_alignments_dataset_folder'], 'correct')  #, oracle_info['gt_puzzle_name']) 
-            os.makedirs(self.oracle_params['correct_alignment_folder'], exist_ok=True)
-            self.oracle_params['wrong_alignment_folder'] = os.path.join(self.oracle_params['pairwise_alignments_dataset_folder'], 'wrong')      #, oracle_info['gt_puzzle_name']) 
-            os.makedirs(self.oracle_params['wrong_alignment_folder'], exist_ok=True)
+            self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'] = os.path.join(self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'correct')  #, oracle_info['gt_puzzle_name']) 
+            os.makedirs(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], exist_ok=True)
+            self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'] = os.path.join(self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'wrong')      #, oracle_info['gt_puzzle_name']) 
+            os.makedirs(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], exist_ok=True)
 
         CM_oracle = np.zeros(self.CM_size)
         if verbose > 1:
@@ -251,29 +251,38 @@ class CompatibilityMatrixModule:
 
                     if self.oracle_params['create_pairwise_alignments_dataset'] == True:
                         import matplotlib.pyplot as plt 
+                        from utils.visualization_utils import crop_to_content
                         
                         # This is the PAIRWISE GROUND TRUTH
                         correctly_aligned_image = piece_i_on_canvas.blend_with(piece_j_on_canvas)
-                        plt.imsave(os.path.join(self.oracle_params['correct_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_gt.png'), np.clip(correctly_aligned_image, 0, 1))
+                        if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
+                            correctly_aligned_image = crop_to_content(correctly_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
+                        plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_gt.png'), np.clip(correctly_aligned_image, 0, 1))
 
                         # This is the PAIRWISE "BEST" given the grid step that we have
                         xj_grid, yj_grid = self.grid.xy_values[x_idx, y_idx]
                         thetaj_grid = self.grid.theta_values[theta_idx]
                         piece_j_on_canvas_on_grid = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid, y=yj_grid, theta=thetaj_grid, enabled_features=self.features_status)
                         grid_aligned_image  = piece_i_on_canvas.blend_with(piece_j_on_canvas_on_grid)
-                        plt.imsave(os.path.join(self.oracle_params['correct_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.png'), np.clip(grid_aligned_image, 0, 1))
+                        if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
+                            grid_aligned_image = crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
+                        plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.png'), np.clip(grid_aligned_image, 0, 1))
 
                         # This is one randomly chosen "plausible" (but not correct!) alignment of the two pieces
 
                         xj_w, yj_w, thetaj_w = self._pick_plausible_wrong_position(RM_ij=RM_ij, xc=x_idx, yc=y_idx)
                         piece_j_on_canvas_plausible1 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=thetaj_w, enabled_features=self.features_status)
                         wrong_alignment1 = piece_i_on_canvas.blend_with(piece_j_on_canvas_plausible1)
-                        plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong1.png'), np.clip(wrong_alignment1, 0, 1))
+                        if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
+                            wrong_alignment1 = crop_to_content(wrong_alignment1, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
+                        plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong1.png'), np.clip(wrong_alignment1, 0, 1))
 
                         xj_w, yj_w, thetaj_w = self._pick_plausible_wrong_position(RM_ij=RM_ij, xc=x_idx, yc=y_idx)
                         piece_j_on_canvas_plausible2 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=thetaj_w, enabled_features=self.features_status)
                         wrong_alignment2 = piece_i_on_canvas.blend_with(piece_j_on_canvas_plausible2)
-                        plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong2.png'), np.clip(wrong_alignment2, 0, 1))
+                        if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
+                            wrong_alignment2 = crop_to_content(wrong_alignment2, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
+                        plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong2.png'), np.clip(wrong_alignment2, 0, 1))
 
                         # # correctly_aligned = piece_i_on_canvas.image / 255 * (piece_i_on_canvas.mask > 0.005) + piece_j_on_canvas.image / 255 * (piece_j_on_canvas.mask > 0.005)
                         # correctly_aligned_image = piece_i_on_canvas.image + piece_j_on_canvas.image 

@@ -79,17 +79,20 @@ class Configuration:
         self.data_folder = data_folder
     #
 
+    def get_preprocessing_folder(self):
+        return os.path.join(self.data_folder, self.preprocessing_folder)
+
     def get_puzzle_subfolders(self):
         """
         Returns a dictionary with all the subfolders paths
         """
         subfolders = {
-            'data': os.path.join(self.data_folder, puzzle_name),
-            'preprocessing': os.path.join(self.preprocessing_folder, puzzle_name),
-            'images': os.path.join(self.preprocessing_folder, puzzle_name, images_subfolder),
-            'masks': os.path.join(self.preprocessing_folder, puzzle_name, masks_subfolder),
-            'polygons': os.path.join(self.preprocessing_folder, puzzle_name, polygons_subfolder),
-            'features': os.path.join(self.features_folder, puzzle_name)
+            'data': os.path.join(self.data_folder, self.puzzle_name),
+            'preprocessing': os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name),
+            'images': os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.images_subfolder),
+            'masks': os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.masks_subfolder),
+            'polygons': os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.polygons_subfolder),
+            'features': os.path.join(self.data_folder, self.features_folder, self.puzzle_name)
         }
         return subfolders
      
