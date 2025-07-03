@@ -93,7 +93,8 @@ def initialize_p(R, anc, p_size_x=0, p_size_y=0, anc_pos=0):
         else:
             X = p_size_x
     else:
-        Y = round(no_grid_points * np.sqrt(no_patches))  # + no_patches)
+        #Y = round(no_grid_points * np.sqrt(no_patches))  # + no_patches)
+        Y = round(no_grid_points * (no_patches+1)) # + no_patches)
         X = Y
     Z = no_rotations
 

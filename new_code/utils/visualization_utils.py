@@ -147,8 +147,8 @@ def reconstruct_pil(
         canvas.paste(piece_img, pos, mask=piece_img)  # Use the alpha channel as mask
 
 
-    if crop_to_content:
-        canvas = crop_to_content_pil(canvas)
+    #if crop_to_content:
+    #    canvas = crop_to_content_pil(canvas)
 
     canvas = np.array(canvas)
     return canvas
