@@ -20,24 +20,27 @@ from utils.visualization_utils import reconstruct, reconstruct_pil, crop_to_cont
 
 def main():
 
-    cfg = Configuration() # this contains all IO operations plus the folder structure
-    params = cfg.load('input_parameters_dataset.yaml')   # basic reading in this case    # 
+    cfg_dataset = Configuration() # this contains all IO operations plus the folder structure
+    params = cfg_dataset.load('input_parameters_dataset.yaml')   # basic reading in this case    # 
     
-    puzzle_folders = os.listdir(cfg.get_preprocessing_folder())
+    puzzle_folders = os.listdir(cfg_dataset.get_preprocessing_folder())
     sorted_puzzle_folders = natsort.natsorted(puzzle_folders)
     skip_done = params['skip_done']
 
     for puzzle_folder in sorted_puzzle_folders:
 
         cfg = Configuration() # this contains all IO operations plus the folder structure
-        params = cfg.load('input_parameters_dataset.yaml')   # basic reading in this case
-
-        # set by hand the puzzle name, as it would be empty
-        cfg.set_puzzle_name(puzzle_folder)
-
-        if skip_done == False or os.path.exists(cfg.get_puzzle_experiments_subfolder()) == False:
+        
+        
+        # cfg.set_data_folder(cfg_dataset.get_data_folder())
+        # breakpoint()
+        if skip_done == False or os.path.exists(os.path.join(cfg_dataset.get_experiments_folder(), puzzle_folder)) == False:
             print("Start on", puzzle_folder)
-
+            # print(cfg)
+            # breakpoint()
+            params = cfg.load('input_parameters_dataset.yaml', read_name=False)   # basic reading in this case
+            # set by hand the puzzle name
+            cfg.set_puzzle_name(puzzle_folder)
             puzzle = Puzzle()
             puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), load_features=False) #, features=True)
 
@@ -69,6 +72,12 @@ def main():
             plt.imsave(cfg.get_VIS_path(), image_solution)
 
             print("Finished", puzzle_folder)
+            del puzzle 
+            del cfg 
+            del rmm
+            del cmm 
+            del am 
+            del sm 
             # breakpoint()
         else:
             print(f"skipping {puzzle_folder} as it is already there")

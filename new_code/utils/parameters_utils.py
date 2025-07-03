@@ -82,6 +82,9 @@ class Configuration:
     def get_preprocessing_folder(self):
         return os.path.join(self.data_folder, self.preprocessing_folder)
 
+    def get_experiments_folder(self):
+        return os.path.join(self.data_folder, self.experiments_folder)
+
     def get_puzzle_subfolders(self):
         """
         Returns a dictionary with all the subfolders paths
@@ -183,7 +186,7 @@ class Configuration:
         print("TODO: get the features keys from the full file")
         breakpoint()
 
-    def load(self, yaml_file_path: str):
+    def load(self, yaml_file_path: str, read_name: bool = True):
         """
         Loads the parameters from the .yaml file 
         Some parameters are "consequences" of the loaded one (calculated from)
