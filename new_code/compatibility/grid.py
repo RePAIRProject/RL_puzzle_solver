@@ -133,14 +133,17 @@ class PieceOnCanvas:
             self.motives_cube[y_c0:y_c1, x_c0:x_c1, :] = motives_cube
         self.centroid = np.asarray([x, y])
 
-    def blend_with(self, piece: "PieceOnCanvas", blend_mode:str='average'):
+    def blend_with(self, piece: "PieceOnCanvas", blend_mode:str='average', return_mask:bool=False):
         aligned_image = self.image + piece.image
         aligned_mask = self.mask + piece.mask
         if np.max(aligned_mask) > 1:
             if blend_mode == 'average':
-                aligned_mask = np.clip(aligned_mask, 1, 2)
-                aligned_image /= np.dstack((aligned_mask, aligned_mask, aligned_mask, (aligned_mask>-1)))
+                average_mask = np.clip(aligned_mask, 1, 2)
+                aligned_image /= np.dstack((average_mask, average_mask, average_mask, (average_mask>-1)))
             else:
                 raise NotImplementedError()
 
+        if return_mask == True:
+            return aligned_image, aligned_mask
+        
         return aligned_image
