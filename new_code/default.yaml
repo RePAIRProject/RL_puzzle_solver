@@ -1,9 +1,10 @@
 ---  # yaml document beginning
 # comment syntax
 
-# dataset_root: 
+# data_folder: 
 # puzzle_name: puzzle_0000005_RP_group_5
 verbosity: 2
+# skip_done: True # for run_on_dataset
 
 preprocessing:
   piece_size: 251
@@ -60,6 +61,7 @@ compatibility:
         something: 1
     oracle:
       enabled: Yes
+      # this is for the creation of images for pairwise "good" and "bad" alignments
       pairwise_alignments_dataset:
         enabled: No
         data_folder: ''
