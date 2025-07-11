@@ -180,9 +180,10 @@ def crop_to_content(image:np.ndarray, padding:int=1, return_vals:bool=False, max
         y0 = np.min(np.where(image > max_noise)[0]) - padding
         y1 = np.max(np.where(image > max_noise)[0]) + padding
 
+    cropped_image = image[y0:y1, x0:x1, :] if len(image.shape) == 3 else image[y0:y1, x0:x1]
     if return_vals:
-        return image[y0:y1, x0:x1, :], x0, x1, y0, y1
-    return image[y0:y1, x0:x1, :]
+        return cropped_image, x0, x1, y0, y1
+    return cropped_image
 
 ##############################
 # SAVE

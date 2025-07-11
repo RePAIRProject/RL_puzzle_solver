@@ -1,9 +1,10 @@
 ---  # yaml document beginning
 # comment syntax
 
-# dataset_root: 
+# data_folder: 
 # puzzle_name: puzzle_0000005_RP_group_5
 verbosity: 2
+# skip_done: True # for run_on_dataset
 
 preprocessing:
   piece_size: 251
@@ -60,9 +61,12 @@ compatibility:
         something: 1
     oracle:
       enabled: Yes
-      create_pairwise_alignments_dataset: False
-      # pairwise_alignments_dataset_folder: '/home/palma/Datasets/RePAIR_pairwise' #
-      pairwise_alignments_dataset_folder: '/media/lucap/big_data/datasets/repair/ground_truth/pairwise_alignments_dataset/'
+      # this is for the creation of images for pairwise "good" and "bad" alignments
+      pairwise_alignments_dataset:
+        enabled: No
+        data_folder: ''
+        padding: 5
+        crop_images: True
           
 aggregation:
   method: 'oracle'  
