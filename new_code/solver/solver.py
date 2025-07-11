@@ -88,7 +88,8 @@ class SolverModule:
 
         # !!! Anchor number must be changed if some pieces were excluded
         if self.solver_params['anchor_index'] < 0:
-            self.anchor_index = np.random.choice(N)  # select_anchor(detect_output)
+            self.anchor_index = N//2  # TEMPORAL SOLUTION - central anchor for sanity check
+            #self.anchor_index = np.random.choice(N)  # select_anchor(detect_output)
         else:
             self.anchor_index = solver_params['anchor_index']
 

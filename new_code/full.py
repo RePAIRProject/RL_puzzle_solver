@@ -49,11 +49,14 @@ def main():
     pixel_solution = sm.solve(verbose=params['verbosity'])
     sm.save()
 
+    d1 = sm.P.shape[0]*sm.grid_params['xy_step']
+    d2 = sm.P.shape[1]*sm.grid_params['xy_step']
+    dimension = (d1, d2)
 
-    image_solution = reconstruct_pil(pixel_solution, puzzle.pieces)
-    # save final image
-    #image_solution_pil.save(cfg.get_VIS_path())
-    plt.imsave(cfg.get_VIS_path(), image_solution)
+    image_solution = reconstruct_pil(pixel_solution, puzzle.pieces, dimension)
+
+    plt.imsave(cfg.get_VIS_path(), image_solution)  # save final image in solution folder
+    plt.imsave("finim.png", image_solution)   # check
 
 if __name__ == '__main__':
 
