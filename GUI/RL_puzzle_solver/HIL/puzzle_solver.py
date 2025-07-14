@@ -130,10 +130,10 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     R = R[:, :, 0:1, :, pieces_to_include]  # 0:4 works best for group 28 token check
 
     # group 1
-    # factor = 0.8
-    # R = R * factor
-    # R = np.clip(R, -1  * factor, factor)
-    # R = np.where(R < 0, -1 * factor, R)
+    factor = 0.8
+    R = R * factor
+    R = np.clip(R, -1  * factor, factor)
+    R = np.where(R < 0, -1 * factor, R)
 
     # group 3
     # factor = 5
@@ -148,10 +148,10 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     # R = np.where(R < 0, -1 * factor, R)
 
     # group manual solver...
-    factor = 0.0
-    R = R * factor
-    R = np.clip(R, -1 * factor, factor)
-    R = np.where(R < 0, -1 * factor, R)
+    # factor = 0.0
+    # R = R * factor
+    # R = np.clip(R, -1 * factor, factor)
+    # R = np.where(R < 0, -1 * factor, R)
 
     print("R max/min")
     print(np.max(R))
