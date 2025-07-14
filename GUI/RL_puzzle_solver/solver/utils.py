@@ -383,7 +383,7 @@ class PuzzleSolver:
 
         # while not np.isclose(eps, 0)
         print("started solving..")
-        while eps != 0 and iter < self.cfg.Tmax and self.alive_flag:
+        while iter < self.cfg.Tmax and self.alive_flag:
             na_new = len(self.locked_pieces.keys())
             #     p = np.ones((Y, X, Z, noPatches)) / (Y * X)
             #     for piece in self.locked_pieces.keys():
