@@ -187,8 +187,8 @@ class PuzzlePiece:
 #######################################################
 class Puzzle:
 
-    def __init__(self, pieces: List[PuzzlePiece] = []):
-        self.pieces = pieces
+    def __init__(self): #, pieces: List[PuzzlePiece] = []):
+        self.pieces = [] # somehow using pieces "kept" the old pieces when running on a dataset over multiple puzzles! Cannot understand why  
         self.num_of_pieces = len(self.pieces)
 
     def load(self, puzzle_name: str, data_folder: str, features_params: dict = None):

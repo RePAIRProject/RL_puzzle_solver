@@ -105,12 +105,11 @@ def reconstruct_pil(
                 dimension: Optional[tuple[int, int]] = None,
                 confidence_threshold : float = 0,
                 expand_on_rotate : bool = False,
-                crop_to_content : bool = True,
+                crop_to_content : bool = True, #True
                 show_borders : bool = True,
                 colormap_name : str = 'jet') -> np.ndarray:
 
     piece_size = pieces[0].data.image.shape
-
     if piece_size[0] != piece_size[1]:
         raise Exception('only square images of pieces are supported')
     
@@ -137,15 +136,11 @@ def reconstruct_pil(
 
         piece_img = Image.fromarray(piece_img, mode="RGBA")
 
-        # plt.imshow(piece_img)
-        # plt.show()
-
         if theta != 0:
             piece_img = piece_img.rotate(theta, expand=expand_on_rotate, fillcolor=(0,0,0,0))
 
         pos = (int(x - piece_img.width // 2), int(y - piece_img.height // 2))
         canvas.paste(piece_img, pos, mask=piece_img)  # Use the alpha channel as mask
-
 
     if crop_to_content:
         canvas = crop_to_content_pil(canvas)
@@ -185,9 +180,10 @@ def crop_to_content(image:np.ndarray, padding:int=1, return_vals:bool=False, max
         y0 = np.min(np.where(image > max_noise)[0]) - padding
         y1 = np.max(np.where(image > max_noise)[0]) + padding
 
+    cropped_image = image[y0:y1, x0:x1, :] if len(image.shape) == 3 else image[y0:y1, x0:x1]
     if return_vals:
-        return image[y0:y1, x0:x1, :], x0, x1, y0, y1
-    return image[y0:y1, x0:x1, :]
+        return cropped_image, x0, x1, y0, y1
+    return cropped_image
 
 ##############################
 # SAVE

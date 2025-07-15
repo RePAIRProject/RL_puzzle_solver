@@ -30,11 +30,8 @@ def main():
     for puzzle_folder in sorted_puzzle_folders:
 
         cfg = Configuration() # this contains all IO operations plus the folder structure
-        
-        
-        # cfg.set_data_folder(cfg_da
-        # taset.get_data_folder())
-        # breakpoint()
+                
+        # cfg.set_data_folder(cfg_dataset.get_data_folder())
         if skip_done == False or os.path.exists(os.path.join(cfg_dataset.get_experiments_folder(), puzzle_folder)) == False:
             print("Start on", puzzle_folder)
             # print(cfg)
@@ -43,6 +40,7 @@ def main():
             # set by hand the puzzle name
             cfg.set_puzzle_name(puzzle_folder)
             puzzle = Puzzle()
+            # print(f"puzzle: {puzzle} with {puzzle.num_of_pieces} pieces")
             puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), load_features=False) #, features=True)
 
             rmm = RegionMatrixModule(puzzle, params, cfg)  # it is redundant, we know 
