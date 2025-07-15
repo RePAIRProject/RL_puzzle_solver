@@ -70,8 +70,8 @@ class SolverModule:
                 print("\t -", cmk)
             print("\nPlease run the aggregation step on this CM\n")
             raise Exception("Missing the aggregation")
-
-        self.R = self.CM_dict['oracle']
+        else:
+            self.R = self.CM_dict['R']
         self.grid_params = self.CM_dict['__context']['grid_params']
 
         if self.solver_params['no_rotations']:

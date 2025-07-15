@@ -85,7 +85,7 @@ class Configuration:
     def get_experiments_folder(self):
         return os.path.join(self.data_folder, self.experiments_folder)
 
-    def get_puzzle_subfolders(self):
+    def get_all_puzzle_subfolders(self):
         """
         Returns a dictionary with all the subfolders paths
         """

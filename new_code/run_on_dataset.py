@@ -32,7 +32,8 @@ def main():
         cfg = Configuration() # this contains all IO operations plus the folder structure
         
         
-        # cfg.set_data_folder(cfg_dataset.get_data_folder())
+        # cfg.set_data_folder(cfg_da
+        # taset.get_data_folder())
         # breakpoint()
         if skip_done == False or os.path.exists(os.path.join(cfg_dataset.get_experiments_folder(), puzzle_folder)) == False:
             print("Start on", puzzle_folder)

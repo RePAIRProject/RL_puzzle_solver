@@ -19,7 +19,6 @@ def main():
 
     sm = SolverModule(params, cfg)
 
-    breakpoint()
     sm.solve(verbosity=params['verbosity'])
     sm.save()
 
