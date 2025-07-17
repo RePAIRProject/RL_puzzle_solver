@@ -19,6 +19,15 @@ features:
     detection_method: yolo-seg
 
 compatibility:
+  save_visualization: 
+    enabled: No 
+    cmap: RdYlGn
+    img_format: jpg
+    vmin: -1
+    vmax: 1
+    figsize: 100
+    all_rotations: False
+    save_every: 6
   grid: 
     xy_step: 9
     theta_step: 90
