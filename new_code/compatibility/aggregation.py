@@ -46,7 +46,9 @@ class AggregationModule:
         elif self.method == 'motif':
             R = self.CM_dict['motif']
         elif self.method == 'lines':
-            R = self.CM_dict['motif']
+            R = self.CM_dict['lines']
+        elif self.method == 'PAD':
+            R = self.CM_dict['PAD']
         elif self.method == 'oracle':
             R = self.CM_dict['oracle']
         else:

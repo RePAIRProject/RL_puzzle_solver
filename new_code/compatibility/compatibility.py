@@ -2,6 +2,9 @@ import scipy
 import numpy as np 
 import cv2 
 import shapely 
+from transformers import ViTForImageClassification, AutoImageProcessor
+import torch 
+from PIL import Image 
 
 from utils.puzzle_utils import Puzzle, PuzzlePiece
 from utils.visualization_utils import save_compatibility_matrix_visualization_to_file
@@ -110,6 +113,10 @@ class CompatibilityMatrixModule:
             if verbose > 1:
                 print("oracle CM computation")
             CM = self._compute_oracle_CM(verbose=verbose)
+        elif feature == 'pairwise_alignment_discriminator':
+            if verbose > 1:
+                print("PAD CM computation")
+            CM = self._compute_pad_CM(verbose=verbose)
         else:
             raise Exception(f"{feature}-based CM not implemented yet!")
 
@@ -306,52 +313,10 @@ class CompatibilityMatrixModule:
                             wrong_alignment2_mask = crop_to_content(wrong_alignment2_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
                         plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong2.png'), np.clip(wrong_alignment2, 0, 1))
                         cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong2.jpg'), np.clip(wrong_alignment2_mask, 0, 2))
-
-                        # # correctly_aligned = piece_i_on_canvas.image / 255 * (piece_i_on_canvas.mask > 0.005) + piece_j_on_canvas.image / 255 * (piece_j_on_canvas.mask > 0.005)
-                        # correctly_aligned_image = piece_i_on_canvas.image + piece_j_on_canvas.image 
-                        # correctly_aligned_mask = piece_i_on_canvas.mask + piece_j_on_canvas.mask
-                        # if np.max(correctly_aligned_mask) > 1:
-                        #     correctly_aligned_mask = np.clip(correctly_aligned_mask, 1, 2)
-                        #     correctly_aligned_image = correctly_aligned_image / np.dstack((correctly_aligned_mask, correctly_aligned_mask, correctly_aligned_mask, (correctly_aligned_mask>-1)))
-                        # # correctly_aligned[:,:,3] = ((piece_i_on_canvas.mask > 0) + (piece_j_on_canvas.mask > 0) > 0)
-
-                        # # on the grid
-                        # xj_grid, yj_grid = self.grid.xy_values[x_idx, y_idx]
-                        # thetaj = self.grid.theta_values[theta_idx]
-                        # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid, y=yj_grid, theta=thetaj, enabled_features=self.features_status)
-                        # grid_aligned_image = piece_i_on_canvas.image + piece_j_on_canvas.image
-                        # grid_aligned_mask = piece_i_on_canvas.mask + piece_j_on_canvas.mask
-                        # if np.max(grid_aligned_mask) > 1:
-                        #     grid_aligned_mask = np.clip(grid_aligned_mask, 1, 2)
-                        #     blended = grid_aligned_image / np.dstack((grid_aligned_mask, grid_aligned_mask, grid_aligned_mask, (grid_aligned_mask>-1)))
-                        #     # plt.subplot(121)
-                        #     # plt.imshow(grid_aligned_image)
-                        #     # plt.subplot(122)
-                        #     # plt.imshow(blended)
-                        #     # plt.show()
-                        #     # breakpoint()
-                        #     grid_aligned_image = blended
-
-                        # grid_aligned[:,:,3] = ((piece_i_on_canvas.mask > 0) + (piece_j_on_canvas.mask > 0) > 0)
-
-                        # # get two "wrong" images
-                        # breakpoint()
-                        # # RM_ij = self.RM_dict['shape'][:, :, 0, j, i]
-                        #                         # xj = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                        # # yj = random.choice(self.grid.xy_values[:,:,1].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                        # rnd_idx2 = int(random.uniform(0, len(plausible_pos[0])))
-                        # x_idx2 = plausible_pos[1][rnd_idx2] # = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                        # y_idx2 = plausible_pos[0][rnd_idx2] # = random.choice(self.grid.xy_values[:,:,0].reshape(self.grid.xy_values.shape[0]*self.grid.xy_values.shape[1]))
-                        # xj2, yj2 = self.grid.xy_values[x_idx2, y_idx2]
-                        # piece_j_on_canvas2 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj2, y=yj2, theta=thetaj, enabled_features=self.features_status)
-                        # wrong_alignment2 = piece_i_on_canvas.image + piece_j_on_canvas2.image 
-                        # plt.imsave(os.path.join(self.oracle_params['wrong_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{xj}_{yj}_{0}_wrong2.png'), np.clip(wrong_alignment2, 0, 1))
                 else:            
                     # we consider these two as "not neighbours"
                     if verbose > 2:
                         print("we have values but they are not considered neighbours, we do not write")
-            
-
             
         # oracle visualization! 
         # will be removed at some point (I hope)
@@ -530,18 +495,6 @@ class CompatibilityMatrixModule:
         touching_region = ((inters_dilated_pi_mask_pj + inters_dilated_pj_mask_pi) > 0).astype(np.uint8)
         touching_region = cv2.morphologyEx(touching_region, cv2.MORPH_CLOSE, dil_kernel)
         return touching_region
-        # center_pos = (len(grid) - 1 ) ## 2
-        # x_c_pixel, y_c_pixel = grid[center_pos, center_pos]
-        # x_j_pixel, y_j_pixel = grid[y, x]
-        # piece_i_on_canvas = place_on_canvas(piece_i, (y_c_pixel, x_c_pixel), ppars.canvas_size, 0)
-        # piece_j_on_canvas = place_on_canvas(piece_j, (y_j_pixel, x_j_pixel), ppars.canvas_size, theta)
-        #piece_i_on_canvas['mask'] = (piece_i_on_canvas['mask'] > 0.0005).astype(np.uint8)
-        #piece_j_on_canvas['mask'] = (piece_j_on_canvas['mask'] > 0.0005).astype(np.uint8)
-        # dilated_pi_mask = cv2.dilate(piece_i_on_canvas['mask'], dil_kernel)
-        # dilated_pj_mask = cv2.dilate(piece_j_on_canvas['mask'], dil_kernel)
-        # inters_dilated_pi_mask_pj = ((dilated_pi_mask + piece_j_on_canvas['mask']) > 1).astype(np.uint8)      
-        # inters_dilated_pj_mask_pi = ((dilated_pj_mask + piece_i_on_canvas['mask']) > 1).astype(np.uint8)      
-        # touching_region = ((inters_dilated_pi_mask_pj + inters_dilated_pj_mask_pi) > 0).astype(np.uint8)
         
     def _compute_shape_score(self, piece_i: PieceOnCanvas, piece_j: PieceOnCanvas, mregion_mask: np.ndarray, sigma:float = 1.0):
         # get ellipsoidal region
@@ -552,3 +505,112 @@ class CompatibilityMatrixModule:
         comp_score = np.exp(-(dissim_score / sigma))
         # print(f"d: {dissim_score:.03f}, c: {comp_score:.03f}")
         return comp_score
+
+
+    
+    ########################################################################################################
+    #                                                                                                      #
+    #   ██████╗  █████╗ ██╗██████╗ ██╗    ██╗██╗███████╗███████╗                                           #
+    #   ██╔══██╗██╔══██╗██║██╔══██╗██║    ██║██║██╔════╝██╔════╝                                           #
+    #   ██████╔╝███████║██║██████╔╝██║ █╗ ██║██║███████╗█████╗                                             #
+    #   ██╔═══╝ ██╔══██║██║██╔══██╗██║███╗██║██║╚════██║██╔══╝                                             #
+    #   ██║     ██║  ██║██║██║  ██║╚███╔███╔╝██║███████║███████╗                                           #
+    #   ╚═╝     ╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚══╝╚══╝ ╚═╝╚══════╝╚══════╝                                           #
+    #                                                                                                      #
+    #    █████╗ ██╗     ██╗ ██████╗ ███╗   ██╗███╗   ███╗███████╗███╗   ██╗████████╗                       #
+    #   ██╔══██╗██║     ██║██╔════╝ ████╗  ██║████╗ ████║██╔════╝████╗  ██║╚══██╔══╝                       #
+    #   ███████║██║     ██║██║  ███╗██╔██╗ ██║██╔████╔██║█████╗  ██╔██╗ ██║   ██║                          #
+    #   ██╔══██║██║     ██║██║   ██║██║╚██╗██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║   ██║                          #
+    #   ██║  ██║███████╗██║╚██████╔╝██║ ╚████║██║ ╚═╝ ██║███████╗██║ ╚████║   ██║                          #
+    #   ╚═╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝                          #
+    #                                                                                                      #
+    #   ██████╗ ██╗███████╗ ██████╗██████╗ ██╗███╗   ███╗██╗███╗   ██╗ █████╗ ████████╗ ██████╗ ██████╗    #
+    #   ██╔══██╗██║██╔════╝██╔════╝██╔══██╗██║████╗ ████║██║████╗  ██║██╔══██╗╚══██╔══╝██╔═══██╗██╔══██╗   #
+    #   ██║  ██║██║███████╗██║     ██████╔╝██║██╔████╔██║██║██╔██╗ ██║███████║   ██║   ██║   ██║██████╔╝   #
+    #   ██║  ██║██║╚════██║██║     ██╔══██╗██║██║╚██╔╝██║██║██║╚██╗██║██╔══██║   ██║   ██║   ██║██╔══██╗   #
+    #   ██████╔╝██║███████║╚██████╗██║  ██║██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║   ██║   ╚██████╔╝██║  ██║   #
+    #   ╚═════╝ ╚═╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝   #
+    #                                                                                                      #
+    ########################################################################################################
+    def _compute_pad_CM(self, verbose: int = 0):
+        """Loops over pairs of pieces - not symmetric yet"""
+        CM_pad = np.zeros(self.CM_size)
+        if verbose > 1:
+            print()
+        # prepare model 
+        PAD_params = self.params['compatibility']['features']['pairwise_alignment_discriminator']
+
+        model = ViTForImageClassification.from_pretrained(PAD_params['trained_model_folder'])
+        processor = AutoImageProcessor.from_pretrained(
+            os.path.join(PAD_params['trained_model_folder'], "config.json"),
+            use_fast=PAD_params['use_fast'],
+            trust_remote_code=True  # Required for local models
+        )
+
+        for i in range(self.puzzle.num_of_pieces):
+            for j in range(self.puzzle.num_of_pieces):
+                if i != j:
+                    if verbose > 1:
+                        print(f'computing PAD CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
+                    RM_ij = self.RM_dict['shape'][:, :, :, j, i]    
+                    if np.sum(RM_ij > 0) > 0:
+                        CM_pad[:, :, :, j, i] = self._compute_pairwise_discriminator_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=model, processor=processor)
+        
+                    # import matplotlib.pyplot as plt 
+                    # plt.subplot(131); plt.imshow(self.puzzle.pieces[i].data.image)
+                    # plt.subplot(132); plt.imshow(self.puzzle.pieces[j].data.image)
+                    # plt.subplot(133); plt.imshow(CM_pad[:, :, :, j, i])
+                    # plt.show()
+                    # breakpoint()
+        if verbose > 1:
+            print()
+        
+        return CM_pad
+
+    def _compute_pairwise_discriminator_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, model: ViTForImageClassification, processor: AutoImageProcessor):
+        """ 
+        It computes SDF-based cost matrix between piece_i and piece_j
+        """
+        CM_ij = np.zeros_like(RM_ij)
+        ids_to_score = np.where(RM_ij > 0)
+
+        for x_idx, y_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+            piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
+            xj, yj = self.grid.xy_values[x_idx, y_idx]
+            thetaj = self.grid.theta_values[theta_idx]
+            piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+
+            img_to_discriminate_mpl = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=False)
+            img_to_discriminate_PIL = Image.fromarray(np.uint8(img_to_discriminate_mpl * 255))
+            img_to_discriminate_PIL = img_to_discriminate_PIL.convert('RGB')
+            inputs = processor(images=img_to_discriminate_PIL, return_tensors="pt")
+            with torch.no_grad():
+                outputs = model(**inputs, output_attentions=False)
+            # most likely we can use some post-processing on the scores
+            pred_score = outputs['logits']  # (it has 2 values, one for each `class`)
+            pred_class = torch.argmax(pred_score).item() 
+            if pred_score[0][1].item() > 2:
+                cmp_score = pred_score[0][1].item()
+            elif pred_score[0][0].item() > 1.5:
+                cmp_score = -1    
+            else:
+                cmp_score = 0
+            CM_ij[x_idx, y_idx, theta_idx] = cmp_score
+            
+
+            # if pred_class > 0:
+            #     proc_img = inputs['pixel_values'].squeeze(0).permute(1, 2, 0)
+            #     import matplotlib.pyplot as plt 
+            #     plt.imshow(proc_img)
+            #     plt.title(f"wrong: {pred_score[0][0].item()}\ncorrect: {pred_score[0][1].item()}")
+            #     plt.show()
+            #     breakpoint()
+
+
+        CM_ij /= np.max(CM_ij)
+        # cut values
+        CM_ij[CM_ij < 0.5] = 0
+        return CM_ij
+
+
+
