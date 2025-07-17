@@ -1,13 +1,14 @@
 import scipy 
 import numpy as np 
 import cv2 
-from utils.puzzle_utils import PuzzlePiece
 import shapely 
-from utils.puzzle_utils import Puzzle 
+
+from utils.puzzle_utils import Puzzle, PuzzlePiece
+from utils.visualization_utils import save_compatibility_matrix_visualization_to_file
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
 from compatibility.grid import PuzzleGrid, PieceOnCanvas
+
 import yaml
-# only for debug, they should not be used here
 import os
 import random
 import json
@@ -46,7 +47,9 @@ class CompatibilityMatrixModule:
         self.cfg = cfg #Configuration(puzzle.name) 
         # self.exp_folder is already set when we create the object
         # self.exp_folder = self.cfg.new_puzzle_single_run_random_folder_name()
-
+        self.vis_params = params['compatibility']['save_visualization']
+        self.save_vis = self.vis_params['enabled']
+        
         ## we could call here
         # self.prepare()
 
@@ -62,7 +65,6 @@ class CompatibilityMatrixModule:
         """
         All the parameters are set here
         It should be self-explanatory as it's just setting values (with predefined factors we hard-coded)
-
         """
         self.piece_size = self.params['preprocessing']['piece_size']
         self.p_hs = self.piece_size ## 2
@@ -116,7 +118,7 @@ class CompatibilityMatrixModule:
     ##################################
     #               SAVE             #
     ##################################
-    def save(self):
+    def save(self, verbose=0):
         """ save """
         context_params = {}
         context_params['input_params'] = self.params
@@ -127,6 +129,14 @@ class CompatibilityMatrixModule:
         # values of the matrix  
         self.CM['__context'] = context_params
         np.save(self.cfg.get_CM_path(), self.CM)
+        if self.save_vis == True:
+            if verbose > 1:
+                print("-" * 50)
+                print(f"Saving {feature}-based CM")
+            for feature in self.features:
+                if self.features_status[feature] == True:
+                    save_compatibility_matrix_visualization_to_file(self.CM[feature], pieces=self.puzzle.pieces, rot_step=self.params['compatibility']['grid']['theta_step'], based_on=feature,
+                                                                    output_folder=os.path.join(self.cfg.get_current_experiments_folder(), 'CM_vis'), visualization_params=self.vis_params)
         # input parameters
         input_params_path = self.cfg.get_CM_input_parameters_path() 
         with open(input_params_path, 'w') as f:
