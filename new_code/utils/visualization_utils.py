@@ -43,14 +43,15 @@ def save_compatibility_matrix_visualization_to_file(CM, pieces: List[PuzzlePiece
 
             for a in range(1, CM.shape[3]+1):
                 axs[0, a].set_title(pieces[a-1].id, fontsize=32)
-                axs[0, a].imshow(cv2.cvtColor(pieces[a-1].data.image, cv2.COLOR_BGR2RGB), vmin=vmin, vmax=vmax, cmap=cmap)
+                # axs[0, a].imshow(cv2.cvtColor(pieces[a-1].data.image, cv2.COLOR_BGR2RGB), vmin=vmin, vmax=vmax, cmap=cmap)
+                axs[0, a].imshow(pieces[a-1].data.image, vmin=vmin, vmax=vmax, cmap=cmap)
                 axs[0, a].xaxis.set_visible(False)
                 axs[0, a].yaxis.set_visible(False)
                 if theta > 0:
                     rotated_img = scipy.ndimage.rotate(pieces[a-1].data.image, theta, reshape=False, mode='constant')
                 else:
                     rotated_img = pieces[a-1].data.image
-                axs[a, 0].imshow(cv2.cvtColor(rotated_img, cv2.COLOR_BGR2RGB))
+                axs[a, 0].imshow(rotated_img)
                 axs[a, 0].xaxis.set_visible(False)
                 axs[a, 0].yaxis.set_visible(False)
                 axs[a, 0].set_title(pieces[a-1].id, loc='left', fontsize=32)

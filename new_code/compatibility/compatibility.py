@@ -130,13 +130,14 @@ class CompatibilityMatrixModule:
         self.CM['__context'] = context_params
         np.save(self.cfg.get_CM_path(), self.CM)
         if self.save_vis == True:
-            if verbose > 1:
-                print("-" * 50)
-                print(f"Saving {feature}-based CM")
             for feature in self.features:
                 if self.features_status[feature] == True:
-                    save_compatibility_matrix_visualization_to_file(self.CM[feature], pieces=self.puzzle.pieces, rot_step=self.params['compatibility']['grid']['theta_step'], based_on=feature,
-                                                                    output_folder=os.path.join(self.cfg.get_current_experiments_folder(), 'CM_vis'), visualization_params=self.vis_params)
+                    if verbose > 1:
+                        print("-" * 50)
+                        print(f"Saving {feature}-based CM")
+                    if self.features_status[feature] == True:
+                        save_compatibility_matrix_visualization_to_file(self.CM[feature], pieces=self.puzzle.pieces, rot_step=self.params['compatibility']['grid']['theta_step'], based_on=feature,
+                                                                        output_folder=os.path.join(self.cfg.get_current_experiments_folder(), 'CM_vis'), visualization_params=self.vis_params)
         # input parameters
         input_params_path = self.cfg.get_CM_input_parameters_path() 
         with open(input_params_path, 'w') as f:
@@ -496,14 +497,6 @@ class CompatibilityMatrixModule:
         """ 
         It computes SDF-based cost matrix between piece_i and piece_j
         """
-        # p = ppars['p']
-        # alignment_grid = ppars['z_id']
-        # m = ppars['m']
-        # rot = ppars['rot']    
-        # R_cost = np.zeros((m.shape[1], m.shape[1], len(rot)))
-        # grid on the canvas
-        # canv_cnt = self.grid.canvas_size ## 2
-        # grid = alignment_grid + canv_cnt #alignment_grid has negative values
         CM_ij = np.zeros_like(RM_ij)
         ids_to_score = np.where(RM_ij > 0)
         # TODO: move these to parameters?   improve?
@@ -518,7 +511,7 @@ class CompatibilityMatrixModule:
 
             touching_region = self._compute_touching_region(piece_i_on_canvas, piece_j_on_canvas, dil_kernel)
             size_touching_region = np.sum(touching_region > 0)
-            #print(f"We have {size_touching_region} pixels in the touching region")
+            # print(f"We have {size_touching_region} pixels in the touching region")
             if size_touching_region < 2*self.grid.p_hs:
                 shape_score = 0
             else:
@@ -555,6 +548,7 @@ class CompatibilityMatrixModule:
         normalization_factor = np.sum(mregion_mask > 0)
         # sdf sum 
         sdf_sum = np.square(piece_i.sdf + piece_j.sdf)
-        dissim_score = np.sum(sdf_sum * mregion_mask.astype(float) * normalization_factor)
-        comp_score = np.exp(-(dissim_score * sigma))
+        dissim_score = np.sum(sdf_sum * mregion_mask.astype(float) / normalization_factor)
+        comp_score = np.exp(-(dissim_score / sigma))
+        # print(f"d: {dissim_score:.03f}, c: {comp_score:.03f}")
         return comp_score
