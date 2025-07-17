@@ -17,7 +17,6 @@ from utils.parameters_utils import Configuration
 from utils.visualization_utils import reconstruct_pil
 
 def main():
-    breakpoint()
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
     params = cfg.load('input_parameters.yaml')   # basic reading in this case

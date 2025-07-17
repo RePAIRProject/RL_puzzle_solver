@@ -196,7 +196,6 @@ class SolverModule:
     
     def save(self):
         """ save """
-        breakpoint()
         context_params = self.CM_dict['__context']
         # context_params['input_params'] = self.params
         # context_params['grid_params'] = {'xy_num_points': self.grid.xy_num_points, 'theta_num_points': self.grid.theta_num_points, 'xy_step':self.grid.xy_step, 'theta_step':self.grid.theta_step, 
