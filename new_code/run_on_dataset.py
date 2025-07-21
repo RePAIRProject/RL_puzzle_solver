@@ -41,7 +41,7 @@ def main():
             cfg.set_puzzle_name(puzzle_folder)
             puzzle = Puzzle()
             # print(f"puzzle: {puzzle} with {puzzle.num_of_pieces} pieces")
-            puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), load_features=False) #, features=True)
+            puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)
 
             rmm = RegionMatrixModule(puzzle, params, cfg)  # it is redundant, we know 
             rmm.prepare() # creates grid, adjust/compute parameters and so on
@@ -54,29 +54,29 @@ def main():
             cmm.prepare() # creates grid, adjust/compute parameters and so on
             cmm.compute(verbose=params['verbosity'])
             # rmm.save_candidate_alignments_to_file(verbose=params['verbosity'])
-            cmm.save()
+            # cmm.save()
 
-            am = AggregationModule(puzzle, params, cfg) 
+            # am = AggregationModule(puzzle, params, cfg) 
 
-            # am.prepare() # read the data creates grid, adjust/compute parameters and so on
-            am.compute(verbose=params['verbosity']) # merge the data
-            am.save()
+            # # am.prepare() # read the data creates grid, adjust/compute parameters and so on
+            # am.compute(verbose=params['verbosity']) # merge the data
+            # am.save()
 
-            sm = SolverModule(params, cfg)
+            # sm = SolverModule(params, cfg)
 
-            pixel_solution = sm.solve(verbose=params['verbosity'])
-            sm.save()
+            # pixel_solution = sm.solve(verbose=params['verbosity'])
+            # sm.save()
 
-            image_solution = reconstruct_pil(pixel_solution, puzzle.pieces)
-            plt.imsave(cfg.get_VIS_path(), image_solution)
+            # image_solution = reconstruct_pil(pixel_solution, puzzle.pieces)
+            # plt.imsave(cfg.get_VIS_path(), image_solution)
 
-            print("Finished", puzzle_folder)
-            del puzzle 
-            del cfg 
-            del rmm
-            del cmm 
-            del am 
-            del sm 
+            # print("Finished", puzzle_folder)
+            # del puzzle 
+            # del cfg 
+            # del rmm
+            # del cmm 
+            # del am 
+            # del sm 
             # breakpoint()
         else:
             print(f"skipping {puzzle_folder} as it is already there")

@@ -176,7 +176,7 @@ class CompatibilityMatrixModule:
             self.puzzle_info = json.load(pijf)
         # gt_data = pd.read_csv(os.path.join(oracle_info['gt_root_folder'], f"{oracle_info['gt_puzzle_name']}.{oracle_info['gt_puzzle_name_extension']}"))
 
-        if self.oracle_params['pairwise_alignments_dataset']['enabled'] == True:
+        if self.oracle_params['create_pairwise_alignments_dataset'] == True:
             print("\nCreating pairwise alignment datasets..\n\n")
             self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'] = os.path.join(self.cfg.data_folder, self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'correct')  #, oracle_info['gt_puzzle_name']) 
             os.makedirs(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], exist_ok=True)
@@ -198,7 +198,7 @@ class CompatibilityMatrixModule:
                             print(f'computing oracle CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
                         RM_ij = np.ones((CM_oracle.shape[0], CM_oracle.shape[1], CM_oracle.shape[2]))
                         # breakpoint()
-                        if self.oracle_params['pairwise_alignments_dataset']['enabled'] == True:
+                        if self.oracle_params['create_pairwise_alignments_dataset'] == True:
                             RM_ij = self.RM_dict['oracle'][:, :, :, j, i]
                         #if np.sum(RM_ij > 0) > 0:
                         # breakpoint()
@@ -271,48 +271,45 @@ class CompatibilityMatrixModule:
                 if np.sum(cv2.dilate(piece_i_on_canvas.mask, kernel) * cv2.dilate(piece_j_on_canvas.mask, kernel) > 0): 
                     CM_ij[x_idx, y_idx, theta_idx] = 1
 
-                    if self.oracle_params['pairwise_alignments_dataset']['enabled'] == True:
+                    if self.oracle_params['create_pairwise_alignments_dataset'] == True:
                         import matplotlib.pyplot as plt 
                         from utils.visualization_utils import crop_to_content
                         
                         # This is the PAIRWISE GROUND TRUTH
-                        correctly_aligned_image, correctly_aligned_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=True)
-                        if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
-                            correctly_aligned_image = crop_to_content(correctly_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
-                            correctly_aligned_mask = crop_to_content(correctly_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
-                        plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_gt.png'), np.clip(correctly_aligned_image, 0, 1))
-                        cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_gt.jpg'), np.clip(correctly_aligned_mask, 0, 2))
+                        if self.oracle_params['pairwise_alignments_dataset']['save_true_alignment'] == True:
+                            correctly_aligned_image, correctly_aligned_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=True)
+                            if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
+                                correctly_aligned_image = crop_to_content(correctly_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
+                                correctly_aligned_mask = crop_to_content(correctly_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
+                            plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_gt.png'), np.clip(correctly_aligned_image, 0, 1))
+                            if self.oracle_params['pairwise_alignments_dataset']['save_masks'] == True:
+                                cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_gt.jpg'), np.clip(correctly_aligned_mask, 0, 2))
 
-                        # This is the PAIRWISE "BEST" given the grid step that we have
-                        xj_grid, yj_grid = self.grid.xy_values[x_idx, y_idx]
-                        thetaj_grid = self.grid.theta_values[theta_idx]
-                        piece_j_on_canvas_on_grid = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid, y=yj_grid, theta=thetaj_grid, enabled_features=self.features_status)
-                        grid_aligned_image, grid_aligned_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas_on_grid, return_mask=True)
-                        if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
-                            grid_aligned_image = crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
-                            grid_aligned_mask = crop_to_content(grid_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
-                        plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.png'), np.clip(grid_aligned_image, 0, 1))
-                        cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.jpg'), np.clip(grid_aligned_mask, 0, 2))
+                        if self.oracle_params['pairwise_alignments_dataset']['save_grid_alignment'] == True:
+                            # This is the PAIRWISE "BEST" given the grid step that we have
+                            xj_grid, yj_grid = self.grid.xy_values[x_idx, y_idx]
+                            thetaj_grid = self.grid.theta_values[theta_idx]
+                            piece_j_on_canvas_on_grid = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid, y=yj_grid, theta=thetaj_grid, enabled_features=self.features_status)
+                            grid_aligned_image, grid_aligned_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas_on_grid, return_mask=True)
+                            if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
+                                grid_aligned_image = crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
+                                grid_aligned_mask = crop_to_content(grid_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
+                            plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.png'), np.clip(grid_aligned_image, 0, 1))
+                            if self.oracle_params['pairwise_alignments_dataset']['save_masks'] == True:
+                                cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_grid.jpg'), np.clip(grid_aligned_mask, 0, 2))
 
-                        # This is one randomly chosen "plausible" (but not correct!) alignment of the two pieces
-
-                        xj_w, yj_w, thetaj_w = self._pick_plausible_wrong_position(RM_ij=RM_ij, xc=x_idx, yc=y_idx)
-                        piece_j_on_canvas_plausible1 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=thetaj_w, enabled_features=self.features_status)
-                        wrong_alignment1, wrong_alignment1_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas_plausible1, return_mask=True)
-                        if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
-                            wrong_alignment1 = crop_to_content(wrong_alignment1, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
-                            wrong_alignment1_mask = crop_to_content(wrong_alignment1_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
-                        plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong1.png'), np.clip(wrong_alignment1, 0, 1))
-                        cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong1.jpg'), np.clip(wrong_alignment1_mask, 0, 2))
-
-                        xj_w, yj_w, thetaj_w = self._pick_plausible_wrong_position(RM_ij=RM_ij, xc=x_idx, yc=y_idx)
-                        piece_j_on_canvas_plausible2 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=thetaj_w, enabled_features=self.features_status)
-                        wrong_alignment2, wrong_alignment2_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas_plausible2, return_mask=True)
-                        if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
-                            wrong_alignment2 = crop_to_content(wrong_alignment2, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
-                            wrong_alignment2_mask = crop_to_content(wrong_alignment2_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
-                        plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong2.png'), np.clip(wrong_alignment2, 0, 1))
-                        cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong2.jpg'), np.clip(wrong_alignment2_mask, 0, 2))
+                        # These are randomly chosen "plausible" (but not correct!) alignment of the two pieces
+                        if self.oracle_params['pairwise_alignments_dataset']['save_wrong_alignments'] == True:
+                            for wk in range(self.oracle_params['pairwise_alignments_dataset']['wrong_alignments_num']):
+                                xj_w, yj_w, thetaj_w = self._pick_plausible_wrong_position(RM_ij=RM_ij, xc=x_idx, yc=y_idx)
+                                piece_j_on_canvas_plausible1 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=thetaj_w, enabled_features=self.features_status)
+                                wrong_alignment1, wrong_alignment1_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas_plausible1, return_mask=True)
+                                if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
+                                    wrong_alignment1 = crop_to_content(wrong_alignment1, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
+                                    wrong_alignment1_mask = crop_to_content(wrong_alignment1_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
+                                plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong_{wk}.png'), np.clip(wrong_alignment1, 0, 1))
+                                if self.oracle_params['pairwise_alignments_dataset']['save_masks'] == True:
+                                    cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'], f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{x_idx}_{y_idx}_{0}_wrong_{wk}.jpg'), np.clip(wrong_alignment1_mask, 0, 2))
                 else:            
                     # we consider these two as "not neighbours"
                     if verbose > 2:

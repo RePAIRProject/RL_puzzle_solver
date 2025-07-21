@@ -42,6 +42,8 @@ compatibility:
     # features_list: [asda]
   # actual compatibility score calculation
   features:
+    # all features SHOULD have 'enabled': Yes/No as it is checked internally from cmm.check_features_status()
+    # and used to make the calculations
     shape: 
       enabled: No
       sigma: 1 # ?
