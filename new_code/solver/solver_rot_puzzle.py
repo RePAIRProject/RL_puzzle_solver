@@ -55,13 +55,14 @@ def extract_grid_sol_from_P(P):
 
 
 
-def solver_rot_puzzle(R, P, T, verbosity=1, decimals=8):
+def solver_rot_puzzle(R, P, T, mode='exp', verbosity=1, decimals=8):
     """
     Solves the puzzle using Relaxation Labelling adapted to puzzle solving
 
     R : Compatibility Matrix (num_x_r,num_y_r,num_rot,N,N)
     p : Probability Matrix (num_x_p,num_y_p,num_rot,N)
     T : number iterations
+    mode : 'simple' or 'exp' (when calculating PQ)
     verbosity : logging verbosity
     decimals : precision of p
     """
@@ -112,7 +113,13 @@ def solver_rot_puzzle(R, P, T, verbosity=1, decimals=8):
         # Shift the support to get non-negative values
         Q += Q + N * 1
 
-        PQ = P * np.exp(Q)  # e = 1e-11
+        if mode == 'simple':
+            PQ = P * Q 
+        elif mode == 'exp':
+            PQ = P * np.exp(Q)  # e = 1e-11
+        else:
+            print(f"warning, unknown mode {mode}, we use exponential")
+            PQ = P * np.exp(Q)  # e = 1e-11
 
         P_new = PQ / (np.sum(PQ, axis=(0, 1, 2))) # P(t+1)
         

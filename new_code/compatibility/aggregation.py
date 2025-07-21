@@ -43,12 +43,12 @@ class AggregationModule:
             R = _aggregate_shape_motives(self)
         elif self.method == 'shape':
             R = self.CM_dict['shape']
-        elif self.method == 'motif':
+        elif self.method == 'motif' or self.method == 'motives':
             R = self.CM_dict['motif']
         elif self.method == 'lines':
             R = self.CM_dict['lines']
-        elif self.method == 'PAD':
-            R = self.CM_dict['PAD']
+        elif self.method == 'PAD' or self.method == 'pairwise_alignment_discriminator':
+            R = self.CM_dict['pairwise_alignment_discriminator']
         elif self.method == 'oracle':
             R = self.CM_dict['oracle']
         else:
@@ -76,6 +76,7 @@ class AggregationModule:
         context_params_path = self.cfg.get_aggregation_output_parameters_path() 
         with open(context_params_path, 'w') as f:
             yaml.dump(context_params, f, Dumper=CustomYAMLEncoder, default_flow_style=False)
+        print("done, saved the CM.")
 
     def _aggregate_shape_motives(self):
         return 1

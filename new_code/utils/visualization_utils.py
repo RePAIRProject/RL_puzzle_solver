@@ -8,9 +8,9 @@ import scipy
 from PIL import Image
 import os
 
-def save_compatibility_matrix_visualization_to_file(CM, pieces: List[PuzzlePiece], rot_step:int, based_on:str, output_folder:str, visualization_params:dict) -> None:
+def save_pairwise_matrix_visualization_to_file(PM, pieces: List[PuzzlePiece], rot_step:int, based_on:str, output_folder:str, visualization_params:dict, matrix_type:str='CM') -> None:
     
-    title=f'{based_on}-based CM'
+    title=f'{based_on}-based {matrix_type}'
     all_rotation=visualization_params['all_rotations']
     vmin=visualization_params['vmin']
     vmax=visualization_params['vmax']    
@@ -18,14 +18,14 @@ def save_compatibility_matrix_visualization_to_file(CM, pieces: List[PuzzlePiece
     figsize=(visualization_params['figsize'], visualization_params['figsize'])
 
     os.makedirs(output_folder, exist_ok=True)
-    rotation_range = np.arange(CM.shape[2])
+    rotation_range = np.arange(PM.shape[2])
     rot_step = rot_step % 360
     for rr in rotation_range:
         theta = rr * rot_step
         if all_rotation is True or (all_rotation is False and (rr % visualization_params['save_every']) == 0):
-            fig, axs = plt.subplots(CM.shape[3]+1, CM.shape[4]+1, figsize=figsize) #, sharex=True, sharey=True)
+            fig, axs = plt.subplots(PM.shape[3]+1, PM.shape[4]+1, figsize=figsize) #, sharex=True, sharey=True)
             fig.suptitle(f"{title}(r{rr})", fontsize=44)  
-            mapping_image = np.zeros_like(CM[:, :, 0, 0, 0])
+            mapping_image = np.zeros_like(PM[:, :, 0, 0, 0])
             mapping_image[0, 0] = -1
             mapping_image[-1, -1] = 1
             axs[0, 0].set_title("only for colorbar", fontsize=14)
@@ -33,15 +33,15 @@ def save_compatibility_matrix_visualization_to_file(CM, pieces: List[PuzzlePiece
             axs[0, 0].xaxis.set_visible(False)
             axs[0, 0].yaxis.set_visible(False)
             fig.colorbar(mim)
-            for x_plot in range(1, CM.shape[3]+1):
-                for y_plot in range(1, CM.shape[4]+1):
+            for x_plot in range(1, PM.shape[3]+1):
+                for y_plot in range(1, PM.shape[4]+1):
                     # if x_plot == 8 and y_plot == 6 and rr == 3:
                     #     breakpoint()
-                    axs[x_plot, y_plot].imshow(CM[:, :, rr, x_plot-1, y_plot-1], vmin=vmin, vmax=vmax, cmap=cmap)
+                    axs[x_plot, y_plot].imshow(PM[:, :, rr, x_plot-1, y_plot-1], vmin=vmin, vmax=vmax, cmap=cmap)
                     axs[x_plot, y_plot].xaxis.set_visible(False)
                     axs[x_plot, y_plot].yaxis.set_visible(False)
 
-            for a in range(1, CM.shape[3]+1):
+            for a in range(1, PM.shape[3]+1):
                 axs[0, a].set_title(pieces[a-1].id, fontsize=32)
                 # axs[0, a].imshow(cv2.cvtColor(pieces[a-1].data.image, cv2.COLOR_BGR2RGB), vmin=vmin, vmax=vmax, cmap=cmap)
                 axs[0, a].imshow(pieces[a-1].data.image, vmin=vmin, vmax=vmax, cmap=cmap)
@@ -56,7 +56,7 @@ def save_compatibility_matrix_visualization_to_file(CM, pieces: List[PuzzlePiece
                 axs[a, 0].yaxis.set_visible(False)
                 axs[a, 0].set_title(pieces[a-1].id, loc='left', fontsize=32)
             plt.tight_layout()
-            plt.savefig(os.path.join(output_folder, f"CM_{based_on}_r{rr}.{visualization_params['img_format']}"))
+            plt.savefig(os.path.join(output_folder, f"{matrix_type}_{based_on}_r{rr}.{visualization_params['img_format']}"))
             plt.close()
 
 

@@ -4,7 +4,7 @@ import os
 from utils.puzzle_utils import Puzzle 
 from compatibility.grid import PuzzleGrid, PieceOnCanvas
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
-from utils.visualization_utils import crop_to_content
+from utils.visualization_utils import crop_to_content, save_pairwise_matrix_visualization_to_file
 import cv2 
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -62,7 +62,8 @@ class RegionMatrixModule:
         self.cfg = cfg #Configuration(puzzle.name) 
         # self.exp_folder = self.cfg.new_puzzle_single_run_random_folder_name()
         self.cfg.new_puzzle_single_run_random_folder_name()
-
+        self.vis_params = params['compatibility']['save_visualization']
+        self.save_vis = self.vis_params['save_RM']
         ## we could call here
         # self.prepare()
 
@@ -137,7 +138,7 @@ class RegionMatrixModule:
         #     self.RM = np.load(file_path)
         #     self.features = []
 
-    def save(self):
+    def save(self, verbose:int=0):
         """
         Save a .npy dictionary with the values of the RM computed and some contextual parameters (useful to use the data)
         """
@@ -151,6 +152,17 @@ class RegionMatrixModule:
         # values of the matrix
         self.RM['__context'] = context_params
         np.save(rm_path, self.RM)
+        if self.save_vis == True:
+            for feature in self.features:
+                if self.features_status[feature] == True:
+                    if verbose > 1:
+                        print("-" * 50)
+                        print(f"Saving {feature}-based RM")
+                    if self.features_status[feature] == True:
+                        save_pairwise_matrix_visualization_to_file(self.RM[feature], pieces=self.puzzle.pieces, rot_step=self.params['compatibility']['grid']['theta_step'], based_on=feature,
+                                                                        output_folder=os.path.join(self.cfg.get_current_experiments_folder(), 'RM_vis'), visualization_params=self.vis_params, 
+                                                                        matrix_type='RM')
+
         # input parameters
         input_params_path = self.cfg.get_RM_input_parameters_path() 
         #os.path.join(self.cfg.current_experiment_folder, 'RM_input_params.yaml')
@@ -179,19 +191,6 @@ class RegionMatrixModule:
                 if verbose > 1:
                     print(f"{feature}-based RM skipped, as {feature} is disabled!")
 
-
-        # for i in range(self.puzzle.num_of_pieces):
-        #     for j in range(self.puzzle.num_of_pieces):
-                
-        #         self.RM['shape'][:, :, :, j, i] = self.compute_pairwise_shape_based_RM(i, j)
-                
-        #                 self.RM[feature][:, :, :, j, i] = self.compute_pairwise_feature_RM_wrapper(i, j, feature)
-        #             else:
-        #                 if verbose > 1:
-        #                     print(f"{feature} is disabled, skipping.")
-        # self.RM_computed = True
-        
-
     def _compute_feature_based_RM_wrapper(self, feature: str, verbose: int = 0):
         """
         Just a wrapper, will decide which method to call depending on the feature
@@ -211,6 +210,10 @@ class RegionMatrixModule:
         elif feature == 'oracle':
             if verbose > 1:
                 print("WARNING:\nfor the oracle compatibility, we still use shape-based RM Computation")
+            RM = self.compute_shape_based_RM(verbose=verbose)
+        elif feature == 'PAD' or feature == 'pairwise_alignment_discriminator':
+            if verbose > 1:
+                print("WARNING:\nfor the PAD compatibility, we still use shape-based RM Computation")
             RM = self.compute_shape_based_RM(verbose=verbose)
         else:
             raise Exception(f"{feature}-based RM not implemented yet!")

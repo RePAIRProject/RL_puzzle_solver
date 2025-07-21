@@ -7,7 +7,7 @@ import torch
 from PIL import Image 
 
 from utils.puzzle_utils import Puzzle, PuzzlePiece
-from utils.visualization_utils import save_compatibility_matrix_visualization_to_file
+from utils.visualization_utils import save_pairwise_matrix_visualization_to_file
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
 from compatibility.grid import PuzzleGrid, PieceOnCanvas
 
@@ -51,7 +51,7 @@ class CompatibilityMatrixModule:
         # self.exp_folder is already set when we create the object
         # self.exp_folder = self.cfg.new_puzzle_single_run_random_folder_name()
         self.vis_params = params['compatibility']['save_visualization']
-        self.save_vis = self.vis_params['enabled']
+        self.save_vis = self.vis_params['save_CM']
         
         ## we could call here
         # self.prepare()
@@ -143,7 +143,7 @@ class CompatibilityMatrixModule:
                         print("-" * 50)
                         print(f"Saving {feature}-based CM")
                     if self.features_status[feature] == True:
-                        save_compatibility_matrix_visualization_to_file(self.CM[feature], pieces=self.puzzle.pieces, rot_step=self.params['compatibility']['grid']['theta_step'], based_on=feature,
+                        save_pairwise_matrix_visualization_to_file(self.CM[feature], pieces=self.puzzle.pieces, rot_step=self.params['compatibility']['grid']['theta_step'], based_on=feature,
                                                                         output_folder=os.path.join(self.cfg.get_current_experiments_folder(), 'CM_vis'), visualization_params=self.vis_params)
         # input parameters
         input_params_path = self.cfg.get_CM_input_parameters_path() 
@@ -552,7 +552,7 @@ class CompatibilityMatrixModule:
                 if i != j:
                     if verbose > 1:
                         print(f'computing PAD CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
-                    RM_ij = self.RM_dict['shape'][:, :, :, j, i]    
+                    RM_ij = self.RM_dict['pairwise_alignment_discriminator'][:, :, :, j, i]    
                     if np.sum(RM_ij > 0) > 0:
                         CM_pad[:, :, :, j, i] = self._compute_pairwise_discriminator_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=model, processor=processor)
         
@@ -597,8 +597,7 @@ class CompatibilityMatrixModule:
                 cmp_score = 0
             CM_ij[x_idx, y_idx, theta_idx] = cmp_score
             
-
-            # if pred_class > 0:
+            # if pred_class > -1:
             #     proc_img = inputs['pixel_values'].squeeze(0).permute(1, 2, 0)
             #     import matplotlib.pyplot as plt 
             #     plt.imshow(proc_img)

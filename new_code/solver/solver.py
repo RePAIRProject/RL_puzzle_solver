@@ -50,7 +50,8 @@ class SolverModule:
         self.T_next = self.solver_params['T_next']
         self.T_max = self.solver_params['T_max']
         self.threshold = self.solver_params['accept_threshold']
-        
+        self.PQ_mode = self.solver_params['PQ_mode']
+
         self._init()
 
     def _init(self):
@@ -166,7 +167,7 @@ class SolverModule:
             else:
                 T = self.T_next
 
-            self.P, payoff, eps = solver_rot_puzzle(self.R, self.P, T, verbosity=verbosity, decimals=decimals)
+            self.P, payoff, eps = solver_rot_puzzle(self.R, self.P, T, self.PQ_mode, verbosity=verbosity, decimals=decimals)
 
             self.P, sol, num_anchors = fix_anchors(self.P, num_anchors, self.threshold)
 
@@ -202,8 +203,10 @@ class SolverModule:
         #     'canvas_size': self.grid.canvas_size, 'pairwise_comp_range': self.grid.pairwise_comp_range}
         # context_params['features'] = self.features_status
         # context_params['puzzle'] = {'puzzle_name': self.puzzle.name, 'num_pieces': self.puzzle.num_of_pieces, 'piece_size': self.piece_size}
-        context_params['solver'] = {'T_first': self.T_first, 'T_next': self.T_next, 'T_max': self.T_max, 'anchor_idx':self.anchor_index, \
-            'P_shape':self.P.shape}
+        context_params['solver'] = self.params['solver']
+        # better to save all of them, instead of manually adding
+        # {'T_first': self.T_first, 'T_next': self.T_next, 'T_max': self.T_max, 'anchor_idx':self.anchor_index, \
+        #     'P_shape':self.P.shape}
         
         # values of the matrix  
         self.solver_dict = {}

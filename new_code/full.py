@@ -56,7 +56,7 @@ def main():
     image_solution = reconstruct_pil(pixel_solution, puzzle.pieces, dimension)
 
     plt.imsave(cfg.get_VIS_path(), image_solution)  # save final image in solution folder
-    plt.imsave("finim.png", image_solution)   # check
+    # plt.imsave("finim.png", image_solution)   # check
 
 if __name__ == '__main__':
 

@@ -35,7 +35,7 @@ def main():
     # dimension = (d1, d2)
    
     image_solution = reconstruct_pil(pixel_solution, puzzle.pieces) #, dimension)
-    plt.imsave(cfg.get_VIS_path(), image_solution)  # save final image in solution folder
+    plt.imsave(cfg.get_VIS_path(add_as_suffix=params['aggregation']['method']), image_solution)  # save final image in solution folder
 
 
 if __name__ == '__main__':

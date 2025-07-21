@@ -53,7 +53,7 @@ class Configuration:
         self.ground_truth_filename = 'ground_truth.json'
         self.puzzle_info_filename = 'puzzle_info.json'
         #####
-        self.VIS_name = 'final_reconstruction.png'
+        self.VIS_name = 'final_reconstruction'
         #####
         self.RM_name = 'RM.npy'
         self.RM_input_parameters_path = 'RM_input_params.yaml'
@@ -134,10 +134,12 @@ class Configuration:
     def get_current_experiments_folder(self):
         return self.current_experiment_folder
         
-    ### NEW ###
-    def get_VIS_path(self):
-        return os.path.join(self.current_experiment_folder, self.VIS_name)
-    ###
+    def get_VIS_path(self, image_format:str='.png', add_as_suffix:str=""):
+        if len(add_as_suffix) > 0:
+            vis_name = f"{self.VIS_name}_{add_as_suffix}.{image_format}"
+        else:
+            vis_name = f"{self.VIS_name}.{image_format}"
+        return os.path.join(self.current_experiment_folder, vis_name)
 
     def get_RM_path(self):
         return os.path.join(self.current_experiment_folder, self.RM_name)
