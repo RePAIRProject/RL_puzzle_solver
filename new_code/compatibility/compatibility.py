@@ -540,6 +540,8 @@ class CompatibilityMatrixModule:
         model = ViTForImageClassification.from_pretrained(PAD_params['trained_model_folder'])
         processor = AutoImageProcessor.from_pretrained(
             os.path.join(PAD_params['trained_model_folder'], "config.json"),
+            do_center_crop=PAD_params['do_center_crop'], 
+            crop_size={"height": PAD_params['crop_height'], "width": PAD_params['crop_width']},
             use_fast=PAD_params['use_fast'],
             trust_remote_code=True  # Required for local models
         )
@@ -551,7 +553,7 @@ class CompatibilityMatrixModule:
                         print(f'computing PAD CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
                     RM_ij = self.RM_dict['pairwise_alignment_discriminator'][:, :, :, j, i]    
                     if np.sum(RM_ij > 0) > 0:
-                        CM_pad[:, :, :, j, i] = self._compute_pairwise_discriminator_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=model, processor=processor)
+                        CM_pad[:, :, :, j, i] = self._compute_pairwise_discriminator_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=model, processor=processor, PAD_params=PAD_params)
         
                     # import matplotlib.pyplot as plt 
                     # plt.subplot(131); plt.imshow(self.puzzle.pieces[i].data.image)
@@ -564,16 +566,16 @@ class CompatibilityMatrixModule:
         
         return CM_pad
 
-    def _compute_pairwise_discriminator_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, model: ViTForImageClassification, processor: AutoImageProcessor):
+    def _compute_pairwise_discriminator_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, model: ViTForImageClassification, processor: AutoImageProcessor, PAD_params:dict):
         """ 
         It computes SDF-based cost matrix between piece_i and piece_j
         """
         CM_ij = np.zeros_like(RM_ij)
         ids_to_score = np.where(RM_ij > 0)
-
-        for x_idx, y_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+        import matplotlib.pyplot as plt 
+        for y_idx, x_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
             piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
-            xj, yj = self.grid.xy_values[x_idx, y_idx]
+            yj, xj = self.grid.xy_values[y_idx, x_idx]
             thetaj = self.grid.theta_values[theta_idx]
             piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
 
@@ -586,26 +588,44 @@ class CompatibilityMatrixModule:
             # most likely we can use some post-processing on the scores
             pred_score = outputs['logits']  # (it has 2 values, one for each `class`)
             pred_class = torch.argmax(pred_score).item() 
-            if pred_score[0][1].item() > 2:
-                cmp_score = pred_score[0][1].item()
-            elif pred_score[0][0].item() > 1.5:
-                cmp_score = -1    
+            if PAD_params['use_thresh'] == True:
+                if pred_score[0][1].item() > PAD_params['thresholds']['positive']:
+                    cmp_score = pred_score[0][1].item()
+                elif pred_score[0][0].item() > PAD_params['thresholds']['negative']:
+                    cmp_score = -1    
+                else:
+                    cmp_score = 0
             else:
-                cmp_score = 0
+                cmp_score = pred_score[0][1].item() if pred_class == 1 else -1*pred_score[0][0].item()
             CM_ij[x_idx, y_idx, theta_idx] = cmp_score
+            # if pred_class == 0:
+            #     CM_ij[x_idx, y_idx, theta_idx] *= -1
             
-            # if pred_class > -1:
-            #     proc_img = inputs['pixel_values'].squeeze(0).permute(1, 2, 0)
-            #     import matplotlib.pyplot as plt 
-            #     plt.imshow(proc_img)
-            #     plt.title(f"wrong: {pred_score[0][0].item()}\ncorrect: {pred_score[0][1].item()}")
-            #     plt.show()
-            #     breakpoint()
+            # # if CM_ij[x_idx, y_idx, theta_idx] > -1:
+            # # if pred_score[0][1] > -1:
+            # proc_img = inputs['pixel_values'].squeeze(0).permute(1, 2, 0)
+            # plt.imshow(proc_img)
+            # plt.title(f"xj:{xj}, yj:{yj}, center:{self.grid.canvas_center}\nwrong: {pred_score[0][0].item():.2f},correct: {pred_score[0][1].item():.2f}")
+            # plt.show()
+            # # breakpoint()
 
-
-        CM_ij /= np.max(CM_ij)
+        # # import matplotlib.pyplot as plt 
+        # plt.imshow(CM_ij)
+        # plt.show()
+        # breakpoint()
+        if np.max(CM_ij) > 0:
+            CM_ij /= np.max(CM_ij)
+        else:
+            values = np.sort(np.unique(CM_ij))[::-1]
+            CM_ij[CM_ij<0] -= values[PAD_params['push_k_values']]
+        # plt.imshow(CM_ij)
+        # plt.show()
+        # breakpoint()
         # cut values
-        CM_ij[CM_ij < 0.5] = 0
+        CM_ij[CM_ij < PAD_params['cutoff_value']] = 0
+        # plt.imshow(CM_ij)
+        # plt.show()
+        # breakpoint()
         return CM_ij
 
 

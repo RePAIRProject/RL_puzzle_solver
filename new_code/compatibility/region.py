@@ -281,8 +281,16 @@ class RegionMatrixModule:
             resized_shape = np.array(Image.fromarray(thr_reg_map_comp_range).resize((self.RM_size[0], self.RM_size[1]), Image.Resampling.NEAREST))
             RM_ij[:,:,theta_idx] = (resized_shape.astype(np.int32) - 1)
 
+            # # write a nice visualization of the "maps" defined above
+            # plt.subplot(231); plt.imshow(piece_i_on_canvas.image)
+            # plt.subplot(232); plt.imshow(piece_j_on_canvas.image)
+            # plt.subplot(233); plt.imshow(RM_ij[:,:,theta_idx])
+            # plt.show()
+            # breakpoint()
+
         return RM_ij
 
+    
     ###############################################################
     #                                                             #
     #  ███╗   ███╗ ██████╗ ████████╗██╗██╗   ██╗███████╗███████╗  #
@@ -328,7 +336,7 @@ class RegionMatrixModule:
                 motif_j_mask = self.dilate(motif_j_mask.astype(np.uint8), width=np.floor(1 * self.grid.xy_step).astype(int))
                 # if there are some values
                 if np.sum(motif_i_mask) > 0 and np.sum(motif_j_mask) > 0:
-                    RM_motives_motives[:, :, motif_class] = cv2.filter2D(motif_i_mask, -1, motif_j_mask)
+                                           RM_motives_motives[:, :, motif_class] = cv2.filter2D(motif_i_mask, -1, motif_j_mask)
                 #mask_i = dilate(mask_i.astype(np.uint8), width=np.floor(1 * ppars.xy_step).astype(int))
                 if np.sum(motif_i_mask) > 0:
                     poly_j_vs_motif_i = cv2.filter2D(piece_j_on_canvas.mask, -1, motif_i_mask) 

@@ -22,6 +22,11 @@ def main():
     cfg = Configuration() # this contains all IO operations plus the folder structure
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
 
+    print("*" * 60)
+    print(" Working on puzzle", cfg.get_puzzle_name())
+    print("*" * 60)
+
+
     puzzle = Puzzle()
     puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)
 

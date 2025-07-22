@@ -134,7 +134,7 @@ class Configuration:
     def get_current_experiments_folder(self):
         return self.current_experiment_folder
         
-    def get_VIS_path(self, image_format:str='.png', add_as_suffix:str=""):
+    def get_VIS_path(self, image_format:str='png', add_as_suffix:str=""):
         if len(add_as_suffix) > 0:
             vis_name = f"{self.VIS_name}_{add_as_suffix}.{image_format}"
         else:
