@@ -14,7 +14,7 @@ from compatibility.aggregation import AggregationModule
 from solver.solver import SolverModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
-from utils.visualization_utils import reconstruct, reconstruct_pil, crop_to_content, get_path_to_save_image
+from utils.visualization_utils import reconstruct, reconstruct_pil, crop_to_content
 
 
 def main():

@@ -553,8 +553,24 @@ class CompatibilityMatrixModule:
                         print(f'computing PAD CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
                     RM_ij = self.RM_dict['pairwise_alignment_discriminator'][:, :, :, j, i]    
                     if np.sum(RM_ij > 0) > 0:
-                        CM_pad[:, :, :, j, i] = self._compute_pairwise_discriminator_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=model, processor=processor, PAD_params=PAD_params)
-        
+                        if PAD_params['use_batch'] == True:
+                            CM_pad[:, :, :, j, i] = self._batch_compute_pairwise_discriminator_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=model, processor=processor, PAD_params=PAD_params)
+                        else:
+                            CM_pad[:, :, :, j, i] = self._compute_pairwise_discriminator_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=model, processor=processor, PAD_params=PAD_params)
+                        
+                            
+                        # import time 
+                        # time2 = time.time()
+                        # CM_batch = self._batch_compute_pairwise_discriminator_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=model, processor=processor, PAD_params=PAD_params)
+                        # time_passed = time.time() - time2 
+                        # print(f"CM computation using batch took {time_passed} seconds")
+                        # time1 = time.time()
+                        # CM_classic = self._compute_pairwise_discriminator_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=model, processor=processor, PAD_params=PAD_params)
+                        # time_passed = time.time() - time1 
+                        # print(f"CM computation took {time_passed} seconds")
+                        # breakpoint()
+                        # print(f"CM_batch == CM: {CM_batch == CM}")
+                        
                     # import matplotlib.pyplot as plt 
                     # plt.subplot(131); plt.imshow(self.puzzle.pieces[i].data.image)
                     # plt.subplot(132); plt.imshow(self.puzzle.pieces[j].data.image)
@@ -566,19 +582,84 @@ class CompatibilityMatrixModule:
         
         return CM_pad
 
+    def _batch_compute_pairwise_discriminator_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, model: ViTForImageClassification, processor: AutoImageProcessor, PAD_params:dict):
+        """ 
+        It computes SDF-based cost matrix between piece_i and piece_j by loading all "candidate" images on a batch and 
+        feeding it to the model. The *batch* version is useful for powerful GPUs
+        """
+        CM_ij = np.zeros_like(RM_ij)
+        ids_to_score = np.where(RM_ij > 0)
+        import matplotlib.pyplot as plt 
+        images = []
+        for y_idx, x_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+            piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
+            yj, xj = self.grid.xy_values[y_idx, x_idx]
+            thetaj = self.grid.theta_values[theta_idx]
+            piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+            
+            img_to_discriminate_mpl = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=False)
+            img_to_discriminate_PIL = Image.fromarray(np.uint8(img_to_discriminate_mpl * 255))
+            img_to_discriminate_PIL = img_to_discriminate_PIL.convert('RGB')
+            # add image to images
+            images.append(img_to_discriminate_PIL)
+        
+        # process all images at once
+        inputs = processor(images=images, return_tensors="pt")
+        with torch.no_grad():
+            outputs = model(**inputs, output_attentions=False)
+
+        # fill the matrix 
+        pred_scores = outputs['logits']  # (it has 2 values, one for each `class`)
+        for pred_score, y_idx, x_idx, theta_idx in zip(pred_scores, ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+            pred_class = torch.argmax(pred_score).item() 
+            if PAD_params['use_thresh'] == True:
+                if pred_score[1].item() > PAD_params['thresholds']['positive']:
+                    cmp_score = pred_score[0][1].item()
+                elif pred_score[0].item() > PAD_params['thresholds']['negative']:
+                    cmp_score = -1    
+                else:
+                    cmp_score = 0
+            else:
+                cmp_score = pred_score[1].item() if pred_class == 1 else -1*pred_score[0].item()
+            
+            CM_ij[x_idx, y_idx, theta_idx] = cmp_score
+        
+        # import matplotlib.pyplot as plt 
+        # plt.subplot(131)
+        # plt.imshow(CM_ij)
+        # plt.title("CM raw")
+        # CM post processing
+        if np.max(CM_ij) > 0:
+            CM_ij /= np.max(CM_ij)
+        else:
+            values = np.sort(np.unique(CM_ij))[::-1]
+            CM_ij[CM_ij<0] -= values[PAD_params['push_k_values']]
+        # plt.subplot(132)
+        # plt.title("CM after pushing")
+        # plt.imshow(CM_ij)
+        # cut values
+        CM_ij[CM_ij < PAD_params['cutoff_value']] = 0
+        # plt.subplot(133)
+        # # plt.imshow(CM_ij)
+        # plt.title("CM final")
+        # plt.imshow(CM_ij)
+        # plt.show()
+        # breakpoint()
+        return CM_ij
+
     def _compute_pairwise_discriminator_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, model: ViTForImageClassification, processor: AutoImageProcessor, PAD_params:dict):
         """ 
         It computes SDF-based cost matrix between piece_i and piece_j
         """
         CM_ij = np.zeros_like(RM_ij)
         ids_to_score = np.where(RM_ij > 0)
-        import matplotlib.pyplot as plt 
+        # import matplotlib.pyplot as plt 
         for y_idx, x_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
             piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
             yj, xj = self.grid.xy_values[y_idx, x_idx]
             thetaj = self.grid.theta_values[theta_idx]
             piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
-
+            
             img_to_discriminate_mpl = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=False)
             img_to_discriminate_PIL = Image.fromarray(np.uint8(img_to_discriminate_mpl * 255))
             img_to_discriminate_PIL = img_to_discriminate_PIL.convert('RGB')
@@ -603,14 +684,17 @@ class CompatibilityMatrixModule:
             
             # # if CM_ij[x_idx, y_idx, theta_idx] > -1:
             # # if pred_score[0][1] > -1:
-            # proc_img = inputs['pixel_values'].squeeze(0).permute(1, 2, 0)
+            proc_img = inputs['pixel_values'].squeeze(0).permute(1, 2, 0)
+            # import matplotlib.pyplot as plt 
             # plt.imshow(proc_img)
             # plt.title(f"xj:{xj}, yj:{yj}, center:{self.grid.canvas_center}\nwrong: {pred_score[0][0].item():.2f},correct: {pred_score[0][1].item():.2f}")
             # plt.show()
-            # # breakpoint()
+            # breakpoint()
 
         # # import matplotlib.pyplot as plt 
+        # plt.subplot(131)
         # plt.imshow(CM_ij)
+        # plt.title("CM raw")
         # plt.show()
         # breakpoint()
         if np.max(CM_ij) > 0:
@@ -618,12 +702,17 @@ class CompatibilityMatrixModule:
         else:
             values = np.sort(np.unique(CM_ij))[::-1]
             CM_ij[CM_ij<0] -= values[PAD_params['push_k_values']]
+        # plt.subplot(132)
+        # plt.title("CM after pushing")
         # plt.imshow(CM_ij)
-        # plt.show()
-        # breakpoint()
+
         # cut values
         CM_ij[CM_ij < PAD_params['cutoff_value']] = 0
+        # plt.subplot(133)
+        # # plt.imshow(CM_ij)
+        # plt.title("CM final")
         # plt.imshow(CM_ij)
+
         # plt.show()
         # breakpoint()
         return CM_ij

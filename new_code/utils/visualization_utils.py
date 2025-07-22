@@ -195,7 +195,19 @@ def crop_to_content(image:np.ndarray, padding:int=1, return_vals:bool=False, max
     return cropped_image
 
 ##############################
-# SAVE
-def get_path_to_save_image(self):
-    image_path = self.cfg.get_VIS_path()
-    return image_path
+# # SAVE
+# def get_path_to_save_image(self):
+#     image_path = self.cfg.get_VIS_path()
+#     return image_path
+
+
+def build_suffix(params:dict):
+    suffix_params = params['solver']['solution']['visualization']['in_the_suffix']
+    suffix_str = ''
+    for k,v in suffix_params.items():
+        if v == True:
+            if k == 'anchor_index':
+                suffix_str += f"_anchor_{params['solver']['anchor_index']}"
+            elif k == 'agg_method':
+                suffix_str += f"_anchor_{params['aggregation']['method']}"
+    return suffix_str

@@ -14,13 +14,13 @@ from compatibility.aggregation import AggregationModule
 from solver.solver import SolverModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
-from utils.visualization_utils import reconstruct_pil
+from utils.visualization_utils import reconstruct_pil, build_suffix
 
 def main():
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
-    cfg.set_puzzle_single_run_random_folder_name('exp_nqnefd')
+    cfg.set_puzzle_single_run_random_folder_name('exp_dnbfrd')
 
     # Load pieces
     puzzle = Puzzle()
@@ -35,7 +35,12 @@ def main():
     # dimension = (d1, d2)
    
     image_solution = reconstruct_pil(pixel_solution, puzzle.pieces) #, dimension)
-    plt.imsave(cfg.get_VIS_path(add_as_suffix=params['aggregation']['method']), image_solution)  # save final image in solution folder
+    if params['solver']['solution']['visualization']['add_suffix'] == True:
+        suffix = build_suffix(params)
+        saving_path = cfg.get_VIS_path(add_as_suffix=suffix)
+    else:
+        saving_path = cfg.get_VIS_path()
+    plt.imsave(saving_path, image_solution)  # save final image in solution folder
 
 
 if __name__ == '__main__':
