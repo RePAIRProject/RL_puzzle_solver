@@ -6,7 +6,7 @@ import os
 import yaml 
 import random, string
 from io import TextIOWrapper
-
+import natsort
 
 
 ##########################################
@@ -99,6 +99,12 @@ class Configuration:
         }
         return subfolders
      
+    def get_puzzle_pieces_filenames(self, sorted=True):
+        filenames = [filename[:-4] for filename in os.listdir(self.get_puzzle_images_subfolder())]
+        if sorted == True:
+            filenames = natsort.natsorted(filenames)
+        return filenames
+
     def get_puzzle_images_subfolder(self):
         return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.images_subfolder)
 

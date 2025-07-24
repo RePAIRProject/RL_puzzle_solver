@@ -35,16 +35,9 @@ class SolverModule:
 
     def __init__(self, params: dict, cfg: Configuration):
 
-
-        # self.pieces = pcs_uts.load_pieces(puzzle_name=puzzle_name)
-        # if use_feats == True:
-        #     self.pieces = fts_uts.load_features(pieces=self.pieces, puzzle_name=puzzle_name)
         self.params = params
         # here we need to load stuff from the yaml file     
         self.cfg = cfg #Configuration(puzzle.name) 
-        # self.exp_folder is already set when we create the object
-        # self.exp_folder = self.cfg.new_puzzle_single_run_random_folder_name()
-
         self.solver_params = self.params['solver']
         self.T_first = self.solver_params['T_first']
         self.T_next = self.solver_params['T_next']
@@ -117,18 +110,6 @@ class SolverModule:
         else:
             raise ValueError(f'Unknown method {grid_method}')
         
-
-        
-
-        # # print(p_initial.shape)
-        # solver_visualization_folder = os.path.join(puzzle_root_folder,
-        #                                         f'{fnames.solution_folder_name}_anchor{anc}_{cmp_name}_with{num_rot}rot_{it_nums}_gt{args.use_GT}_k{args.k}',
-        #                                         'phase_frames')
-        # os.makedirs(solver_visualization_folder, exist_ok=True)
-
-        # save_each_phase = True
-        # saving_stuff = (anc, pieces, pieces_files, pieces_folder, ppars, solver_visualization_folder)
-
 
     def solve(self, verbose:int=1):
         time_start = time.monotonic()
@@ -222,7 +203,15 @@ class SolverModule:
         self.solver_dict['solution'] = self.final_pixel_solution
 
         np.save(self.cfg.get_solution_path(), self.solver_dict)
-        np.savetxt(self.cfg.get_solution_as_csv_path(), self.final_pixel_solution, fmt='%d %d %d %d')
+        if self.params['solver']['solution']['include_probs'] == False:
+            self.final_pixel_solution = self.final_pixel_solution[:,:-1]
+        if self.params['solver']['solution']['include_names'] == True:
+            filenames = self.cfg.get_puzzle_pieces_filenames()
+            names_as_columns = np.expand_dims(np.transpose(filenames), axis=1)
+            pixel_solution_with_names = np.concatenate([names_as_columns, self.final_pixel_solution], axis=1)
+            np.savetxt(self.cfg.get_solution_as_csv_path(), pixel_solution_with_names, fmt='%s')
+        else:
+            np.savetxt(self.cfg.get_solution_as_csv_path(), self.final_pixel_solution, fmt='%d')
         # input parameters
         input_params_path = self.cfg.get_solution_input_parameters_path() 
         with open(input_params_path, 'w') as f:
