@@ -8,7 +8,7 @@ def main():
     
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
     # we are calculating CM based on RM previously computed, so we need to know `exp_name`
-    cfg.set_puzzle_single_run_random_folder_name('exp_eevaau')
+    cfg.set_puzzle_single_run_random_folder_name('exp_vfcjoi')
 
     puzzle = Puzzle()
     puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)

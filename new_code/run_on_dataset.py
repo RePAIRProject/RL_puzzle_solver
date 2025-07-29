@@ -15,7 +15,7 @@ from compatibility.aggregation import AggregationModule
 from solver.solver import SolverModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
-from utils.visualization_utils import reconstruct, reconstruct_pil, crop_to_content, get_path_to_save_image
+from utils.visualization_utils import reconstruct, reconstruct_pil, crop_to_content
 
 
 def main():
@@ -27,7 +27,7 @@ def main():
     sorted_puzzle_folders = natsort.natsorted(puzzle_folders)
     skip_done = params['skip_done']
 
-    for puzzle_folder in sorted_puzzle_folders:
+    for puzzle_folder in sorted_puzzle_folders[62:]:
 
         cfg = Configuration() # this contains all IO operations plus the folder structure
                 
@@ -53,6 +53,7 @@ def main():
 
             cmm.prepare() # creates grid, adjust/compute parameters and so on
             cmm.compute(verbose=params['verbosity'])
+            # breakpoint()
             # rmm.save_candidate_alignments_to_file(verbose=params['verbosity'])
             # cmm.save()
 

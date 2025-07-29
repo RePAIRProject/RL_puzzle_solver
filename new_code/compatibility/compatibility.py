@@ -10,6 +10,7 @@ from utils.puzzle_utils import Puzzle, PuzzlePiece
 from utils.visualization_utils import save_pairwise_matrix_visualization_to_file
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
 from compatibility.grid import PuzzleGrid, PieceOnCanvas
+import matplotlib.pyplot as plt
 
 import yaml
 import os
@@ -135,6 +136,7 @@ class CompatibilityMatrixModule:
         context_params['puzzle'] = {'puzzle_name': self.puzzle.name, 'num_pieces': self.puzzle.num_of_pieces, 'piece_size': self.piece_size}
         # values of the matrix  
         self.CM['__context'] = context_params
+        breakpoint()
         np.save(self.cfg.get_CM_path(), self.CM)
         if self.save_vis == True:
             for feature in self.features:
@@ -441,21 +443,39 @@ class CompatibilityMatrixModule:
     ##############################################
     def _compute_shape_based_CM(self, verbose: int = 0):
         """Loops over pairs of pieces - not symmetric yet"""
+        
+        #### TMP
+
+        if self.params['compatibility']['features']['shape']['save_best_images']['enabled'] == True:
+            with open(self.cfg.get_GT_path(), 'r') as gtjf:
+                self.gt = json.load(gtjf)
+        
         CM_shape = np.zeros(self.CM_size)
         if verbose > 1:
             print()
         for i in range(self.puzzle.num_of_pieces):
             for j in range(self.puzzle.num_of_pieces):
                 if i != j:
+                    # breakpoint()
+                # if i > j:
                     if verbose > 1:
                         print(f'computing shape-based CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
-                    RM_ij = self.RM_dict['shape'][:, :, :, j, i]    
-                    CM_shape[:, :, :, j, i] = self._compute_pairwise_shape_based_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij)
+                    RM_ij = self.RM_dict['shape'][:, :, :, j, i]  
+                    if self.params['compatibility']['features']['shape']['save_best_images']['enabled'] == True:  
+                        gt_piece_i = self.gt['pieces'][f'{i}']
+                        gt_piece_j = self.gt['pieces'][f'{j}']
+                        gt_pos_i = np.asarray([gt_piece_i['x'], gt_piece_i['y']]) #/ self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
+                        gt_pos_j = np.asarray([gt_piece_j['x'], gt_piece_j['y']]) #/self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
+                        gt_rel_j_vs_i = np.round((gt_pos_j - gt_pos_i)).astype(int) #* 1.5 # / self.grid.xy_step).astype(int)
+                        CM_shape[:, :, :, j, i] = self._compute_pairwise_shape_based_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, gt_rel_j_vs_i)
+                    else:
+                        CM_shape[:, :, :, j, i] = self._compute_pairwise_shape_based_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij)
+                    
         if verbose > 1:
             print()
         return CM_shape
 
-    def _compute_pairwise_shape_based_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray):
+    def _compute_pairwise_shape_based_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, gt_rel=None):
         """ 
         It computes SDF-based cost matrix between piece_i and piece_j
         """
@@ -465,6 +485,10 @@ class CompatibilityMatrixModule:
         dilation_size = self.params['compatibility']['features']['shape']['SDF_dilation']
         dil_kernel = np.ones((dilation_size, dilation_size))
         sigma = self.grid.p_hs
+        
+        if self.params['compatibility']['features']['shape']['save_best_images']['enabled'] == True:
+            os.makedirs(self.params['compatibility']['features']['shape']['save_best_images']['data_folder'], exist_ok=True)
+
         for x_idx, y_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
             piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
             xj, yj = self.grid.xy_values[x_idx, y_idx]
@@ -481,6 +505,31 @@ class CompatibilityMatrixModule:
             #
             CM_ij[x_idx, y_idx, theta_idx] = shape_score
 
+            if self.params['compatibility']['features']['shape']['save_best_images']['enabled'] == True:
+
+                if shape_score > self.params['compatibility']['features']['shape']['save_best_images']['score_threshold']:
+                    
+                    cm_rel_j_vs_i = [x_idx - self.grid.xy_values.shape[0]//2, y_idx - self.grid.xy_values.shape[1]//2]
+                    cm_rel_shift = np.asarray(cm_rel_j_vs_i) * self.grid.xy_step
+                    dist_from_correct = np.linalg.norm(cm_rel_shift - gt_rel)
+                    if dist_from_correct > self.params['compatibility']['features']['shape']['save_best_images']['dist2GT_threshold']:                    
+                        # best_pos_idx = np.argmax(CM_ij)
+                        # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
+                        # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
+                        # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=best_pos_xy[0], y=best_pos_xy[1], theta=thetaj, enabled_features=self.features_status)
+                        img_to_discriminate_mpl = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=False)
+                        filename_img = os.path.join(self.params['compatibility']['features']['shape']['save_best_images']['data_folder'], f"{self.puzzle.name}_{piece_i.name}_vs_{piece_j.name}_score{int(shape_score*100):d}.png")
+                        # breakpoint()
+                        plt.imsave(filename_img, np.clip(img_to_discriminate_mpl, 0, 1))
+                        # plt.imshow(img_to_discriminate_mpl)
+                        # plt.imshow(touching_region, cmap='gray', alpha=0.35)
+                        #print(f"best pos: {best_pos_xy}")
+                        
+                        #cm_rel_j_vs_i = [best_pos_xy_idx[0] - self.grid.xy_values.shape[0]//2, best_pos_xy_idx[1] - self.grid.xy_values.shape[1]//2]
+                        # print(f"estimated: {np.asarray(cm_rel_j_vs_i) * self.grid.xy_step}")
+                        # plt.title(f"score: {shape_score:.02f}")
+                        # plt.show()
+                        # breakpoint()
         return CM_ij
 
     def _compute_touching_region(self, piece_i_on_canvas: PieceOnCanvas, piece_j_on_canvas: PieceOnCanvas, dil_kernel: np.ndarray):
@@ -611,7 +660,9 @@ class CompatibilityMatrixModule:
         # fill the matrix 
         pred_scores = outputs['logits']  # (it has 2 values, one for each `class`)
         for pred_score, y_idx, x_idx, theta_idx in zip(pred_scores, ids_to_score[0], ids_to_score[1], ids_to_score[2]):
-            pred_class = torch.argmax(pred_score).item() 
+            # breakpoint()
+            pred_probs = torch.softmax(pred_score, dim=0)
+            pred_class = torch.argmax(pred_probs).item() 
             if PAD_params['use_thresh'] == True:
                 if pred_score[1].item() > PAD_params['thresholds']['positive']:
                     cmp_score = pred_score[0][1].item()
@@ -620,13 +671,24 @@ class CompatibilityMatrixModule:
                 else:
                     cmp_score = 0
             else:
-                cmp_score = pred_score[1].item() if pred_class == 1 else -1*pred_score[0].item()
+                cmp_score = pred_probs[1].item() if pred_class == 1 else -1*pred_probs[0].item()
             
             CM_ij[x_idx, y_idx, theta_idx] = cmp_score
         
         # import matplotlib.pyplot as plt 
-        # plt.subplot(131)
-        # plt.imshow(CM_ij)
+        # plt.subplot(231)
+        # plt.imshow(piece_i.data.image)
+        # plt.subplot(232)
+        # plt.imshow(piece_j.data.image)
+        
+        #print(f"best pos: {best_pos_xy}")
+                        
+        #cm_rel_j_vs_i = [best_pos_xy_idx[0] - self.grid.xy_values.shape[0]//2, best_pos_xy_idx[1] - self.grid.xy_values.shape[1]//2]
+        # print(f"estimated: {np.asarray(cm_rel_j_vs_i) * self.grid.xy_step}")
+        # plt.title(f"score: {shape_score:.02f}")
+        # plt.show()
+        # plt.subplot(234)
+        # plt.imshow(np.transpose(CM_ij[:,:,0]))
         # plt.title("CM raw")
         # CM post processing
         if np.max(CM_ij) > 0:
@@ -634,15 +696,24 @@ class CompatibilityMatrixModule:
         else:
             values = np.sort(np.unique(CM_ij))[::-1]
             CM_ij[CM_ij<0] -= values[PAD_params['push_k_values']]
-        # plt.subplot(132)
+        # plt.subplot(235)
         # plt.title("CM after pushing")
-        # plt.imshow(CM_ij)
+        # plt.imshow(np.transpose(CM_ij[:,:,0]))
         # cut values
         CM_ij[CM_ij < PAD_params['cutoff_value']] = 0
-        # plt.subplot(133)
+        # plt.subplot(236)
         # # plt.imshow(CM_ij)
         # plt.title("CM final")
-        # plt.imshow(CM_ij)
+        # plt.imshow(np.transpose(CM_ij[:,:,0]))
+
+        # plt.subplot(233)
+        # best_pos_idx = np.argmax(CM_ij)
+        # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
+        # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
+        # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=best_pos_xy[1], y=best_pos_xy[0], theta=thetaj, enabled_features=self.features_status)
+        # img_to_discriminate_mpl = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=False)
+        # plt.imshow(img_to_discriminate_mpl)
+
         # plt.show()
         # breakpoint()
         return CM_ij
