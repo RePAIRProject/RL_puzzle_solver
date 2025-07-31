@@ -19,15 +19,15 @@ from utils.visualization_utils import reconstruct_pil, build_suffix
 def main():
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
-    params = cfg.load('input_parameters.yaml')   # basic reading in this case
-    cfg.set_puzzle_single_run_random_folder_name('exp_dnbfrd')
+    params = cfg.load('input_parameters_local.yaml')   # basic reading in this case
+    cfg.set_puzzle_single_run_random_folder_name('exp_eevaau')
 
     # Load pieces
     puzzle = Puzzle()
     puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)
 
     # Read solution
-    pixel_solution = np.loadtxt(cfg.get_solution_as_csv_path())
+    pixel_solution = np.loadtxt(cfg.get_solution_as_csv_path(), dtype=str)
     
     # # Create image
     # d1 = sm.P.shape[0]*sm.grid_params['xy_step']
@@ -35,6 +35,7 @@ def main():
     # dimension = (d1, d2)
    
     image_solution = reconstruct_pil(pixel_solution, puzzle.pieces) #, dimension)
+    # breakpoint()  
     if params['solver']['solution']['visualization']['add_suffix'] == True:
         suffix = build_suffix(params)
         saving_path = cfg.get_VIS_path(add_as_suffix=suffix)

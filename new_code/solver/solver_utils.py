@@ -78,6 +78,66 @@ def initialize_p_from_GT(anc, puzzle_root_folder, all_pieces, pieces_incl, no_ro
     print("P:", p.shape)
     return p, init_pos, anchor_pos
 
+def initialize_p_with_occupancy(R, anchor_idx, pieces_occupancy_grid=None):
+    """
+    Initializing the P matrix and already removing the points occupied by the anchor piece
+    """
+    num_pieces = R.shape[3]
+    X = Y = round(R.shape[0] * np.sqrt(num_pieces))  # + no_patches)
+    Z = R.shape[2]
+
+    P = np.ones((Y, X, Z, num_pieces)) / (Y * X * Z)  # uniform
+    init_pieces_pos = np.zeros((num_pieces, 3)).astype(int)
+
+    # place anchored patch (center)
+    z0 = 0
+    y0 = round(Y / 2)
+    x0 = round(X / 2)
+    P[:, :, :, anchor_idx] = 0
+    P[y0, x0, :, :] = 0
+    P[y0, x0, z0, anchor_idx] = 1
+    # occupancy
+    anchor_pos = [y0, x0, z0]
+    # plt.subplot(121)
+    # plt.imshow(P[:,:,0,anchor_idx])
+    P = remove_occupied_grid_points(P, piece_pos=anchor_pos, piece_id=anchor_idx, piece_occ=pieces_occupancy_grid[anchor_idx,:,:])
+    
+    # for j in range(num_pieces):
+    #     plt.subplot(4,4,j+1)
+    #     plt.title(f"P matrix for piece {j}")
+    #     plt.imshow(P[:,:,0,j])
+    # plt.show()
+    init_pieces_pos[anchor_idx, :] = anchor_pos
+    anchor_pos = [y0, x0, z0]
+
+    return P, init_pieces_pos, anchor_pos
+
+
+def remove_occupied_grid_points(P: np.ndarray, piece_pos:np.array, piece_id:int, piece_occ: np.ndarray) -> np.ndarray:
+    """
+    When fixing a piece on the P matrix, we remove (=set to 0) the nearby points on the grid
+    """
+    # occ is on rotation 0
+    rotation_idx = piece_pos[2]
+    if rotation_idx > 0:
+        raise NotImplementedError("Need to fix the rotation step")
+        rot_step = 90 # ?
+        rotated_occ = scipy.ndimage.rotate(piece_occ, rotation_idx * rot_step, reshape=False, mode='constant', order=0)
+    else:
+        rotated_occ = piece_occ
+    po_hs = piece_occ.shape[0] // 2
+    # set to zero everywhere where the occ grid has 1
+    # for all of the other pieces 
+    # (so they cannot overlap with the anchor)
+    for p_id in range(P.shape[3]):
+        if p_id != piece_id:
+            P[piece_pos[0]-po_hs:piece_pos[0]+po_hs+1, piece_pos[0]-po_hs:piece_pos[0]+po_hs+1, rotation_idx, p_id] -= rotated_occ
+    P = np.clip(P, 0, 1)
+    # keep the center of the piece to 1
+    # P[piece_pos[0], piece_pos[1], piece_pos[2]] = 1
+
+    return P
+
 
 def initialize_p(R, anc, p_size_x=0, p_size_y=0, anc_pos=0):
     z0 = 0  # rotation for anchored patch

@@ -62,7 +62,7 @@ class PieceOnCanvas:
     It just creates a slightly modified version of the PuzzlePiece object placed on a canvas, 
     which is then used in the RM or CM calculation
     """
-    def __init__(self, piece: PuzzlePiece, grid: PuzzleGrid, x: float, y: float, theta: float, enabled_features: dict):
+    def __init__(self, piece: PuzzlePiece, grid: PuzzleGrid, x: float, y: float, theta: float, enabled_features: dict=None):
         
         # placement of the piece
         y_c0 = np.ceil(y-grid.p_hs).astype(int)
@@ -82,12 +82,13 @@ class PieceOnCanvas:
         self.image = np.zeros((grid.canvas_size, grid.canvas_size, piece.data.image.shape[2]))
         self.mask = np.zeros((grid.canvas_size, grid.canvas_size))
         # self.polygon = transform(piece.data.polygon, lambda f: f - piece.data.img_center)
-        if enabled_features['shape'] == True:
-            self.sdf = np.zeros((grid.canvas_size, grid.canvas_size)) + np.min(piece.features.sdf.data)
-        if enabled_features['lines'] == True:
-            self.lines_mask = np.zeros((grid.canvas_size, grid.canvas_size))
-        if enabled_features['motives'] == True:
-            self.motives_cube = np.zeros((grid.canvas_size, grid.canvas_size, piece.features.motives.num_of_classes))
+        if enabled_features is not None:
+            if enabled_features['shape'] == True:
+                self.sdf = np.zeros((grid.canvas_size, grid.canvas_size)) + np.min(piece.features.sdf.data)
+            if enabled_features['lines'] == True:
+                self.lines_mask = np.zeros((grid.canvas_size, grid.canvas_size))
+            if enabled_features['motives'] == True:
+                self.motives_cube = np.zeros((grid.canvas_size, grid.canvas_size, piece.features.motives.num_of_classes))
         # self.centroid = np.zeros((2,1))
 
         # each features should have their own abstract method
@@ -103,15 +104,16 @@ class PieceOnCanvas:
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, closing_kernel)
         polygon = shapely.affinity.rotate(piece.data.polygon, -theta, origin=tuple(piece.data.img_center))
         #piece_mask = (piece_mask > eps_mh).astype(np.uint8)
-        if enabled_features['shape'] == True:
-            sdf = scipy.ndimage.rotate(piece.features.sdf.data, theta, reshape=False, mode='constant', order=0)
-        if enabled_features['lines'] == True:
-            lines_mask = scipy.ndimage.rotate(piece.features.lines_mask, theta, reshape=False, mode='constant', order=0, prefilter=False)
-            lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_CLOSE, closing_kernel)
-        ## NEW MOTIF-BASED
-        if enabled_features['motives'] == True:
-            motives_cube = scipy.ndimage.rotate(piece.features.motives.motives_cube, theta, reshape=False, mode='constant', order=0)
-            
+        if enabled_features is not None:
+            if enabled_features['shape'] == True:
+                sdf = scipy.ndimage.rotate(piece.features.sdf.data, theta, reshape=False, mode='constant', order=0)
+            if enabled_features['lines'] == True:
+                lines_mask = scipy.ndimage.rotate(piece.features.lines_mask, theta, reshape=False, mode='constant', order=0, prefilter=False)
+                lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_CLOSE, closing_kernel)
+            ## NEW MOTIF-BASED
+            if enabled_features['motives'] == True:
+                motives_cube = scipy.ndimage.rotate(piece.features.motives.motives_cube, theta, reshape=False, mode='constant', order=0)
+                
         # PLACEMENT
         # then we place them into their canvas version
         if x_c0 < 0 or y_c0 < 0 or y_c1 > grid.canvas_size or x_c1 > grid.canvas_size:
@@ -125,12 +127,13 @@ class PieceOnCanvas:
         for ch in range(self.image.shape[2]):
             self.image[:,:,ch] *= (self.mask > 0)
         self.polygon = shapely.transform(polygon, lambda f: f + [x,y] - piece.data.img_center)
-        if enabled_features['shape'] == True:
-            self.sdf[y_c0:y_c1, x_c0:x_c1] = sdf
-        if enabled_features['lines'] == True:
-            self.lines_mask[y_c0:y_c1, x_c0:x_c1, :] = lines_mask
-        if enabled_features['motives'] == True:
-            self.motives_cube[y_c0:y_c1, x_c0:x_c1, :] = motives_cube
+        if enabled_features is not None:
+            if enabled_features['shape'] == True:
+                self.sdf[y_c0:y_c1, x_c0:x_c1] = sdf
+            if enabled_features['lines'] == True:
+                self.lines_mask[y_c0:y_c1, x_c0:x_c1, :] = lines_mask
+            if enabled_features['motives'] == True:
+                self.motives_cube[y_c0:y_c1, x_c0:x_c1, :] = motives_cube
         self.centroid = np.asarray([x, y])
 
     def blend_with(self, piece: "PieceOnCanvas", blend_mode:str='average', return_mask:bool=False):

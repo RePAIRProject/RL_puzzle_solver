@@ -6,9 +6,9 @@ import argparse
 def main(args):
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
-    params = cfg.load('input_parameters.yaml')   # basic reading in this case
+    params = cfg.load('input_parameters_local.yaml')   # basic reading in this case
     # we are aggregating CM previously computed, so we need to know `exp_name`
-    cfg.set_puzzle_single_run_random_folder_name('exp_jdhoig')
+    cfg.set_puzzle_single_run_random_folder_name('exp_kylbol')
 
     puzzle = Puzzle()
     puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)
