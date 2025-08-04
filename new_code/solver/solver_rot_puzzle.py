@@ -2,6 +2,49 @@ import numpy as np
 import scipy
 import cv2
 import warnings
+import matplotlib.pyplot as plt 
+from solver.solver_utils import remove_occupied_grid_points
+
+def fix_anchors_with_occ(P, num_anchors: int, threshold: float, pieces_occupancy_grid):
+
+    N = P.shape[-1]
+
+    grid_sol = extract_grid_sol_from_P(P)
+
+    if threshold <= 1:
+        threshold  = threshold * 100
+
+    anchor_mask = (grid_sol[:,-1:] > threshold).astype(int)
+
+    new_anc = np.array(grid_sol * anchor_mask)
+    num_anchors_new = np.sum(anchor_mask)
+
+    # if we have more anchors than before, we fix those, otherwise we keep running
+    if num_anchors_new > num_anchors:
+        num_anchors = num_anchors_new
+        # uniform distribution
+        P = np.ones_like(P) / (P.size/N)
+
+        for i in range(N):
+            # if new_anc[i, 0] != 0:
+            if anchor_mask[i, 0] == 1:
+                y, x, theta = new_anc[i, :3]
+
+                P[:, :, :, i] = 0
+                P[y, x, :, :] = 0
+                P[y, x, theta, i] = 1
+
+                P = remove_occupied_grid_points(P, piece_pos=[x, y, theta], piece_id=i, piece_occ=pieces_occupancy_grid[i,:,:])
+        
+        print(num_anchors_new)
+        for j in range(N):
+            plt.subplot(4,4,j+1)
+            plt.title(f"P matrix for piece {j}")
+            plt.imshow(P[:,:,0,j])
+        plt.show()
+        breakpoint()
+
+    return P, grid_sol, num_anchors_new 
 
 def fix_anchors(P, num_anchors: int, threshold: float):
 

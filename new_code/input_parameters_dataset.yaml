@@ -1,10 +1,10 @@
 ---  # yaml document beginning
 # comment syntax
 
-# data_folder: 
-# puzzle_name: puzzle_0000005_RP_group_5
+data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca'
+puzzle_name: 
 verbosity: 2
-# skip_done: True # for run_on_dataset
+skip_done: False
 
 preprocessing:
   piece_size: 251
@@ -15,12 +15,13 @@ features:
     extracted: No
     detection_method: deeplsd
   motif:
-    extracted: Yes
+    extracted: No
     detection_method: yolo-seg
 
 compatibility:
   save_visualization: 
-    enabled: No 
+    save_RM: Yes 
+    save_CM: Yes 
     cmap: RdYlGn
     img_format: jpg
     vmin: -1
@@ -29,13 +30,13 @@ compatibility:
     all_rotations: False
     save_every: 6
   grid: 
-    xy_step: 9
-    theta_step: 90
-    xy_num_points: 31
+    xy_step: 11
+    theta_step: 360
+    xy_num_points: 35
     theta_num_points: 1
   # region matrix calculation
   regions:
-    borders_dilation: 1
+    borders_dilation: 2
     borders_erosion: 1
     threshold_ovelrap_shapes: 
     # maybe here to distinguish RM features and CM features
@@ -43,11 +44,15 @@ compatibility:
   # actual compatibility score calculation
   features:
     # all features SHOULD have 'enabled': Yes/No as it is checked internally from cmm.check_features_status()
-    # and used to make the calculations
     shape: 
-      enabled: No
+      enabled: Yes
       sigma: 1 # ?
       SDF_dilation: 35 # TODO: check if it should be different from borders dilstion!
+      save_best_images: 
+        enabled: Yes 
+        score_threshold: 0.8
+        dist2GT_threshold: 15
+        data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca/PAD_shape_best_negatives'
     lines:
       enabled: No
       thr_coef: 0.13
@@ -71,23 +76,27 @@ compatibility:
       geometric_params:
         something: 1
     oracle:
-      enabled: Yes
-      # this is for the creation of images for pairwise "good" and "bad" alignments
+      enabled: No
+      create_pairwise_alignments_dataset: False
       pairwise_alignments_dataset:
-        enabled: No
-        data_folder: ''
-        padding: 5
         crop_images: True
-          
+        save_masks: False
+        padding: 5
+        save_true_alignment: False 
+        save_grid_alignment: False 
+        save_wrong_alignments: False 
+        wrong_alignments_num: 0
+        # pairwise_alignments_dataset_folder: '/home/palma/Datasets/RePAIR_pairwise' #
+        data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca/PAD_extra_negatives'
+
 aggregation:
   method: 'oracle'  
 
 solver:
-  T_first: 100
-  T_next: 100
-  T_max: 500
+  T_first: 100 #1000
+  T_next: 100 #500
+  T_max: 500 #3000
   no_rotations: True
-  PQ_mode: simple
   # TODO: switch to anchor ID
   anchor_index: -1 # TODO: null, None?
   # threshold
@@ -95,27 +104,10 @@ solver:
   p_precision: 10
   grid:
     # ['gt','auto','manual']
-    method: gt
+    method: auto
     # this is used only when method is set to 'manual'
     manual_params:
-       p_xy_size: [151,151]
-       
-  # how to save the solution
-  solution:
-
-    # if True, solution will be: 
-    # name1 x1 y1 z1 p1
-    # name2 x2 y2 z2 p2
-    # if False
-    # x1 y1 z1 p1
-    # x2 y2 z2 p2
-    include_names: True 
-
-    # if False, will remove the probabilities p
-    # and solution will be:
-    # name1 x1 y1 z1
-    # name2 x2 y2 z2
-    include_probs: True
+       p_xy_size: [191,191]
   
 
 

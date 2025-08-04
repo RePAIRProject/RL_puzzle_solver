@@ -1,17 +1,20 @@
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
-from compatibility.grid import PuzzleGrid
+from compatibility.grid import PuzzleGrid, PieceOnCanvas
 
-from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors
-from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT
+from utils.puzzle_utils import Puzzle, PuzzlePiece
+from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors_with_occ
+from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT, initialize_p_with_occupancy
 from utils.human_readable_duration import format_duration
 from utils.visualization_utils import reconstruct
 
+from typing import List
 import numpy as np
 import time
 import yaml
+import matplotlib.pyplot as plt
 
 
-class SolverModule:
+class SolverWithPiecesModule:
 
     """
     solver:
@@ -33,8 +36,9 @@ class SolverModule:
   
     """
 
-    def __init__(self, params: dict, cfg: Configuration):
+    def __init__(self, puzzle: Puzzle, params: dict, cfg: Configuration):
 
+        self.puzzle = puzzle
         self.params = params
         # here we need to load stuff from the yaml file     
         self.cfg = cfg #Configuration(puzzle.name) 
@@ -75,10 +79,16 @@ class SolverModule:
         assert self.R.ndim == 5, f"R should have 5 dimensions: expecting (x,y,theta,N,N), got R.shape = {R.shape}"
 
         # numper of pieces
-        N = self.R.shape[-1]
+        self.N = self.R.shape[-1]
         # number of rotations
         num_rot = self.R.shape[2]
 
+        # prepare their "occupancy grid" 
+        # this is a grid of the "space" that a piece occupies in the P matrix.
+        # for the moment we do not account rotation, it can be rotated when "placed"
+        # the general idea is that if we fix a piece in the center, the grid points which are very close
+        # are "occupied" by the piece itself, and they need to be zeroed in the P matrix
+        self.occupancy_grid_pieces = self._compute_occupancy_grid()            
 
         # !!! Anchor number must be changed if some pieces were excluded
         if self.solver_params['anchor_index'] < 0:
@@ -90,7 +100,6 @@ class SolverModule:
 
 
         print(f"Using anchor the piece with id: {self.anchor_index}")
-
 
         grid_method = self.solver_params['grid']['method']
 
@@ -107,9 +116,51 @@ class SolverModule:
             raise NotImplementedError()
             self.P, self.init_pos, self.anchor_pos = initialize_p_from_GT(anc, puzzle_root_folder, all_pieces, pieces, num_rot)
             print(f'Using a grid of size {self.P.shape} points [gt]')
+        elif grid_method == 'occ':
+            self.P, self.init_pos, self.anchor_pos = initialize_p_with_occupancy(self.R, self.anchor_index, self.occupancy_grid_pieces)
+            print(f'Using a grid of size {self.P.shape} points [auto with occupancy]')
         else:
             raise ValueError(f'Unknown method {grid_method}')
-        
+    
+    def _compute_occupancy_grid(self, show_results:bool=False):
+            
+        occ_grid = np.zeros((self.N, self.grid_params['xy_num_points'], self.grid_params['xy_num_points']))
+        grid = PuzzleGrid(self.grid_params, self.params['preprocessing']['piece_size'])
+        xy = grid.xy_values
+        for n, piece in enumerate(self.puzzle.pieces):
+            piece_on_canvas = PieceOnCanvas( piece=piece, grid=grid, x=grid.canvas_center, y=grid.canvas_center, theta=0)
+            
+            if show_results == True:
+                plt.subplot(131)
+                plt.imshow(piece_on_canvas.image)
+                plt.subplot(132)
+                plt.imshow(piece_on_canvas.image)
+                green_points = []
+                red_points = []
+
+            for j in range(xy.shape[0]):
+                for k in range(xy.shape[1]):
+                    
+                    if piece_on_canvas.mask[xy[k, j, 0], xy[k, j, 1]] > 0:
+                        occ_grid[n, k, j] = 1
+                        if show_results == True:
+                            green_points.append([xy[k, j, 0], xy[k, j, 1]])
+                    else:
+                        occ_grid[n, k, j] = 0
+                        if show_results == True:
+                            red_points.append([xy[k, j, 0], xy[k, j, 1]])
+
+            if show_results == True:
+                green_points = np.asarray(green_points)
+                red_points = np.asarray(red_points)
+                plt.scatter(green_points[:,1], green_points[:,0], color='green') 
+                plt.scatter(red_points[:,1], red_points[:,0], color='red') 
+                plt.subplot(122)
+                plt.imshow(occ_grid[n,:,:])
+                plt.show()
+                breakpoint()
+
+        return occ_grid
 
     def solve(self, verbose:int=1):
         time_start = time.monotonic()
@@ -125,7 +176,6 @@ class SolverModule:
         self.final_grid_solution = self.grid_solutions[-1]
 
         self.final_pixel_solution = compute_pixel_solution(self.final_grid_solution, self.grid_params['xy_step'], self.grid_params['theta_step'])
-
 
         print("-" * 50)
         time_in_seconds = time.monotonic() - time_start
@@ -152,7 +202,7 @@ class SolverModule:
 
             self.P, payoff, eps = solver_rot_puzzle(self.R, self.P, T, self.PQ_mode, verbosity=verbosity, decimals=decimals)
 
-            self.P, sol, num_anchors = fix_anchors(self.P, num_anchors, self.threshold)
+            self.P, sol, num_anchors = fix_anchors_with_occ(self.P, num_anchors, self.threshold, self.occupancy_grid_pieces)
 
             # if save_each_phase == True:
             #     save_vis_puzzle(sol, P, saving_stuff, iter, show_borders=False)
@@ -176,6 +226,15 @@ class SolverModule:
         #     print("#" * 70)
         #     print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
         # all_sol.append(fin_sol)
+    
+    def _ensemble_solver(self, verbosity:int=1, decimals:int=8, save_each_phase:bool=False, saving_stuff:List=[]):
+        """
+        Solves the puzzle iteratively, launching one RL process per piece, using all of them as anchor.
+        Then it fuses them (based on `consensus`) and fix 
+        """
+        iter = 0
+        eps = np.inf 
+        status = 0
         
     
     def save(self):

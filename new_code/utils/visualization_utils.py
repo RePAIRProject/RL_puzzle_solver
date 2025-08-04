@@ -129,10 +129,13 @@ def reconstruct_pil(
     canvas = np.zeros(dimension + (4,), dtype=np.uint8) # (dimension[0], dimension[1], 4)
     canvas = Image.fromarray(canvas, mode="RGBA")
 
+    offset = 0
+    if solution.shape[1] > 4:
+        offset = 1
     for i in range(len(pieces)):
         # TODO: confidence should be optional
         #x, y, theta, confidence = pixel_solution[i]
-        x, y, theta, confidence = map(float, solution[i])
+        x, y, theta, confidence = map(float, solution[i][offset:])
 
         if confidence <= confidence_threshold:
             continue
@@ -194,13 +197,6 @@ def crop_to_content(image:np.ndarray, padding:int=1, return_vals:bool=False, max
         return cropped_image, x0, x1, y0, y1
     return cropped_image
 
-##############################
-# # SAVE
-# def get_path_to_save_image(self):
-#     image_path = self.cfg.get_VIS_path()
-#     return image_path
-
-
 def build_suffix(params:dict):
     suffix_params = params['solver']['solution']['visualization']['in_the_suffix']
     suffix_str = ''
@@ -209,5 +205,7 @@ def build_suffix(params:dict):
             if k == 'anchor_index':
                 suffix_str += f"_anchor_{params['solver']['anchor_index']}"
             elif k == 'agg_method':
-                suffix_str += f"_anchor_{params['aggregation']['method']}"
+                suffix_str += f"_CMagg_{params['aggregation']['method']}"
+
+    suffix_str += '_occ'
     return suffix_str
