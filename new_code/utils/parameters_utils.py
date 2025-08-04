@@ -6,6 +6,7 @@ import os
 import yaml 
 import random, string
 from io import TextIOWrapper
+from datetime import datetime
 
 
 
@@ -65,6 +66,8 @@ class Configuration:
         self.solution_csv = 'solution.txt'
         self.solution_input_parameters_path = 'solution_input_params.yaml'
         self.solution_output_parameters_path = 'solution_output_params.yaml'
+        #####
+        self.timestamp_fmt = '%Y%m%d%H%M%S'
 
     def get_puzzle_name(self):
         return self.puzzle_name
@@ -121,7 +124,8 @@ class Configuration:
     	return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.puzzle_info_filename)
     	
     def new_puzzle_single_run_random_folder_name(self):
-        self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), f"exp_{self.randomword(6)}")
+        timestamp = datetime.now().strftime(self.timestamp_fmt)
+        self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), f"exp_{timestamp}_{self.randomword(6)}")
         os.makedirs(self.current_experiment_folder, exist_ok=True)
 
     def set_puzzle_single_run_random_folder_name(self, path: str):
