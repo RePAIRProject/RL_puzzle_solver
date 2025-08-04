@@ -70,6 +70,20 @@ compatibility:
       # geometric (use lines/curves? BGU?)
       geometric_params:
         something: 1
+    pairwise_alignment_discriminator:
+      enabled: Yes
+      trained_model_folder: /home/lucap/code/learning_pairwise_cmp/v4_fast_224/
+      use_fast: True 
+      use_batch: True 
+      do_center_crop: True
+      crop_height: 224
+      crop_width: 224
+      use_thresh: False
+      thresholds:
+        positive: 2
+        negative: 1.5
+      cutoff_value: 0.05
+      push_k_values: 3
     oracle:
       enabled: Yes
       # this is for the creation of images for pairwise "good" and "bad" alignments
