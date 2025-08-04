@@ -35,7 +35,8 @@ def compute_pixel_solution(grid_solution: np.ndarray, grid_xy_step : int, grid_t
     pixel_solution[:,2] = grid_solution[:,2] * grid_theta_step
     # leave the probabilities as they are
     pixel_solution[:,3] = grid_solution[:,3]
-
+    # SWAP y and x before returning as "pixel"
+    pixel_solution.T[[0, 1]] = pixel_solution.T[[1, 0]]
     return pixel_solution
 
 

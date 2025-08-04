@@ -23,11 +23,7 @@ def main():
     dimension = (d1, d2)
 
     image_solution = reconstruct_pil(pixel_solution, puzzle.pieces, dimension)
-    image_solution2 = reconstruct(pixel_solution, puzzle.pieces, dimension)
-    plt.subplot(121); plt.imshow(image_solution)
-    plt.subplot(122); plt.imshow(image_solution2)
-    plt.show()
-    breakpoint()
+
     if params['solver']['solution']['visualization']['add_suffix'] == True:
         suffix = build_suffix(params)
         saving_path = cfg.get_VIS_path(add_as_suffix=suffix)
