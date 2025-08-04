@@ -68,7 +68,8 @@ def main():
             sm.save()
 
             image_solution = reconstruct_pil(pixel_solution, puzzle.pieces)
-            plt.imsave(cfg.get_VIS_path(), image_solution)
+            plt.imsave(cfg.get_VIS_path(), image_solution)  # save final image in solution folder
+            plt.imsave("finim.png", image_solution)   # check
 
             print("Finished", puzzle_folder)
             del puzzle 

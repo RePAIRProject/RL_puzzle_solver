@@ -5,12 +5,12 @@ import os
 import cv2
 import numpy as np
 import matplotlib as mpl
-import matplotlib
-matplotlib.use('TkAgg')
+#import matplotlib
+#matplotlib.use('TkAgg')
 
 import matplotlib.pyplot as plt
 from PIL import Image
-from ultralytics import YOLOv10
+from ultralytics import YOLO
 import pdb
 import json
 from configs import folder_names as fnames
@@ -48,7 +48,8 @@ def main(args):
         #imgs_folder = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/pieces'
         #motifs_output = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/motif_OBB'
     else:
-        imgs_folder = os.path.join(args.images, 'pieces')
+        #imgs_folder = os.path.join(args.images, 'pieces')
+        imgs_folder = os.path.join(args.images, 'images')
 
     motifs_output = os.path.join(args.images, 'motifs_detection_BB')
     os.makedirs(motifs_output, exist_ok=True)
@@ -56,7 +57,7 @@ def main(args):
     indent_spaces = 3
 
     # Get the yolo model
-    yolo_bb_detector = YOLOv10(yolov10_model_path)
+    yolo_bb_detector = YOLO(yolov10_model_path)
 
     # Go through the images and extract features
     obb_colormap = mpl.colormaps['jet'].resampled(12)
@@ -129,3 +130,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args)
+

@@ -23,7 +23,8 @@ WIP:
 probably should just read the .yaml file, create a RegionMatrix object, call .compute and that's it
 most likely it will not be that easy  
 """
-from new_code.compatibility.region import RegionMatrixModule
+#from new_code.compatibility.region import RegionMatrixModule
+from compatibility.region import RegionMatrixModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
 
@@ -37,7 +38,8 @@ def main():
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
 
     puzzle = Puzzle()
-    puzzle.load(cfg.get_puzzle_name()) #, features=True)
+    #puzzle.load(cfg.get_puzzle_name()) #, features=True)
+    puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), load_features=True)  # , features=True)
 
     rmm = RegionMatrixModule(puzzle, params, cfg)  # it is redundant, we know 
     rmm.prepare() # creates grid, adjust/compute parameters and so on

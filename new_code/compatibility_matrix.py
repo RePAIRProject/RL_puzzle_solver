@@ -1,4 +1,5 @@
-from new_code.compatibility.compatibility import CompatibilityMatrixModule
+#from new_code.compatibility.compatibility import CompatibilityMatrixModule
+from compatibility.compatibility import CompatibilityMatrixModule
 from utils.puzzle_utils import Puzzle
 from utils.parameters_utils import Configuration
 import argparse
@@ -11,10 +12,11 @@ def main(args):
     cfg = Configuration() # this contains all IO operations plus the folder structure
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
     # cfg.load already sets the puzzle name internally! otherwise we need # cfg.set_puzzle_name(params['puzzle_name'])
-    cfg.set_puzzle_single_run_random_folder_name('exp_efpiri')
+    cfg.set_puzzle_single_run_random_folder_name('exp_test_pipline')
 
     puzzle = Puzzle()
-    puzzle.load(cfg.get_puzzle_name()) #, features=True)
+    #puzzle.load(cfg.get_puzzle_name()) #, features=True)
+    puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), load_features=False)  # , features=True)
 
     cmm = CompatibilityMatrixModule(puzzle, params, cfg) 
 

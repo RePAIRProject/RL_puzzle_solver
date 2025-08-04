@@ -158,16 +158,16 @@ class CompatibilityMatrixModule:
             self.puzzle_info = json.load(pijf)
         # gt_data = pd.read_csv(os.path.join(oracle_info['gt_root_folder'], f"{oracle_info['gt_puzzle_name']}.{oracle_info['gt_puzzle_name_extension']}"))
 
-        if self.oracle_params['pairwise_alignments_dataset']['enabled'] == True:
-            print("\nCreating pairwise alignment datasets..\n\n")
-            self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'] = os.path.join(self.cfg.data_folder, self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'correct')  #, oracle_info['gt_puzzle_name']) 
-            os.makedirs(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], exist_ok=True)
-            self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'] = os.path.join(self.cfg.data_folder, self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'wrong')      #, oracle_info['gt_puzzle_name']) 
-            os.makedirs(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], exist_ok=True)
-            self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'] = os.path.join(self.cfg.data_folder, self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'correct_masks')  #, oracle_info['gt_puzzle_name']) 
-            os.makedirs(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], exist_ok=True)
-            self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'] = os.path.join(self.cfg.data_folder, self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'wrong_masks')      #, oracle_info['gt_puzzle_name']) 
-            os.makedirs(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'], exist_ok=True)
+        # if self.oracle_params['pairwise_alignments_dataset']['enabled'] == True:
+        #     print("\nCreating pairwise alignment datasets..\n\n")
+        #     self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'] = os.path.join(self.cfg.data_folder, self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'correct')  #, oracle_info['gt_puzzle_name'])
+        #     os.makedirs(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], exist_ok=True)
+        #     self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'] = os.path.join(self.cfg.data_folder, self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'wrong')      #, oracle_info['gt_puzzle_name'])
+        #     os.makedirs(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], exist_ok=True)
+        #     self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'] = os.path.join(self.cfg.data_folder, self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'correct_masks')  #, oracle_info['gt_puzzle_name'])
+        #     os.makedirs(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], exist_ok=True)
+        #     self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'] = os.path.join(self.cfg.data_folder, self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'wrong_masks')      #, oracle_info['gt_puzzle_name'])
+        #     os.makedirs(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'], exist_ok=True)
 
         CM_oracle = np.zeros(self.CM_size)
         if verbose > 1:

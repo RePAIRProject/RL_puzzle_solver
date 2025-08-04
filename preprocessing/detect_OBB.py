@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import matplotlib as mpl
 import matplotlib
-matplotlib.use('TkAgg')
+#matplotlib.use('TkAgg')
 
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -54,7 +54,8 @@ def main(args):
         #motifs_output = '/Users/Marina/PycharmProjects/RL_puzzle_solver/output/repair/repair_g28/motif_OBB'
         motifs_output = f'/home/marina/PycharmProjects/RL_puzzle_solver/output/RePair_new/RPobj_g{obj_num}_o{obj_num:04d}_gt_rot'
     else:
-        imgs_folder = os.path.join(args.images, 'pieces')
+        #imgs_folder = os.path.join(args.images, 'pieces')
+        imgs_folder = os.path.join(args.images, 'images')
         motifs_output = args.images
 
     motifs_output = os.path.join(motifs_output, 'motifs_detection_OBB')
