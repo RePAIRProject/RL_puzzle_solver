@@ -93,12 +93,13 @@ def reconstruct(pixel_solution,
 
         if confidence <= confidence_threshold:
             continue
-
+        
         piece_img = pieces[i].data.image
         if theta != 0:
             piece_img = scipy.ndimage.rotate(piece_img, theta, reshape=False, mode='constant', order=0)
 
-        image[x - hps_x:x + hps_x + offset, y - hps_y:y + hps_y + offset,:] += piece_img
+        #image[x - hps_x:x + hps_x + offset, y - hps_y:y + hps_y + offset, :] += piece_img
+        image[y - hps_y:y + hps_y + offset, x - hps_x:x + hps_x + offset, :] += piece_img
 
         # if show_borders == True:
         #         mask = (Im > 0.05).astype(np.uint8)
@@ -203,9 +204,9 @@ def build_suffix(params:dict):
     for k,v in suffix_params.items():
         if v == True:
             if k == 'anchor_index':
-                suffix_str += f"_anchor_{params['solver']['anchor_index']}"
+                suffix_str += f"__anchor_{params['solver']['anchor_index']}"
             elif k == 'agg_method':
-                suffix_str += f"_CMagg_{params['aggregation']['method']}"
+                suffix_str += f"__CMagg_{params['aggregation']['method']}"
 
     suffix_str += '_occ'
     return suffix_str

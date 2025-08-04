@@ -637,6 +637,7 @@ class CompatibilityMatrixModule:
         feeding it to the model. The *batch* version is useful for powerful GPUs
         """
         CM_ij = np.zeros_like(RM_ij)
+        neg_region = RM_ij < 0
         ids_to_score = np.where(RM_ij > 0)
         import matplotlib.pyplot as plt 
         images = []
@@ -673,7 +674,7 @@ class CompatibilityMatrixModule:
             else:
                 cmp_score = pred_probs[1].item() if pred_class == 1 else -1*pred_probs[0].item()
             
-            CM_ij[x_idx, y_idx, theta_idx] = cmp_score
+            CM_ij[y_idx, x_idx, theta_idx] = cmp_score
         
         # import matplotlib.pyplot as plt 
         # plt.subplot(231)
@@ -705,7 +706,11 @@ class CompatibilityMatrixModule:
         # # plt.imshow(CM_ij)
         # plt.title("CM final")
         # plt.imshow(np.transpose(CM_ij[:,:,0]))
-
+        CM_ij -= neg_region
+        # plt.subplot(121); plt.imshow(RM_ij)
+        # plt.subplot(122); plt.imshow(CM_ij)
+        # plt.show()
+        # breakpoint()
         # plt.subplot(233)
         # best_pos_idx = np.argmax(CM_ij)
         # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
@@ -749,13 +754,13 @@ class CompatibilityMatrixModule:
                     cmp_score = 0
             else:
                 cmp_score = pred_score[0][1].item() if pred_class == 1 else -1*pred_score[0][0].item()
-            CM_ij[x_idx, y_idx, theta_idx] = cmp_score
+            CM_ij[y_idx, x_idx, theta_idx] = cmp_score
             # if pred_class == 0:
             #     CM_ij[x_idx, y_idx, theta_idx] *= -1
             
             # # if CM_ij[x_idx, y_idx, theta_idx] > -1:
             # # if pred_score[0][1] > -1:
-            proc_img = inputs['pixel_values'].squeeze(0).permute(1, 2, 0)
+            # proc_img = inputs['pixel_values'].squeeze(0).permute(1, 2, 0)
             # import matplotlib.pyplot as plt 
             # plt.imshow(proc_img)
             # plt.title(f"xj:{xj}, yj:{yj}, center:{self.grid.canvas_center}\nwrong: {pred_score[0][0].item():.2f},correct: {pred_score[0][1].item():.2f}")
@@ -783,7 +788,8 @@ class CompatibilityMatrixModule:
         # # plt.imshow(CM_ij)
         # plt.title("CM final")
         # plt.imshow(CM_ij)
-
+        neg_region = RM_ij < 0
+        CM_ij -= neg_region
         # plt.show()
         # breakpoint()
         return CM_ij

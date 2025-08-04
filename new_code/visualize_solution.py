@@ -20,7 +20,7 @@ def main():
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
-    cfg.set_puzzle_single_run_random_folder_name('exp_qlfaux')
+    cfg.set_puzzle_single_run_random_folder_name(params['exp_name'])
 
     # Load pieces
     puzzle = Puzzle()

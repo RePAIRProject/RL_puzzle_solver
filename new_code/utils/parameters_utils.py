@@ -7,7 +7,7 @@ import yaml
 import random, string
 from io import TextIOWrapper
 import natsort
-
+from datetime import datetime
 
 ##########################################
 #                                        #
@@ -65,7 +65,8 @@ class Configuration:
         self.solution_csv = 'solution.txt'
         self.solution_input_parameters_path = 'solution_input_params.yaml'
         self.solution_output_parameters_path = 'solution_output_params.yaml'
-
+        self.timestamp_fmt = '%Y%m%d%H%M%S'
+        
     def get_puzzle_name(self):
         return self.puzzle_name
 
@@ -127,7 +128,8 @@ class Configuration:
     	return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.puzzle_info_filename)
     	
     def new_puzzle_single_run_random_folder_name(self):
-        self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), f"exp_{self.randomword(6)}")
+        timestamp = datetime.now().strftime(self.timestamp_fmt)
+        self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), f"exp_{timestamp}_{self.randomword(6)}")
         os.makedirs(self.current_experiment_folder, exist_ok=True)
 
     def set_puzzle_single_run_random_folder_name(self, path: str):
@@ -140,12 +142,18 @@ class Configuration:
     def get_current_experiments_folder(self):
         return self.current_experiment_folder
         
-    def get_VIS_path(self, image_format:str='png', add_as_suffix:str=""):
+    def get_VIS_path(self, image_format:str='png', add_as_suffix:str="", mode:str='solution'):
         if len(add_as_suffix) > 0:
-            vis_name = f"{self.VIS_name}_{add_as_suffix}.{image_format}"
+            vis_name = f"{self.VIS_name}{add_as_suffix}.{image_format}"
         else:
             vis_name = f"{self.VIS_name}.{image_format}"
-        return os.path.join(self.current_experiment_folder, vis_name)
+        if mode == 'solution':
+            vis_folder = self.current_solution_folder
+        elif mode == 'experiment':
+            vis_folder = self.current_experiment_folder
+        else:
+            raise NotImplementedError("Use known mode, `solution` or `experiment`")
+        return os.path.join(vis_folder, vis_name)
 
     def get_RM_path(self):
         return os.path.join(self.current_experiment_folder, self.RM_name)
@@ -171,17 +179,25 @@ class Configuration:
     def get_aggregation_output_parameters_path(self):
         return os.path.join(self.current_experiment_folder, self.CM_output_parameters_path)
 
+    def new_puzzle_solution_folder_name(self):
+        timestamp = datetime.now().strftime(self.timestamp_fmt)
+        self.current_solution_folder = os.path.join(self.current_experiment_folder, f"sol_{timestamp}_{self.randomword(6)}")
+        os.makedirs(self.current_solution_folder, exist_ok=True)
+
+    def get_current_solution_folder(self):
+        return self.current_solution_folder
+
     def get_solution_path(self):
-        return os.path.join(self.current_experiment_folder, self.solution_name)
+        return os.path.join(self.current_solution_folder, self.solution_name)
 
     def get_solution_as_csv_path(self):
-        return os.path.join(self.current_experiment_folder, self.solution_csv)
+        return os.path.join(self.current_solution_folder, self.solution_csv)
 
     def get_solution_input_parameters_path(self):
-        return os.path.join(self.current_experiment_folder, self.solution_input_parameters_path)
+        return os.path.join(self.current_solution_folder, self.solution_input_parameters_path)
     
     def get_solution_output_parameters_path(self):
-        return os.path.join(self.current_experiment_folder, self.solution_output_parameters_path)
+        return os.path.join(self.current_solution_folder, self.solution_output_parameters_path)
 
     # def get_features_extracted(self, from_yaml: bool = True):
     #     if from_yaml == True:

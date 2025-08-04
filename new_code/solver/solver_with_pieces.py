@@ -261,6 +261,7 @@ class SolverWithPiecesModule:
 
         self.solver_dict['solution'] = self.final_pixel_solution
 
+        self.cfg.new_puzzle_solution_folder_name()
         np.save(self.cfg.get_solution_path(), self.solver_dict)
         if self.params['solver']['solution']['include_probs'] == False:
             self.final_pixel_solution = self.final_pixel_solution[:,:-1]

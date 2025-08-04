@@ -100,25 +100,30 @@ def initialize_p_with_occupancy(R, anchor_idx, pieces_occupancy_grid=None):
     anchor_pos = [y0, x0, z0]
     # plt.subplot(121)
     # plt.imshow(P[:,:,0,anchor_idx])
-    P = remove_occupied_grid_points(P, piece_pos=anchor_pos, piece_id=anchor_idx, piece_occ=pieces_occupancy_grid[anchor_idx,:,:])
+    anchor_mask = np.zeros((num_pieces, 1), dtype=int)
+    anchor_mask[anchor_idx] = 1
+    P = remove_occupied_grid_points(P, piece_pos=anchor_pos, piece_id=anchor_idx, piece_occ=pieces_occupancy_grid[anchor_idx,:,:], anchor_mask=anchor_mask)
     
     # for j in range(num_pieces):
     #     plt.subplot(4,4,j+1)
     #     plt.title(f"P matrix for piece {j}")
     #     plt.imshow(P[:,:,0,j])
     # plt.show()
+    # breakpoint()
     init_pieces_pos[anchor_idx, :] = anchor_pos
     anchor_pos = [y0, x0, z0]
-
+    
     return P, init_pieces_pos, anchor_pos
 
 
-def remove_occupied_grid_points(P: np.ndarray, piece_pos:np.array, piece_id:int, piece_occ: np.ndarray) -> np.ndarray:
+def remove_occupied_grid_points(P: np.ndarray, piece_pos:np.array, piece_id:int, piece_occ: np.ndarray, anchor_mask: np.ndarray) -> np.ndarray:
     """
     When fixing a piece on the P matrix, we remove (=set to 0) the nearby points on the grid
     """
     # occ is on rotation 0
     rotation_idx = piece_pos[2]
+    x = piece_pos[0]
+    y = piece_pos[1]
     if rotation_idx > 0:
         raise NotImplementedError("Need to fix the rotation step")
         rot_step = 90 # ?
@@ -130,9 +135,24 @@ def remove_occupied_grid_points(P: np.ndarray, piece_pos:np.array, piece_id:int,
     # for all of the other pieces 
     # (so they cannot overlap with the anchor)
     for p_id in range(P.shape[3]):
-        if p_id != piece_id:
-            P[piece_pos[0]-po_hs:piece_pos[0]+po_hs+1, piece_pos[0]-po_hs:piece_pos[0]+po_hs+1, rotation_idx, p_id] -= rotated_occ
+        if p_id != piece_id and anchor_mask[p_id] == 0:
+            # print(f"setting P matrix for piece {p_id}")
+            # plt.imshow(P[:,:,rotation_idx, p_id])
+            # plt.title(f"P matrix for piece {p_id} BEFORE (fixing={piece_id})")
+            # plt.show()
+            P[piece_pos[1]-po_hs:piece_pos[1]+po_hs+1, piece_pos[0]-po_hs:piece_pos[0]+po_hs+1, rotation_idx, p_id] -= rotated_occ
+            # plt.imshow(P[:,:,rotation_idx, p_id])
+            # plt.title(f"P matrix for piece {p_id} AFTER (fixing={piece_id})")
+            # plt.show()
     P = np.clip(P, 0, 1)
+    # plt.figure()
+    # plt.suptitle(anchor_mask)
+    # for j in range(P.shape[3]):
+    #     plt.subplot(4,4,j+1)
+    #     plt.title(f"P matrix for piece {j}")
+    #     plt.imshow(P[:,:,0,j])
+    # plt.show()
+    # breakpoint()
     # keep the center of the piece to 1
     # P[piece_pos[0], piece_pos[1], piece_pos[2]] = 1
 

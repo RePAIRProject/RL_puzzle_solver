@@ -14,6 +14,7 @@ def fix_anchors_with_occ(P, num_anchors: int, threshold: float, pieces_occupancy
     if threshold <= 1:
         threshold  = threshold * 100
 
+    # breakpoint()
     anchor_mask = (grid_sol[:,-1:] > threshold).astype(int)
 
     new_anc = np.array(grid_sol * anchor_mask)
@@ -26,6 +27,7 @@ def fix_anchors_with_occ(P, num_anchors: int, threshold: float, pieces_occupancy
         P = np.ones_like(P) / (P.size/N)
 
         for i in range(N):
+            # print(f"working on piece {i}")
             # if new_anc[i, 0] != 0:
             if anchor_mask[i, 0] == 1:
                 y, x, theta = new_anc[i, :3]
@@ -34,15 +36,20 @@ def fix_anchors_with_occ(P, num_anchors: int, threshold: float, pieces_occupancy
                 P[y, x, :, :] = 0
                 P[y, x, theta, i] = 1
 
-                P = remove_occupied_grid_points(P, piece_pos=[x, y, theta], piece_id=i, piece_occ=pieces_occupancy_grid[i,:,:])
+                # print(f"\nfixing piece {i}")
+                # plt.imshow(P[:,:,0,i])
+                # plt.title(f"P matrix for piece {i}")
+                # plt.show()
+                
+                P = remove_occupied_grid_points(P, piece_pos=[x, y, theta], piece_id=i, piece_occ=pieces_occupancy_grid[i,:,:], anchor_mask=anchor_mask)
         
-        print(num_anchors_new)
-        for j in range(N):
-            plt.subplot(4,4,j+1)
-            plt.title(f"P matrix for piece {j}")
-            plt.imshow(P[:,:,0,j])
-        plt.show()
-        breakpoint()
+        # print(num_anchors_new)
+        # for j in range(N):
+        #     plt.subplot(4,4,j+1)
+        #     plt.title(f"P matrix for piece {j}")
+        #     plt.imshow(P[:,:,0,j])
+        # plt.show()
+        # breakpoint()
 
     return P, grid_sol, num_anchors_new 
 
