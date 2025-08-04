@@ -271,7 +271,7 @@ class CompatibilityMatrixModule:
                 piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
                 #
                 if np.sum(cv2.dilate(piece_i_on_canvas.mask, kernel) * cv2.dilate(piece_j_on_canvas.mask, kernel) > 0): 
-                    CM_ij[x_idx, y_idx, theta_idx] = 1
+                    CM_ij[y_idx, x_idx, theta_idx] = 1
 
                     if self.oracle_params['create_pairwise_alignments_dataset'] == True:
                         import matplotlib.pyplot as plt 
@@ -335,7 +335,13 @@ class CompatibilityMatrixModule:
             breakpoint()
         # touching_region = self._compute_touching_region(piece_i_on_canvas, piece_j_on_canvas, dil_kernel)
         # CM_ij[x_idx, y_idx, theta_idx] = 1
-
+        # import matplotlib.pyplot as plt 
+        # plt.subplot(221); plt.imshow(piece_i.data.image); plt.title("piece i")
+        # plt.subplot(222); plt.imshow(piece_j.data.image); plt.title("piece j")
+        # plt.subplot(223); plt.imshow(RM_ij); plt.title("RM")
+        # plt.subplot(224); plt.imshow(CM_ij); plt.title("CM")
+        # plt.show()
+        # breakpoint()
         return CM_ij
 
 
