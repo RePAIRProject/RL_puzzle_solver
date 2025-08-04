@@ -23,7 +23,7 @@ def main():
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
 
     puzzle = Puzzle()
-    puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), load_features=False) #, features=True)
+    puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)
 
     rmm = RegionMatrixModule(puzzle, params, cfg)  # it is redundant, we know 
     rmm.prepare() # creates grid, adjust/compute parameters and so on

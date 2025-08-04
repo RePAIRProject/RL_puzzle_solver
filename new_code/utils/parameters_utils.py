@@ -85,7 +85,7 @@ class Configuration:
     def get_experiments_folder(self):
         return os.path.join(self.data_folder, self.experiments_folder)
 
-    def get_puzzle_subfolders(self):
+    def get_all_puzzle_subfolders(self):
         """
         Returns a dictionary with all the subfolders paths
         """
@@ -130,7 +130,10 @@ class Configuration:
             self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), path)
         else:                   # full path
             self.current_experiment_folder = path
-            
+    
+    def get_current_experiments_folder(self):
+        return self.current_experiment_folder
+        
     ### NEW ###
     def get_VIS_path(self):
         return os.path.join(self.current_experiment_folder, self.VIS_name)

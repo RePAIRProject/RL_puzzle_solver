@@ -97,9 +97,12 @@ class Motives():
 #                            #
 ##############################
 class SDF():
-    def __init__(self):
+    def __init__(self, compute:bool = False):
         self.method = None
-    
+        self.data = None
+        if compute == True:
+            self.compute()
+
     def compute(self, mask, q=1):
         phi = np.int64(mask[:, :])
         phi = np.where(phi, 0, -1) + 0.5
@@ -120,10 +123,13 @@ class SDF():
 #                                                                      #
 ########################################################################
 class Features():
-    def __init__(self):
-        self.lines = Lines()
-        self.motives = Motives()
-        self.sdf = SDF()
+    def __init__(self, features_params:dict=None):
+        if features_params['lines']['enabled'] == True:
+            self.lines = Lines()
+        if features_params['motives']['enabled'] == True:
+            self.motives = Motives()
+        if features_params['shape']['enabled'] == True:
+            self.sdf = SDF()
 
 
 #######################################
@@ -155,12 +161,12 @@ class Data():
 #                                       #
 #########################################
 class PuzzlePiece:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, features_params:dict=None, *args, **kwargs):
         self.id = None
         self.name = None
         self.centroid_preproc = None      # centroid
         self.data = Data()
-        self.features = Features()
+        self.features = Features(features_params=features_params)
 
     # save preprocessed data
     def save_to_files(self):
@@ -185,7 +191,7 @@ class Puzzle:
         self.pieces = [] # somehow using pieces "kept" the old pieces when running on a dataset over multiple puzzles! Cannot understand why  
         self.num_of_pieces = len(self.pieces)
 
-    def load(self, puzzle_name: str, data_folder: str, load_features: bool = True):
+    def load(self, puzzle_name: str, data_folder: str, features_params: dict = None):
         """
         Loads the data (images, masks and polygon) and fill the properties of the Puzzle object
         """
@@ -202,8 +208,20 @@ class Puzzle:
         self.pieces_names = natsort.natsorted(self.computer_ordered_pieces_names)
         
         # breakpoint()
+        # 
         for j, piece_name in enumerate(self.pieces_names):
-            piece = PuzzlePiece()
+            ###
+            # ALTERNATIVE
+            #
+            # If I pass everything to PuzzlePiece, like 
+            # 
+            # folders = self.cfg.get_all_puzzle_subfolders()
+            # PuzzlePiece(folders, features_params)
+            # 
+            # Then I could actually read the image/mask polygon before, and then load/compute the features (all inside the PuzzlePiece constructor)
+            # Is it better?
+            ###
+            piece = PuzzlePiece(features_params)
             piece.name = piece_name[:-4]
             piece.id = j  
             piece.repair_id = piece.name[:10]  # piece_XXXXX.png
@@ -211,9 +229,16 @@ class Puzzle:
             piece.data.img_center = np.asarray(piece.data.image.shape[:2]) // 2
             piece.data.mask = cv2.imread(os.path.join(masks_subfolder, f"{piece.name}.png"), cv2.IMREAD_GRAYSCALE)
             piece.data.polygon = np.load(os.path.join(polygons_subfolder, f"{piece.name}.npy"), allow_pickle=True).tolist()
-            if load_features == True:
-                piece.features.sdf.compute(piece.data.mask)
-                piece.features.motives.load(os.path.join(self.cfg.get_puzzle_features_subfolder(), 'motifs_segmentation', f"motifs_cube_{piece_name[:-4]}.npy"))
+            # I have to load / compute the features here AFTER loading images and masks
+            if features_params:
+                for feat_key in features_params.keys():
+                    if features_params[feat_key]['enabled'] == True:
+                        if feat_key == 'shape':
+                            piece.features.sdf.compute(piece.data.mask)
+                        if feat_key == 'motives':
+                            piece.features.motives.load(os.path.join(self.cfg.get_puzzle_features_subfolder(), 'motifs_segmentation', f"motifs_cube_{piece_name[:-4]}.npy"))
+                        # oracle and lines for now nothing
+                    
             #piece.data.features = load_features(self)
             self.pieces.append(piece)
 
