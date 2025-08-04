@@ -19,13 +19,8 @@ from utils.visualization_utils import reconstruct_pil, build_suffix
 def main():
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
-<<<<<<< HEAD
     params = cfg.load('input_parameters.yaml')   # basic reading in this case
-    cfg.set_puzzle_single_run_random_folder_name('exp_pleuey')
-=======
-    params = cfg.load('input_parameters_local.yaml')   # basic reading in this case
-    cfg.set_puzzle_single_run_random_folder_name('exp_eevaau')
->>>>>>> 68eb699a2dd3f5c2c4abea3252c75906b9f1e6bb
+    cfg.set_puzzle_single_run_random_folder_name('exp_qlfaux')
 
     # Load pieces
     puzzle = Puzzle()

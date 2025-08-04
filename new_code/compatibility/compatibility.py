@@ -136,7 +136,7 @@ class CompatibilityMatrixModule:
         context_params['puzzle'] = {'puzzle_name': self.puzzle.name, 'num_pieces': self.puzzle.num_of_pieces, 'piece_size': self.piece_size}
         # values of the matrix  
         self.CM['__context'] = context_params
-        breakpoint()
+        #breakpoint()
         np.save(self.cfg.get_CM_path(), self.CM)
         if self.save_vis == True:
             for feature in self.features:
