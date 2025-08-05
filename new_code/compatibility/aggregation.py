@@ -44,7 +44,9 @@ class AggregationModule:
         elif self.method == 'shape':
             R = self.CM_dict['shape']
         elif self.method == 'motif' or self.method == 'motives':
-            R = self.CM_dict['motif']
+            R = self.CM_dict['motives']
+            R = AggregationModule._normalize_motif_based_CM(R)
+
         elif self.method == 'lines':
             R = self.CM_dict['lines']
         elif self.method == 'PAD' or self.method == 'pairwise_alignment_discriminator':
