@@ -135,13 +135,31 @@ def remove_occupied_grid_points(P: np.ndarray, piece_pos:np.array, piece_id:int,
     # set to zero everywhere where the occ grid has 1
     # for all of the other pieces 
     # (so they cannot overlap with the anchor)
+    x_offset_m = y_offset_m = x_offset_M = y_offset_M = 0 # These are to avoid going out of P when the piece is on some borders
+    if np.min(np.asarray(piece_pos[:2]) - po_hs) < 0:
+        x_offset_m = np.maximum(po_hs - piece_pos[0], 0)
+        y_offset_m = np.maximum(po_hs - piece_pos[1], 0)
+        rotated_occ = rotated_occ[y_offset_m:, x_offset_m:]
+        # print("\nCASE 1")
+        # print(f"Occ:{rotated_occ.shape}")
+        # print(f"P:{P[piece_pos[1]-po_hs+y_offset_m:piece_pos[1]+po_hs+1-y_offset_M, piece_pos[0]-po_hs+x_offset_m:piece_pos[0]+po_hs+1-x_offset_M, rotation_idx, piece_id].shape}")
+        
+    if np.max(np.asarray(piece_pos[:2]) + po_hs) > np.min(P.shape[:2]):
+        x_offset_M = np.maximum(piece_pos[0] + po_hs + 1 - P.shape[0], 0)
+        y_offset_M = np.maximum(piece_pos[1] + po_hs + 1 - P.shape[1], 0)
+        rotated_occ = rotated_occ[:rotated_occ.shape[1]-y_offset_M, :rotated_occ.shape[0]-x_offset_M]
+        # print("\nCASE 2")
+        # print(f"Occ:{rotated_occ.shape}")
+        # print(f"P:{P[piece_pos[1]-po_hs+y_offset_m:piece_pos[1]+po_hs+1-y_offset_M, piece_pos[0]-po_hs+x_offset_m:piece_pos[0]+po_hs+1-x_offset_M, rotation_idx, piece_id].shape}")
+
+    
     for p_id in range(P.shape[3]):
         if p_id != piece_id and anchor_mask[p_id] == 0:
             # print(f"setting P matrix for piece {p_id}")
             # plt.imshow(P[:,:,rotation_idx, p_id])
             # plt.title(f"P matrix for piece {p_id} BEFORE (fixing={piece_id})")
             # plt.show()
-            P[piece_pos[1]-po_hs:piece_pos[1]+po_hs+1, piece_pos[0]-po_hs:piece_pos[0]+po_hs+1, rotation_idx, p_id] -= rotated_occ
+            P[piece_pos[1]-po_hs+y_offset_m:piece_pos[1]+po_hs+1-y_offset_M, piece_pos[0]-po_hs+x_offset_m:piece_pos[0]+po_hs+1-x_offset_M, rotation_idx, p_id] -= rotated_occ
             # plt.imshow(P[:,:,rotation_idx, p_id])
             # plt.title(f"P matrix for piece {p_id} AFTER (fixing={piece_id})")
             # plt.show()
