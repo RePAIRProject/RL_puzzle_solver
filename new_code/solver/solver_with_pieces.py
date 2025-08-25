@@ -3,7 +3,7 @@ from compatibility.grid import PuzzleGrid, PieceOnCanvas
 
 from utils.puzzle_utils import Puzzle, PuzzlePiece
 from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors_with_occ
-from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT, initialize_p_with_occupancy
+from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT, initialize_p_with_occupancy, initialize_p_using_neighbours_with_occupancy
 from utils.human_readable_duration import format_duration
 from utils.visualization_utils import reconstruct
 
@@ -12,7 +12,7 @@ import numpy as np
 import time
 import yaml
 import matplotlib.pyplot as plt
-
+import json
 
 class SolverWithPiecesModule:
 
@@ -118,6 +118,15 @@ class SolverWithPiecesModule:
             print(f'Using a grid of size {self.P.shape} points [gt]')
         elif grid_method == 'occ':
             self.P, self.init_pos, self.anchor_pos = initialize_p_with_occupancy(self.R, self.anchor_index, self.occupancy_grid_pieces)
+            print(f'Using a grid of size {self.P.shape} points [auto with occupancy]')
+        elif grid_method == 'neighbours_occ':
+            print("Using neighbours method, it inolves GT and a predefined max_adjacency_degree value set in the .yaml file")
+            with open(self.cfg.get_GT_path(), 'r') as jf:
+                self.gt = json.load(jf)
+            self.P, self.init_pos, self.anchor_pos, self.pieces_subset_list = initialize_p_using_neighbours_with_occupancy(self.R, self.anchor_index, self.occupancy_grid_pieces, 
+                    self.gt['adjacency'],                    # adjacency matrix to "select" only neighbouring pieces
+                    self.params['solver']['max_adjacency_degree']   # set the maximum degree (1 means only neighbours, 2 neighbour of neighbours and so on)
+                    )
             print(f'Using a grid of size {self.P.shape} points [auto with occupancy]')
         else:
             raise ValueError(f'Unknown method {grid_method}')

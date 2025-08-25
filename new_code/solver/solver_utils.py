@@ -79,6 +79,50 @@ def initialize_p_from_GT(anc, puzzle_root_folder, all_pieces, pieces_incl, no_ro
     print("P:", p.shape)
     return p, init_pos, anchor_pos
 
+def get_pieces_id_list(anchor_idx:int, adjacency_matrix:np.ndarray, max_adjacency_degree:int):
+    """
+    Given the anchor index, the adjacency matrix and a maximum degrees, it creates a list of the pieces id which are "neighbours" of rank <= of the max degree.
+    It is used to recover a subset of the puzzle formed by neighbours. The higher the max_degree, the more pieces it will select. 
+    The anchor is included in the list.
+    - max_adjacency_degree = 0 -> anchor alone 
+    - max_adjacency_degree = 1 -> only direct neighbours  
+    - max_adjacency_degree = 2 -> direct neighbours and their respective neighbours 
+    and so on..
+    """
+    pieces_list = [anchor_idx]
+    if max_adjacency_degree == 0:
+        return pieces_list
+    elif max_adjacency_degree == 1:
+        for adj_pair in adjacency_matrix:
+            if anchor_idx in adj_pair:
+                pieces_list.append(adj_pair[0])
+                pieces_list.append(adj_pair[1]) # should add only the "other" id, but it seems easier to add everything and remove duplicates afterwards
+    else:
+        raise NotImplementedError("We need to iteratively add the other pieces ids!\nSince it is not used in this experiment, it was not yet implemented")
+
+    # Check https://stackoverflow.com/questions/57261950/how-does-set-remove-duplicates-from-a-list
+    # pieces_list = set(pieces_list)                  # it orders the ids
+    pieces_list = list(dict.fromkeys(pieces_list))  # leaves the same order, with anchor at the beginning. Is it better?
+
+    return pieces_list 
+
+def initialize_p_using_neighbours_with_occupancy(R, anchor_idx: int, pieces_occupancy_grid:np.ndarray, adjacency_matrix:np.ndarray, max_adjacency_degree:int):
+    """
+    Initializing the P matrix choosing only a subset of pieces. 
+    This is designed to test a hierarchical/multi-step method, it will nNOTot solve the whole puzzle.
+    It implements the occupancy grid variant, already removing the points occupied by the anchor piece in the P matrix.
+    """
+    pieces_subset_id_list = get_pieces_id_list(anchor_idx, adjacency_matrix, max_adjacency_degree)
+    print("using only pieces:", pieces_subset_id_list)
+    for k in range(R.shape[3]):
+        if k not in pieces_subset_id_list:
+            # set to zero since we will not be using these pieces!
+            R[:,:,:,k,:] = 0
+            R[:,:,:,:,k] = 0
+
+    P, init_pieces_pos, anchor_pos = initialize_p_with_occupancy(R, anchor_idx, pieces_occupancy_grid=pieces_occupancy_grid)
+    return P, init_pieces_pos, anchor_pos, pieces_subset_id_list
+
 def initialize_p_with_occupancy(R, anchor_idx, pieces_occupancy_grid=None):
     """
     Initializing the P matrix and already removing the points occupied by the anchor piece
