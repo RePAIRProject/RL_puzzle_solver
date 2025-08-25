@@ -54,3 +54,5 @@ yolov8n-seg.pt
 
 # parameteers
 input_parameters.yaml
+input_parameters_dataset*.yaml
+input_parameters_local.yaml

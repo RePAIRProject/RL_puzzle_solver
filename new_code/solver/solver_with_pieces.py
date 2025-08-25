@@ -92,7 +92,7 @@ class SolverWithPiecesModule:
 
         # !!! Anchor number must be changed if some pieces were excluded
         if self.solver_params['anchor_index'] < 0:
-            self.anchor_index = N//2  # TEMPORAL SOLUTION - central anchor for sanity check
+            self.anchor_index = self.N//2  # TEMPORAL SOLUTION - central anchor for sanity check
             self.solver_params['anchor_index'] = self.anchor_index # this way it will be saved to the json file!
             #self.anchor_index = np.random.choice(N)  # select_anchor(detect_output)
         else:
