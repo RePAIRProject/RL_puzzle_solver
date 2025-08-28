@@ -127,7 +127,7 @@ def remove_occupied_grid_points(P: np.ndarray, piece_pos:np.array, piece_id:int,
     y = piece_pos[1]
     if rotation_idx > 0:
         raise NotImplementedError("Need to fix the rotation step")
-        rot_step = 90 # ?
+        rot_step = 360 // P.shape[3] # we could pass the parameters here
         rotated_occ = scipy.ndimage.rotate(piece_occ, rotation_idx * rot_step, reshape=False, mode='constant', order=0)
     else:
         rotated_occ = piece_occ
