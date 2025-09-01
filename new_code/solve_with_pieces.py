@@ -11,6 +11,7 @@ def main():
     # we are solving based on the CM previously computed, so we need to know `exp_name`
     cfg.set_puzzle_single_run_random_folder_name(params['exp_name'])
 
+    print("Solving", params['puzzle_name'], "-", params['exp_name'])
     puzzle = Puzzle()
     puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)
 

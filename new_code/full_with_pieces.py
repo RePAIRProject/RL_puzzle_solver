@@ -26,11 +26,11 @@ def main():
     print(" Working on puzzle", cfg.get_puzzle_name())
     print("*" * 60)
 
-
     puzzle = Puzzle()
     puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)
 
     rmm = RegionMatrixModule(puzzle, params, cfg)  # it is redundant, we know 
+    print("Working on a new experiment, output going in:\n", rmm.cfg.get_current_experiments_folder())
     rmm.prepare() # creates grid, adjust/compute parameters and so on
     rmm.compute(verbose=params['verbosity'])
     # rmm.save_candidate_alignments_to_file(verbose=params['verbosity'])
