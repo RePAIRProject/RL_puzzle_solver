@@ -3,6 +3,7 @@
 
 # data_folder: 
 # puzzle_name: puzzle_0000005_RP_group_5
+# exp_name: # used for comp, solver on alread precomputed data
 verbosity: 2
 # skip_done: True # for run_on_dataset
 
@@ -72,7 +73,7 @@ compatibility:
         something: 1
     pairwise_alignment_discriminator:
       enabled: Yes
-      trained_model_folder: /home/lucap/code/learning_pairwise_cmp/v4_fast_224/
+      trained_model_folder: ~pretrained_PADs/v4_fast_224/
       use_fast: True 
       use_batch: True 
       do_center_crop: True
@@ -85,7 +86,7 @@ compatibility:
       cutoff_value: 0.05
       push_k_values: 3
     oracle:
-      enabled: Yes
+      enabled: No
       # this is for the creation of images for pairwise "good" and "bad" alignments
       pairwise_alignments_dataset:
         enabled: No
@@ -94,21 +95,28 @@ compatibility:
         crop_images: True
           
 aggregation:
-  method: 'oracle'  
+  method: 'PAD'  
 
 solver:
-  T_first: 100
-  T_next: 100
-  T_max: 500
-  no_rotations: True
+  # number of iterations
+  T_first: 1000
+  T_next: 500
+  T_max: 3000
+  # skip rotations
+  no_rotations: False
+  # can be 'simple' or 'exp' - changes the update rule
   PQ_mode: simple
   # TODO: switch to anchor ID
   anchor_index: -1 # TODO: null, None?
+  # for the occ with neighbours (used with GT)
+  max_adjacency_degree: 1
   # threshold
   accept_threshold: 0.75
   p_precision: 10
   grid:
-    # ['gt','auto','manual']
+    # choices are:
+    # ['gt','auto','manual', 'occ', 'neighbours_occ']
+    # - neighbours_occ is experimental and requires GT
     method: auto
     # this is used only when method is set to 'manual'
     manual_params:
