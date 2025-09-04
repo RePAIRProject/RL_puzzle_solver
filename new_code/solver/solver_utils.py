@@ -135,7 +135,7 @@ def initialize_p_with_occupancy(R, anchor_idx, pieces_occupancy_grid=None):
     init_pieces_pos = np.zeros((num_pieces, 3)).astype(int)
 
     # place anchored patch (center)
-    z0 = 0
+    z0 = 0 # should we allow different rotations? This means the anchor is placed without rotation
     y0 = round(Y / 2)
     x0 = round(X / 2)
     P[:, :, :, anchor_idx] = 0
@@ -170,9 +170,9 @@ def remove_occupied_grid_points(P: np.ndarray, piece_pos:np.array, piece_id:int,
     x = piece_pos[0]
     y = piece_pos[1]
     if rotation_idx > 0:
-        raise NotImplementedError("Need to fix the rotation step")
+        # raise NotImplementedError("Need to fix the rotation step")
         rot_step = 360 // P.shape[3] # we could pass the parameters here
-        rotated_occ = scipy.ndimage.rotate(piece_occ, rotation_idx * rot_step, reshape=False, mode='constant', order=0)
+        rotated_occ = rotate(piece_occ, rotation_idx * rot_step, reshape=False, mode='constant', order=0)
     else:
         rotated_occ = piece_occ
     po_hs = piece_occ.shape[0] // 2
