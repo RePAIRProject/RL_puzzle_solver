@@ -59,7 +59,6 @@ for i, b in enumerate(best, 1):
 
     overlay = pad_t + pad_w
     overlay = np.clip(overlay, 0, 255).astype(np.uint8)
-    #overlay = np.array(overlay)
 
     # display with matplotlib:
     import matplotlib.pyplot as plt
