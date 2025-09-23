@@ -12,7 +12,7 @@ from polex_refactored import (
 )
 
 # 1) Load BGRA images (with alpha) as numpy arrays
-tgt_np  = cv2.imread("target.png",     cv2.IMREAD_UNCHANGED)
+tgt_np  = cv2.imread("target2.png",     cv2.IMREAD_UNCHANGED)
 src_np  = cv2.imread("source.png",     cv2.IMREAD_UNCHANGED)
 #ext_tgt = cv2.imread("target_ext.png", cv2.IMREAD_UNCHANGED)
 #ext_src = cv2.imread("source_ext.png", cv2.IMREAD_UNCHANGED)

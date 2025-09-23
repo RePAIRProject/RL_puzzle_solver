@@ -220,6 +220,129 @@ class RegionMatrixModule:
 
         return RM 
 
+    ##########################################
+    #####   TODO     ########################
+    ##########################################
+
+    def compute_geometry_based_RM(self, verbose: int = 0):
+        """Loops over pairs of pieces - not symmetric yet"""
+        RM_geometric = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2], self.puzzle.num_of_pieces, self.puzzle.num_of_pieces))
+        if verbose > 1:
+            print()
+        for i in range(self.puzzle.num_of_pieces):
+            for j in range(self.puzzle.num_of_pieces):
+                if i != j:
+                    if verbose > 1:
+                        print(f'computing shape-based RM[:, :, :, {i:02d}, {j:02d}]', end='\r')
+                    RM_geometric[:, :, :, j, i] = self.compute_pairwise_geometry_based_RM(i, j)
+        if verbose > 1:
+            print()
+        return RM_shape
+
+    def compute_pairwise_geometry_based_RM(self, i: int, j: int, dilate: bool = True, erode: bool = True):
+        """
+        Geometry based RM with 1, 0 and -1 regions
+        """
+        import cv2
+        import torch
+        import numpy as np
+
+        from polex_refactored import (
+            to_torch_bgra,
+            extract_potential_alignments,
+            score_alignment,
+            warp_single_image,
+            tensor_to_rgba,
+            pad_to_same_size,
+        )
+
+        # 1) Load BGRA images (with alpha) as numpy arrays
+        tgt_np = self.puzzle.pieces[i]
+        src_np = self.puzzle.pieces[j]
+        #tgt_np = cv2.imread("target2.png", cv2.IMREAD_UNCHANGED)
+        #src_np = cv2.imread("source.png", cv2.IMREAD_UNCHANGED)
+
+        # 2) Convert to [1,4,H,W] CUDA tensors
+        dev = torch.device("cuda")
+        tgt_t = to_torch_bgra(tgt_np, pad_by=200, device=dev)
+        src_t = to_torch_bgra(src_np, pad_by=200, device=dev)
+
+        # 3) Extract all geometric candidates
+        cands = extract_potential_alignments(
+            tgt_t, src_t,
+            gap=2.0,
+            min_edge_length=20.0,
+            min_length_ratio=0.8,
+            epsilon_ratio=0.005,
+            angle_threshold_deg=10.0,
+            smoothing_kernel_size=3,
+            pad_by=200
+        )
+
+        RM_ij = np.zeros((self.RM_size[0], self.RM_size[1], self.RM_size[2]))
+        t = self.RM_size[2]
+        all_theta =  np.array([i * 360 / t for i in range(t)] ) #[0, 90, ....]
+        # for....
+
+        rotation = cands[0]["rotation"]%360
+        ang = np.argmin(abs(rotation-all_theta))     #all_theta[idx_rot]
+        tx = cands[0]["translation_x"]
+        ty = cands[0]["translation_y"]
+
+        #ang = torch.tensor([b["rotation"]], device=dev)
+        #tx = torch.tensor([b["translation_x"]], device=dev)
+        #ty = torch.tensor([b["translation_y"]], device=dev)
+
+
+
+
+        piece_i_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[i], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
+        # piece_i_on_canvas = pcs_uts.place_on_canvas(piece_i, (center_pos, center_pos), self.canvas_size, 0)
+        for theta_idx in range(self.RM_size[2]):
+            theta = theta_idx * self.grid.theta_step
+            piece_j_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[j], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=theta, enabled_features=self.features_status)
+            # piece_j_on_canvas = pcs_uts.place_on_canvas(piece_j, (center_pos, center_pos), self.canvas_size, t * self.theta_step)
+            # SHAPE case - BASIC
+            overlap_shapes = cv2.filter2D(piece_i_on_canvas.mask, -1, piece_j_on_canvas.mask)
+            thresholded_regions_map = (overlap_shapes > self.threshold_overlap_shapes).astype(np.int32)
+
+            if dilate == True:
+                border_dilation = int(self.regions_dilation * self.grid.xy_step)
+            else:
+                border_dilation = 1
+            if erode == True:
+                border_erosion = int(self.regions_erosion * self.grid.xy_step)
+            else:
+                border_erosion = 1
+
+            around_borders_trm = self.get_borders_around(thresholded_regions_map.astype(np.uint8),
+                                                border_dilation=border_dilation, border_erosion=border_erosion)
+            thresholded_regions_map *= -1
+            thresholded_regions_map += 2 * (around_borders_trm > 0)
+            thresholded_regions_map = np.clip(thresholded_regions_map, -1, 1)
+
+            # we convert the matrix to resize the image without losing the values
+            thr_reg_map_shape_uint = (thresholded_regions_map + 1).astype(np.uint8)
+            thr_reg_map_comp_range = thr_reg_map_shape_uint[self.p_hs + 1:-(self.p_hs + 1), self.p_hs + 1:-(self.p_hs + 1)]
+            resized_shape = np.array(Image.fromarray(thr_reg_map_comp_range).resize((self.RM_size[0], self.RM_size[1]), Image.Resampling.NEAREST))
+            RM_ij[:,:,theta_idx] = (resized_shape.astype(np.int32) - 1)
+
+            # # write a nice visualization of the "maps" defined above
+            # plt.subplot(231); plt.imshow(piece_i_on_canvas.image)
+            # plt.subplot(232); plt.imshow(piece_j_on_canvas.image)
+            # plt.subplot(233); plt.imshow(RM_ij[:,:,theta_idx])
+            # plt.show()
+            # breakpoint()
+
+        return RM_ij
+
+    ##########################################
+    #######  FINE TODO      #################
+    ##########################################
+
+
+
+
     ##############################################
     #                                            #
     #  ███████╗██╗  ██╗ █████╗ ██████╗ ███████╗  #
