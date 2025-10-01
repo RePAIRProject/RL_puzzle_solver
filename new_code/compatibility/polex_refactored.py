@@ -8,7 +8,7 @@ import math
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import torchvision.ops as ops
-import kornia
+#import kornia
 
 
 # def to_torch_bgra(npy, pad_by=200, device='cuda'):

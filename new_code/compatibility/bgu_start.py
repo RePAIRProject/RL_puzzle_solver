@@ -2,10 +2,9 @@ import cv2
 import torch
 import numpy as np
 
-from polex_refactored import (
+from new_code.compatibility.polex_refactored import (
     to_torch_bgra,
     extract_potential_alignments,
-    score_alignment,
     warp_single_image,
     tensor_to_rgba,
     pad_to_same_size,
