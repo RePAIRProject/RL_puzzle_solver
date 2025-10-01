@@ -80,7 +80,6 @@ def main():
                 saving_path = am.cfg.get_VIS_path()
             plt.imsave(saving_path, image_solution)  # save final image in solution folder
 
-
             # del puzzle 
             # del cfg 
             # del rmm
@@ -92,8 +91,6 @@ def main():
             print(f"skipping {puzzle_folder} as it is already there")
     # save final image
     #image_solution_pil.save(cfg.get_VIS_path())
-
-
     
 
 if __name__ == '__main__':

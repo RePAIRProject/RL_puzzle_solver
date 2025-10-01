@@ -294,19 +294,20 @@ class RegionMatrixModule:
         t = self.RM_size[2]
         all_theta =  np.array([i * 360 / t for i in range(t)] )   # [0, 90, ....]
 
-        t_shift = (self.grid.xy_num_points-1)/2
+        t_center = (self.grid.xy_num_points-1)/2
         for candidate in cands:
             tx = candidate["translation_x"]
             ty = candidate["translation_y"]
             rotation = candidate["rotation"]%360
             print(f"tx = {tx}, ty = {ty}, t = {rotation}")
 
-            x_grid = np.round(tx / self.grid.xy_step + t_shift).astype(int)
-            y_grid = np.round(ty / self.grid.xy_step + t_shift).astype(int)
+            x_grid = np.round(t_center+(tx / self.grid.xy_step)).astype(int)
+            y_grid = np.round(t_center-(ty / self.grid.xy_step)).astype(int)
             t_grid = np.argmin(abs(rotation - all_theta))
             print(f"x = {x_grid}, y = {y_grid}, t = {t_grid}")
 
-            RM_ij[x_grid, y_grid, t_grid] = 1
+            #RM_ij[x_grid, y_grid, t_grid] = 1
+            RM_ij[y_grid, x_grid, t_grid] = 1
 
         return RM_ij
 
