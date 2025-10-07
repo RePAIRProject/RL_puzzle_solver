@@ -81,6 +81,7 @@ def initialize_p_from_GT(anc, puzzle_root_folder, all_pieces, pieces_incl, no_ro
 
 #####################################
 #####################################
+## TODO test
 
 def normalize_solutions(solutions, reference_frag):
     import math
