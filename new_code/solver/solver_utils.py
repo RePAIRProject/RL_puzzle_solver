@@ -161,7 +161,7 @@ def initialize_p_from_Distribution(solutions, confidence, anchor_idx:int, xy_ste
     # adapt solutions to grid (translations)
     center = np.array([p_size_y//2, p_size_x//2], dtype=np.int64)  #shift to center
     norm_solutions[:,:2] = norm_solutions[:,:2] / xy_step + center
-    norm_solutions[:, 2] = (norm_solutions[:, 2]+360)%360
+    norm_solutions[:, 2] = (norm_solutions[:,2]+360)%360
 
     # initialize assignment matrix
     grid_size = (p_size_y, p_size_x, theta_num_points)  ## p_size
