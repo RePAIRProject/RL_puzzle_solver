@@ -118,8 +118,8 @@ def probability_for_single_fragment(grid_size, mean, std_devs, vis = 0):
     size_x, size_y, size_theta = grid_size
     cx, cy, ct = mean
     sx, sy, st = std_devs
-    ct = ct / 360 * grid_size[2]  ### conversion to "cycle-grid"
-    st = st / 360 * grid_size[2]  ### conversion to "cycle-grid"
+    ct = ct/ 360 * grid_size[2]  ### conversion to "cycle-grid"
+    st = st/ 360 * grid_size[2]  ### conversion to "cycle-grid"
 
     # Create 3D grid of coordinates
     x = np.arange(size_x)
@@ -139,36 +139,18 @@ def probability_for_single_fragment(grid_size, mean, std_devs, vis = 0):
     prob = np.exp(-(dx2 + dy2 + dt2))
     prob /= np.sum(prob)
 
-    ########################################################
-    if vis==1:
-        # Show distribution for (theta = 0, 1, ... , n_of_slice)
-        import matplotlib.pyplot as plt
-        n_of_slice = 4
-        vmin = prob.min()  # limiti globali della scala
-        vmax = prob.max()
-        fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
-
-        for i in range(n_of_slice):
-            ax = axes[i]  # mappa 0–5 in (row, col)
-            im = ax.imshow(prob[:, :, i], cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
-            ax.set_title(f"θ = {i}")
-            ax.set_xlabel("y")
-            ax.set_ylabel("x")
-        # colorbar comune a tutti i subplot
-        cbar = fig.colorbar(im, ax=axes.ravel().tolist(), pad=0.07,
-                            fraction=0.05, )  # shrink=0.8, orientation='horizontal',fraction=0.05,
-        cbar.set_label("Probability Density")
-        plt.suptitle("Distribuzione per diversi angoli θ (Colori uniformi)", fontsize=18)
-        plt.show()
-    ########################################################
-
     return prob
 
 
 def initialize_p_from_Distribution(solutions, confidence, anchor_idx:int, xy_step, theta_num_points, p_size_x = 0, p_size_y = 0, vis = 0):
 
-    solutions = [(605, 5, 90), (1234, 8, 0), (1565, 6, 180)]             # Example of solution in pixels and grades
-    confidence = [(5.0, 5.0, 2.5), (10.0, 10.0, 10.5), (13.0, 13.0, 15)] # confidence of solution in pixels and grades
+    ## example
+    anchor_idx = 0
+    xy_step = 5
+    theta_num_points = 8
+    p_size_x = p_size_y = 151
+    solutions = [(405, 120, 90), (123, 300, 130), (155, 300, 180)]             # Example of solution in pixels and grades
+    confidence = [(50.0, 50.0, 60.5), (90.0, 90.0, 30.5), (13.0, 13.0, 55)] # confidence of solution in pixels and grades
 
     solutions = np.array(solutions, dtype=np.float64)
     confidence = np.array(confidence, dtype=np.float64)
@@ -179,6 +161,7 @@ def initialize_p_from_Distribution(solutions, confidence, anchor_idx:int, xy_ste
     # adapt solutions to grid (translations)
     center = np.array([p_size_y//2, p_size_x//2], dtype=np.int64)  #shift to center
     norm_solutions[:,:2] = norm_solutions[:,:2] / xy_step + center
+    norm_solutions[:, 2] = (norm_solutions[:, 2]+360)%360
 
     # initialize assignment matrix
     grid_size = (p_size_y, p_size_x, theta_num_points)  ## p_size
@@ -191,7 +174,32 @@ def initialize_p_from_Distribution(solutions, confidence, anchor_idx:int, xy_ste
             mean = norm_solutions[i, :]  ## solution for the piece, t° !
             #std_devs = (10.0, 10.0, 0.5)  ## st. deviation, t° !
             std_devs = confidence[i,:]
-            p[:, :, :, i] = probability_for_single_fragment(grid_size, mean, std_devs, 1)
+            prob = probability_for_single_fragment(grid_size, mean, std_devs, 1)
+
+        ########################################################
+        if vis == 1:
+            # Show distribution for (theta = 0, 1, ... , n_of_slice)
+            import matplotlib.pyplot as plt
+            n_of_slice = 4
+            vmin = prob.min()  # limiti globali della scala
+            vmax = prob.max()
+            fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
+
+            for i in range(n_of_slice):
+                ax = axes[i]  # mappa 0–5 in (row, col)
+                im = ax.imshow(prob[:, :, i], cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
+                ax.set_title(f"θ = {i}")
+                ax.set_xlabel("y")
+                ax.set_ylabel("x")
+            # colorbar comune a tutti i subplot
+            cbar = fig.colorbar(im, ax=axes.ravel().tolist(), pad=0.07,
+                                fraction=0.05, )  # shrink=0.8, orientation='horizontal',fraction=0.05,
+            cbar.set_label("Probability Density")
+            plt.suptitle("Distribuzione per diversi angoli θ (Colori uniformi)", fontsize=18)
+            plt.show()
+        ########################################################
+
+        p[:, :, :, i] = prob
 
     return p
 
