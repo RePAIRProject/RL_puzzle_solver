@@ -108,7 +108,7 @@ def normalize_solutions(solutions, reference_frag):
         x_rotated = x_rotated / 4.824701195219124
         y_rotated = y_rotated / 4.824701195219124
 
-        transformed.append((x_rotated, y_rotated, t_rotated))
+        transformed.append((y_rotated, x_rotated, t_rotated))
 
     transformed = np.array(transformed, dtype=np.int64)
 
