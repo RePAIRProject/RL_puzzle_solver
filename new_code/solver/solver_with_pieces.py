@@ -3,7 +3,7 @@ from compatibility.grid import PuzzleGrid, PieceOnCanvas
 
 from utils.puzzle_utils import Puzzle, PuzzlePiece
 from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors_with_occ
-from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT, initialize_p_with_occupancy, initialize_p_using_neighbours_with_occupancy
+from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT, initialize_p_with_occupancy, initialize_p_using_neighbours_with_occupancy, initialize_p_from_external_solution
 from utils.human_readable_duration import format_duration
 from utils.visualization_utils import reconstruct
 
@@ -12,7 +12,7 @@ import numpy as np
 import time
 import yaml
 import matplotlib.pyplot as plt
-import json
+import json, os, natsort
 
 class SolverWithPiecesModule:
 
@@ -57,6 +57,15 @@ class SolverWithPiecesModule:
         It should be self-explanatory as it's just setting values (with predefined factors we hard-coded)
 
         """
+        files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
+        files_list = natsort.natsorted(files_list)
+        self.ext_solutions = [
+            np.genfromtxt(os.path.join(self.cfg.get_puzzle_external_solution_subfolder_path(), file_name), dtype=None)
+            for file_name in files_list]
+        for j in range(len(self.ext_solutions)):
+            self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
+
+
         # load compatibility matrix
         self.CM_dict = np.load(self.cfg.get_CM_path(), allow_pickle=True).item()
         # We use `R` as the aggregated matrix
@@ -128,6 +137,10 @@ class SolverWithPiecesModule:
                     self.params['solver']['max_adjacency_degree']   # set the maximum degree (1 means only neighbours, 2 neighbour of neighbours and so on)
                     )
             print(f'Using a grid of size {self.P.shape} points [auto with occupancy]')
+
+        elif grid_method == 'extern':
+            self.P = initialize_p_from_external_solution(self.ext_solutions , self.anchor_index, self.params['compatibility']['grid'], self.params['solver']['grid']['manual_params']['p_xy_size'],1)
+
         else:
             raise ValueError(f'Unknown method {grid_method}')
     

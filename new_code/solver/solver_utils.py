@@ -103,6 +103,11 @@ def normalize_solutions(solutions, reference_frag):
         y_rotated = x_shifted * sin_theta + y_shifted * cos_theta
         # 3: Adjust rotation angle
         t_rotated = t - t_ref
+
+        # 4: TODO Re-scale - HARD coded here
+        x_rotated = x_rotated / 4.824701195219124
+        y_rotated = y_rotated / 4.824701195219124
+
         transformed.append((x_rotated, y_rotated, t_rotated))
 
     transformed = np.array(transformed, dtype=np.int64)
@@ -142,65 +147,73 @@ def probability_for_single_fragment(grid_size, mean, std_devs, vis = 0):
     return prob
 
 
-def initialize_p_from_Distribution(solutions, confidence, anchor_idx:int, xy_step, theta_num_points, p_size_x = 0, p_size_y = 0, vis = 0):
+def initialize_p_from_external_solution(all_solutions, anchor_idx:int, grid, p_xy_size = (0,0), vis = 0):
 
     ## example
-    anchor_idx = 0
-    xy_step = 5
-    theta_num_points = 8
-    p_size_x = p_size_y = 151
-    solutions = [(405, 120, 90), (123, 300, 130), (155, 300, 180)]             # Example of solution in pixels and grades
-    confidence = [(50.0, 50.0, 60.5), (90.0, 90.0, 30.5), (13.0, 13.0, 55)] # confidence of solution in pixels and grades
-
-    solutions = np.array(solutions, dtype=np.float64)
-    confidence = np.array(confidence, dtype=np.float64)
-
-    # rotate and translate to origin [0,0,0]
-    norm_solutions = normalize_solutions(solutions, anchor_idx) # output is in pixels and grades
-
-    # adapt solutions to grid (translations)
-    center = np.array([p_size_y//2, p_size_x//2], dtype=np.int64)  #shift to center
-    norm_solutions[:,:2] = norm_solutions[:,:2] / xy_step + center
-    norm_solutions[:, 2] = (norm_solutions[:,2]+360)%360
+    #anchor_idx = 0
+    xy_step = grid['xy_step']
+    theta_num_points = grid['theta_num_points']
+    p_size_x = p_xy_size[0]
+    p_size_y = p_xy_size[1]
+    #solutions = [(405, 120, 90), (123, 300, 130), (155, 300, 180)]             # Example of solution in pixels and grades
+    #confidence = [(50.0, 50.0, 60.5), (90.0, 90.0, 30.5), (13.0, 13.0, 55)] # confidence of solution in pixels and grades
 
     # initialize assignment matrix
     grid_size = (p_size_y, p_size_x, theta_num_points)  ## p_size
-    p = np.zeros((grid_size[0], grid_size[1], grid_size[2], len(solutions)))
+    p = np.zeros((grid_size[0], grid_size[1], grid_size[2], len(all_solutions[0])))
 
-    for i in norm_solutions:
-        if i == anchor_idx:
-            p[center[0], center[1], 0, i] = 1
-        else:
-            mean = norm_solutions[i, :]  ## solution for the piece, t° !
-            #std_devs = (10.0, 10.0, 0.5)  ## st. deviation, t° !
-            std_devs = confidence[i,:]
-            prob = probability_for_single_fragment(grid_size, mean, std_devs, 1)
+    for sol in all_solutions[:1]:
+        solution = np.array(sol)[:,1:].astype(float)
+        confidence = np.ones_like(solution, dtype=np.float64)*1
 
-        ########################################################
+        # rotate and translate to origin [0,0,0]
+        norm_solutions = normalize_solutions(solution, anchor_idx) # output is in pixels and grades
+
+        # adapt solutions to grid (translations)
+        center = np.array([p_size_y//2, p_size_x//2], dtype=np.int64)  #shift to center
+        norm_solutions[:,:2] = norm_solutions[:,:2] / xy_step + center
+        norm_solutions[:, 2] = (norm_solutions[:,2]+360)%360
+
+
+        for i in range(len(norm_solutions)):
+            if i == anchor_idx:
+                p[center[0], center[1], 0, i] = 1
+            else:
+                mean = norm_solutions[i, :]  ## solution for the piece, t° !
+                #std_devs = (10.0, 10.0, 0.5)  ## st. deviation, t° !
+                std_devs = confidence[i,:]
+                prob = probability_for_single_fragment(grid_size, mean, std_devs, 1)
+
+                p[:, :, :, i] += prob
+
+    #######################################################
+    for i in range(len(norm_solutions)):
+        prob_i = p[:, :, :, i]
         if vis == 1:
             # Show distribution for (theta = 0, 1, ... , n_of_slice)
             import matplotlib.pyplot as plt
             n_of_slice = 4
-            vmin = prob.min()  # limiti globali della scala
-            vmax = prob.max()
+            vmin = prob_i.min()  # limiti globali della scala
+            vmax = prob_i.max()
             fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
 
-            for i in range(n_of_slice):
-                ax = axes[i]  # mappa 0–5 in (row, col)
-                im = ax.imshow(prob[:, :, i], cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
-                ax.set_title(f"θ = {i}")
+            for j in range(n_of_slice):
+                ax = axes[j]  # mappa 0–5 in (row, col)
+                im = ax.imshow(prob_i[:, :, j], cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
+                ax.set_title(f"θ = {j} fragment{i} anc {anchor_idx}")
                 ax.set_xlabel("y")
                 ax.set_ylabel("x")
             # colorbar comune a tutti i subplot
             cbar = fig.colorbar(im, ax=axes.ravel().tolist(), pad=0.07,
-                                fraction=0.05, )  # shrink=0.8, orientation='horizontal',fraction=0.05,
+                                    fraction=0.05, )  # shrink=0.8, orientation='horizontal',fraction=0.05,
             cbar.set_label("Probability Density")
             plt.suptitle("Distribuzione per diversi angoli θ (Colori uniformi)", fontsize=18)
             plt.show()
-        ########################################################
+            #breakpoint()
 
-        p[:, :, :, i] = prob
-
+    ########################################################
+    # TODO normalizzation
+    #breakpoint()
     return p
 
 #####################################

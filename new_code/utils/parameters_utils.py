@@ -45,6 +45,7 @@ class Configuration:
         self.preprocessing_folder = 'preprocessing'
         self.preprocessing_params_name = 'preprocessing.yaml'
         self.images_subfolder = 'images'
+        self.external_solution_subfolder = 'external_solutions'
         self.masks_subfolder = 'binary_masks'
         self.polygons_subfolder = 'polygons'
         self.features_folder = 'features'
@@ -96,7 +97,8 @@ class Configuration:
             'images': os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.images_subfolder),
             'masks': os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.masks_subfolder),
             'polygons': os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.polygons_subfolder),
-            'features': os.path.join(self.data_folder, self.features_folder, self.puzzle_name)
+            'features': os.path.join(self.data_folder, self.features_folder, self.puzzle_name),
+            'external_solution': os.path.join(self.data_folder, self.external_solution_subfolder, self.puzzle_name)
         }
         return subfolders
      
@@ -198,6 +200,11 @@ class Configuration:
     
     def get_solution_output_parameters_path(self):
         return os.path.join(self.current_solution_folder, self.solution_output_parameters_path)
+
+    # solutions from Adeela
+    def get_puzzle_external_solution_subfolder_path(self):
+        return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name,
+                                self.external_solution_subfolder)
 
     # def get_features_extracted(self, from_yaml: bool = True):
     #     if from_yaml == True:

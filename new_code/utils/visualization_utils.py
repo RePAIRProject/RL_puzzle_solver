@@ -138,7 +138,7 @@ def reconstruct_pil(
         #x, y, theta, confidence = pixel_solution[i]
         x, y, theta, confidence = map(float, solution[i][offset:])
 
-        if confidence <= confidence_threshold:
+        if confidence <  confidence_threshold:
             continue
 
         piece_img = pieces[i].data.image
