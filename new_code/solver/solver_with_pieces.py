@@ -87,7 +87,7 @@ class SolverWithPiecesModule:
         
         assert self.R.ndim == 5, f"R should have 5 dimensions: expecting (x,y,theta,N,N), got R.shape = {R.shape}"
 
-        # numper of pieces
+        # number of pieces
         self.N = self.R.shape[-1]
         # number of rotations
         num_rot = self.R.shape[2]
@@ -132,14 +132,22 @@ class SolverWithPiecesModule:
             print("Using neighbours method, it involves GT and a predefined max_adjacency_degree value set in the .yaml file")
             with open(self.cfg.get_GT_path(), 'r') as jf:
                 self.gt = json.load(jf)
-            self.P, self.init_pos, self.anchor_pos, self.pieces_subset_list = initialize_p_using_neighbours_with_occupancy(self.R, self.anchor_index, self.occupancy_grid_pieces, 
+            self.P, self.init_pos, self.anchor_pos, self.pieces_subset_list = initialize_p_using_neighbours_with_occupancy(self.R,
+                    self.anchor_index,
+                    self.occupancy_grid_pieces,
                     self.gt['adjacency'],                           # adjacency matrix to "select" only neighbouring pieces
                     self.params['solver']['max_adjacency_degree']   # set the maximum degree (1 means only neighbours, 2 neighbour of neighbours and so on)
                     )
             print(f'Using a grid of size {self.P.shape} points [auto with occupancy]')
 
         elif grid_method == 'extern':
-            self.P = initialize_p_from_external_solution(self.ext_solutions , self.anchor_index, self.params['compatibility']['grid'], self.params['solver']['grid']['manual_params']['p_xy_size'],1)
+            with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
+                self.puzzle_info = json.load(pijf)
+            self.P = initialize_p_from_external_solution(self.ext_solutions,
+                                                         self.puzzle_info['rescaling_factor'],
+                                                         self.anchor_index,
+                                                         self.params['compatibility']['grid'],
+                                                         self.params['solver']['grid']['manual_params']['p_xy_size'])
 
         else:
             raise ValueError(f'Unknown method {grid_method}')

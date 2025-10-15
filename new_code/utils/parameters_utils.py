@@ -52,7 +52,7 @@ class Configuration:
         self.features_params_name = 'features.yaml'
         self.experiments_folder = 'experiments'
         self.ground_truth_filename = 'ground_truth.json'
-        self.puzzle_info_filename = 'puzzle_info.json'
+        self.puzzle_info_filename = 'puzzle_info.json'    ###########  PUZZLE_INFO    ###############
         #####
         self.VIS_name = 'final_reconstruction'
         #####
