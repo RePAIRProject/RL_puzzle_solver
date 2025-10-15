@@ -140,6 +140,7 @@ def initialization_from_gt(args):
                 pos3 = np.concatenate((pos3, pos_t), axis=0)
             #pos3 = np.concatenate((pos3, pos_t), axis=0)
 
+        cov3 = [[sigma_y, 0, 0], [0, sigma_x, 0], [0, 0, 1]]
         rv2 = multivariate_normal(mu3, cov3)
         p_norm3_j = rv2.pdf(pos3)
         p_zyx_j = np.reshape(p_norm3_j, (4, grid_size, grid_size))

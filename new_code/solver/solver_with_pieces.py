@@ -3,7 +3,7 @@ from compatibility.grid import PuzzleGrid, PieceOnCanvas
 
 from utils.puzzle_utils import Puzzle, PuzzlePiece
 from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors_with_occ
-from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT, initialize_p_with_occupancy, initialize_p_using_neighbours_with_occupancy
+from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT, initialize_p_with_occupancy, initialize_p_using_neighbours_with_occupancy, initialize_p_from_external_solution
 from utils.human_readable_duration import format_duration
 from utils.visualization_utils import reconstruct
 
@@ -12,7 +12,7 @@ import numpy as np
 import time
 import yaml
 import matplotlib.pyplot as plt
-import json
+import json, os, natsort
 
 class SolverWithPiecesModule:
 
@@ -57,6 +57,15 @@ class SolverWithPiecesModule:
         It should be self-explanatory as it's just setting values (with predefined factors we hard-coded)
 
         """
+        files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
+        files_list = natsort.natsorted(files_list)
+        self.ext_solutions = [
+            np.genfromtxt(os.path.join(self.cfg.get_puzzle_external_solution_subfolder_path(), file_name), dtype=None)
+            for file_name in files_list]
+        for j in range(len(self.ext_solutions)):
+            self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
+
+
         # load compatibility matrix
         self.CM_dict = np.load(self.cfg.get_CM_path(), allow_pickle=True).item()
         # We use `R` as the aggregated matrix
@@ -78,7 +87,7 @@ class SolverWithPiecesModule:
         
         assert self.R.ndim == 5, f"R should have 5 dimensions: expecting (x,y,theta,N,N), got R.shape = {R.shape}"
 
-        # numper of pieces
+        # number of pieces
         self.N = self.R.shape[-1]
         # number of rotations
         num_rot = self.R.shape[2]
@@ -123,11 +132,23 @@ class SolverWithPiecesModule:
             print("Using neighbours method, it involves GT and a predefined max_adjacency_degree value set in the .yaml file")
             with open(self.cfg.get_GT_path(), 'r') as jf:
                 self.gt = json.load(jf)
-            self.P, self.init_pos, self.anchor_pos, self.pieces_subset_list = initialize_p_using_neighbours_with_occupancy(self.R, self.anchor_index, self.occupancy_grid_pieces, 
+            self.P, self.init_pos, self.anchor_pos, self.pieces_subset_list = initialize_p_using_neighbours_with_occupancy(self.R,
+                    self.anchor_index,
+                    self.occupancy_grid_pieces,
                     self.gt['adjacency'],                           # adjacency matrix to "select" only neighbouring pieces
                     self.params['solver']['max_adjacency_degree']   # set the maximum degree (1 means only neighbours, 2 neighbour of neighbours and so on)
                     )
             print(f'Using a grid of size {self.P.shape} points [auto with occupancy]')
+
+        elif grid_method == 'extern':
+            with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
+                self.puzzle_info = json.load(pijf)
+            self.P = initialize_p_from_external_solution(self.ext_solutions,
+                                                         self.puzzle_info['rescaling_factor'],
+                                                         self.anchor_index,
+                                                         self.params['compatibility']['grid'],
+                                                         self.params['solver']['grid']['manual_params']['p_xy_size'])
+
         else:
             raise ValueError(f'Unknown method {grid_method}')
     

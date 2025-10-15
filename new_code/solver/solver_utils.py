@@ -79,6 +79,153 @@ def initialize_p_from_GT(anc, puzzle_root_folder, all_pieces, pieces_incl, no_ro
     print("P:", p.shape)
     return p, init_pos, anchor_pos
 
+#####################################
+#####################################
+## TODO test
+
+def normalize_solutions(solutions, reference_frag):
+
+    import math
+    # Reference fragment
+    x_ref, y_ref, t_ref = solutions[reference_frag]
+
+    # Convert rotation angle from degrees to radians
+    theta = math.radians(-t_ref)  # Negate for inverse rotation
+    cos_theta = math.cos(theta)
+    sin_theta = math.sin(theta)
+
+    transformed = []     #sol_lists = solutions.tolist()
+    for x, y, t in solutions:
+        # 1: Translate (bring the reference to origin)
+        x_shifted = x - x_ref
+        y_shifted = y - y_ref
+        # 2: Rotate around origin (0,0) using inverse rotation of reference
+        x_rotated = x_shifted * cos_theta - y_shifted * sin_theta
+        y_rotated = x_shifted * sin_theta + y_shifted * cos_theta
+        # 3: Adjust rotation angle
+        t_rotated = t - t_ref
+
+        transformed.append((x_rotated, y_rotated, t_rotated))
+
+    transformed = np.array(transformed, dtype=np.int64)
+
+    return transformed
+
+
+def probability_for_single_fragment(grid_size, mean, std_devs):
+
+    # mean = (25.312, 25, 90.2587)  ## solution for the piece, t° !
+    # std_devs = (10.0, 10.0, 0.5)  ## st. deviation, t° !
+
+    size_x, size_y, size_theta = grid_size
+    cx, cy, ct = mean
+    sx, sy, st = std_devs
+    ct = ct/ 360 * grid_size[2]  ### conversion to "cycle-grid"
+    st = st/ 360 * grid_size[2]  ### conversion to "cycle-grid"
+
+    # Create 3D grid of coordinates
+    x = np.arange(size_x)
+    y = np.arange(size_y)
+    t = np.arange(size_theta)
+    X, Y, T = np.meshgrid(x, y, t, indexing='ij')
+
+    # Compute squared distances
+    dx2 = ((X - cx) ** 2) / (2 * sx ** 2)
+    dy2 = ((Y - cy) ** 2) / (2 * sy ** 2)
+
+    # Cyclic angular distance
+    dtheta = np.minimum(np.abs(T - ct), size_theta - np.abs(T - ct))
+    #    np.minimum(np.abs(a - b), cycle_length - np.abs(a - b))   #"""Compute minimum cyclic distance between a and b."""
+
+    dt2 = (dtheta ** 2) / (2 * st ** 2)
+    prob = np.exp(-(dx2 + dy2 + dt2))
+    prob /= np.sum(prob)
+
+    return prob
+
+
+def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_idx:int, grid, p_xy_size = (0,0), spars_p = 1, vis = 0):
+    import heapq
+    xy_step = grid['xy_step']
+    theta_num_points = grid['theta_num_points']
+    p_size_x = p_xy_size[0]
+    p_size_y = p_xy_size[1]
+
+    # initialize assignment matrix
+    grid_size = (p_size_y, p_size_x, theta_num_points)  ## p_size
+    p = np.zeros((grid_size[0], grid_size[1], grid_size[2], len(all_solutions[0])))
+    print('rescaling_factor', rescaling_factor)
+
+    for sol in all_solutions[:1]:
+        solution = np.array(sol)[:,1:].astype(float)
+        confidence = np.ones_like(solution, dtype=np.float64)*11
+        print("Input")
+        print(solution)
+
+        # TODO Rescale - HARD coded here (load from json)
+        # rescaling_factor = 4.824701195219124
+        # rescaling_factor = 1
+        solution[:, :2] = solution[:, :2] / rescaling_factor
+        print("Rescale")
+        print(solution)
+
+        # rotate and translate to origin [0,0,0]
+        norm_solutions = normalize_solutions(solution, anchor_idx) # output is in pixels and grades
+        print("Normalization")
+        print(norm_solutions)
+
+        # adapt solutions to grid (translations)
+        center = np.array([p_size_y//2, p_size_x//2], dtype=np.int64)  # shift to center
+        norm_solutions[:,:2] = norm_solutions[:,:2] / xy_step + center
+        norm_solutions[:, 2] = (norm_solutions[:,2]+360)%360
+        print("Shifted")
+        print(norm_solutions)
+
+        for i in range(len(norm_solutions)):
+            if i == anchor_idx:
+                p[center[0], center[1], 0, i] = 1
+            else:
+                mean = norm_solutions[i, :]  ## solution for the piece, t° !
+                std_devs = confidence[i,:]   #std_devs = (10.0, 10.0, 0.5)  # st. deviation, t° !
+                prob = probability_for_single_fragment(grid_size, mean, std_devs)
+
+                if spars_p == 1:
+                    n = 9
+                    top_val = heapq.nlargest(n, prob.flatten().tolist())
+                    prob[prob < np.min(top_val)] = 0
+                p[:, :, :, i] += prob
+
+    #######################################################
+    for i in range(len(solution)):
+        prob_i = p[:, :, :, i]
+        if vis == 1:
+            # Show distribution for (theta = 0, 1, ... , n_of_slice)
+            import matplotlib.pyplot as plt
+            n_of_slice = 4
+            vmin = prob_i.min()  # limiti globali della scala
+            vmax = prob_i.max()
+            fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
+
+            for j in range(n_of_slice):
+                ax = axes[j]  # mappa 0–5 in (row, col)
+                im = ax.imshow(prob_i[:, :, j], cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
+                ax.set_title(f"θ = {j} fragment{i} anc {anchor_idx}")
+                ax.set_xlabel("y")
+                ax.set_ylabel("x")
+            # colorbar comune a tutti i subplot
+            cbar = fig.colorbar(im, ax=axes.ravel().tolist(), pad=0.07,
+                                    fraction=0.05, )  # shrink=0.8, orientation='horizontal',fraction=0.05,
+            cbar.set_label("Probability Density")
+            plt.suptitle("Distribuzione per diversi angoli θ (Colori uniformi)", fontsize=18)
+            plt.show()
+
+    # TODO normalizzation
+    return p
+
+#####################################
+#####################################
+
+
 def get_pieces_id_list(anchor_idx:int, adjacency_matrix:np.ndarray, max_adjacency_degree:int):
     """
     Given the anchor index, the adjacency matrix and a maximum degrees, it creates a list of the pieces id which are "neighbours" of rank <= of the max degree.

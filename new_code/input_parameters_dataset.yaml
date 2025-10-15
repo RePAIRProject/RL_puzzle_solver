@@ -1,7 +1,8 @@
 ---  # yaml document beginning
 # comment syntax
 
-data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca'
+#data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca'
+data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=m.khoroshiltseva/home/ssd/datasets/RePAIR_ReLab_marina/'
 puzzle_name: 
 verbosity: 2
 skip_done: False
@@ -32,7 +33,7 @@ compatibility:
   grid: 
     xy_step: 11
     theta_step: 360
-    xy_num_points: 35
+    xy_num_points: 75
     theta_num_points: 1
   # region matrix calculation
   regions:
@@ -45,11 +46,11 @@ compatibility:
   features:
     # all features SHOULD have 'enabled': Yes/No as it is checked internally from cmm.check_features_status()
     shape: 
-      enabled: Yes
+      enabled: No
       sigma: 1 # ?
-      SDF_dilation: 35 # TODO: check if it should be different from borders dilstion!
+      SDF_dilation: 75 # TODO: check if it should be different from borders dilstion!
       save_best_images: 
-        enabled: Yes 
+        enabled: No
         score_threshold: 0.8
         dist2GT_threshold: 15
         data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca/PAD_shape_best_negatives'
@@ -76,7 +77,7 @@ compatibility:
       geometric_params:
         something: 1
     oracle:
-      enabled: No
+      enabled: Yes
       create_pairwise_alignments_dataset: False
       pairwise_alignments_dataset:
         crop_images: True
@@ -93,10 +94,11 @@ aggregation:
   method: 'oracle'  
 
 solver:
-  T_first: 100 #1000
-  T_next: 100 #500
-  T_max: 500 #3000
+  T_first: 100
+  T_next: 100
+  T_max: 500
   no_rotations: True
+  PQ_mode: simple
   # TODO: switch to anchor ID
   anchor_index: -1 # TODO: null, None?
   # threshold
@@ -108,7 +110,29 @@ solver:
     # this is used only when method is set to 'manual'
     manual_params:
        p_xy_size: [191,191]
-  
 
 
+  # how to save the solution
+  solution:
+    save_pixel_solution: True
+    save_as_txt: True
+    visualization:
+      add_suffix: True
+      in_the_suffix:
+        anchor_index: True
+        agg_method: True
+
+    # if True, solution will be:
+    # name1 x1 y1 z1 p1
+    # name2 x2 y2 z2 p2
+    # if False
+    # x1 y1 z1 p1
+    # x2 y2 z2 p2
+    include_names: True
+
+    # if False, will remove the probabilities p
+    # and solution will be:
+    # name1 x1 y1 z1
+    # name2 x2 y2 z2
+    include_probs: True
 

@@ -9,9 +9,16 @@ import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
 import yaml
+import torch
 
-
-
+from compatibility.polex_refactored import (
+    to_torch_bgra,
+    extract_potential_alignments,
+    score_alignment,
+    warp_single_image,
+    tensor_to_rgba,
+    pad_to_same_size,
+)
 
 
 ###########################################################
@@ -105,7 +112,13 @@ class RegionMatrixModule:
         self.threshold_overlap_shapes = self.piece_size / 6 # it was /2 !
         self.threshold_overlap_lines = self.piece_size / 8
         self.threshold_overlap_motifs = self.piece_size / 5
-        self.RM_size = (self.grid.xy_num_points, self.grid.xy_num_points, self.grid.theta_num_points, self.puzzle.num_of_pieces, self.puzzle.num_of_pieces)
+        self.RM_size = (
+            self.grid.xy_num_points,
+            self.grid.xy_num_points,
+            self.grid.theta_num_points,
+            self.puzzle.num_of_pieces,
+            self.puzzle.num_of_pieces,
+        )
         self.RM_computed = False
         self.RM = {
             'shape': np.zeros(self.RM_size)
@@ -215,10 +228,95 @@ class RegionMatrixModule:
             if verbose > 1:
                 print("WARNING:\nfor the PAD compatibility, we still use shape-based RM Computation")
             RM = self.compute_shape_based_RM(verbose=verbose)
+
+        elif feature == 'geometry':
+            if verbose > 1:
+                print("geometry-based RM Computation")
+            RM = self.compute_geometry_based_RM(verbose=verbose)
+
         else:
             raise Exception(f"{feature}-based RM not implemented yet!")
 
         return RM 
+
+    ##########################################
+    #####   TODO  NEW   ########################
+    ##########################################
+
+    def compute_geometry_based_RM(self, verbose: int = 0):
+        """Loops over pairs of pieces - not symmetric yet"""
+        self.RM_size = (self.grid.xy_num_points, self.grid.xy_num_points, self.grid.theta_num_points,
+                        self.puzzle.num_of_pieces, self.puzzle.num_of_pieces)
+        RM_geometric = np.zeros(self.RM_size)
+        if verbose > 1:
+            print()
+        for i in range(self.puzzle.num_of_pieces):
+            for j in range(self.puzzle.num_of_pieces):
+                if i != j:
+                    if verbose > 1:
+                        print(f'computing shape-based RM[:, :, :, {i:02d}, {j:02d}]', end='\r')
+                    RM_geometric[:, :, :, j, i] = self.compute_pairwise_geometry_based_RM(i, j)
+        if verbose > 1:
+            print()
+        return RM_geometric
+
+    def compute_pairwise_geometry_based_RM(self, i: int, j: int, dilate: bool = True, erode: bool = True):
+        """
+        Geometry based RM with 1, 0 and -1 regions
+        """
+
+        # 1) Load BGRA images (with alpha) as numpy arrays
+
+        ###piece_img = pieces[i].data.image
+        tgt_np = self.puzzle.pieces[i].data.image
+        src_np = self.puzzle.pieces[j].data.image
+        #tgt_np = cv2.imread("target2.png", cv2.IMREAD_UNCHANGED)
+        #src_np = cv2.imread("source.png", cv2.IMREAD_UNCHANGED)
+
+        # 2) Convert to [1,4,H,W] CUDA tensors
+        dev = torch.device("cuda")
+        tgt_t = to_torch_bgra(tgt_np, pad_by=200, device=dev)
+        src_t = to_torch_bgra(src_np, pad_by=200, device=dev)
+
+        # 3) Extract all geometric candidates
+        cands = extract_potential_alignments(
+            tgt_t, src_t,
+            gap=2.0,
+            min_edge_length=20.0,
+            min_length_ratio=0.8,
+            epsilon_ratio=0.005,
+            angle_threshold_deg=10.0,
+            smoothing_kernel_size=3,
+            pad_by=200
+        )
+
+        RM_ij = np.zeros(tuple(self.RM_size[:3]))
+        t = self.RM_size[2]
+        all_theta =  np.array([i * 360 / t for i in range(t)] )   # [0, 90, ....]
+
+        t_center = (self.grid.xy_num_points-1)/2
+        for candidate in cands:
+            tx = candidate["translation_x"]
+            ty = candidate["translation_y"]
+            rotation = candidate["rotation"]%360
+            print(f"tx = {tx}, ty = {ty}, t = {rotation}")
+
+            x_grid = np.round(t_center+(tx / self.grid.xy_step)).astype(int)
+            y_grid = np.round(t_center-(ty / self.grid.xy_step)).astype(int)
+            t_grid = np.argmin(abs(rotation - all_theta))
+            print(f"x = {x_grid}, y = {y_grid}, t = {t_grid}")
+
+            #RM_ij[x_grid, y_grid, t_grid] = 1
+            RM_ij[y_grid, x_grid, t_grid] = 1
+
+        return RM_ij
+
+    ##########################################
+    #######  FINE TODO      #################
+    ##########################################
+
+
+
 
     ##############################################
     #                                            #

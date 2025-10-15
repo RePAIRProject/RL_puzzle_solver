@@ -1,8 +1,10 @@
+import os
+
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
 from compatibility.grid import PuzzleGrid
 
 from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors
-from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT
+from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT, initialize_p_from_external_solution
 from utils.human_readable_duration import format_duration
 from utils.visualization_utils import reconstruct
 
@@ -53,6 +55,17 @@ class SolverModule:
         It should be self-explanatory as it's just setting values (with predefined factors we hard-coded)
 
         """
+
+        # load external solutions
+        breakpoint()
+        files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
+        self.ext_solutions = [
+            np.genfromtxt(os.path.join(self.cfg.get_puzzle_external_solution_subfolder_path(), file_name), dtype=None)
+            for file_name in files_list]
+        for j in range(len(self.ext_solutions)):
+            self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
+
+
         # load compatibility matrix
         self.CM_dict = np.load(self.cfg.get_CM_path(), allow_pickle=True).item()
         # We use `R` as the aggregated matrix
@@ -107,6 +120,11 @@ class SolverModule:
             raise NotImplementedError()
             self.P, self.init_pos, self.anchor_pos = initialize_p_from_GT(anc, puzzle_root_folder, all_pieces, pieces, num_rot)
             print(f'Using a grid of size {self.P.shape} points [gt]')
+
+        elif grid_method == 'extern':
+            self.P, self.init_pos, self.anchor_pos = initialize_p_from_external_solution(self.ext_solutions , self.anchor_index, self.params['compatibility']['grid'], self.params['solver']['grid']['manual_params']['p_xy_size'])
+
+
         else:
             raise ValueError(f'Unknown method {grid_method}')
         
