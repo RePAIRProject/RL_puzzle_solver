@@ -98,29 +98,39 @@ aggregation:
   method: 'PAD'  
 
 solver:
-  # number of iterations
-  T_first: 1000
-  T_next: 500
-  T_max: 3000
-  # skip rotations
+  T_first: 500 #1000
+  T_next: 250 #500
+  T_max: 1500 #3000
+  PQ_mode: 'exp'
   no_rotations: False
-  # can be 'simple' or 'exp' - changes the update rule
-  PQ_mode: simple
   # TODO: switch to anchor ID
-  anchor_index: -1 # TODO: null, None?
-  # for the occ with neighbours (used with GT)
+  anchor_index: 1 # TODO: null, None?
   max_adjacency_degree: 1
   # threshold
   accept_threshold: 0.75
   p_precision: 10
   grid:
-    # choices are:
-    # ['gt','auto','manual', 'occ', 'neighbours_occ']
+    # ['gt','auto','manual', 'occ', 'neighbours_occ', 'extern']
     # - neighbours_occ is experimental and requires GT
-    method: auto
+    method: extern
     # this is used only when method is set to 'manual'
     manual_params:
        p_xy_size: [151,151]
+
+  # integration with ReassembleNet
+  reassembleNet:
+    std_dev_x: 110
+    std_dev_y: 110
+    std_dev_t: 1 
+
+  solution:
+    save_pixel_solution: True 
+    save_as_txt: True
+    visualization:
+      add_suffix: True
+      in_the_suffix: 
+        anchor_index: True 
+        agg_method: True
        
   # how to save the solution
   solution:
