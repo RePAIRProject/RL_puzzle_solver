@@ -677,6 +677,9 @@ class CompatibilityMatrixModule:
                     cmp_score = -1    
                 else:
                     cmp_score = 0
+            elif PAD_params['use_prob_diff'] == True:
+                cmp_score = pred_probs[1].item() if pred_class == 1 else -1*pred_probs[0].item()
+                cmp_score *= torch.abs(torch.diff(pred_score)).item()
             else:
                 cmp_score = pred_probs[1].item() if pred_class == 1 else -1*pred_probs[0].item()
             
@@ -687,16 +690,23 @@ class CompatibilityMatrixModule:
         # plt.imshow(piece_i.data.image)
         # plt.subplot(232)
         # plt.imshow(piece_j.data.image)
-        
-        #print(f"best pos: {best_pos_xy}")
+
+        # # best_pos_idx = np.argmax(CM_ij)
+        # # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
+        # # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
+        # # print(f"best pos before: {best_pos_xy}")
                         
-        #cm_rel_j_vs_i = [best_pos_xy_idx[0] - self.grid.xy_values.shape[0]//2, best_pos_xy_idx[1] - self.grid.xy_values.shape[1]//2]
-        # print(f"estimated: {np.asarray(cm_rel_j_vs_i) * self.grid.xy_step}")
-        # plt.title(f"score: {shape_score:.02f}")
-        # plt.show()
+        # # cm_rel_j_vs_i = [best_pos_xy_idx[0] - self.grid.xy_values.shape[0]//2, best_pos_xy_idx[1] - self.grid.xy_values.shape[1]//2]
+        # # print(f"estimated: {np.asarray(cm_rel_j_vs_i) * self.grid.xy_step}")
+        # plt.title(f"score: {cmp_score:.02f}")
+        # # plt.show()
         # plt.subplot(234)
         # plt.imshow(np.transpose(CM_ij[:,:,0]))
         # plt.title("CM raw")
+
+        ###################################################
+        ###################################################
+        ###################################################
         # CM post processing
         if np.max(CM_ij) > 0:
             CM_ij /= np.max(CM_ij)
@@ -706,21 +716,30 @@ class CompatibilityMatrixModule:
         # plt.subplot(235)
         # plt.title("CM after pushing")
         # plt.imshow(np.transpose(CM_ij[:,:,0]))
-        # cut values
+        ###################################################
+        ###################################################
+        ###################################################
+        #         cut values
         CM_ij[CM_ij < PAD_params['cutoff_value']] = 0
+        CM_ij -= neg_region
+
+        
         # plt.subplot(236)
-        # # plt.imshow(CM_ij)
+        # plt.imshow(CM_ij)
         # plt.title("CM final")
         # plt.imshow(np.transpose(CM_ij[:,:,0]))
-        CM_ij -= neg_region
-        # plt.subplot(121); plt.imshow(RM_ij)
-        # plt.subplot(122); plt.imshow(CM_ij)
+        
+        # # plt.figure()
+        # # plt.subplot(131); plt.imshow(RM_ij)
+        # # plt.subplot(132); plt.imshow(CM_ij)
         # plt.show()
+        # # plt.subplot(133)
         # breakpoint()
-        # plt.subplot(233)
+
         # best_pos_idx = np.argmax(CM_ij)
         # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
         # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
+        # print(f"best pos after: {best_pos_xy}")
         # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=best_pos_xy[1], y=best_pos_xy[0], theta=thetaj, enabled_features=self.features_status)
         # img_to_discriminate_mpl = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=False)
         # plt.imshow(img_to_discriminate_mpl)
