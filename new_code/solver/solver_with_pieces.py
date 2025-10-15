@@ -143,10 +143,13 @@ class SolverWithPiecesModule:
         elif grid_method == 'extern':
             with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
                 self.puzzle_info = json.load(pijf)
+            std_devs = np.asarray([self.params['solver']['reassembleNet']['std_dev_x'], self.params['solver']['reassembleNet']['std_dev_y'], \
+                        self.params['solver']['reassembleNet']['std_dev_t']])
             self.P = initialize_p_from_external_solution(self.ext_solutions,
                                                          self.puzzle_info['rescaling_factor'],
                                                          self.anchor_index,
                                                          self.params['compatibility']['grid'],
+                                                         std_devs,
                                                          self.params['solver']['grid']['manual_params']['p_xy_size'])
 
         else:
