@@ -144,7 +144,7 @@ def probability_for_single_fragment(grid_size, mean, std_devs):
     return prob
 
 
-def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_idx:int, grid, std_devs, p_xy_size = (0,0), spars_p = 0, vis = 0):
+def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_idx:int, grid, var, p_xy_size = (0,0), spars_p = 0, vis = 0):
     import heapq
     xy_step = grid['xy_step']
     theta_num_points = grid['theta_num_points']
@@ -156,9 +156,9 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
     p = np.zeros((grid_size[0], grid_size[1], grid_size[2], len(all_solutions[0])))
     print('rescaling_factor', rescaling_factor)
 
-    for sol in all_solutions[:1]:
+    for sol in all_solutions:
         solution = np.array(sol)[:,1:].astype(float)
-        confidence = np.ones_like(solution, dtype=np.float64)*(1/std_devs)
+        variance = np.ones_like(solution, dtype=np.float64)*var
         print("Input")
         print(solution)
 
@@ -186,7 +186,7 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
                 p[center[0], center[1], 0, i] = 1
             else:
                 mean = norm_solutions[i, :]  ## solution for the piece, t° !
-                std_devs = confidence[i,:]   #std_devs = (10.0, 10.0, 0.5)  # st. deviation, t° !
+                std_devs = variance[i,:]   #std_devs = (10.0, 10.0, 0.5)  # st. deviation, t° !
                 prob = probability_for_single_fragment(grid_size, mean, std_devs)
 
                 if spars_p == 1:
