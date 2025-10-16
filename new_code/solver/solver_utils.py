@@ -144,7 +144,7 @@ def probability_for_single_fragment(grid_size, mean, std_devs):
     return prob
 
 
-def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_idx:int, grid, var, p_xy_size = (0,0), spars_p = 0, vis = 0):
+def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_idx:int, grid, p_xy_size = (0,0), spars_p = 0, vis = 0, var = 1):
     import heapq
     xy_step = grid['xy_step']
     theta_num_points = grid['theta_num_points']
@@ -157,14 +157,18 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
     print('rescaling_factor', rescaling_factor)
 
     for sol in all_solutions:
-        solution = np.array(sol)[:,1:].astype(float)
-        variance = np.ones_like(solution, dtype=np.float64)*var
+        if np.array(sol)[:,1:].shape[1]>3:
+            solution = np.array(sol)[:,1:-1].astype(float)
+            input_vars = np.array(sol)[:,-1].astype(float)
+            input_vars = input_vars**(1/2)/ rescaling_factor  #sqrt and rescale
+            variance = np.ones_like(solution, dtype=np.float64)*input_vars[:, np.newaxis]
+        else:
+            solution = np.array(sol)[:, 1:].astype(float)
+            variance = np.ones_like(solution, dtype=np.float64)*var
         print("Input")
         print(solution)
 
-        # TODO Rescale - HARD coded here (load from json)
-        # rescaling_factor = 4.824701195219124
-        # rescaling_factor = 1
+        # Rescale
         solution[:, :2] = solution[:, :2] / rescaling_factor
         print("Rescale")
         print(solution)
@@ -189,8 +193,9 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
                 std_devs = variance[i,:]   #std_devs = (10.0, 10.0, 0.5)  # st. deviation, t° !
                 prob = probability_for_single_fragment(grid_size, mean, std_devs)
 
-                if spars_p == 1:
-                    n = 9
+                if spars_p > 0:
+                    n = 9   ## TODO  - load from input_params.yaml !!! That can be val of spars_p [1,3,5,7 ... ]
+                    # n = spars_p**2 #OPTION
                     top_val = heapq.nlargest(n, prob.flatten().tolist())
                     prob[prob < np.min(top_val)] = 0
                 p[:, :, :, i] += prob
@@ -202,12 +207,12 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
             # Show distribution for (theta = 0, 1, ... , n_of_slice)
             import matplotlib.pyplot as plt
             n_of_slice = 4
-            vmin = prob_i.min()  # limiti globali della scala
+            vmin = prob_i.min()  # global limits of the scale
             vmax = prob_i.max()
             fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
 
             for j in range(n_of_slice):
-                ax = axes[j]  # mappa 0–5 in (row, col)
+                ax = axes[j]  # map 0–5 in (row, col)
                 im = ax.imshow(prob_i[:, :, j], cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
                 ax.set_title(f"θ = {j} fragment{i} anc {anchor_idx}")
                 ax.set_xlabel("y")
@@ -216,7 +221,7 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
             cbar = fig.colorbar(im, ax=axes.ravel().tolist(), pad=0.07,
                                     fraction=0.05, )  # shrink=0.8, orientation='horizontal',fraction=0.05,
             cbar.set_label("Probability Density")
-            plt.suptitle("Distribuzione per diversi angoli θ (Colori uniformi)", fontsize=18)
+            plt.suptitle("distribution for different rotations θ (Uniform Colors)", fontsize=18)
             plt.show()
 
     # TODO normalizzation
