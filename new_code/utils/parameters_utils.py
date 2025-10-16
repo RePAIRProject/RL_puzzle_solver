@@ -39,7 +39,7 @@ class CustomYAMLEncoder(yaml.SafeDumper):
 #                                                           #
 #############################################################
 class Configuration:
-    
+
     def __init__(self):
         self.data_folder = 'data'
         self.preprocessing_folder = 'preprocessing'
@@ -67,7 +67,7 @@ class Configuration:
         self.solution_input_parameters_path = 'solution_input_params.yaml'
         self.solution_output_parameters_path = 'solution_output_params.yaml'
         self.timestamp_fmt = '%Y%m%d%H%M%S'
-        
+
     def get_puzzle_name(self):
         return self.puzzle_name
 
@@ -101,7 +101,7 @@ class Configuration:
             'external_solution': os.path.join(self.data_folder, self.external_solution_subfolder, self.puzzle_name)
         }
         return subfolders
-     
+
     def get_puzzle_pieces_filenames(self, sorted=True):
         filenames = [filename[:-4] for filename in os.listdir(self.get_puzzle_images_subfolder())]
         if sorted == True:
@@ -119,16 +119,16 @@ class Configuration:
 
     def get_puzzle_features_subfolder(self):
         return os.path.join(self.data_folder, self.features_folder, self.puzzle_name)
-    
+
     def get_puzzle_experiments_subfolder(self):
         return os.path.join(self.data_folder, self.experiments_folder, self.puzzle_name)
-       
+
     def get_GT_path(self):
     	return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.ground_truth_filename)
-    	
+
     def get_puzzle_info_path(self):
     	return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.puzzle_info_filename)
-    	
+
     def new_puzzle_single_run_random_folder_name(self):
         timestamp = datetime.now().strftime(self.timestamp_fmt)
         self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), f"exp_{timestamp}_{self.randomword(6)}")
@@ -140,10 +140,10 @@ class Configuration:
             self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), path)
         else:                   # full path
             self.current_experiment_folder = path
-    
+
     def get_current_experiments_folder(self):
         return self.current_experiment_folder
-        
+
     def get_VIS_path(self, image_format:str='png', add_as_suffix:str="", mode:str='solution'):
         if len(add_as_suffix) > 0:
             vis_name = f"{self.VIS_name}{add_as_suffix}.{image_format}"
@@ -162,22 +162,22 @@ class Configuration:
 
     def get_RM_input_parameters_path(self):
         return os.path.join(self.current_experiment_folder, self.RM_input_parameters_path)
-    
+
     def get_RM_output_parameters_path(self):
         return os.path.join(self.current_experiment_folder, self.RM_output_parameters_path)
-    
+
     def get_CM_path(self):
         return os.path.join(self.current_experiment_folder, self.CM_name)
 
     def get_CM_input_parameters_path(self):
         return os.path.join(self.current_experiment_folder, self.CM_input_parameters_path)
-    
+
     def get_CM_output_parameters_path(self):
         return os.path.join(self.current_experiment_folder, self.CM_output_parameters_path)
-    
+
     def get_aggregation_input_parameters_path(self):
         return os.path.join(self.current_experiment_folder, self.CM_input_parameters_path)
-    
+
     def get_aggregation_output_parameters_path(self):
         return os.path.join(self.current_experiment_folder, self.CM_output_parameters_path)
 
@@ -197,7 +197,7 @@ class Configuration:
 
     def get_solution_input_parameters_path(self):
         return os.path.join(self.current_solution_folder, self.solution_input_parameters_path)
-    
+
     def get_solution_output_parameters_path(self):
         return os.path.join(self.current_solution_folder, self.solution_output_parameters_path)
 
@@ -205,6 +205,14 @@ class Configuration:
     def get_puzzle_external_solution_subfolder_path(self):
         return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name,
                                 self.external_solution_subfolder)
+
+    #######################################à
+    # solutions from Adeela
+    def get_grid_params(self):
+        with open(self.get_CM_output_parameters_path(), 'r') as file:
+            grid_params = yaml.safe_load(file)
+        return grid_params['grid_params']
+
 
     # def get_features_extracted(self, from_yaml: bool = True):
     #     if from_yaml == True:
@@ -222,18 +230,18 @@ class Configuration:
 
     def load(self, yaml_file_path: str, read_name: bool = True):
         """
-        Loads the parameters from the .yaml file 
+        Loads the parameters from the .yaml file
         Some parameters are "consequences" of the loaded one (calculated from)
         """
         with open(yaml_file_path, 'r') as file:
             parameters = yaml.safe_load(file)
         self.puzzle_name = parameters['puzzle_name']
         self.data_folder = parameters['data_folder']
-        return parameters 
-        
+        return parameters
+
     def save(self, yaml_file_path: str):
         """
-        Save (the parameters) to the .yaml file 
+        Save (the parameters) to the .yaml file
         """
 
     def randomword(self, length: int):

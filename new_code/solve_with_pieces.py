@@ -10,6 +10,7 @@ def main():
     params = cfg.load('input_parameters.yaml')   
     # we are solving based on the CM previously computed, so we need to know `exp_name`
     cfg.set_puzzle_single_run_random_folder_name(params['exp_name'])
+    params['compatibility']['grid']  = cfg.get_grid_params()
 
     print("Solving", params['puzzle_name'], "-", params['exp_name'])
     puzzle = Puzzle()
