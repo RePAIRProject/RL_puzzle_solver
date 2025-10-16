@@ -144,7 +144,7 @@ def probability_for_single_fragment(grid_size, mean, std_devs):
     return prob
 
 
-def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_idx:int, grid, std_devs, p_xy_size = (0,0), spars_p = 1, vis = 0):
+def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_idx:int, grid, std_devs, p_xy_size = (0,0), spars_p = 0, vis = 0):
     import heapq
     xy_step = grid['xy_step']
     theta_num_points = grid['theta_num_points']

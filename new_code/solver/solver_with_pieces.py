@@ -150,7 +150,9 @@ class SolverWithPiecesModule:
                                                          self.anchor_index,
                                                          self.params['compatibility']['grid'],
                                                          std_devs,
-                                                         self.params['solver']['grid']['manual_params']['p_xy_size'])
+                                                         self.params['solver']['grid']['manual_params']['p_xy_size'],
+                                                         spars_p=self.params['solver']['reassembleNet']['sparsify_p'],
+                                                         vis=self.params['solver']['reassembleNet']['visualization'])
 
         else:
             raise ValueError(f'Unknown method {grid_method}')
