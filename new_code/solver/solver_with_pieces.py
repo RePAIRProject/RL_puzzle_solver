@@ -3,7 +3,8 @@ from compatibility.grid import PuzzleGrid, PieceOnCanvas
 
 from utils.puzzle_utils import Puzzle, PuzzlePiece
 from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors_with_occ
-from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_from_GT, initialize_p_with_occupancy, initialize_p_using_neighbours_with_occupancy, initialize_p_from_external_solution
+from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_with_occupancy, initialize_p_using_neighbours_with_occupancy
+from .solver_utils import initialize_p_from_external_solution, get_p_xy_size_from_sandbox_size, initialize_p_from_GT
 from utils.human_readable_duration import format_duration
 from utils.visualization_utils import reconstruct
 
@@ -143,19 +144,43 @@ class SolverWithPiecesModule:
         elif grid_method == 'extern':
             with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
                 self.puzzle_info = json.load(pijf)
-            #std_devs = np.asarray([self.params['solver']['reassembleNet']['std_dev_x'], self.params['solver']['reassembleNet']['std_dev_y'], \
-            #            self.params['solver']['reassembleNet']['std_dev_t']])
+            p_xy_size = self.solver_params['grid']['manual_params']['p_xy_size']
             self.P = initialize_p_from_external_solution(self.ext_solutions,
                                                          self.puzzle_info['rescaling_factor'],
                                                          self.anchor_index,
-                                                         self.params['compatibility']['grid'],
-                                                         self.params['solver']['grid']['manual_params']['p_xy_size'],
+                                                         self.params['compatibility']['grid'], p_xy_size,
                                                          spars_p=self.params['solver']['reassembleNet']['sparsify_p'],
                                                          vis=self.params['solver']['reassembleNet']['visualization'])
 
+
+        if grid_method == 'integration' or grid_method == 'integration_with_external':
+
+            with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
+                self.puzzle_info = json.load(pijf)
+            with open(self.cfg.get_GT_path(), 'r') as jgtp:
+                self.gt = json.load(jgtp)
+
+            sandbox_size = self.solver_params['grid']['manual_params']['sandbox_size']
+            p_xy_size = get_p_xy_size_from_sandbox_size(sandbox_size,
+                                                        self.puzzle_info['num_pieces'],
+                                                       self.puzzle_info['rescaling_factor'],
+                                                       self.gt['transform'][0][0],
+                                                       self.params['compatibility']['grid'])
+            if grid_method == 'integration':
+                self.P, self.init_pos, self.anchor_pos = initialize_p(self.R, self.anchor_index, p_xy_size[0], p_xy_size[1])
+
+            elif grid_method == 'integration_with_external':
+                self.P = initialize_p_from_external_solution(self.ext_solutions,
+                                                            self.puzzle_info['rescaling_factor'],
+                                                            self.anchor_index,
+                                                            self.params['compatibility']['grid'], p_xy_size,
+                                                            spars_p=self.params['solver']['reassembleNet'][
+                                                                'sparsify_p'],
+                                                            vis=self.params['solver']['reassembleNet']['visualization'])
         else:
             raise ValueError(f'Unknown method {grid_method}')
-    
+
+
     def _compute_occupancy_grid(self, show_results:bool=False):
             
         occ_grid = np.zeros((self.N, self.grid_params['xy_num_points'], self.grid_params['xy_num_points']))

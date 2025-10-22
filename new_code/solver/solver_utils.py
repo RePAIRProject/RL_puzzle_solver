@@ -227,7 +227,28 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
     # TODO normalizzation
     return p
 
-#####################################
+#####################################  TODO debug - check output
+
+def get_p_xy_size_from_sandbox_size(sandbox_size, num_pieces, rescaling_factor, transform_factor, grid):
+    xy_step = grid['xy_step']
+    theta_num_points = grid['theta_num_points']
+
+    # Transform - sandbox_size in mm !!!
+    mm_to_px = 1/transform_factor
+    #mm_to_px = transform_factor
+    sandbox_size_px = (np.array(sandbox_size) - (2*15)) * mm_to_px
+
+    # Rescale - rescaling factor is puzzle wise !!!
+    box_size =  sandbox_size_px/ rescaling_factor
+
+    # Px_to_Grid
+    p_size_x = box_size[0] / xy_step
+    p_size_y = box_size[1] / xy_step
+
+    p_xy_size = np.array([p_size_y, p_size_x], dtype=np.int64)
+
+    return p_xy_size
+
 #####################################
 
 
