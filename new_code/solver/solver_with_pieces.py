@@ -56,16 +56,7 @@ class SolverWithPiecesModule:
         """
         All the parameters are set here
         It should be self-explanatory as it's just setting values (with predefined factors we hard-coded)
-
         """
-        files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
-        files_list = natsort.natsorted(files_list)
-        self.ext_solutions = [
-            np.genfromtxt(os.path.join(self.cfg.get_puzzle_external_solution_subfolder_path(), file_name), dtype=None)
-            for file_name in files_list]
-        for j in range(len(self.ext_solutions)):
-            self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
-
 
         # load compatibility matrix
         self.CM_dict = np.load(self.cfg.get_CM_path(), allow_pickle=True).item()
@@ -181,7 +172,7 @@ class SolverWithPiecesModule:
                 self.P, self.init_pos, self.anchor_pos = initialize_p(self.R, self.anchor_index, p_xy_size[0], p_xy_size[1])
 
             elif grid_method == 'integration_with_external':
-                
+
                 if not os.path.exists(self.cfg.get_puzzle_external_solution_subfolder_path()):
                     raise Exception("Missing external solution folder! Maybe you want to change the init method? \nYou can find it in:\ninput_parameters.yaml: solver --> grid --> method\n")
                 ext_solutions_files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
