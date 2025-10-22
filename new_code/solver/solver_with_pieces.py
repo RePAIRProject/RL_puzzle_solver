@@ -142,6 +142,17 @@ class SolverWithPiecesModule:
             print(f'Using a grid of size {self.P.shape} points [auto with occupancy]')
 
         elif grid_method == 'extern':
+
+            if not os.path.exists(self.cfg.get_puzzle_external_solution_subfolder_path()):
+                raise Exception("Missing external solution folder! Maybe you want to change the init method? \nYou can find it in:\ninput_parameters.yaml: solver --> grid --> method\n")
+            ext_solutions_files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
+            ext_solutions_files_list = natsort.natsorted(ext_solutions_files_list)
+            self.ext_solutions = [
+                np.genfromtxt(os.path.join(self.cfg.get_puzzle_external_solution_subfolder_path(), file_name), dtype=None)
+                for file_name in ext_solutions_files_list]
+            for j in range(len(self.ext_solutions)):
+                self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
+
             with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
                 self.puzzle_info = json.load(pijf)
             p_xy_size = self.solver_params['grid']['manual_params']['p_xy_size']
@@ -170,6 +181,17 @@ class SolverWithPiecesModule:
                 self.P, self.init_pos, self.anchor_pos = initialize_p(self.R, self.anchor_index, p_xy_size[0], p_xy_size[1])
 
             elif grid_method == 'integration_with_external':
+                
+                if not os.path.exists(self.cfg.get_puzzle_external_solution_subfolder_path()):
+                    raise Exception("Missing external solution folder! Maybe you want to change the init method? \nYou can find it in:\ninput_parameters.yaml: solver --> grid --> method\n")
+                ext_solutions_files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
+                ext_solutions_files_list = natsort.natsorted(ext_solutions_files_list)
+                self.ext_solutions = [
+                    np.genfromtxt(os.path.join(self.cfg.get_puzzle_external_solution_subfolder_path(), file_name), dtype=None)
+                    for file_name in ext_solutions_files_list]
+                for j in range(len(self.ext_solutions)):
+                    self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
+
                 self.P = initialize_p_from_external_solution(self.ext_solutions,
                                                             self.puzzle_info['rescaling_factor'],
                                                             self.anchor_index,
