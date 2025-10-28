@@ -4,7 +4,7 @@ from compatibility.grid import PuzzleGrid, PieceOnCanvas
 from utils.puzzle_utils import Puzzle, PuzzlePiece
 from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors_with_occ
 from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_with_occupancy, initialize_p_using_neighbours_with_occupancy
-from .solver_utils import initialize_p_from_external_solution, get_p_xy_size_from_sandbox_size, initialize_p_from_GT
+from .solver_utils import initialize_p_from_external_solution, get_p_xy_size_from_sandbox_size, initialize_p_from_GT, initialize_p_from_MULTI_solution
 from utils.human_readable_duration import format_duration
 from utils.visualization_utils import reconstruct
 
@@ -49,6 +49,7 @@ class SolverWithPiecesModule:
         self.T_max = self.solver_params['T_max']
         self.threshold = self.solver_params['accept_threshold']
         self.PQ_mode = self.solver_params['PQ_mode']
+        self.list_all_solutions = []
 
         self._init()
 
@@ -89,7 +90,12 @@ class SolverWithPiecesModule:
         # for the moment we do not account rotation, it can be rotated when "placed"
         # the general idea is that if we fix a piece in the center, the grid points which are very close
         # are "occupied" by the piece itself, and they need to be zeroed in the P matrix
-        self.occupancy_grid_pieces = self._compute_occupancy_grid()            
+        self.occupancy_grid_pieces = self._compute_occupancy_grid()
+
+        self.initialize_p_matrix()
+
+
+    def initialize_p_matrix(self):
 
         # !!! Anchor number must be changed if some pieces were excluded
         if self.solver_params['anchor_index'] < 0:
@@ -98,7 +104,6 @@ class SolverWithPiecesModule:
             #self.anchor_index = np.random.choice(N)  # select_anchor(detect_output)
         else:
             self.anchor_index = self.solver_params['anchor_index']
-
 
         print(f"Using anchor the piece with id: {self.anchor_index}")
 
@@ -151,11 +156,28 @@ class SolverWithPiecesModule:
                                                          self.puzzle_info['rescaling_factor'],
                                                          self.anchor_index,
                                                          self.params['compatibility']['grid'], p_xy_size,
-                                                         spars_p=self.params['solver']['reassembleNet']['sparsify_p'],
+                                                         sparsify_p=self.params['solver']['reassembleNet']['sparsify_p'],
                                                          vis=self.params['solver']['reassembleNet']['visualization'])
 
 
-        if grid_method == 'integration' or grid_method == 'integration_with_external':
+
+
+        elif grid_method == 'multiple':
+            #p_xy_size = self.solver_params['grid']['manual_params']['p_xy_size']
+            sandbox_size = self.solver_params['grid']['manual_params']['sandbox_size']
+            p_xy_size = get_p_xy_size_from_sandbox_size(sandbox_size,
+                                                        self.puzzle_info['num_pieces'],
+                                                       self.puzzle_info['rescaling_factor'],
+                                                       self.gt['transform'][0][0],
+                                                       self.params['compatibility']['grid'])
+
+            self.P = initialize_p_from_MULTI_solution(self.list_all_solutions,
+                                                         self.anchor_index,
+                                                         self.params['compatibility']['grid'], p_xy_size,
+                                                         vis=self.params['solver']['reassembleNet']['visualization'])
+
+
+        elif grid_method == 'integration' or grid_method == 'integration_with_external':
 
             with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
                 self.puzzle_info = json.load(pijf)
@@ -187,12 +209,16 @@ class SolverWithPiecesModule:
                                                             self.puzzle_info['rescaling_factor'],
                                                             self.anchor_index,
                                                             self.params['compatibility']['grid'], p_xy_size,
-                                                            spars_p=self.params['solver']['reassembleNet'][
+                                                            sparsify_p=self.params['solver']['reassembleNet'][
                                                                 'sparsify_p'],
                                                             vis=self.params['solver']['reassembleNet']['visualization'])
         else:
             raise ValueError(f'Unknown method {grid_method}')
 
+
+
+    def add_solution_to_list(self, solution):
+        self.list_all_solutions.append(solution)
 
     def _compute_occupancy_grid(self, show_results:bool=False):
             
