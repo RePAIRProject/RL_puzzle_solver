@@ -153,7 +153,7 @@ def initialize_p_from_MULTI_solution(all_solutions, anchor_idx:int, grid, p_xy_s
     p_size_y = p_xy_size[1]
 
     # initialize assignment matrix
-    var = 11
+    var = 5
     grid_size = (p_size_y, p_size_x, theta_num_points)  ## p_size
     p = np.zeros((grid_size[0], grid_size[1], grid_size[2], len(all_solutions[0])))
 
