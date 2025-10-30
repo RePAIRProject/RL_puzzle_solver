@@ -235,7 +235,7 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
             variance = np.ones_like(solution, dtype=np.float64)*input_vars[:, np.newaxis]
         else:
             solution = np.array(sol)[:, 1:].astype(float)
-            variance = np.ones_like(solution, dtype=np.float64)*2
+            variance = np.ones_like(solution, dtype=np.float64)*15
         print("Input")
         print(solution)
 

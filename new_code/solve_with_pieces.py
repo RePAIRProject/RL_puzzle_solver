@@ -33,6 +33,8 @@ def main():
         saving_path = cfg.get_VIS_path()
     plt.imsave(saving_path, image_solution)  # save final image in solution folder
 
+    ## Placement
+
 if __name__ == '__main__':
     main()
 
