@@ -122,15 +122,6 @@ solver:
     std_dev_x: 110
     std_dev_y: 110
     std_dev_t: 1 
-
-  solution:
-    save_pixel_solution: True 
-    save_as_txt: True
-    visualization:
-      add_suffix: True
-      in_the_suffix: 
-        anchor_index: True 
-        agg_method: True
        
   # how to save the solution
   solution:
@@ -156,6 +147,11 @@ solver:
     # name2 x2 y2 z2
     include_probs: True
   
-
+  # integration week parameters (to generate placement file)
+  generate_placement_file: False
+  placement:
+    inflation_width: 20
+    assembly_plan: spiral # snake
+    save_plot: True
 
 
