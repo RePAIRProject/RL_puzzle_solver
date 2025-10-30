@@ -1,9 +1,10 @@
 import numpy as np
-from scipy.ndimage import rotate
 import cv2 as cv
 import os
 import json
 import time
+import scipy
+import natsort
 
 from threading import Lock
 
@@ -55,17 +56,18 @@ class PuzzleSolver:
     def default_cfg(self, path_dic):
         self.cfg = CfgParameters()
         solver_parameters = path_dic['solver_parameters']
-        solver_parameter = {}
-        if os.path.exists(solver_parameters):
-            solver_parameter = {}
-            with open(solver_parameters, 'r') as cp:
-                solver_parameter = json.load(cp)
-        self.cfg['Tfirst'] = solver_parameter['Tfirst']
-        self.cfg['Tnext'] = solver_parameter['Tnext']
-        self.cfg['Tmax'] = solver_parameter['Tmax']
-        self.cfg['anc_fix_tresh'] = solver_parameter['anc_fix_tresh']
-        self.cfg['p_matrix_shape_x'] = solver_parameter['p_matrix_shape_x']
-        self.cfg['p_matrix_shape_y'] = solver_parameter['p_matrix_shape_y']
+        # solver_parameter = {}
+        # if os.path.exists(solver_parameters):
+        #     solver_parameter = {}
+        #     with open(solver_parameters, 'r') as cp:
+        #         solver_parameter = json.load(cp)
+        solver_parameter = solver_parameters
+        self.cfg['Tfirst'] = solver_parameter['T_first']
+        self.cfg['Tnext'] = solver_parameter['T_next']
+        self.cfg['Tmax'] = solver_parameter['T_max']
+        self.cfg['anc_fix_tresh'] = solver_parameter['accept_threshold']
+        self.cfg['p_matrix_shape_x'] = solver_parameter['grid']['manual_params']['p_xy_size'][0]
+        self.cfg['p_matrix_shape_y'] = solver_parameter['grid']['manual_params']['p_xy_size'][1]
 
         string = ("Tfirst: " + str(self.cfg['Tfirst']) + "   Tfirst: " + str(self.cfg['Tnext']) + "   Tmax: " + str(self.cfg['Tmax']) + "   anc_fix_tresh: " +
                   str(self.cfg['anc_fix_tresh']) + "   p_matrix_shape_x: " + str(self.cfg['p_matrix_shape_x']) + "   p_matrix_shape_y: " + str(self.cfg['p_matrix_shape_y']))
@@ -247,7 +249,7 @@ class PuzzleSolver:
         if solved_pieces is None:
             solved_pieces = []
 
-        init_pos, x0, y0, z0 = self.initialization(R, anchor, solved_pieces, pieces_names) # we do not pass p_size so it chooses automatically
+        init_pos, x0, y0, z0 = self.initialization(R, anchor, solved_pieces, pieces_names, path_dic) # we do not pass p_size so it chooses automatically
         num_anchors = 1
         self.default_cfg(path_dic)
         all_pay, all_sol, all_anc, eps, iter, num_anchors, m = self.RePairPuzz(num_anchors)
@@ -293,7 +295,7 @@ class PuzzleSolver:
             print(f"Return type {return_as} not implemented - returning as a list")
             return fin_sol
 
-    def initialization(self, R, anc, solved_pieces, pieces_names, p_size=0):
+    def old_init(self, R, anc, solved_pieces, pieces_names, path_dic, p_size=0):
         z0 = 0  # rotation for anchored patch
         # Initialize reconstruction plan
         self.set_cm_matrix(R)
@@ -342,6 +344,118 @@ class PuzzleSolver:
         init_pos[anc, :] = ([y0, x0, z0])
 
         return init_pos, x0, y0, z0
+
+    def initialization(self, R, anc, solved_pieces, pieces_names, path_dic, p_size=0):
+        # elif grid_method == 'extern':
+        self.cfg = path_dic['yaml']
+        if not os.path.exists(self.cfg.get_puzzle_external_solution_subfolder_path()):
+            init_pos, x0, y0, z0 = self.old_init(R, anc, solved_pieces, pieces_names, path_dic)
+            return init_pos, x0, y0, z0
+            # raise Exception(
+            #     "Missing external solution folder! Maybe you want to change the init method? \nYou can find it in:\ninput_parameters.yaml: solver --> grid --> method\n")
+        else:
+            ext_solutions_files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
+            ext_solutions_files_list = natsort.natsorted(ext_solutions_files_list)
+            self.ext_solutions = [
+                np.genfromtxt(os.path.join(self.cfg.get_puzzle_external_solution_subfolder_path(), file_name), dtype=None)
+                for file_name in ext_solutions_files_list]
+            for j in range(len(self.ext_solutions)):
+                self.ext_solutions[j] = np.asarray(self.ext_solutions[j]).tolist()
+
+            with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
+                self.puzzle_info = json.load(pijf)
+            p_xy_size = self.solver_params['grid']['manual_params']['p_xy_size']
+            P_adeela = self.initialize_p_from_external_solution(self.ext_solutions,
+                                                         self.puzzle_info['rescaling_factor'],
+                                                         self.anchor_index,
+                                                         self.params['compatibility']['grid'], p_xy_size,
+                                                         spars_p=self.params['solver']['reassembleNet']['sparsify_p'],
+                                                         vis=self.params['solver']['reassembleNet']['visualization'])
+            self.set_p_matrix(P_adeela)
+
+    def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_idx: int, grid, p_xy_size=(0, 0),
+                                            sparsify_p=0, vis=1, var=1):
+        import heapq
+        xy_step = grid['xy_step']
+        theta_num_points = grid['theta_num_points']
+        p_size_x = p_xy_size[0]
+        p_size_y = p_xy_size[1]
+
+        # initialize assignment matrix
+        grid_size = (p_size_y, p_size_x, theta_num_points)  ## p_size
+        p = np.zeros((grid_size[0], grid_size[1], grid_size[2], len(all_solutions[0])))
+        print('rescaling_factor', rescaling_factor)
+
+        for sol in all_solutions[0:1]:
+            if np.array(sol)[:, 1:].shape[1] > 3:
+                solution = np.array(sol)[:, 1:-1].astype(float)
+                input_vars = np.array(sol)[:, -1].astype(float)
+                input_vars = input_vars ** (1 / 2) / rescaling_factor  # sqrt and rescale
+                variance = np.ones_like(solution, dtype=np.float64) * input_vars[:, np.newaxis]
+            else:
+                solution = np.array(sol)[:, 1:].astype(float)
+                variance = np.ones_like(solution, dtype=np.float64) * 11
+            print("Input")
+            print(solution)
+
+            # Rescale
+            solution[:, :2] = solution[:, :2] / rescaling_factor
+            print("Rescale")
+            print(solution)
+
+            # rotate and translate to origin [0,0,0]
+            norm_solutions = normalize_solutions(solution, anchor_idx)  # output is in pixels and grades
+            print("Normalization")
+            print(norm_solutions)
+
+            # adapt solutions to grid (translations)
+            center = np.array([p_size_y // 2, p_size_x // 2], dtype=np.int64)  # shift to center
+            norm_solutions[:, :2] = norm_solutions[:, :2] / xy_step + center
+            norm_solutions[:, 2] = (norm_solutions[:, 2] + 360) % 360
+            print("Shifted")
+            print(norm_solutions)
+
+            for i in range(len(norm_solutions)):
+                if i == anchor_idx:
+                    p[center[0], center[1], 0, i] = 1
+                else:
+                    mean = norm_solutions[i, :]  ## solution for the piece, t° !
+                    std_devs = variance[i, :]  # std_devs = (10.0, 10.0, 0.5)  # st. deviation, t° !
+                    prob = probability_for_single_fragment(grid_size, mean, std_devs)
+
+                    if sparsify_p > 0:
+                        n = 9  ## TODO  - load from input_params.yaml !!! That can be val of spars_p [1,3,5,7 ... ]
+                        # n = sparsify_p**2 #OPTION
+                        top_val = heapq.nlargest(n, prob.flatten().tolist())
+                        prob[prob < np.min(top_val)] = 0
+                    p[:, :, :, i] += prob
+
+        #######################################################
+        for i in range(len(solution)):
+            prob_i = p[:, :, :, i]
+            if vis == 1:
+                # Show distribution for (theta = 0, 1, ... , n_of_slice)
+                import matplotlib.pyplot as plt
+                n_of_slice = 4
+                vmin = prob_i.min()  # global limits of the scale
+                vmax = prob_i.max()
+                fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
+
+                for j in range(n_of_slice):
+                    ax = axes[j]  # map 0–5 in (row, col)
+                    im = ax.imshow(prob_i[:, :, j], cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
+                    ax.set_title(f"θ = {j} fragment{i} anc {anchor_idx}")
+                    ax.set_xlabel("y")
+                    ax.set_ylabel("x")
+                # colorbar comune a tutti i subplot
+                cbar = fig.colorbar(im, ax=axes.ravel().tolist(), pad=0.07,
+                                    fraction=0.05, )  # shrink=0.8, orientation='horizontal',fraction=0.05,
+                cbar.set_label("Probability Density")
+                plt.suptitle("distribution for different rotations θ (Uniform Colors)", fontsize=18)
+                plt.show()
+
+        # TODO normalizzation
+        return p
 
     def extract_info(self, p):
         Y, X, Z, noPatches = p.shape
@@ -479,7 +593,7 @@ class PuzzleSolver:
 
         # no_rotations = 4
 
-        with self.cm_matrix_lock:
+        with self.cm_matrix_lock: #gui
             no_rotations = self.compatibility_matrix.shape[2]
             no_patches = self.compatibility_matrix.shape[3]
 
@@ -487,10 +601,12 @@ class PuzzleSolver:
         z_st = 360 / no_rotations
         z_rot = np.arange(0, 360 - z_st + 1, z_st)
         # z_rot = np.arange(0., 4.)
-        print("z_rot", z_rot)
+
         t = 0
         eps = np.inf
-        p = self.get_p_matrix().copy()
+
+        p = self.get_p_matrix().copy() #gui
+
         while t < T and eps > 0 and self.alive_flag:
             t += 1
             iter += 1
@@ -509,7 +625,7 @@ class PuzzleSolver:
                     ri = self.compatibility_matrix[:, :, :, :, i]
                 #  ri = R[:, :, :, i, :]  # FOR ORACLE SQUARE ONLY
                 for zi in range(no_rotations):
-                    rr = rotate(ri, z_rot[zi], reshape=False, mode='constant')
+                    rr = scipy.ndimage.rotate(ri, z_rot[zi], reshape=False, mode='constant', order=0)
                     rr = np.roll(rr, zi, axis=2)
                     c1 = np.zeros(p.shape)
                     for j in range(no_patches):
@@ -524,6 +640,7 @@ class PuzzleSolver:
                     # q2 = (q1 != 0) * (q1 + no_patches * no_rotations * 0.5) ## new_experiment
                     q2 = (q1 + no_patches * 1) # with removing no_rotations it is faster
                     q[:, :, zi, i] = q2
+            q += q + no_patches * 1
             with self.p_matrix_lock:
                 heat = 1
                 pq = self.probability_matrix * np.exp(heat * q)

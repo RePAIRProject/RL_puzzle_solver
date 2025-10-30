@@ -226,11 +226,7 @@ def select_neighbour(path_dic, key_fragments):
         images.append((img_name, k, -float('inf')))  # Initialize each image with a default score of -inf
         k += 1
 
-    # Load the compatibility matrix from .mat file
-    mat = loadmat(os.path.join(comp_folder, comp_name))
-    # breakpoint()
-    # R_key = path_dic['comp_format']
-    # print(R_key)
+    mat = np.load(os.path.join(comp_folder, comp_name), allow_pickle=True).item()
     R = mat[path_dic['comp_format']]
 
     # Extract the anchor IDs from the list of key fragments

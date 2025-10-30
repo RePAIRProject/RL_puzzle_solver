@@ -693,7 +693,7 @@ class GUIApp(MDApp):
             # positions = current_positions[image_id]
             position = np.array([positions[0], positions[1]])
 
-            image.update_positions(position, 0)
+            image.update_positions(position, positions[2])
 
     @mainthread
     def apply_solution(self, value = True):
@@ -1282,9 +1282,9 @@ def transparent(img):
 
 def read_ground_truth():
     ground_truth = path_dic['ground_truth']
-    if ground_truth != "":
-        with open(ground_truth, 'r') as file:
-            lines = file.readlines()
+    # if ground_truth != "":
+    #     with open(ground_truth, 'r') as file:
+    #         lines = file.readlines()
 
 
 def get_bounding_box(size, rotation):
@@ -1400,7 +1400,7 @@ def get_setting():
     global back_end
     global backend_path
 
-    path_dic, rotation_intervals, backend_path = back_end.setting("setting.txt")
+    path_dic, rotation_intervals, backend_path = back_end.setting("Setting.yaml")
     rotation_interval = float(rotation_intervals) / 2
 
     copy_to_cache()

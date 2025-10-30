@@ -1,0 +1,248 @@
+"""
+It handles loading and writing to .YAML files
+It should not have dependencies and should handle files with less parameters (take the others from `default.yaml`) 
+"""
+import os 
+import yaml 
+import random, string
+from io import TextIOWrapper
+import natsort
+from datetime import datetime
+
+##########################################
+#                                        #
+#  ██╗   ██╗ █████╗ ███╗   ███╗██╗       #
+#  ╚██╗ ██╔╝██╔══██╗████╗ ████║██║       #
+#   ╚████╔╝ ███████║██╔████╔██║██║       #
+#    ╚██╔╝  ██╔══██║██║╚██╔╝██║██║       #
+#     ██║   ██║  ██║██║ ╚═╝ ██║███████╗  #
+#     ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝  #
+#                                        #
+##########################################
+class CustomYAMLEncoder(yaml.SafeDumper):
+    def default(self, obj):
+        if isinstance(obj, TextIOWrapper):
+            return f"File object: {obj.name}"
+        return yaml.SafeDumper.default(self, obj)
+
+
+
+
+#############################################################
+#                                                           #
+#   ██████╗ ██████╗ ███╗   ██╗███████╗██╗ ██████╗ ███████╗  #
+#  ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝ ██╔════╝  #
+#  ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗███████╗  #
+#  ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║╚════██║  #
+#  ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝███████║  #
+#   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝ ╚══════╝  #
+#                                                           #
+#############################################################
+class Configuration:
+
+    def __init__(self):
+        self.data_folder = 'data'
+        self.preprocessing_folder = 'preprocessing'
+        self.preprocessing_params_name = 'preprocessing.yaml'
+        self.images_subfolder = 'images'
+        self.external_solution_subfolder = 'external_solutions'
+        self.masks_subfolder = 'binary_masks'
+        self.polygons_subfolder = 'polygons'
+        self.features_folder = 'features'
+        self.features_params_name = 'features.yaml'
+        self.experiments_folder = 'experiments'
+        self.ground_truth_filename = 'ground_truth.json'
+        self.puzzle_info_filename = 'puzzle_info.json'    ###########  PUZZLE_INFO    ###############
+        #####
+        self.VIS_name = 'final_reconstruction'
+        #####
+        self.RM_name = 'RM.npy'
+        self.RM_input_parameters_path = 'RM_input_params.yaml'
+        self.RM_output_parameters_path = 'RM_output_params.yaml'
+        self.CM_name = 'CM.npy'
+        self.CM_input_parameters_path = 'CM_input_params.yaml'
+        self.CM_output_parameters_path = 'CM_output_params.yaml'
+        self.solution_name = 'solution.npy'
+        self.solution_csv = 'solution.txt'
+        self.solution_input_parameters_path = 'solution_input_params.yaml'
+        self.solution_output_parameters_path = 'solution_output_params.yaml'
+        self.timestamp_fmt = '%Y%m%d%H%M%S'
+
+    def get_puzzle_name(self):
+        return self.puzzle_name
+
+    def set_puzzle_name(self, puzzle_name: str):
+        self.puzzle_name = puzzle_name
+    #
+    def get_data_folder(self):
+        return self.data_folder
+
+    def set_data_folder(self, data_folder: str):
+        self.data_folder = data_folder
+    #
+
+    def get_preprocessing_folder(self):
+        return os.path.join(self.data_folder, self.preprocessing_folder)
+
+    def get_experiments_folder(self):
+        return os.path.join(self.data_folder, self.experiments_folder)
+
+    def get_all_puzzle_subfolders(self):
+        """
+        Returns a dictionary with all the subfolders paths
+        """
+        subfolders = {
+            'data': os.path.join(self.data_folder, self.puzzle_name),
+            'preprocessing': os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name),
+            'images': os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.images_subfolder),
+            'masks': os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.masks_subfolder),
+            'polygons': os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.polygons_subfolder),
+            'features': os.path.join(self.data_folder, self.features_folder, self.puzzle_name),
+            'external_solution': os.path.join(self.data_folder, self.external_solution_subfolder, self.puzzle_name)
+        }
+        return subfolders
+
+    def get_puzzle_pieces_filenames(self, sorted=True):
+        filenames = [filename[:-4] for filename in os.listdir(self.get_puzzle_images_subfolder())]
+        if sorted == True:
+            filenames = natsort.natsorted(filenames)
+        return filenames
+
+    def get_puzzle_images_subfolder(self):
+        return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.images_subfolder)
+
+    def get_puzzle_masks_subfolder(self):
+        return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.masks_subfolder)
+
+    def get_puzzle_polygons_subfolder(self):
+        return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.polygons_subfolder)
+
+    def get_puzzle_features_subfolder(self):
+        return os.path.join(self.data_folder, self.features_folder, self.puzzle_name)
+
+    def get_puzzle_experiments_subfolder(self):
+        return os.path.join(self.data_folder, self.experiments_folder, self.puzzle_name)
+
+    def get_GT_path(self):
+    	return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.ground_truth_filename)
+
+    def get_puzzle_info_path(self):
+    	return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.puzzle_info_filename)
+
+    def new_puzzle_single_run_random_folder_name(self):
+        timestamp = datetime.now().strftime(self.timestamp_fmt)
+        self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), f"exp_{timestamp}_{self.randomword(6)}")
+        os.makedirs(self.current_experiment_folder, exist_ok=True)
+
+    def set_puzzle_single_run_random_folder_name(self, path: str):
+        """ set the folder name when using CM or solver on a previous experiment """
+        if path.find('#') < 0: # relative path
+            self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), path)
+        else:                   # full path
+            self.current_experiment_folder = path
+
+    def get_current_experiments_folder(self):
+        return self.current_experiment_folder
+
+    def get_VIS_path(self, image_format:str='png', add_as_suffix:str="", mode:str='solution'):
+        if len(add_as_suffix) > 0:
+            vis_name = f"{self.VIS_name}{add_as_suffix}.{image_format}"
+        else:
+            vis_name = f"{self.VIS_name}.{image_format}"
+        if mode == 'solution':
+            vis_folder = self.current_solution_folder
+        elif mode == 'experiment':
+            vis_folder = self.current_experiment_folder
+        else:
+            raise NotImplementedError("Use known mode, `solution` or `experiment`")
+        return os.path.join(vis_folder, vis_name)
+
+    def get_RM_path(self):
+        return os.path.join(self.current_experiment_folder, self.RM_name)
+
+    def get_RM_input_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.RM_input_parameters_path)
+
+    def get_RM_output_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.RM_output_parameters_path)
+
+    def get_CM_path(self):
+        return os.path.join(self.current_experiment_folder, self.CM_name)
+
+    def get_CM_input_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.CM_input_parameters_path)
+
+    def get_CM_output_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.CM_output_parameters_path)
+
+    def get_aggregation_input_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.CM_input_parameters_path)
+
+    def get_aggregation_output_parameters_path(self):
+        return os.path.join(self.current_experiment_folder, self.CM_output_parameters_path)
+
+    def new_puzzle_solution_folder_name(self):
+        timestamp = datetime.now().strftime(self.timestamp_fmt)
+        self.current_solution_folder = os.path.join(self.current_experiment_folder, f"sol_{timestamp}_{self.randomword(6)}")
+        os.makedirs(self.current_solution_folder, exist_ok=True)
+
+    def get_current_solution_folder(self):
+        return self.current_solution_folder
+
+    def get_solution_path(self):
+        return os.path.join(self.current_solution_folder, self.solution_name)
+
+    def get_solution_as_csv_path(self):
+        return os.path.join(self.current_solution_folder, self.solution_csv)
+
+    def get_solution_input_parameters_path(self):
+        return os.path.join(self.current_solution_folder, self.solution_input_parameters_path)
+
+    def get_solution_output_parameters_path(self):
+        return os.path.join(self.current_solution_folder, self.solution_output_parameters_path)
+
+    # solutions from Adeela
+    def get_puzzle_external_solution_subfolder_path(self):
+        return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name,
+                                self.external_solution_subfolder)
+
+    #######################################à
+    # solutions from Adeela
+    def get_grid_params(self):
+        with open(self.get_CM_output_parameters_path(), 'r') as file:
+            grid_params = yaml.safe_load(file)
+        return grid_params['grid_params']
+
+
+    # def get_features_extracted(self, from_yaml: bool = True):
+    #     if from_yaml == True:
+    #         features_extracted = self.read_features_from_yaml(os.path.join(features_folder, features_params_name))
+    #     else:
+    #         features_folder_files = os.listdir(os.path.join(features_folder, puzzle_name))
+    #         features_extracted = [fsf for fsf in features_folder_files if os.isdir(os.path.join(features_folder, puzzle_name,fsf)) == True]
+    #     return features_extracted
+
+    def read_features_from_yaml(self, yaml_path: str):
+        with open(yaml_path, 'r') as file:
+            parameters = yaml.safe_load(file)
+        print("TODO: get the features keys from the full file")
+
+    def load(self, yaml_file_path: str, read_name: bool = True):
+        """
+        Loads the parameters from the .yaml file
+        Some parameters are "consequences" of the loaded one (calculated from)
+        """
+        with open(yaml_file_path, 'r') as file:
+            parameters = yaml.safe_load(file)
+        self.puzzle_name = parameters['puzzle_name']
+        self.data_folder = parameters['data_folder']
+        return parameters
+
+    def save(self, yaml_file_path: str):
+        """
+        Save (the parameters) to the .yaml file
+        """
+
+    def randomword(self, length: int):
+        letters = string.ascii_lowercase
+        return ''.join(random.choice(letters) for i in range(length))

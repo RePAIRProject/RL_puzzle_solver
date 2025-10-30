@@ -34,12 +34,12 @@ class MovableImage(Image):
         self.is_selected = False
         self.name = name
         os_path = getcwd()
-        self.path = path + self.name
+        self.path = path + "/" + self.name
         self.base_scale_factor = 1.0
         self.true_scale = 1.0
         self.scale_factor = self.base_scale_factor
         self.zoom_scale = Scale(x=self.scale_factor, y=self.scale_factor, origin=(0, 0))
-        self.path_bw = path_bw + self.name
+        self.path_bw = path_bw + "/" + self.name
         self.limit_image = self
         self.source = self.path
         self.drag_timeout = 10000000
@@ -162,7 +162,6 @@ class MovableImage(Image):
         self.position_memory = [self.position_memory[0], self.position_memory[1], self.angle]
 
     def translate(self, x, y):
-
         self.trans.x = x - self.pos[0]
         self.trans.y = y - self.pos[1]
         self.trans_bank = (self.trans.x, self.trans.y)
@@ -188,7 +187,7 @@ class MovableImage(Image):
         # x = position[0]
         # y = position[1]
         # self.rotate(solved_rotation/2)
-
+        print(self.name, "_ solved_rotation:", solved_rotation)
         self.rotate(solved_rotation - self.angle)
         self.translate(x, y)
 

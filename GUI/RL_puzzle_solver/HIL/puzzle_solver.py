@@ -5,6 +5,7 @@ import sys
 import os
 
 import numpy as np
+import yaml
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
@@ -78,17 +79,27 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
 
     pieces_folder = path_dic['pieces_path']
 
-    cmp_parameter_path = path_dic['comp_path']
+    cmp_parameter_path = path_dic['parameters']
 
     if not anchor_piece.endswith(".png"):
         anchor_piece += ".png"
 
     neighbours = [n + ".png" if not n.endswith(".png") else n for n in neighbours]
 
-    if os.path.exists(cmp_parameter_path):
-        ppars = {}
-        with open(cmp_parameter_path, 'r') as cp:
-            ppars = json.load(cp)
+    # if os.path.exists(cmp_parameter_path):
+    #     ppars = {}
+    #     with open(cmp_parameter_path, 'r') as cp:
+    #         ppars = json.load(cp)
+
+    ppars_yaml = {}
+
+    print("Opening YAML file:", cmp_parameter_path)
+    with open(cmp_parameter_path, 'r') as file:
+        ppars_yaml = yaml.safe_load(file)
+
+    ppars = {}
+    ppars["xy_step"] = ppars_yaml['grid_params']['xy_step']
+    ppars["theta_step"] = ppars_yaml['grid_params']['theta_step']
 
     pieces_names = os.listdir(pieces_folder)
     pieces_names.sort()
@@ -119,15 +130,15 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     comp_name = path_dic['comp_name']
     # print(comp_name)
     # comp_name = eval("f'{}'".format(comp_name))
-    mat = loadmat(os.path.join(comp_folder, comp_name)) # load the new compatibility matrix
 
+    mat = np.load(os.path.join(comp_folder, comp_name), allow_pickle=True).item()
     R = mat[path_dic['comp_format']]
 
     # R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
     # R = R[:, :, :, :, pieces_to_include]
     # if you want rotation which you shouldn't
-    R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
-    R = R[:, :, 0:1, :, pieces_to_include]  # 0:4 works best for group 28 token check
+    # R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
+    # R = R[:, :, 0:1, :, pieces_to_include]  # 0:4 works best for group 28 token check
 
     # group 1
     factor = 0.8
@@ -163,7 +174,8 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     for i in range(len(pieces_to_include)):
         pieces_included.append(pieces_names[pieces_to_include[i]])
 
-    print("piece names", pieces_included)
+    print("rotation", path_dic['rotation_intervals'])
+
     puzzle_solver.__init__(ppars, pieces_included, path_dic)
 
     solution = puzzle_solver.solve_puzzle(R, anchor, pieces_included, ppars, path_dic,

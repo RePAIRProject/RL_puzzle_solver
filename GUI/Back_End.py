@@ -1,7 +1,9 @@
 import time
 import warnings
 from threading import Thread, Event, Lock
-
+import RL_puzzle_solver.parameters_utils as yaml_config
+import paramiko
+import getpass
 from scipy.io import loadmat
 from scipy.spatial import KDTree
 
@@ -67,6 +69,7 @@ class BackEnd:
         self.sorted_neighbour_images = None
         self.neighbour_after = 0
         self.interaction_counter = 0
+        self.yaml = None
 
         self.mat = None
         self.R = None
@@ -83,7 +86,7 @@ class BackEnd:
         comp_folder = path_dic['comp_folder']
         comp_name = path_dic['comp_name']
 
-        self.mat = loadmat(os.path.join(comp_folder, comp_name))
+        self.mat = np.load(os.path.join(comp_folder, comp_name), allow_pickle=True).item()
         self.R = self.mat[path_dic['comp_format']]
 
     def set_main_app(self, app):
@@ -98,8 +101,6 @@ class BackEnd:
         self.main_app.show_anchors()
 
     def removed_from_locked(self, main_image):
-        print(self.key_fragment)
-        print(main_image)
         main_image_name = main_image.name
         if main_image_name == self.key_fragment:
             print("YOU CANNOT REMOVE MAIN ANCHOR")
@@ -178,10 +179,10 @@ class BackEnd:
         #make both results absolute to one first fragment in ground_truth
         ground_truth, results = self.normalize_results_gt(results, ground_truth)
 
-        q_pos, rmse_rot, rmse_translation = None, None, None
+        q_pos, rmse_rot, rmse_translation = -13.0, -13.0, -13.0
 
-        if results != {} and ground_truth != {}:
-            q_pos, rmse_rot, rmse_translation = self.evaluation.evaluate(pieces, ground_truth, results, path_lists)
+        # if results != {} and ground_truth != {}:
+        #     q_pos, rmse_rot, rmse_translation = self.evaluation.evaluate(pieces, ground_truth, results, path_lists)
 
         return q_pos, rmse_rot, rmse_translation
 
@@ -346,6 +347,8 @@ class BackEnd:
             if data is not None:
                 xy_step = data['xy_step']
                 theta_step = data['theta_step']
+        print('xy_step', xy_step)
+        print('theta_step', theta_step)
         return xy_step, theta_step
 
     def get_iteration(self):
@@ -525,7 +528,7 @@ class BackEnd:
         comp_name = dic['comp_name']
 
         # comp_name = eval("f'{}'".format(comp_name))
-        mat = loadmat(os.path.join(comp_folder, comp_name))  # load the new compatibility matrix
+        mat = np.load(os.path.join(comp_folder, comp_name), allow_pickle=True).item()
 
         R = mat[dic['comp_format']]
 
@@ -692,97 +695,107 @@ class BackEnd:
         number_of_anchors = 4
         solver_parameters = ""
         setting_dir = ""
-        print("os_path", os.path)
-        setting_path = os.path.join(setting_dir, setting_type)
-        print("setting_path", setting_path)
-        if not os.path.exists(setting_path):
-            with open(setting_path, "w") as setting_file:
-                setting_file.writelines(["image_path: /GUI/DataBase/Images/RePAIR_plaque_2/RGBA_merged/",
-                                         "\n",
-                                         "mask_path: /GUI/DataBase/Images/RePAIR_plaque_2/FG_merged/",
-                                         "\n",
-                                         "backend_path: /GUI/DataBase/Images/RePAIR_plaque_2/",
-                                         "\n",
-                                         "comp_path: /GUI/DataBase/output/repair_g28/compatibility_parameters.json",
-                                         "\n",
-                                         "pieces_path: /GUI/DataBase/output/repair_g28/pieces/",
-                                         "\n",
-                                         "comp_folder: /GUI/DataBase/output/repair_g28/compatibility_matrix/",
-                                         "\n",
-                                         "comp_name: CM_linesdet_manual_cost_LAP.mat",
-                                         "\n",
-                                         "Rotation_Intervals: 1",
-                                         "\n",
-                                         "number_of_neighbours: 3",
-                                         "\n",
-                                         "comp_format: R_line",
-                                         "\n",
-                                         "apply_gt: False",
-                                         "\n",
-                                         "parameters: /GUI/DataBase/output/repair_g28/compatibility_parameters.json",
-                                         "\n",
-                                         "number_of_anchors: 4",
-                                         "\n",
-                                         "dataset_name: RePair_group_28",
-                                         "\n",
-                                         "icons: /GUI/Icons/",
-                                         "\n"
-                                         ])
-        os_path = os.getcwd()
-        print("os_path", os_path)
-        if os.path.exists(setting_path):
-            with open(setting_path, 'r') as setting_file:
-                lines = setting_file.readlines()
-                for line in lines:
-                    if line.startswith('image_path:'):
-                        image_path = os_path + line.split('image_path: ')[1].strip()
-                    elif line.startswith('mask_path:'):
-                        mask_path = os_path + line.split('mask_path: ')[1].strip()
-                    elif line.startswith('backend_path:'):
-                        backend_path = os_path + line.split('backend_path: ')[1].strip()
-                    elif line.startswith('comp_path:'):
-                        comp_path = os_path + line.split('comp_path: ')[1].strip()
-                    elif line.startswith('pieces_path:'):
-                        pieces_path = os_path + line.split('pieces_path: ')[1].strip()
-                    elif line.startswith('comp_folder:'):
-                        comp_folder = os_path + line.split('comp_folder: ')[1].strip()
-                    elif line.startswith('comp_name:'):
-                        comp_name = line.split('comp_name: ')[1].strip()
-                    elif line.startswith('Rotation_Intervals:'):
-                        rotation_intervals = line.split('Rotation_Intervals: ')[1].strip()
-                    elif line.startswith('ground_truth:'):
-                        ground_truth = os_path + line.split('ground_truth: ')[1].strip()
-                    elif line.startswith('number_of_neighbours:'):
-                        number_of_neighbours = int(line.split('number_of_neighbours: ')[1].strip())
-                    elif line.startswith('comp_format:'):
-                        comp_format = line.split('comp_format: ')[1].strip()
-                    elif line.startswith('apply_gt:'):
-                        apply_gt = line.split('apply_gt: ')[1].strip()
-                    elif line.startswith('parameters:'):
-                        parameters = os_path + line.split('parameters: ')[1].strip()
-                    elif line.startswith('number_of_anchors:'):
-                        number_of_anchors = int(line.split('number_of_anchors: ')[1].strip())
-                    elif line.startswith('dataset_name:'):
-                        dataset_name = line.split('dataset_name: ')[1].strip()
-                    elif line.startswith('solver_parameters:'):
-                        solver_parameters = os_path + line.split('solver_parameters: ')[1].strip()
-                    elif line.startswith('icons:'):
-                        icons_path = os_path + line.split('icons: ')[1].strip()
-        cache_path = "/GUI/Cache/"
-        self.cache_path = os_path + cache_path
-        path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path,
-                    'comp_path': comp_path,
-                    'pieces_path': pieces_path, 'comp_folder': comp_folder, 'comp_name': comp_name,
-                    'rotation_intervals': rotation_intervals, 'ground_truth': ground_truth,
-                    'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
-                    'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors,
-                    'dataset_name': dataset_name, 'cache_path': self.cache_path, 'solver_parameters': solver_parameters,
-                    'icons': icons_path}
 
-        self.set_path(path_dic)
+        setting_path = os.path.join(setting_dir, setting_type)
+        if not os.path.exists(setting_path):
+            raise FileNotFoundError(f"Setting path not found: {setting_path}")
+
+        os_path = os.getcwd()
+
+        if os.path.exists(setting_path):
+            # with open(setting_path, 'r') as setting_file:
+            #     lines = setting_file.readlines()
+            #     for line in lines:
+            #         # if line.startswith('image_path:'):
+            #         #     image_path = os_path + line.split('image_path: ')[1].strip()
+            #         # elif line.startswith('mask_path:'):
+            #         #     mask_path = os_path + line.split('mask_path: ')[1].strip()
+            #         if line.startswith('backend_path:'):
+            #             backend_path = os_path + line.split('backend_path: ')[1].strip()
+            #         # elif line.startswith('comp_path:'):
+            #         #     comp_path = os_path + line.split('comp_path: ')[1].strip()
+            #         # elif line.startswith('pieces_path:'):
+            #         #     pieces_path = os_path + line.split('pieces_path: ')[1].strip()
+            #         # elif line.startswith('comp_folder:'):
+            #         #     comp_folder = os_path + line.split('comp_folder: ')[1].strip()
+            #         elif line.startswith('comp_name:'):
+            #             comp_name = line.split('comp_name: ')[1].strip()
+            #         elif line.startswith('Rotation_Intervals:'):
+            #             rotation_intervals = line.split('Rotation_Intervals: ')[1].strip()
+            #         # elif line.startswith('ground_truth:'):
+            #         #     ground_truth = os_path + line.split('ground_truth: ')[1].strip()
+            #         elif line.startswith('number_of_neighbours:'):
+            #             number_of_neighbours = int(line.split('number_of_neighbours: ')[1].strip())
+            #         elif line.startswith('comp_format:'):
+            #             comp_format = line.split('comp_format: ')[1].strip()
+            #         # elif line.startswith('apply_gt:'):
+            #         #     apply_gt = line.split('apply_gt: ')[1].strip()
+            #         elif line.startswith('parameters:'):
+            #             parameters = os_path + line.split('parameters: ')[1].strip()
+            #         elif line.startswith('number_of_anchors:'):
+            #             number_of_anchors = int(line.split('number_of_anchors: ')[1].strip())
+            #         # elif line.startswith('dataset_name:'):
+            #         #     dataset_name = line.split('dataset_name: ')[1].strip()
+            #         elif line.startswith('solver_parameters:'):
+            #             solver_parameters = os_path + line.split('solver_parameters: ')[1].strip()
+            #         elif line.startswith('icons:'):
+            #             icons_path = os_path + line.split('icons: ')[1].strip()
+            self.yaml, params = self.extract_yaml(setting_path)
+            backend_path = self.yaml.data_folder
+            print("backend_path", backend_path)
+            image_path = self.yaml.get_puzzle_images_subfolder()
+            print("image_path", image_path)
+            mask_path = self.yaml.get_puzzle_masks_subfolder()
+            comp_path = self.yaml.get_CM_path()
+            comp_name = os.path.basename(os.path.normpath(comp_path))
+            comp_folder = os.path.dirname(os.path.normpath(comp_path))
+            pieces_path = image_path
+            rotation_intervals = params['compatibility']['grid']['theta_step']
+            cm_yaml = self.yaml.get_CM_output_parameters_path()
+            parameters = cm_yaml
+            comp_format = 'R'
+            number_of_pieces = len(self.yaml.get_puzzle_pieces_filenames())
+            number_of_anchors = number_of_pieces
+            number_of_neighbours = number_of_pieces
+            dataset_name = self.yaml.get_puzzle_name()
+            solver_parameters = params['solver']
+            ground_truth = self.yaml.ground_truth_filename
+            apply_gt = False
+            # image_path = os_path + backend_path + "images/"
+            # mask_path = os_path + backend_path + "binary_masks/"
+            # comp_path = os_path + backend_path + "exp/CM_output_params.yaml"
+            # pieces_path = os_path + backend_path + "images/"
+            # comp_folder = os_path + backend_path + "exp"
+            # dataset_name = os.path.basename(os.path.normpath(backend_path))
+            # apply_gt = False
+            # ground_truth = os_path + backend_path + ""
+            cache_path = "/GUI/Cache/"
+            self.cache_path = os_path + cache_path
+            # sftp = self.get_sftp_client()
+            # with self.get_sftp_client() as sftp:
+            #     print(sftp.listdir("/home/ssd/datasets/RePAIR_Demo"))
+            path_dic = {'image_path': image_path, 'mask_path': mask_path, 'backend_path': backend_path,
+                        'comp_path': comp_path,
+                        'pieces_path': pieces_path, 'comp_folder': comp_folder, 'comp_name': comp_name,
+                        'rotation_intervals': rotation_intervals, 'ground_truth': ground_truth,
+                        'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
+                        'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors,
+                        'dataset_name': dataset_name, 'cache_path': self.cache_path, 'solver_parameters': solver_parameters,
+                        'icons': icons_path, 'yaml': self.yaml}
+
+
+            self.set_path(path_dic)
+        else:
+            raise FileNotFoundError(f"Setting path not found: {setting_path}")
 
         return path_dic, rotation_intervals, backend_path
 
+
+    def extract_yaml(self, backend_path):
+        config = yaml_config.Configuration()
+        params = config.load(backend_path)
+        config.set_puzzle_single_run_random_folder_name(params['exp_name'])
+        return config, params
     def calculate_results(self, answer, probability, iteration, bucket):
         q_pos = 0
         rmse_translation = 0
@@ -800,7 +813,7 @@ class BackEnd:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")  # catch all warnings
 
-            q_pos, rmse_rot, rmse_translation = self.evaluate(evaluated_answer)
+            # q_pos, rmse_rot, rmse_translation = self.evaluate(evaluated_answer)
 
             for warning in w:
                 if issubclass(warning.category, RuntimeWarning):
