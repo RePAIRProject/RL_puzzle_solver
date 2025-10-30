@@ -138,7 +138,6 @@ class SolverWithPiecesModule:
             print(f'Using a grid of size {self.P.shape} points [auto with occupancy]')
 
         elif grid_method == 'extern':
-
             if not os.path.exists(self.cfg.get_puzzle_external_solution_subfolder_path()):
                 raise Exception("Missing external solution folder! Maybe you want to change the init method? \nYou can find it in:\ninput_parameters.yaml: solver --> grid --> method\n")
             ext_solutions_files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
@@ -146,8 +145,7 @@ class SolverWithPiecesModule:
             self.ext_solutions = [
                 np.genfromtxt(os.path.join(self.cfg.get_puzzle_external_solution_subfolder_path(), file_name), dtype=None)
                 for file_name in ext_solutions_files_list]
-            for j in range(len(self.ext_solutions)):
-                self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
+            self.ext_solutions = [np.asarray(sol).tolist() for sol in self.ext_solutions]
 
             with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
                 self.puzzle_info = json.load(pijf)
@@ -162,20 +160,6 @@ class SolverWithPiecesModule:
 
 
 
-        elif grid_method == 'multiple':
-            #p_xy_size = self.solver_params['grid']['manual_params']['p_xy_size']
-            sandbox_size = self.solver_params['grid']['manual_params']['sandbox_size']
-            p_xy_size = get_p_xy_size_from_sandbox_size(sandbox_size,
-                                                        self.puzzle_info['num_pieces'],
-                                                       self.puzzle_info['rescaling_factor'],
-                                                       self.gt['transform'][0][0],
-                                                       self.params['compatibility']['grid'])
-
-            self.P = initialize_p_from_MULTI_solution(self.list_all_solutions,
-                                                         self.anchor_index,
-                                                         self.params['compatibility']['grid'], p_xy_size,
-                                                         vis=self.params['solver']['reassembleNet']['visualization'])
-
 
         elif grid_method == 'integration' or grid_method == 'integration_with_external':
 
@@ -184,12 +168,10 @@ class SolverWithPiecesModule:
             with open(self.cfg.get_GT_path(), 'r') as jgtp:
                 self.gt = json.load(jgtp)
 
-            sandbox_size = self.solver_params['grid']['manual_params']['sandbox_size']
-            p_xy_size = get_p_xy_size_from_sandbox_size(sandbox_size,
-                                                        self.puzzle_info['num_pieces'],
+            p_xy_size = get_p_xy_size_from_sandbox_size(self.solver_params['grid']['manual_params']['sandbox_size'],
                                                        self.puzzle_info['rescaling_factor'],
                                                        self.gt['transform'][0][0],
-                                                       self.params['compatibility']['grid'])
+                                                       self.params['compatibility']['grid']['xy_step'])
             if grid_method == 'integration':
                 self.P, self.init_pos, self.anchor_pos = initialize_p(self.R, self.anchor_index, p_xy_size[0], p_xy_size[1])
 
@@ -202,9 +184,11 @@ class SolverWithPiecesModule:
                 self.ext_solutions = [
                     np.genfromtxt(os.path.join(self.cfg.get_puzzle_external_solution_subfolder_path(), file_name), dtype=None)
                     for file_name in ext_solutions_files_list]
-                for j in range(len(self.ext_solutions)):
-                    self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
 
+                #for j in range(len(self.ext_solutions)):
+                #    self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
+
+                self.ext_solutions = [np.asarray(sol).tolist() for sol in self.ext_solutions]
                 self.P = initialize_p_from_external_solution(self.ext_solutions,
                                                             self.puzzle_info['rescaling_factor'],
                                                             self.anchor_index,
@@ -212,6 +196,18 @@ class SolverWithPiecesModule:
                                                             sparsify_p=self.params['solver']['reassembleNet'][
                                                                 'sparsify_p'],
                                                             vis=self.params['solver']['reassembleNet']['visualization'])
+
+        elif grid_method == 'multiple':
+            #p_xy_size = self.solver_params['grid']['manual_params']['p_xy_size']
+            p_xy_size = get_p_xy_size_from_sandbox_size(self.solver_params['grid']['manual_params']['sandbox_size'],
+                                                        self.puzzle_info['rescaling_factor'],
+                                                        self.gt['transform'][0][0],
+                                                        self.params['compatibility']['grid']['xy_step'])
+
+            self.P = initialize_p_from_MULTI_solution(self.list_all_solutions,
+                                                         self.anchor_index,
+                                                         self.params['compatibility']['grid'], p_xy_size,
+                                                         vis=self.params['solver']['reassembleNet']['visualization'])
         else:
             raise ValueError(f'Unknown method {grid_method}')
 
