@@ -114,10 +114,22 @@ class CompatibilityMatrixModule:
             if verbose > 1:
                 print("oracle CM computation")
             CM = self._compute_oracle_CM(verbose=verbose)
-        elif feature == 'pairwise_alignment_discriminator':
+        elif feature == 'pairwise_alignment_discriminator' or 'geometry':
             if verbose > 1:
                 print("PAD CM computation")
             CM = self._compute_pad_CM(verbose=verbose)
+        elif feature == 'geometry':
+            if verbose > 1:
+                print("PAD CM computation with Geometry alignment step")
+
+
+
+            ## TODO - check dictionary !!!
+            CM = self._compute_pad_CM_gemetric(verbose=verbose)
+
+
+
+
         else:
             raise Exception(f"{feature}-based CM not implemented yet!")
 
@@ -585,6 +597,54 @@ class CompatibilityMatrixModule:
     #   ╚═════╝ ╚═╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝   #
     #                                                                                                      #
     ########################################################################################################
+
+    def _compute_pad_CM_gemetric(self, verbose: int = 0):
+        """Loops over pairs of pieces - not symmetric yet"""
+        CM_pad = np.zeros(self.CM_size)
+        if verbose > 1:
+            print()
+        # prepare model
+        PAD_params = self.params['compatibility']['features']['pairwise_alignment_discriminator']
+
+        model = ViTForImageClassification.from_pretrained(PAD_params['trained_model_folder'])
+        processor = AutoImageProcessor.from_pretrained(
+            os.path.join(PAD_params['trained_model_folder'], "config.json"),
+            do_center_crop=PAD_params['do_center_crop'],
+            crop_size={"height": PAD_params['crop_height'], "width": PAD_params['crop_width']},
+            use_fast=PAD_params['use_fast'],
+            trust_remote_code=True  # Required for local models
+        )
+
+        for i in range(self.puzzle.num_of_pieces):
+            for j in range(self.puzzle.num_of_pieces):
+                if i != j:
+                    if verbose > 1:
+                        print(f'computing PAD CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
+
+                    ## TODO - check !!!!!
+                    RM_ij = self.RM_dict['geometry'][:, :, :, j, i]
+
+                    if np.sum(RM_ij > 0) > 0:
+                        if PAD_params['use_batch'] == True:
+                            CM_pad[:, :, :, j, i] = self._batch_compute_pairwise_discriminator_CM(self.puzzle.pieces[i],
+                                                                                                  self.puzzle.pieces[j],
+                                                                                                  RM_ij, model=model,
+                                                                                                  processor=processor,
+                                                                                                  PAD_params=PAD_params)
+                        else:
+                            CM_pad[:, :, :, j, i] = self._compute_pairwise_discriminator_CM(self.puzzle.pieces[i],
+                                                                                            self.puzzle.pieces[j],
+                                                                                            RM_ij, model=model,
+                                                                                            processor=processor,
+                                                                                            PAD_params=PAD_params)
+
+        if verbose > 1:
+            print()
+
+        return CM_pad
+
+
+
     def _compute_pad_CM(self, verbose: int = 0):
         """Loops over pairs of pieces - not symmetric yet"""
         CM_pad = np.zeros(self.CM_size)

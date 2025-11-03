@@ -143,8 +143,79 @@ def probability_for_single_fragment(grid_size, mean, std_devs):
 
     return prob
 
+#############################################
 
-def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_idx:int, grid, p_xy_size = (0,0), spars_p = 0, vis = 0, var = 1):
+def initialize_p_from_MULTI_solution(all_solutions, anchor_idx:int, grid, p_xy_size = (0,0), spars_p = 0, vis = 1, var = 1):
+    import heapq
+    xy_step = grid['xy_step']
+    theta_num_points = grid['theta_num_points']
+    p_size_x = p_xy_size[0]
+    p_size_y = p_xy_size[1]
+
+    # initialize assignment matrix
+    var = 5
+    grid_size = (p_size_y, p_size_x, theta_num_points)  ## p_size
+    p = np.zeros((grid_size[0], grid_size[1], grid_size[2], len(all_solutions[0])))
+
+    for sol in all_solutions:
+        solution = np.array(sol)[:, :-1].astype(float)
+        variance = np.ones_like(solution, dtype=np.float64)*var
+
+        # rotate and translate to origin [0,0,0]
+        norm_solutions = normalize_solutions(solution, anchor_idx) # output is in pixels and grades
+        print("Normalization")
+        print(norm_solutions)
+
+        # adapt solutions to grid (translations)
+        center = np.array([p_size_y//2, p_size_x//2], dtype=np.int64)  # shift to center
+        norm_solutions[:,:2] = norm_solutions[:,:2] / xy_step + center
+        norm_solutions[:, 2] = (norm_solutions[:,2]+360)%360
+        print("Shifted")
+        print(norm_solutions)
+
+        for i, mean in enumerate(norm_solutions):
+            if i == anchor_idx:
+                p[center[0], center[1], 0, i] = 1
+            else:
+                mean = norm_solutions[i, :]
+                std_devs = variance[i,:]
+                prob = probability_for_single_fragment(grid_size, mean, std_devs)
+                if spars_p > 0:
+                    n = 9   ## TODO  - load from input_params.yaml !!! That can be val of spars_p [1,3,5,7 ... ]
+                    # n = spars_p**2 #OPTION
+                    top_val = heapq.nlargest(n, prob.flatten().tolist())
+                    prob[prob < np.min(top_val)] = 0
+                p[:, :, :, i] += prob
+
+    #######################################################
+    if vis == 1:
+        import matplotlib.pyplot as plt
+        for i, sol in enumerate(all_solutions[0]):
+            prob_i = p[:, :, :, i]
+            # Show distribution for (theta = 0, 1, ... , n_of_slice)
+            n_of_slice = 4
+            # global limits of the scale
+            v_min, v_max = prob_i.min(), prob_i.max()
+            fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
+
+            for j, ax in enumerate(axes):
+                ax = axes[j]  # map 0–5 in (row, col)
+                im = ax.imshow(prob_i[:, :, j], cmap='hot', origin='lower', vmin=v_min, vmax=v_max)
+                ax.set_title(f"θ = {j} fragment{i} anc {anchor_idx}")
+                ax.set_xlabel("y")
+                ax.set_ylabel("x")
+            # colorbar comune a tutti i subplot
+            cbar = fig.colorbar(im, ax=axes.ravel().tolist(), pad=0.07,
+                                    fraction=0.05, )  # shrink=0.8, orientation='horizontal',fraction=0.05,
+            cbar.set_label("Probability Density")
+            plt.suptitle("distribution for different rotations θ (Uniform Colors)", fontsize=18)
+            plt.show()
+
+    # TODO normalizzation
+    return p
+
+
+def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_idx:int, grid, p_xy_size = (0,0), sparsify_p = 0, vis = 1, var = 1):
     import heapq
     xy_step = grid['xy_step']
     theta_num_points = grid['theta_num_points']
@@ -156,7 +227,7 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
     p = np.zeros((grid_size[0], grid_size[1], grid_size[2], len(all_solutions[0])))
     print('rescaling_factor', rescaling_factor)
 
-    for sol in all_solutions:
+    for sol in all_solutions[0:1]:
         if np.array(sol)[:,1:].shape[1]>3:
             solution = np.array(sol)[:,1:-1].astype(float)
             input_vars = np.array(sol)[:,-1].astype(float)
@@ -164,7 +235,7 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
             variance = np.ones_like(solution, dtype=np.float64)*input_vars[:, np.newaxis]
         else:
             solution = np.array(sol)[:, 1:].astype(float)
-            variance = np.ones_like(solution, dtype=np.float64)*var
+            variance = np.ones_like(solution, dtype=np.float64)*15
         print("Input")
         print(solution)
 
@@ -185,7 +256,7 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
         print("Shifted")
         print(norm_solutions)
 
-        for i in range(len(norm_solutions)):
+        for i, mean in enumerate(norm_solutions):
             if i == anchor_idx:
                 p[center[0], center[1], 0, i] = 1
             else:
@@ -193,63 +264,51 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
                 std_devs = variance[i,:]   #std_devs = (10.0, 10.0, 0.5)  # st. deviation, t° !
                 prob = probability_for_single_fragment(grid_size, mean, std_devs)
 
-                if spars_p > 0:
+                if sparsify_p > 0:
                     n = 9   ## TODO  - load from input_params.yaml !!! That can be val of spars_p [1,3,5,7 ... ]
-                    # n = spars_p**2 #OPTION
-                    top_val = heapq.nlargest(n, prob.flatten().tolist())
-                    prob[prob < np.min(top_val)] = 0
+                    # n = sparsify_p**2 #OPTION
+                    top_vals = heapq.nlargest(n, prob.flatten())
+                    threshold = min(top_vals)
+                    prob[prob < threshold] = 0
                 p[:, :, :, i] += prob
 
-    #######################################################
-    for i in range(len(solution)):
-        prob_i = p[:, :, :, i]
+        #######################################################
         if vis == 1:
-            # Show distribution for (theta = 0, 1, ... , n_of_slice)
             import matplotlib.pyplot as plt
-            n_of_slice = 4
-            vmin = prob_i.min()  # global limits of the scale
-            vmax = prob_i.max()
-            fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
+            for i, sol in enumerate(all_solutions[0]):
+                prob_i = p[:, :, :, i]
+                # Show distribution for (theta = 0, 1, ... , n_of_slice)
+                n_of_slice = 4
+                # global limits of the scale
+                v_min, v_max = prob_i.min(), prob_i.max()
+                fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
 
-            for j in range(n_of_slice):
-                ax = axes[j]  # map 0–5 in (row, col)
-                im = ax.imshow(prob_i[:, :, j], cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
-                ax.set_title(f"θ = {j} fragment{i} anc {anchor_idx}")
-                ax.set_xlabel("y")
-                ax.set_ylabel("x")
-            # colorbar comune a tutti i subplot
-            cbar = fig.colorbar(im, ax=axes.ravel().tolist(), pad=0.07,
+                for j, ax in enumerate(axes):
+                    ax = axes[j]  # map 0–5 in (row, col)
+                    im = ax.imshow(prob_i[:, :, j], cmap='hot', origin='lower', vmin=v_min, vmax=v_max)
+                    ax.set_title(f"θ = {j} fragment{i} anc {anchor_idx}")
+                    ax.set_xlabel("y")
+                    ax.set_ylabel("x")
+                # colorbar comune a tutti i subplot
+                cbar = fig.colorbar(im, ax=axes.ravel().tolist(), pad=0.07,
                                     fraction=0.05, )  # shrink=0.8, orientation='horizontal',fraction=0.05,
-            cbar.set_label("Probability Density")
-            plt.suptitle("distribution for different rotations θ (Uniform Colors)", fontsize=18)
-            plt.show()
+                cbar.set_label("Probability Density")
+                plt.suptitle("distribution for different rotations θ (Uniform Colors)", fontsize=18)
+                plt.show()
 
     # TODO normalizzation
     return p
 
-#####################################  TODO debug - check output
 
-def get_p_xy_size_from_sandbox_size(sandbox_size, num_pieces, rescaling_factor, transform_factor, grid):
-    xy_step = grid['xy_step']
-    theta_num_points = grid['theta_num_points']
-
-    # Transform - sandbox_size in mm !!!
+def get_p_xy_size_from_sandbox_size(sandbox_size, rescaling_factor, transform_factor, xy_step):
+   # Transform - sandbox_size in mm !
     mm_to_px = 1/transform_factor
-    #mm_to_px = transform_factor
     sandbox_size_px = (np.array(sandbox_size) - (2*15)) * mm_to_px
-
-    # Rescale - rescaling factor is puzzle wise !!!
-    box_size =  sandbox_size_px/ rescaling_factor
-
+    # Rescale - rescaling factor is puzzle wise !
+    box_size =  sandbox_size_px / rescaling_factor
     # Px_to_Grid
-    p_size_x = box_size[0] / xy_step
-    p_size_y = box_size[1] / xy_step
-
-    p_xy_size = np.array([p_size_y, p_size_x], dtype=np.int64)
-
+    p_xy_size = np.array(box_size/xy_step, dtype=np.int64)
     return p_xy_size
-
-#####################################
 
 
 def get_pieces_id_list(anchor_idx:int, adjacency_matrix:np.ndarray, max_adjacency_degree:int):
@@ -274,10 +333,10 @@ def get_pieces_id_list(anchor_idx:int, adjacency_matrix:np.ndarray, max_adjacenc
         raise NotImplementedError("We need to iteratively add the other pieces ids!\nSince it is not used in this experiment, it was not yet implemented")
 
     # Check https://stackoverflow.com/questions/57261950/how-does-set-remove-duplicates-from-a-list
-    # pieces_list = set(pieces_list)                  # it orders the ids
+    # pieces_list = set(pieces_list)                # it orders the ids
     pieces_list = list(dict.fromkeys(pieces_list))  # leaves the same order, with anchor at the beginning. Is it better?
-
     return pieces_list 
+
 
 def initialize_p_using_neighbours_with_occupancy(R, anchor_idx: int, pieces_occupancy_grid:np.ndarray, adjacency_matrix:np.ndarray, max_adjacency_degree:int):
     """
@@ -295,6 +354,7 @@ def initialize_p_using_neighbours_with_occupancy(R, anchor_idx: int, pieces_occu
 
     P, init_pieces_pos, anchor_pos = initialize_p_with_occupancy(R, anchor_idx, pieces_occupancy_grid=pieces_occupancy_grid)
     return P, init_pieces_pos, anchor_pos, pieces_subset_id_list
+
 
 def initialize_p_with_occupancy(R, anchor_idx, pieces_occupancy_grid=None):
     """

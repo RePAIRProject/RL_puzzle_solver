@@ -4,8 +4,10 @@ import cv2
 import warnings
 import matplotlib.pyplot as plt 
 from solver.solver_utils import remove_occupied_grid_points
+from sympy import false
 
-def fix_anchors_with_occ(P, num_anchors: int, threshold: float, pieces_occupancy_grid):
+
+def fix_anchors_with_occ(P, num_anchors: int, threshold: float, pieces_occupancy_grid, keep_init_distr=False):
 
     N = P.shape[-1]
 
@@ -24,7 +26,8 @@ def fix_anchors_with_occ(P, num_anchors: int, threshold: float, pieces_occupancy
     if num_anchors_new > num_anchors:
         num_anchors = num_anchors_new
         # uniform distribution
-        P = np.ones_like(P) / (P.size/N)
+        if keep_init_distr == False:
+            P = np.ones_like(P) / (P.size/N)
 
         for i in range(N):
             # print(f"working on piece {i}")
@@ -42,6 +45,8 @@ def fix_anchors_with_occ(P, num_anchors: int, threshold: float, pieces_occupancy
                 # plt.show()
                 
                 P = remove_occupied_grid_points(P, piece_pos=[x, y, theta], piece_id=i, piece_occ=pieces_occupancy_grid[i,:,:], anchor_mask=anchor_mask)
+
+        ## TODO Normalization -if needed ???
         
         # print(num_anchors_new)
         # for j in range(N):
@@ -166,7 +171,9 @@ def solver_rot_puzzle(R, P, T, mode='exp', verbosity=1, decimals=8):
         if mode == 'simple':
             PQ = P * Q 
         elif mode == 'exp':
-            PQ = P * np.exp(Q)  # e = 1e-11
+            PQ = P * np.exp(Q)
+        elif mode == 'super_exp':
+            PQ = P * np.exp(Q*100)
         else:
             print(f"warning, unknown mode {mode}, we use exponential")
             PQ = P * np.exp(Q)  # e = 1e-11
