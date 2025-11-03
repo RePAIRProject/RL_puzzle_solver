@@ -79,7 +79,11 @@ compatibility:
       do_center_crop: True
       crop_height: 224
       crop_width: 224
-      use_thresh: False
+      # method for computing the score:
+      # 1. softmax (score is the score of output 1 (correct probability) after softmax)
+      # 2. thresh (score is the score before softmax if it's above a threshold defined below)
+      # 3. prob_diff (score is the difference between the two output `correct` and `wrong`)
+      scoring_method: 'softmax' #'thresh', 'prob_diff'
       thresholds:
         positive: 2
         negative: 1.5
