@@ -173,7 +173,7 @@ def initialize_p_from_MULTI_solution(all_solutions, anchor_idx:int, grid, p_xy_s
         print("Shifted")
         print(norm_solutions)
 
-        for i in range(len(norm_solutions)):
+        for i, mean in enumerate(norm_solutions):
             if i == anchor_idx:
                 p[center[0], center[1], 0, i] = 1
             else:
@@ -188,19 +188,19 @@ def initialize_p_from_MULTI_solution(all_solutions, anchor_idx:int, grid, p_xy_s
                 p[:, :, :, i] += prob
 
     #######################################################
-    for i in range(len(solution)):
-        prob_i = p[:, :, :, i]
-        if vis == 1:
+    if vis == 1:
+        import matplotlib.pyplot as plt
+        for i, sol in enumerate(all_solutions[0]):
+            prob_i = p[:, :, :, i]
             # Show distribution for (theta = 0, 1, ... , n_of_slice)
-            import matplotlib.pyplot as plt
             n_of_slice = 4
-            vmin = prob_i.min()  # global limits of the scale
-            vmax = prob_i.max()
+            # global limits of the scale
+            v_min, v_max = prob_i.min(), prob_i.max()
             fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
 
-            for j in range(n_of_slice):
+            for j, ax in enumerate(axes):
                 ax = axes[j]  # map 0–5 in (row, col)
-                im = ax.imshow(prob_i[:, :, j], cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
+                im = ax.imshow(prob_i[:, :, j], cmap='hot', origin='lower', vmin=v_min, vmax=v_max)
                 ax.set_title(f"θ = {j} fragment{i} anc {anchor_idx}")
                 ax.set_xlabel("y")
                 ax.set_ylabel("x")
@@ -235,7 +235,7 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
             variance = np.ones_like(solution, dtype=np.float64)*input_vars[:, np.newaxis]
         else:
             solution = np.array(sol)[:, 1:].astype(float)
-            variance = np.ones_like(solution, dtype=np.float64)*11
+            variance = np.ones_like(solution, dtype=np.float64)*15
         print("Input")
         print(solution)
 
@@ -256,7 +256,7 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
         print("Shifted")
         print(norm_solutions)
 
-        for i in range(len(norm_solutions)):
+        for i, mean in enumerate(norm_solutions):
             if i == anchor_idx:
                 p[center[0], center[1], 0, i] = 1
             else:
@@ -267,56 +267,47 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
                 if sparsify_p > 0:
                     n = 9   ## TODO  - load from input_params.yaml !!! That can be val of spars_p [1,3,5,7 ... ]
                     # n = sparsify_p**2 #OPTION
-                    top_val = heapq.nlargest(n, prob.flatten().tolist())
-                    prob[prob < np.min(top_val)] = 0
+                    top_vals = heapq.nlargest(n, prob.flatten())
+                    threshold = min(top_vals)
+                    prob[prob < threshold] = 0
                 p[:, :, :, i] += prob
 
-    #######################################################
-    for i in range(len(solution)):
-        prob_i = p[:, :, :, i]
+        #######################################################
         if vis == 1:
-            # Show distribution for (theta = 0, 1, ... , n_of_slice)
             import matplotlib.pyplot as plt
-            n_of_slice = 4
-            vmin = prob_i.min()  # global limits of the scale
-            vmax = prob_i.max()
-            fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
+            for i, sol in enumerate(all_solutions[0]):
+                prob_i = p[:, :, :, i]
+                # Show distribution for (theta = 0, 1, ... , n_of_slice)
+                n_of_slice = 4
+                # global limits of the scale
+                v_min, v_max = prob_i.min(), prob_i.max()
+                fig, axes = plt.subplots(1, n_of_slice, figsize=(30, 10))
 
-            for j in range(n_of_slice):
-                ax = axes[j]  # map 0–5 in (row, col)
-                im = ax.imshow(prob_i[:, :, j], cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
-                ax.set_title(f"θ = {j} fragment{i} anc {anchor_idx}")
-                ax.set_xlabel("y")
-                ax.set_ylabel("x")
-            # colorbar comune a tutti i subplot
-            cbar = fig.colorbar(im, ax=axes.ravel().tolist(), pad=0.07,
+                for j, ax in enumerate(axes):
+                    ax = axes[j]  # map 0–5 in (row, col)
+                    im = ax.imshow(prob_i[:, :, j], cmap='hot', origin='lower', vmin=v_min, vmax=v_max)
+                    ax.set_title(f"θ = {j} fragment{i} anc {anchor_idx}")
+                    ax.set_xlabel("y")
+                    ax.set_ylabel("x")
+                # colorbar comune a tutti i subplot
+                cbar = fig.colorbar(im, ax=axes.ravel().tolist(), pad=0.07,
                                     fraction=0.05, )  # shrink=0.8, orientation='horizontal',fraction=0.05,
-            cbar.set_label("Probability Density")
-            plt.suptitle("distribution for different rotations θ (Uniform Colors)", fontsize=18)
-            plt.show()
+                cbar.set_label("Probability Density")
+                plt.suptitle("distribution for different rotations θ (Uniform Colors)", fontsize=18)
+                plt.show()
 
     # TODO normalizzation
     return p
 
 
-def get_p_xy_size_from_sandbox_size(sandbox_size, num_pieces, rescaling_factor, transform_factor, grid):
-    xy_step = grid['xy_step']
-    theta_num_points = grid['theta_num_points']
-
-    # Transform - sandbox_size in mm !!!
+def get_p_xy_size_from_sandbox_size(sandbox_size, rescaling_factor, transform_factor, xy_step):
+   # Transform - sandbox_size in mm !
     mm_to_px = 1/transform_factor
-    #mm_to_px = transform_factor
     sandbox_size_px = (np.array(sandbox_size) - (2*15)) * mm_to_px
-
-    # Rescale - rescaling factor is puzzle wise !!!
-    box_size =  sandbox_size_px/ rescaling_factor
-
+    # Rescale - rescaling factor is puzzle wise !
+    box_size =  sandbox_size_px / rescaling_factor
     # Px_to_Grid
-    p_size_x = box_size[0] / xy_step
-    p_size_y = box_size[1] / xy_step
-
-    p_xy_size = np.array([p_size_y, p_size_x], dtype=np.int64)
-
+    p_xy_size = np.array(box_size/xy_step, dtype=np.int64)
     return p_xy_size
 
 
@@ -342,9 +333,8 @@ def get_pieces_id_list(anchor_idx:int, adjacency_matrix:np.ndarray, max_adjacenc
         raise NotImplementedError("We need to iteratively add the other pieces ids!\nSince it is not used in this experiment, it was not yet implemented")
 
     # Check https://stackoverflow.com/questions/57261950/how-does-set-remove-duplicates-from-a-list
-    # pieces_list = set(pieces_list)                  # it orders the ids
+    # pieces_list = set(pieces_list)                # it orders the ids
     pieces_list = list(dict.fromkeys(pieces_list))  # leaves the same order, with anchor at the beginning. Is it better?
-
     return pieces_list 
 
 

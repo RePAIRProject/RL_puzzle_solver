@@ -731,14 +731,16 @@ class CompatibilityMatrixModule:
             # breakpoint()
             pred_probs = torch.softmax(pred_score, dim=0)
             pred_class = torch.argmax(pred_probs).item() 
-            if PAD_params['use_thresh'] == True:
+            if PAD_params['scoring_method'] == 'softmax':
+                cmp_score = pred_probs[1].item()
+            elif PAD_params['scoring_method'] == 'thresh':
                 if pred_score[1].item() > PAD_params['thresholds']['positive']:
                     cmp_score = pred_score[0][1].item()
                 elif pred_score[0].item() > PAD_params['thresholds']['negative']:
                     cmp_score = -1    
                 else:
                     cmp_score = 0
-            elif PAD_params['use_prob_diff'] == True:
+            elif PAD_params['scoring_method'] == prob_diff:
                 cmp_score = pred_probs[1].item() if pred_class == 1 else -1*pred_probs[0].item()
                 cmp_score *= torch.abs(torch.diff(pred_score)).item()
             else:

@@ -138,7 +138,6 @@ class SolverWithPiecesModule:
             print(f'Using a grid of size {self.P.shape} points [auto with occupancy]')
 
         elif grid_method == 'extern':
-
             if not os.path.exists(self.cfg.get_puzzle_external_solution_subfolder_path()):
                 raise Exception("Missing external solution folder! Maybe you want to change the init method? \nYou can find it in:\ninput_parameters.yaml: solver --> grid --> method\n")
             ext_solutions_files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
@@ -146,8 +145,7 @@ class SolverWithPiecesModule:
             self.ext_solutions = [
                 np.genfromtxt(os.path.join(self.cfg.get_puzzle_external_solution_subfolder_path(), file_name), dtype=None)
                 for file_name in ext_solutions_files_list]
-            for j in range(len(self.ext_solutions)):
-                self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
+            self.ext_solutions = [np.asarray(sol).tolist() for sol in self.ext_solutions]
 
             with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
                 self.puzzle_info = json.load(pijf)
@@ -162,20 +160,6 @@ class SolverWithPiecesModule:
 
 
 
-        elif grid_method == 'multiple':
-            #p_xy_size = self.solver_params['grid']['manual_params']['p_xy_size']
-            sandbox_size = self.solver_params['grid']['manual_params']['sandbox_size']
-            p_xy_size = get_p_xy_size_from_sandbox_size(sandbox_size,
-                                                        self.puzzle_info['num_pieces'],
-                                                       self.puzzle_info['rescaling_factor'],
-                                                       self.gt['transform'][0][0],
-                                                       self.params['compatibility']['grid'])
-
-            self.P = initialize_p_from_MULTI_solution(self.list_all_solutions,
-                                                         self.anchor_index,
-                                                         self.params['compatibility']['grid'], p_xy_size,
-                                                         vis=self.params['solver']['reassembleNet']['visualization'])
-
 
         elif grid_method == 'integration' or grid_method == 'integration_with_external':
 
@@ -184,12 +168,10 @@ class SolverWithPiecesModule:
             with open(self.cfg.get_GT_path(), 'r') as jgtp:
                 self.gt = json.load(jgtp)
 
-            sandbox_size = self.solver_params['grid']['manual_params']['sandbox_size']
-            p_xy_size = get_p_xy_size_from_sandbox_size(sandbox_size,
-                                                        self.puzzle_info['num_pieces'],
+            p_xy_size = get_p_xy_size_from_sandbox_size(self.solver_params['grid']['manual_params']['sandbox_size'],
                                                        self.puzzle_info['rescaling_factor'],
                                                        self.gt['transform'][0][0],
-                                                       self.params['compatibility']['grid'])
+                                                       self.params['compatibility']['grid']['xy_step'])
             if grid_method == 'integration':
                 self.P, self.init_pos, self.anchor_pos = initialize_p(self.R, self.anchor_index, p_xy_size[0], p_xy_size[1])
 
@@ -202,9 +184,11 @@ class SolverWithPiecesModule:
                 self.ext_solutions = [
                     np.genfromtxt(os.path.join(self.cfg.get_puzzle_external_solution_subfolder_path(), file_name), dtype=None)
                     for file_name in ext_solutions_files_list]
-                for j in range(len(self.ext_solutions)):
-                    self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
 
+                #for j in range(len(self.ext_solutions)):
+                #    self.ext_solutions[j]=np.asarray(self.ext_solutions[j]).tolist()
+
+                self.ext_solutions = [np.asarray(sol).tolist() for sol in self.ext_solutions]
                 self.P = initialize_p_from_external_solution(self.ext_solutions,
                                                             self.puzzle_info['rescaling_factor'],
                                                             self.anchor_index,
@@ -212,6 +196,18 @@ class SolverWithPiecesModule:
                                                             sparsify_p=self.params['solver']['reassembleNet'][
                                                                 'sparsify_p'],
                                                             vis=self.params['solver']['reassembleNet']['visualization'])
+
+        elif grid_method == 'multiple':
+            #p_xy_size = self.solver_params['grid']['manual_params']['p_xy_size']
+            p_xy_size = get_p_xy_size_from_sandbox_size(self.solver_params['grid']['manual_params']['sandbox_size'],
+                                                        self.puzzle_info['rescaling_factor'],
+                                                        self.gt['transform'][0][0],
+                                                        self.params['compatibility']['grid']['xy_step'])
+
+            self.P = initialize_p_from_MULTI_solution(self.list_all_solutions,
+                                                         self.anchor_index,
+                                                         self.params['compatibility']['grid'], p_xy_size,
+                                                         vis=self.params['solver']['reassembleNet']['visualization'])
         else:
             raise ValueError(f'Unknown method {grid_method}')
 
@@ -379,6 +375,98 @@ class SolverWithPiecesModule:
         with open(context_params_path, 'w') as f:
             yaml.dump(context_params, f, Dumper=CustomYAMLEncoder, default_flow_style=False)
 
+    def load_puzzle_as_multipolygon(self):
+        from shapely import MultiPolgyon
+        polygons = []
+        names = []
+        for piece in self.puzzle.pieces:
+            polygons.append(piece.data.polygon)
+            names.append(piece.name)
+        return MultiPolygon(polygons), names
+
+    def save_placement_json(path, fresco, ground_truth, assembly_sequence, fresco_name_id_mapping):
+        """
+        TODO
+        """
+        data = {}
+        data["header"] = {"fresco_group": fresco_no}
+
+        for assembly_sequence_type, assembly_sequence in assembly_sequence.items():
+            assembly_plan_dictionary = {}
+            for seq_no, id in enumerate(assembly_sequence):
+                assembly_plan_dictionary[seq_no] = fresco_name_id_mapping[id]
+            data["assembly_sequence_"+assembly_sequence_type] = assembly_plan_dictionary,
+        
+        for pos, fragment in enumerate(fresco.geoms):
+            gt_key = get_dict_key_by_pos(ground_truth, pos)
+            data[gt_key] = {}
+            data[gt_key]["trans_x"] = fragment.centroid.x
+            data[gt_key]["trans_y"] = fragment.centroid.y
+            data[gt_key]["ori_yaw"] = ground_truth[gt_key][2]
+        save_json(path=path, data=data)
+
+    def generate_placement_file(self, pixel_solution, verbosity=0):
+        """
+        Uses the fresco_assembly_sequence code to generate the .json file for the robotic platform
+        """
+        print("\n\n\nWARNING: UNFINISHED!\n\nRun with `generate_placement_file: False` on the `input_parameters.yaml` file for now\n\n")
+        # TODO:
+        # - load polygons in the correct format (create a multipolygon from a list of polygons)
+        # - list of fragment names (fresco_name_id_mapping)
+
+        breakpoint()
+        from utils import assemby_sequence_utils
+        from utils import scale_utils
+
+        self.placement_folder = os.path.join(self.cfg.get_current_solution_folder(), 'sandbed_placement')
+        os.makedirs(self.placement_folder, exist_ok=True)
+
+        assembled_puzzle, pieces_names = self.load_puzzle_as_multipolygon()
+
+        ##################
+        # Inflate fresco #
+        ##################
+        inflation_width = self.params['solver']['placement']['inflation_width']
+        if inflation_width > 0:
+            if verbosity >= 1:
+                print("Scaling up the fresco.")
+            scaled_assembled_puzzle = scale_utils.get_min_inflated_gt_fresco(assembled_puzzle, inflation_width=inflation_width)
+            if self.params['solver']['placement']['save_plot']:
+                assembled_plot_path = os.path.join(self.placement_folder, "assembled_puzzle")
+                shapely_utils.plot_fresco_image(img_path=path, fresco_polygons=scaled_assembled_puzzle, ref="world", name="scaled_puzzle", save_plot=assembled_plot_path)
+        else:
+            scaled_assembled_puzzle = assembled_puzzle
+
+        #####################
+        # Assembly sequence #
+        #####################
+        if verbose >= 1:
+            print("Determining assembly sequence.")
+        assembly_data = assembly_sequence_utils.prepare_polygon_data(scaled_assembled_puzzle)
+
+        assembly_sequence = {}
+        seq_type = [self.params['solver']['placement']['assembly_plan']]
+        if seq_type == "snake":
+            assembly_sequence[seq_type] = assembly_sequence_utils.get_assembly_plan_snake(assembly_data, viz=show_plot)
+
+        if seq_type == "spiral":
+            assembly_sequence[seq_type] = assembly_sequence_utils.get_assembly_plan_spiral(assembly_data, viz=show_plot)
+        
+        if self.params['solver']['placement']['save_plot']:
+            assembly_sequence_utils.plot_fresco_assembly(assembly_sequence[seq_type], assembly_data, pieces_names, folder_path=self.cfg.get_current_solution_folder(), name="assembly_sequence_"+seq_type)
+
+        #############
+        # Save data #
+        #############
+        if verbosity >= 1:
+            print("Save placement json.")
+        placement_file_path = os.path.join(self.cfg.get_current_solution_folder(), "fresco_placement.json")
+        common_utils.save_placement_json(
+            path=placement_file_path,
+            fresco=scaled_assembled_puzzle,
+            solution=pixel_solution,
+            assembly_sequence=assembly_sequence,
+            fresco_name_id_mapping=pieces_names)
 
     # def save(self):
         
