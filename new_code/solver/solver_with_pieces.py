@@ -8,6 +8,7 @@ from .solver_utils import initialize_p_from_external_solution, get_p_xy_size_fro
 from utils.human_readable_duration import format_duration
 from utils.visualization_utils import reconstruct
 
+from shapely import MultiPolygon, affinity
 from typing import List
 import numpy as np
 import time
@@ -375,53 +376,61 @@ class SolverWithPiecesModule:
         with open(context_params_path, 'w') as f:
             yaml.dump(context_params, f, Dumper=CustomYAMLEncoder, default_flow_style=False)
 
-    def load_puzzle_as_multipolygon(self):
-        from shapely import MultiPolgyon
+    def load_solved_puzzle_as_multipolygon(self, pixel_solution):
+        
         polygons = []
         names = []
-        for piece in self.puzzle.pieces:
-            polygons.append(piece.data.polygon)
+        for piece, piece_T in zip(self.puzzle.pieces, pixel_solution):
+            assembled_polygon = affinity.translate(piece.data.polygon, piece_T[0], piece_T[1])
+            polygons.append(assembled_polygon)
+            # plt.plot(*assembled_polygon.exterior.xy)
             names.append(piece.name)
+        # plt.show()
         return MultiPolygon(polygons), names
 
-    def save_placement_json(path, fresco, ground_truth, assembly_sequence, fresco_name_id_mapping):
+    def get_dict_key_by_pos(self, tmp_dict, pos):
+        return list(tmp_dict.keys())[pos]
+
+    def save_placement_json(self, path, fresco, solution, assembly_sequence, pieces_names):
         """
         TODO
         """
         data = {}
-        data["header"] = {"fresco_group": fresco_no}
+        data["header"] = {"fresco_group": "g29"}
 
         for assembly_sequence_type, assembly_sequence in assembly_sequence.items():
             assembly_plan_dictionary = {}
             for seq_no, id in enumerate(assembly_sequence):
-                assembly_plan_dictionary[seq_no] = fresco_name_id_mapping[id]
+                assembly_plan_dictionary[seq_no] = pieces_names[id]
             data["assembly_sequence_"+assembly_sequence_type] = assembly_plan_dictionary,
         
         for pos, fragment in enumerate(fresco.geoms):
-            gt_key = get_dict_key_by_pos(ground_truth, pos)
+            # breakpoint()
+            gt_key = pieces_names[pos]
             data[gt_key] = {}
             data[gt_key]["trans_x"] = fragment.centroid.x
             data[gt_key]["trans_y"] = fragment.centroid.y
-            data[gt_key]["ori_yaw"] = ground_truth[gt_key][2]
-        save_json(path=path, data=data)
+            data[gt_key]["ori_yaw"] = float(solution[pos][2])
 
-    def generate_placement_file(self, pixel_solution, verbosity=0):
+        with open(path, "w") as outfile:
+            json.dump(data, outfile, indent=4)
+        
+
+    def generate_placement_file(self, pixel_solution, verbosity=2):
         """
         Uses the fresco_assembly_sequence code to generate the .json file for the robotic platform
         """
-        print("\n\n\nWARNING: UNFINISHED!\n\nRun with `generate_placement_file: False` on the `input_parameters.yaml` file for now\n\n")
+        # print("\n\n\nWARNING: UNFINISHED!\n\nRun with `generate_placement_file: False` on the `input_parameters.yaml` file for now\n\n")
         # TODO:
         # - load polygons in the correct format (create a multipolygon from a list of polygons)
         # - list of fragment names (fresco_name_id_mapping)
-
-        breakpoint()
-        from utils import assemby_sequence_utils
+        from utils import assembly_sequence_utils
         from utils import scale_utils
-
+        print("Generating the placement sequence..")
         self.placement_folder = os.path.join(self.cfg.get_current_solution_folder(), 'sandbed_placement')
         os.makedirs(self.placement_folder, exist_ok=True)
 
-        assembled_puzzle, pieces_names = self.load_puzzle_as_multipolygon()
+        assembled_puzzle, pieces_names = self.load_solved_puzzle_as_multipolygon(pixel_solution)
 
         ##################
         # Inflate fresco #
@@ -433,40 +442,40 @@ class SolverWithPiecesModule:
             scaled_assembled_puzzle = scale_utils.get_min_inflated_gt_fresco(assembled_puzzle, inflation_width=inflation_width)
             if self.params['solver']['placement']['save_plot']:
                 assembled_plot_path = os.path.join(self.placement_folder, "assembled_puzzle")
-                shapely_utils.plot_fresco_image(img_path=path, fresco_polygons=scaled_assembled_puzzle, ref="world", name="scaled_puzzle", save_plot=assembled_plot_path)
+                assembly_sequence_utils.plot_fresco_image(img_path=assembled_plot_path, fresco_polygons=scaled_assembled_puzzle, ref="world", name="scaled_puzzle", save_plot=True)
         else:
             scaled_assembled_puzzle = assembled_puzzle
 
         #####################
         # Assembly sequence #
         #####################
-        if verbose >= 1:
+        if verbosity >= 1:
             print("Determining assembly sequence.")
         assembly_data = assembly_sequence_utils.prepare_polygon_data(scaled_assembled_puzzle)
 
         assembly_sequence = {}
-        seq_type = [self.params['solver']['placement']['assembly_plan']]
+        seq_type = self.params['solver']['placement']['assembly_plan']
         if seq_type == "snake":
-            assembly_sequence[seq_type] = assembly_sequence_utils.get_assembly_plan_snake(assembly_data, viz=show_plot)
+            assembly_sequence[seq_type] = assembly_sequence_utils.get_assembly_plan_snake(assembly_data,)
 
         if seq_type == "spiral":
-            assembly_sequence[seq_type] = assembly_sequence_utils.get_assembly_plan_spiral(assembly_data, viz=show_plot)
+            assembly_sequence[seq_type] = assembly_sequence_utils.get_assembly_plan_spiral(assembly_data)
         
         if self.params['solver']['placement']['save_plot']:
-            assembly_sequence_utils.plot_fresco_assembly(assembly_sequence[seq_type], assembly_data, pieces_names, folder_path=self.cfg.get_current_solution_folder(), name="assembly_sequence_"+seq_type)
+            assembly_sequence_utils.plot_fresco_assembly(assembly_sequence[seq_type], assembly_data, pieces_names, folder_path=self.placement_folder, name="assembly_sequence_"+seq_type)
 
         #############
         # Save data #
         #############
-        if verbosity >= 1:
-            print("Save placement json.")
-        placement_file_path = os.path.join(self.cfg.get_current_solution_folder(), "fresco_placement.json")
-        common_utils.save_placement_json(
+        placement_file_path = os.path.join(self.placement_folder, "fresco_placement.json")
+        self.save_placement_json(
             path=placement_file_path,
             fresco=scaled_assembled_puzzle,
             solution=pixel_solution,
             assembly_sequence=assembly_sequence,
-            fresco_name_id_mapping=pieces_names)
+            pieces_names=pieces_names)
+        if verbosity >= 1:
+            print("Saved placement json.\nFINISHED")
 
     # def save(self):
         
