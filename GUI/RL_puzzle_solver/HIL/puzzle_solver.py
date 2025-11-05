@@ -79,8 +79,6 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
 
     pieces_folder = path_dic['pieces_path']
 
-    cmp_parameter_path = path_dic['parameters']
-
     if not anchor_piece.endswith(".png"):
         anchor_piece += ".png"
 
@@ -91,9 +89,8 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     #     with open(cmp_parameter_path, 'r') as cp:
     #         ppars = json.load(cp)
 
+    cmp_parameter_path = path_dic['parameters']
     ppars_yaml = {}
-
-    print("Opening YAML file:", cmp_parameter_path)
     with open(cmp_parameter_path, 'r') as file:
         ppars_yaml = yaml.safe_load(file)
 
@@ -115,11 +112,9 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
             to_include = True
         if p_name in neighbours:
             neighbours_as_list.append(k)
-            print("neighbour", k, ":", p_name)
             to_include = True
         if len(solved_pieces) > 0:
             if p_name in solved_pieces[0]:
-                print("solved_pieces", k, ":", p_name)
                 to_include = True
         if to_include is True:
             pieces_to_include.append(k)
@@ -128,7 +123,6 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     # THIS IS HARDCODED WE NEED TO CHANGE LATER
     comp_folder = path_dic['comp_folder']
     comp_name = path_dic['comp_name']
-    # print(comp_name)
     # comp_name = eval("f'{}'".format(comp_name))
 
     mat = np.load(os.path.join(comp_folder, comp_name), allow_pickle=True).item()
@@ -164,17 +158,12 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     # R = np.clip(R, -1 * factor, factor)
     # R = np.where(R < 0, -1 * factor, R)
 
-    print("R max/min")
-    print(np.max(R))
-    print(np.min(R))
     anchor = pieces_to_include.index(anchor)
 
     pieces_included = []
 
     for i in range(len(pieces_to_include)):
         pieces_included.append(pieces_names[pieces_to_include[i]])
-
-    print("rotation", path_dic['rotation_intervals'])
 
     puzzle_solver.__init__(ppars, pieces_included, path_dic)
 

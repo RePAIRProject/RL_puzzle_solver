@@ -25,7 +25,6 @@ class PuzzleSolver:
         self.final_solution = None
         self.ppars = args[0] if len(args) > 0 else None
 
-        print("ppars", self.ppars)
         self.pieces_names = args[1] if len(args) > 1 else None
 
         if len(args) > 2:
@@ -276,8 +275,6 @@ class PuzzleSolver:
         # highest_values = np.array(highest_values)
         #
         # # Display the results
-        # print("Highest values for each slice along the j dimension:")
-        # print(highest_values)
 
         if return_as == 'list':
             return fin_sol.tolist()
@@ -300,8 +297,6 @@ class PuzzleSolver:
         # Initialize reconstruction plan
         self.set_cm_matrix(R)
         no_grid_points = R.shape[0]
-
-        print("no_grid_points", no_grid_points)
 
         no_patches = R.shape[3]
         no_rotations = R.shape[2]
@@ -384,7 +379,6 @@ class PuzzleSolver:
         # initialize assignment matrix
         grid_size = (p_size_y, p_size_x, theta_num_points)  ## p_size
         p = np.zeros((grid_size[0], grid_size[1], grid_size[2], len(all_solutions[0])))
-        print('rescaling_factor', rescaling_factor)
 
         for sol in all_solutions[0:1]:
             if np.array(sol)[:, 1:].shape[1] > 3:
@@ -395,25 +389,17 @@ class PuzzleSolver:
             else:
                 solution = np.array(sol)[:, 1:].astype(float)
                 variance = np.ones_like(solution, dtype=np.float64) * 11
-            print("Input")
-            print(solution)
 
             # Rescale
             solution[:, :2] = solution[:, :2] / rescaling_factor
-            print("Rescale")
-            print(solution)
 
             # rotate and translate to origin [0,0,0]
             norm_solutions = normalize_solutions(solution, anchor_idx)  # output is in pixels and grades
-            print("Normalization")
-            print(norm_solutions)
 
             # adapt solutions to grid (translations)
             center = np.array([p_size_y // 2, p_size_x // 2], dtype=np.int64)  # shift to center
             norm_solutions[:, :2] = norm_solutions[:, :2] / xy_step + center
             norm_solutions[:, 2] = (norm_solutions[:, 2] + 360) % 360
-            print("Shifted")
-            print(norm_solutions)
 
             for i in range(len(norm_solutions)):
                 if i == anchor_idx:
@@ -496,14 +482,12 @@ class PuzzleSolver:
         Y, X, Z, noPatches = p.shape
 
         # while not np.isclose(eps, 0)
-        print("started solving..")
         while iter < self.cfg.Tmax and self.alive_flag:
             na_new = len(self.locked_pieces.keys())
             #     p = np.ones((Y, X, Z, noPatches)) / (Y * X)
             #     for piece in self.locked_pieces.keys():
             # check this
             print("na_new", na_new)
-            print(len(self.locked_pieces.keys()))
             na = na_new
             faze += 1
             self.reinit_p_matrix()
@@ -676,4 +660,3 @@ class PuzzleSolver:
         timestamp = str(time.time())  # seconds since epoch (as float, converted to string)
         with open(self.cache_path + "solver_log.txt", "a") as f:
             f.write(timestamp + " " + string + "\n")
-

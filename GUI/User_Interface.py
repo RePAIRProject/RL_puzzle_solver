@@ -7,6 +7,7 @@ from kivy import Config
 from kivy.clock import Clock, mainthread
 from kivy.graphics import Rotate, PopMatrix, PushMatrix, Translate, Scale, Color, Rectangle
 from kivy.graphics.context_instructions import Scale
+from kivy.metrics import dp
 from kivy.uix.image import Image
 from kivy.uix.togglebutton import ToggleButton
 from kivymd.app import MDApp
@@ -16,6 +17,7 @@ import math
 from screeninfo import get_monitors
 from kivy.uix.gridlayout import GridLayout
 from kivy.graphics import Rotate, PopMatrix, PushMatrix, Translate, Scale
+from kivy.graphics import Color, Rectangle, Line, InstructionGroup
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.checkbox import CheckBox
@@ -137,8 +139,8 @@ class GUIApp(MDApp):
         self.pause_play_button = ToggleButton(
             size_hint=(None, None),
             width=64, height=64,
-            background_normal='Icons/play.png',  # Initial icon
-            background_down='Icons/pause.png'
+            background_normal= os.path.join(path_dic['icons'], "play.png"),  # Initial icon
+            background_down= os.path.join(path_dic['icons'], "pause.png")
         )
 
         self.anchor_button = Button(text="Select Anchor")
@@ -157,6 +159,10 @@ class GUIApp(MDApp):
 
         self.lock_apply_solution = False
         self.probability_matrix = None
+
+        self.sandbox_group = None  # InstructionGroup holding the overlay
+        self.sandbox_size = (1600, 800)  # default box size in pixels (was “cm” in your note)
+        self.sandbox_center = None  # remembers last center used
 
         # self.test_monkey = Widget3D('3D/untitled.obj', '3D/simple.glsl')
 
@@ -182,9 +188,12 @@ class GUIApp(MDApp):
         self.main_layout.padding = [0, 0, 0, 0]
         self.main_layout.spacing = [0, 0]
 
-        self.toolbar.orientation = "horizontal"
+        self.toolbar = MDTopAppBar(title="GUI", elevation=4)
+        self.toolbar.size_hint_y = None
+        self.toolbar.height = dp(64)  # pick your height
+        self.toolbar.pos_hint = {"top": 1}  # stick to top of parent
 
-        self.main_layout.add_widget(self.toolbar)
+        self.toolbar.orientation = "horizontal"
 
         self.anchor_button.bind(on_press=start_select_anchor)
 
@@ -199,7 +208,6 @@ class GUIApp(MDApp):
 
         # self.toolbar.left_action_items.append(["menu", lambda x: self.the_app.callback()])
         void_image = Image(source=os.path.join(path_dic['icons'], "Void Image.png"))
-
         self.toolbar.add_widget(self.progress_bar)
         self.toolbar.add_widget(void_image)
         self.progress_bar.max = 100
@@ -226,7 +234,7 @@ class GUIApp(MDApp):
 
         self.grid_layout.cols = 5
         self.grid_layout.size_hint = (1, 1)
-        self.grid_layout.padding = 0
+        self.grid_layout.padding = Window.size[1]/16
         self.grid_layout.spacing = 0
 
         self.main_layout.add_widget(self.grid_layout)
@@ -285,6 +293,7 @@ class GUIApp(MDApp):
 
         # the_layout.add_widget(toggle_button)
         self.the_layout.add_widget(self.sidebar)
+        self.the_layout.add_widget(self.toolbar, index = 0)
 
         self.anchor_button.disabled = False
         self.show_button.disabled = True
@@ -429,7 +438,6 @@ class GUIApp(MDApp):
                         couple = (self.grabbed_image.name, self.grabbed_image.position_memory)
                         back_end.set_p_elements(couple, self.image_offset, False)
                         self.grabbed_image.set_anchor(False)
-
 
     def toggle_sidebar(self, on_off, true_false):
         # Toggle sidebar visibility
@@ -638,8 +646,11 @@ class GUIApp(MDApp):
         self.keyboard_input = keyboard
         # zoom reset
         if self.keyboard_input == 122:  # z
-            for image in self.current_image_list:
-                image.zoom_reset()
+            self.zoom_reset()
+
+    def zoom_reset(self):
+        for image in self.current_image_list:
+            image.zoom_reset()
 
     @mainthread
     def on_resize(self, *args):
@@ -666,6 +677,72 @@ class GUIApp(MDApp):
             self.showed_image_list.append(self.current_image_list[i].grid)
             self.grid_layout.add_widget(self.showed_image_list[i])
             self.time_stamp = time.time()
+
+    @mainthread
+    def bounding_box(self, is_set=True, size=None, center=None, padding=0, outline_width=2):
+        """
+        Draw (or remove) a transparent-centered sandbox box over the UI.
+        - is_set=True  -> draw/refresh the overlay
+          is_set=False -> remove the overlay
+        - size:   (w, h) of the box in pixels; defaults to self.sandbox_size
+        - center: (cx, cy) in window coords; defaults to window center
+        - padding: extra padding around the box (pixels)
+        """
+        # ---- remove request -----------------------------------------------------
+        if not is_set:
+            if self.sandbox_group is not None:
+                if self.sandbox_group in self.grid_layout.canvas.after.children:
+                    self.grid_layout.canvas.after.remove(self.sandbox_group)
+                self.sandbox_group = None
+            return
+
+        # ---- compute geometry ---------------------------------------------------
+        win_w, win_h = Window.size
+        w, h = size if size else self.sandbox_size
+        w = max(1, int(w + 2 * padding))
+        h = max(1, int(h + 2 * padding))
+
+        cx, cy = center if center else (win_w / 2.0, win_h / 2.0)
+        self.sandbox_center = (cx, cy)
+        self.sandbox_size = (w - 2 * padding, h - 2 * padding) if size else self.sandbox_size
+
+        x = int(cx - w / 2)
+        y = int(cy - h / 2)
+
+        # clamp into window (so we don't draw negative sizes)
+        x = max(0, min(x, win_w - w))
+        y = max(0, min(y, win_h - h))
+
+        # rectangles that dim the outside area
+        left = (0, y - w, x, h + 2 * w) # extend vertically to avoid gaps at edges
+        right = (x + w, y - w, max(0, win_w - (x + w)), h + 2 * w)  # extend vertically to avoid gaps at edges
+        bottom = (x, 0, w, y)
+        top = (x, y + h, w, max(0, win_h - (y + h)))
+
+        # ---- rebuild overlay ----------------------------------------------------
+        # remove old
+        if self.sandbox_group is not None:
+            if self.sandbox_group in self.grid_layout.canvas.after.children:
+                self.grid_layout.canvas.after.remove(self.sandbox_group)
+            self.sandbox_group = None
+
+        g = InstructionGroup()
+
+        # dim outside (semi-transparent)
+        g.add(Color(1, 0, 0, 0.35)) # transparent red
+        if left[2] > 0 and left[3] > 0:  g.add(Rectangle(pos=(left[0], left[1]), size=(left[2], left[3])))
+        if right[2] > 0 and right[3] > 0:  g.add(Rectangle(pos=(right[0], right[1]), size=(right[2], right[3])))
+        if bottom[2] > 0 and bottom[3] > 0:  g.add(Rectangle(pos=(bottom[0], bottom[1]), size=(bottom[2], bottom[3])))
+        if top[2] > 0 and top[3] > 0:  g.add(Rectangle(pos=(top[0], top[1]), size=(top[2], top[3])))
+
+        # box outline (fully opaque)
+        g.add(Color(1, 0, 0, 1)) # full red
+        g.add(Line(rectangle=(x, y, w, h), width=outline_width))
+
+        # keep a reference so we can remove/update later
+        self.sandbox_group = g
+        # use canvas.after so it stays above content but below widgets added later
+        self.grid_layout.canvas.after.add(g)
 
     def clear_images(self, *args, **kwargs):
         for i in range(len(self.showed_image_list)):
@@ -695,17 +772,29 @@ class GUIApp(MDApp):
 
             image.update_positions(position, positions[2])
 
+        # resizing the sandbox box
+        if self.sandbox_group is not None:
+            self.bounding_box(
+                is_set=True,
+                size=self.sandbox_size,
+                center=self.sandbox_center or (Window.size[0] / 2, Window.size[1] / 2)
+            )
+
     @mainthread
-    def apply_solution(self, value = True):
+    def apply_solution(self, is_final = True):
         # Calculate the center of the window
+        all_anchored = True
         center = [Window.size[0] / 2, Window.size[1] / 2]
 
         for image in self.current_image_list:
             image.remove_score()
             image_id = image.get_id()
 
+            if not image.is_anchor:
+                all_anchored = False
+
             if image_id in self.pl_solution:
-                if value:
+                if is_final:
                     if self.probability_matrix is not None:
                         if self.probability_matrix[image_id] > 0.99:
                             image.set_anchor(True)
@@ -729,6 +818,9 @@ class GUIApp(MDApp):
                     image.update_positions(new_positions, positions[2])
             else:
                 image.update_positions([-1500, -1500], 0)
+        if all_anchored:
+            app.bounding_box(is_set=False)
+            back_end.kill_puzzle_solver()
 
     def checking_clock(self, *args, **kwargs):
         self.communicate_thread_lock.acquire()
@@ -826,7 +918,6 @@ class GUIApp(MDApp):
         self.grid_layout.zoom_scale.y = self.grid_layout.scale_factor
         self.grid_layout.base_scale_factor = self.grid_layout.scale_factor
 
-
 def start_select_anchor(self):
     global back_end
     app.image_is_set = False
@@ -917,6 +1008,9 @@ def start_pl_solver(self):
     global universal_zoom_applied
     global update_started
     app.show_button.disabled = True
+    app.pl_solver_button.disabled = True
+
+    app.bounding_box()
 
     for i in range(0, len(app.current_image_list)):
         if not (app.current_image_list[i].get_id() == app.key_image.get_id()):
@@ -1048,6 +1142,7 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
                 back_end.calculate_results(answer, probability, iteration, bucket)
         if update_counter>=(1/communication_freq)*update_freq:
             answer, probability, process, iteration = back_end.get_solution_dict()
+            print("process", process)
 
             # print("answer", answer)
             # print("probability", probability)

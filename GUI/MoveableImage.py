@@ -187,7 +187,6 @@ class MovableImage(Image):
         # x = position[0]
         # y = position[1]
         # self.rotate(solved_rotation/2)
-        print(self.name, "_ solved_rotation:", solved_rotation)
         self.rotate(solved_rotation - self.angle)
         self.translate(x, y)
 
@@ -327,6 +326,10 @@ class MovableImage(Image):
             self.color = (0.8, 0.8, 1, 1)
 
     def update_offset(self, center):
+        print("image_name:", self.name)
+        print("center:", center)
+        print("pos:", self.pos)
+        #center is Windows.size/2
         offset = [(center[0] - self.parent.size[0] / 2 - (self.parent.pos[0] - self.pos[0]) / 2) * self.ratio[0],
                   (center[1] - self.parent.size[1] / 2 - (self.parent.pos[1] - self.pos[1]) / 2) * self.ratio[1]]
         return offset

@@ -1,6 +1,9 @@
 import time
 import warnings
 from threading import Thread, Event, Lock
+
+import yaml
+
 import RL_puzzle_solver.parameters_utils as yaml_config
 import paramiko
 import getpass
@@ -338,18 +341,21 @@ class BackEnd:
 
         return path_lists
 
+    def extract_parameters(self):
+        cmp_parameter_path = self.path_dic['parameters']
+        ppars_yaml = {}
+        print("Opening YAML file:", cmp_parameter_path)
+        with open(cmp_parameter_path, 'r') as file:
+            ppars_yaml = yaml.safe_load(file)
+
+        ppars = {}
+        ppars["xy_step"] = ppars_yaml['grid_params']['xy_step']
+        ppars["theta_step"] = ppars_yaml['grid_params']['theta_step']
+        return ppars
+
     def extract_steps(self):
-        parameters = self.path_dic['parameters']
-        xy_step = 1
-        theta_step = 360
-        with open(parameters, 'r') as f:
-            data = json.load(f)
-            if data is not None:
-                xy_step = data['xy_step']
-                theta_step = data['theta_step']
-        print('xy_step', xy_step)
-        print('theta_step', theta_step)
-        return xy_step, theta_step
+        ppars = self.extract_parameters()
+        return ppars["xy_step"], ppars["theta_step"]
 
     def get_iteration(self):
         iteration = puzzle_solver.get_iteration()
@@ -540,6 +546,7 @@ class BackEnd:
     def kill_puzzle_solver(self):
         if self.pl_solver_running:
             puzzle_solver.solver_alive(False)
+            print("SOLVER HAS BEEN STOPPED")
 
     def start_anchor_thread(self):
         self.select_anchor_thread = Thread(target=self.select_anchor_thread_function, daemon=True)
@@ -689,7 +696,7 @@ class BackEnd:
         comp_name = ""
         ground_truth = ""
         dataset_name = ""
-        icons_path = ""
+        icons_path = "GUI/Icons/"
         apply_gt = False
         number_of_neighbours = 3
         number_of_anchors = 4
@@ -790,12 +797,12 @@ class BackEnd:
 
         return path_dic, rotation_intervals, backend_path
 
-
     def extract_yaml(self, backend_path):
         config = yaml_config.Configuration()
         params = config.load(backend_path)
         config.set_puzzle_single_run_random_folder_name(params['exp_name'])
         return config, params
+
     def calculate_results(self, answer, probability, iteration, bucket):
         q_pos = 0
         rmse_translation = 0
