@@ -1245,7 +1245,7 @@ def calculate_universal_center():
     universal_center[1] = universal_center[1]/image_number
     return universal_center
 
-def check_collision(image, rectangle): # /todo
+def check_collision(image, rectangle):
     bounding_box = image.extract_bounding_box()
     top, left, bottom, right = bounding_box
 

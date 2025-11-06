@@ -341,8 +341,8 @@ class BackEnd:
 
         return path_lists
 
-    def extract_parameters(self):
-        cmp_parameter_path = self.path_dic['parameters']
+    def extract_parameters(self, comp_path):
+        cmp_parameter_path = comp_path
         ppars_yaml = {}
         print("Opening YAML file:", cmp_parameter_path)
         with open(cmp_parameter_path, 'r') as file:
@@ -354,7 +354,7 @@ class BackEnd:
         return ppars
 
     def extract_steps(self):
-        ppars = self.extract_parameters()
+        ppars = self.extract_parameters(self.path_dic['parameters'])
         return ppars["xy_step"], ppars["theta_step"]
 
     def get_iteration(self):
@@ -757,9 +757,10 @@ class BackEnd:
             comp_name = os.path.basename(os.path.normpath(comp_path))
             comp_folder = os.path.dirname(os.path.normpath(comp_path))
             pieces_path = image_path
-            rotation_intervals = params['compatibility']['grid']['theta_step']
             cm_yaml = self.yaml.get_CM_output_parameters_path()
             parameters = cm_yaml
+            ppars = self.extract_parameters(parameters)
+            rotation_intervals = ppars['theta_step']
             comp_format = 'R'
             number_of_pieces = len(self.yaml.get_puzzle_pieces_filenames())
             number_of_anchors = number_of_pieces
