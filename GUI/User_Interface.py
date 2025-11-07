@@ -38,6 +38,7 @@ import json
 import cv2
 from MoveableImage import MovableImage
 from MoveableImage import Status
+from SandBox import SandBox
 
 # from Widget3D import Widget3D
 
@@ -159,6 +160,8 @@ class GUIApp(MDApp):
 
         self.lock_apply_solution = False
         self.probability_matrix = None
+
+        self.sandbox = None
 
         self.sandbox_group = None  # InstructionGroup holding the overlay
         self.sandbox_size = (1600, 800)  # default box size in pixels (was “cm” in your note)
@@ -541,6 +544,7 @@ class GUIApp(MDApp):
                     for image in reversed(self.current_image_list):
                         if not hasattr(touch, 'dragging') or not touch.dragging:
                             if check_image_select(image, self.mouse_pos):
+                                check_collision_with_sandbox(image, self.sandbox_group)
                                 # if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
                                 #     self.grabbed_image.deselect()
                                 self.grabbed_image = image
@@ -689,6 +693,16 @@ class GUIApp(MDApp):
         - padding: extra padding around the box (pixels)
         """
         # ---- remove request -----------------------------------------------------
+        if self.sandbox is None and is_set:
+            self.sandbox_size = (1600, 800)
+            self.sandbox = SandBox(self.sandbox_size, Window.size)
+            self.grid_layout.canvas.after.add(self.sandbox)
+        elif not is_set:
+            if self.sandbox is not None:
+                self.grid_layout.canvas.after.remove(self.sandbox)
+                self.sandbox = None
+        return
+
         if not is_set:
             if self.sandbox_group is not None:
                 if self.sandbox_group in self.grid_layout.canvas.after.children:
@@ -751,6 +765,7 @@ class GUIApp(MDApp):
 
     @mainthread
     def apply_resize(self):
+        self.sandbox.set_box(100, 120, 400, 260)
         center = [Window.size[0] / 2, Window.size[1] / 2]
         # center = [0, 0]
         bank_offset = self.image_offset
@@ -1273,11 +1288,17 @@ def check_collision(image, rectangle):
         return False
     return True
 
+def check_collision_with_sandbox(image, sandbox_rectangle):
+    if app.sandbox_group is not None:
+        print("sandbox rectangle", app.sandbox_group.children.pos, app.sandbox_group.children.size)
+    else:
+        print("No sandbox available.")
 
 def check_image_select(image, mouse_pos):
     if image.collides(mouse_pos):
         if not app.checked_border:
             pixel = image.map_mouse_pos_pixel(mouse_pos)
+            print(pixel)
             if pixel[0]<0 or pixel[1] < 0:
                 return False
             return image.check_mask(pixel)
