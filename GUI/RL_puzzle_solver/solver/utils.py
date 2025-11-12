@@ -7,6 +7,7 @@ import scipy
 import natsort
 
 from threading import Lock
+from GUI.RL_puzzle_solver.solver.grid import PuzzleGrid
 
 # from GUI.ReinforcementLearning import ReinforcementLearning
 
@@ -26,6 +27,7 @@ class PuzzleSolver:
         self.ppars = args[0] if len(args) > 0 else None
 
         self.pieces_names = args[1] if len(args) > 1 else None
+        self.occupancy_grid_pieces = None
 
         if len(args) > 2:
             self.path_dic = args[2]
@@ -241,7 +243,8 @@ class PuzzleSolver:
     def set_alive(self, alive_flag):
         self.alive_flag = alive_flag
 
-    def solve_puzzle(self, R, anchor, pieces_names, ppars, path_dic, return_as='dict', solved_pieces=None):
+    def solve_puzzle(self, R, anchor, pieces_names, ppars, path_dic, occupancy_grid_pieces, return_as='dict', solved_pieces=None):
+        self.occupancy_grid_pieces = occupancy_grid_pieces
         self.ppars = ppars
         self.pieces_names = pieces_names
 
@@ -345,10 +348,11 @@ class PuzzleSolver:
         self.cfg = path_dic['yaml']
         if not os.path.exists(self.cfg.get_puzzle_external_solution_subfolder_path()):
             init_pos, x0, y0, z0 = self.old_init(R, anc, solved_pieces, pieces_names, path_dic)
-            return init_pos, x0, y0, z0
+            return 0, 0, 0, 0
             # raise Exception(
             #     "Missing external solution folder! Maybe you want to change the init method? \nYou can find it in:\ninput_parameters.yaml: solver --> grid --> method\n")
         else:
+            self.set_cm_matrix(R)
             ext_solutions_files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
             ext_solutions_files_list = natsort.natsorted(ext_solutions_files_list)
             self.ext_solutions = [
@@ -359,22 +363,33 @@ class PuzzleSolver:
 
             with open(self.cfg.get_puzzle_info_path(), 'r') as pijf:
                 self.puzzle_info = json.load(pijf)
-            p_xy_size = self.solver_params['grid']['manual_params']['p_xy_size']
+            params = path_dic['params']
+
+            p_xy_size = params['solver']['grid']['manual_params']['p_xy_size']
+            print('anchor', anc)
             P_adeela = self.initialize_p_from_external_solution(self.ext_solutions,
                                                          self.puzzle_info['rescaling_factor'],
-                                                         self.anchor_index,
-                                                         self.params['compatibility']['grid'], p_xy_size,
-                                                         spars_p=self.params['solver']['reassembleNet']['sparsify_p'],
-                                                         vis=self.params['solver']['reassembleNet']['visualization'])
+                                                         anc, # need to change
+                                                         params['compatibility']['grid'], p_xy_size,
+                                                         sparsify_p=params['solver']['reassembleNet']['sparsify_p'],
+                                                         vis=params['solver']['reassembleNet']['visualization'])
             self.set_p_matrix(P_adeela)
+            return 0,0,0,0
 
-    def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_idx: int, grid, p_xy_size=(0, 0),
+    def initialize_p_from_external_solution(self, all_solutions, rescaling_factor, anchor_idx: int, grid, p_xy_size=(0, 0),
                                             sparsify_p=0, vis=1, var=1):
         import heapq
         xy_step = grid['xy_step']
         theta_num_points = grid['theta_num_points']
         p_size_x = p_xy_size[0]
         p_size_y = p_xy_size[1]
+
+        y0 = round(p_xy_size[0] / 2)
+        x0 = round(p_xy_size[1] / 2)
+
+        pos = [y0, x0, 0]
+
+        self.locked_pieces.update({anchor_idx: pos})
 
         # initialize assignment matrix
         grid_size = (p_size_y, p_size_x, theta_num_points)  ## p_size
@@ -394,7 +409,7 @@ class PuzzleSolver:
             solution[:, :2] = solution[:, :2] / rescaling_factor
 
             # rotate and translate to origin [0,0,0]
-            norm_solutions = normalize_solutions(solution, anchor_idx)  # output is in pixels and grades
+            norm_solutions = self.normalize_solutions(solution, anchor_idx)  # output is in pixels and grades
 
             # adapt solutions to grid (translations)
             center = np.array([p_size_y // 2, p_size_x // 2], dtype=np.int64)  # shift to center
@@ -407,7 +422,7 @@ class PuzzleSolver:
                 else:
                     mean = norm_solutions[i, :]  ## solution for the piece, t° !
                     std_devs = variance[i, :]  # std_devs = (10.0, 10.0, 0.5)  # st. deviation, t° !
-                    prob = probability_for_single_fragment(grid_size, mean, std_devs)
+                    prob = self.probability_for_single_fragment(grid_size, mean, std_devs)
 
                     if sparsify_p > 0:
                         n = 9  ## TODO  - load from input_params.yaml !!! That can be val of spars_p [1,3,5,7 ... ]
@@ -440,8 +455,69 @@ class PuzzleSolver:
                 plt.suptitle("distribution for different rotations θ (Uniform Colors)", fontsize=18)
                 plt.show()
 
+        self.set_p_matrix(p)
+
         # TODO normalizzation
         return p
+
+    def probability_for_single_fragment(self, grid_size, mean, std_devs):
+
+        # mean = (25.312, 25, 90.2587)  ## solution for the piece, t° !
+        # std_devs = (10.0, 10.0, 0.5)  ## st. deviation, t° !
+
+        size_x, size_y, size_theta = grid_size
+        cx, cy, ct = mean
+        sx, sy, st = std_devs
+        ct = ct / 360 * grid_size[2]  ### conversion to "cycle-grid"
+        st = st / 360 * grid_size[2]  ### conversion to "cycle-grid"
+
+        # Create 3D grid of coordinates
+        x = np.arange(size_x)
+        y = np.arange(size_y)
+        t = np.arange(size_theta)
+        X, Y, T = np.meshgrid(x, y, t, indexing='ij')
+
+        # Compute squared distances
+        dx2 = ((X - cx) ** 2) / (2 * sx ** 2)
+        dy2 = ((Y - cy) ** 2) / (2 * sy ** 2)
+
+        # Cyclic angular distance
+        dtheta = np.minimum(np.abs(T - ct), size_theta - np.abs(T - ct))
+        #    np.minimum(np.abs(a - b), cycle_length - np.abs(a - b))   #"""Compute minimum cyclic distance between a and b."""
+
+        dt2 = (dtheta ** 2) / (2 * st ** 2)
+        prob = np.exp(-(dx2 + dy2 + dt2))
+        prob /= np.sum(prob)
+
+        return prob
+
+    def normalize_solutions(self, solutions, reference_frag):
+
+        import math
+        # Reference fragment
+        x_ref, y_ref, t_ref = solutions[reference_frag]
+
+        # Convert rotation angle from degrees to radians
+        theta = math.radians(-t_ref)  # Negate for inverse rotation
+        cos_theta = math.cos(theta)
+        sin_theta = math.sin(theta)
+
+        transformed = []  # sol_lists = solutions.tolist()
+        for x, y, t in solutions:
+            # 1: Translate (bring the reference to origin)
+            x_shifted = x - x_ref
+            y_shifted = y - y_ref
+            # 2: Rotate around origin (0,0) using inverse rotation of reference
+            x_rotated = x_shifted * cos_theta - y_shifted * sin_theta
+            y_rotated = x_shifted * sin_theta + y_shifted * cos_theta
+            # 3: Adjust rotation angle
+            t_rotated = t - t_ref
+
+            transformed.append((x_rotated, y_rotated, t_rotated))
+
+        transformed = np.array(transformed, dtype=np.int64)
+
+        return transformed
 
     def extract_info(self, p):
         Y, X, Z, noPatches = p.shape

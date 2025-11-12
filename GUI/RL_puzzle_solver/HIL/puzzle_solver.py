@@ -7,11 +7,15 @@ import os
 import numpy as np
 import yaml
 
+from GUI.RL_puzzle_solver.solver.parameters_utils import Configuration
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 
 from scipy.io import loadmat
 from GUI.RL_puzzle_solver.solver.utils import PuzzleSolver
+from GUI.RL_puzzle_solver.solver.grid import PuzzleGrid, PieceOnCanvas
+from GUI.RL_puzzle_solver.solver.puzzle_utils import Puzzle
 # from ..solver.utils import PuzzleSolver
 
 
@@ -49,7 +53,6 @@ def set_running(running):
 
 def toggle_lock(value):
     puzzle_solver.repair_lock_toggle(value)
-
 
 def assemble(fragments_list, path_dic, return_solution_as='dict'):
     """
@@ -90,7 +93,6 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
     #         ppars = json.load(cp)
 
     cmp_parameter_path = path_dic['parameters']
-    ppars_yaml = {}
     with open(cmp_parameter_path, 'r') as file:
         ppars_yaml = yaml.safe_load(file)
 
@@ -160,16 +162,73 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
 
     anchor = pieces_to_include.index(anchor)
 
+
+
     pieces_included = []
+
+    n = len(pieces_to_include)
 
     for i in range(len(pieces_to_include)):
         pieces_included.append(pieces_names[pieces_to_include[i]])
+    puzzle = Puzzle()
+
+    params = path_dic['params']
+    # yaml = Configuration
+    yaml_dic = path_dic['yaml']
+
+    # def load(self, puzzle_name: str, data_folder: str, features_params: dict = None):
+    puzzle.load(yaml_dic.get_puzzle_name(), yaml_dic.get_data_folder(),params['compatibility']['features'])
+    occupancy_grid_pieces = _compute_occupancy_grid(number_of_pieces=n, puzzle=puzzle, params = params)
 
     puzzle_solver.__init__(ppars, pieces_included, path_dic)
 
-    solution = puzzle_solver.solve_puzzle(R, anchor, pieces_included, ppars, path_dic,
+
+
+    solution = puzzle_solver.solve_puzzle(R, anchor, pieces_included, ppars, path_dic, occupancy_grid_pieces,
                             return_as=return_solution_as, solved_pieces=solved_pieces)
 
     return solution
+
+def _compute_occupancy_grid(number_of_pieces, puzzle, params, show_results: bool = False):
+        # self.N = number of pieces
+        n = number_of_pieces
+        grid_params = params['compatibility']['grid']
+        occ_grid = np.zeros((n, grid_params['xy_num_points'], grid_params['xy_num_points']))
+        grid = PuzzleGrid(grid_params, params['preprocessing']['piece_size'])
+        xy = grid.xy_values
+        for n, piece in enumerate(puzzle.pieces):
+            piece_on_canvas = PieceOnCanvas(piece=piece, grid=grid, x=grid.canvas_center, y=grid.canvas_center, theta=0)
+
+            # if show_results:
+            #     plt.subplot(131)
+            #     plt.imshow(piece_on_canvas.image)
+            #     plt.subplot(132)
+            #     plt.imshow(piece_on_canvas.image)
+            #     green_points = []
+            #     red_points = []
+
+            for j in range(xy.shape[0]):
+                for k in range(xy.shape[1]):
+
+                    if piece_on_canvas.mask[xy[k, j, 0], xy[k, j, 1]] > 0:
+                        occ_grid[n, k, j] = 1
+                        # if show_results:
+                        #     green_points.append([xy[k, j, 0], xy[k, j, 1]])
+                    else:
+                        occ_grid[n, k, j] = 0
+                        # if show_results:
+                        #     red_points.append([xy[k, j, 0], xy[k, j, 1]])
+
+            # if show_results:
+            #     green_points = np.asarray(green_points)
+            #     red_points = np.asarray(red_points)
+            #     plt.scatter(green_points[:, 1], green_points[:, 0], color='green')
+            #     plt.scatter(red_points[:, 1], red_points[:, 0], color='red')
+            #     plt.subplot(122)
+            #     plt.imshow(occ_grid[n, :, :])
+            #     plt.show()
+            #     breakpoint()
+
+        return occ_grid
     
     

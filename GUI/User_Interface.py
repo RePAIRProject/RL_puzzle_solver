@@ -1,23 +1,17 @@
 import os
-import pathlib
 import re
-import warnings
-
 from kivy import Config
 from kivy.clock import Clock, mainthread
-from kivy.graphics import Rotate, PopMatrix, PushMatrix, Translate, Scale, Color, Rectangle
-from kivy.graphics.context_instructions import Scale
 from kivy.metrics import dp
 from kivy.uix.image import Image
 from kivy.uix.togglebutton import ToggleButton
 from kivymd.app import MDApp
-from kivy.core.image import Image as CoreImage
 import numpy as np
 import math
 from screeninfo import get_monitors
 from kivy.uix.gridlayout import GridLayout
-from kivy.graphics import Rotate, PopMatrix, PushMatrix, Translate, Scale
-from kivy.graphics import Color, Rectangle, Line, InstructionGroup
+from kivy.graphics import Scale
+from kivy.graphics import Color, Rectangle
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.checkbox import CheckBox
@@ -29,7 +23,6 @@ from kivy.core.window import Window
 from kivy.uix.progressbar import ProgressBar
 from PIL import Image as PILImage
 from Back_End import BackEnd
-
 from RL_puzzle_solver.puzzle_utils.puzzle_gen.generator import run_erode
 import threading
 import time
@@ -39,8 +32,6 @@ import cv2
 from MoveableImage import MovableImage
 from MoveableImage import Status
 from SandBox import SandBox
-
-# from Widget3D import Widget3D
 
 Window.clearcolor = (0, 0, 0, 0)
 
@@ -166,6 +157,8 @@ class GUIApp(MDApp):
         self.sandbox_group = None  # InstructionGroup holding the overlay
         self.sandbox_size = (1600, 800)  # default box size in pixels (was “cm” in your note)
         self.sandbox_center = None  # remembers last center used
+
+        self.cm_to_px = 1.0
 
         # self.test_monkey = Widget3D('3D/untitled.obj', '3D/simple.glsl')
 
@@ -683,7 +676,7 @@ class GUIApp(MDApp):
             self.time_stamp = time.time()
 
     @mainthread
-    def bounding_box(self, is_set=True, size=None, center=None, padding=0, outline_width=2):
+    def bounding_box(self, is_set, size=(0, 0), center=(0, 0), padding=0, outline_width=2):
         """
         Draw (or remove) a transparent-centered sandbox box over the UI.
         - is_set=True  -> draw/refresh the overlay
@@ -692,71 +685,15 @@ class GUIApp(MDApp):
         - center: (cx, cy) in window coords; defaults to window center
         - padding: extra padding around the box (pixels)
         """
-        # ---- remove request -----------------------------------------------------
-        if self.sandbox is None and is_set:
-            self.sandbox_size = (1600, 800)
-            self.sandbox = SandBox(self.sandbox_size, Window.size)
-            self.grid_layout.canvas.after.add(self.sandbox)
-        elif not is_set:
-            if self.sandbox is not None:
-                self.grid_layout.canvas.after.remove(self.sandbox)
-                self.sandbox = None
-        return
-
-        if not is_set:
-            if self.sandbox_group is not None:
-                if self.sandbox_group in self.grid_layout.canvas.after.children:
-                    self.grid_layout.canvas.after.remove(self.sandbox_group)
-                self.sandbox_group = None
-            return
-
-        # ---- compute geometry ---------------------------------------------------
-        win_w, win_h = Window.size
-        w, h = size if size else self.sandbox_size
-        w = max(1, int(w + 2 * padding))
-        h = max(1, int(h + 2 * padding))
-
-        cx, cy = center if center else (win_w / 2.0, win_h / 2.0)
-        self.sandbox_center = (cx, cy)
-        self.sandbox_size = (w - 2 * padding, h - 2 * padding) if size else self.sandbox_size
-
-        x = int(cx - w / 2)
-        y = int(cy - h / 2)
-
-        # clamp into window (so we don't draw negative sizes)
-        x = max(0, min(x, win_w - w))
-        y = max(0, min(y, win_h - h))
-
-        # rectangles that dim the outside area
-        left = (0, y - w, x, h + 2 * w) # extend vertically to avoid gaps at edges
-        right = (x + w, y - w, max(0, win_w - (x + w)), h + 2 * w)  # extend vertically to avoid gaps at edges
-        bottom = (x, 0, w, y)
-        top = (x, y + h, w, max(0, win_h - (y + h)))
-
-        # ---- rebuild overlay ----------------------------------------------------
-        # remove old
-        if self.sandbox_group is not None:
-            if self.sandbox_group in self.grid_layout.canvas.after.children:
-                self.grid_layout.canvas.after.remove(self.sandbox_group)
-            self.sandbox_group = None
-
-        g = InstructionGroup()
-
-        # dim outside (semi-transparent)
-        g.add(Color(1, 0, 0, 0.35)) # transparent red
-        if left[2] > 0 and left[3] > 0:  g.add(Rectangle(pos=(left[0], left[1]), size=(left[2], left[3])))
-        if right[2] > 0 and right[3] > 0:  g.add(Rectangle(pos=(right[0], right[1]), size=(right[2], right[3])))
-        if bottom[2] > 0 and bottom[3] > 0:  g.add(Rectangle(pos=(bottom[0], bottom[1]), size=(bottom[2], bottom[3])))
-        if top[2] > 0 and top[3] > 0:  g.add(Rectangle(pos=(top[0], top[1]), size=(top[2], top[3])))
-
-        # box outline (fully opaque)
-        g.add(Color(1, 0, 0, 1)) # full red
-        g.add(Line(rectangle=(x, y, w, h), width=outline_width))
-
-        # keep a reference so we can remove/update later
-        self.sandbox_group = g
-        # use canvas.after so it stays above content but below widgets added later
-        self.grid_layout.canvas.after.add(g)
+        # if self.sandbox is None and is_set:
+        #     self.sandbox_size = size
+        #     self.sandbox = SandBox(size, center, Window.size, self.cm_to_px)
+        #     self.grid_layout.canvas.after.add(self.sandbox)
+        # elif not is_set:
+        #     if self.sandbox is not None:
+        #         self.grid_layout.canvas.after.remove(self.sandbox)
+        #         self.sandbox = None
+        # return
 
     def clear_images(self, *args, **kwargs):
         for i in range(len(self.showed_image_list)):
@@ -765,7 +702,7 @@ class GUIApp(MDApp):
 
     @mainthread
     def apply_resize(self):
-        self.sandbox.set_box(100, 120, 400, 260)
+
         center = [Window.size[0] / 2, Window.size[1] / 2]
         # center = [0, 0]
         bank_offset = self.image_offset
@@ -788,12 +725,8 @@ class GUIApp(MDApp):
             image.update_positions(position, positions[2])
 
         # resizing the sandbox box
-        if self.sandbox_group is not None:
-            self.bounding_box(
-                is_set=True,
-                size=self.sandbox_size,
-                center=self.sandbox_center or (Window.size[0] / 2, Window.size[1] / 2)
-            )
+        self.bounding_box(is_set=False)
+        self.bounding_box(is_set=True)
 
     @mainthread
     def apply_solution(self, is_final = True):
@@ -1025,7 +958,9 @@ def start_pl_solver(self):
     app.show_button.disabled = True
     app.pl_solver_button.disabled = True
 
-    app.bounding_box()
+    anchor_pos = app.key_image.position_memory
+    print("anchor_pos", anchor_pos)
+    app.bounding_box(True, size=(600, 600), center=anchor_pos)
 
     for i in range(0, len(app.current_image_list)):
         if not (app.current_image_list[i].get_id() == app.key_image.get_id()):

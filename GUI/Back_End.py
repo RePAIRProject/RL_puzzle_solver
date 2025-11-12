@@ -1,21 +1,15 @@
 import time
 import warnings
-from threading import Thread, Event, Lock
+from threading import Thread, Lock
 
 import yaml
 
-import RL_puzzle_solver.parameters_utils as yaml_config
-import paramiko
-import getpass
-from scipy.io import loadmat
-from scipy.spatial import KDTree
-
+import GUI.RL_puzzle_solver.solver.parameters_utils as yaml_config
 
 import sys
 import os
 
 from GUI.Evaluation import Evaluation
-from GUI.RL_puzzle_solver.configs.folder_names import ground_truth
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -789,7 +783,7 @@ class BackEnd:
                         'number_of_neighbours': number_of_neighbours, 'comp_format': comp_format,
                         'apply_gt': apply_gt, 'parameters': parameters, 'number_of_anchors': number_of_anchors,
                         'dataset_name': dataset_name, 'cache_path': self.cache_path, 'solver_parameters': solver_parameters,
-                        'icons': icons_path, 'yaml': self.yaml}
+                        'icons': icons_path, 'yaml': self.yaml, 'params': params}
 
 
             self.set_path(path_dic)

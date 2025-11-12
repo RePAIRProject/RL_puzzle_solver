@@ -1,0 +1,266 @@
+"""
+All other `_utils.py` files can import these methods, so here we should not import anything from them to avoid circular imports
+We can import parameters_utils.py as it contains what we need to handle our .yaml files
+It is a kind of "basic" utility functions for loading the pieces
+"""
+import os
+import numpy as np
+import cv2
+import scipy
+from typing import List
+import yaml
+import matplotlib.pyplot as plt
+import skfmm
+import natsort
+from GUI.RL_puzzle_solver.solver.parameters_utils import Configuration
+
+
+# Preprocessor
+#
+# for file in folder
+#
+#     img = cv2.imread(file)
+#     piece = PuzzlePiece(img)
+#     piece.mask =
+#     piece.dadad
+#     cm = get_center_of_mass(piece.mask)
+#
+#
+#     piece.save_to_files(name)
+
+# p = PuzzlePiece()
+# p.id
+# p.name
+# p.data.image
+# p.data.mask
+# p.data.polygon
+# p.features.lines
+# p.features.motives
+# p.features.sdf
+
+
+###########################################
+#                                         #
+#  ██╗     ██╗███╗   ██╗███████╗███████╗  #
+#  ██║     ██║████╗  ██║██╔════╝██╔════╝  #
+#  ██║     ██║██╔██╗ ██║█████╗  ███████╗  #
+#  ██║     ██║██║╚██╗██║██╔══╝  ╚════██║  #
+#  ███████╗██║██║ ╚████║███████╗███████║  #
+#  ╚══════╝╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝  #
+#                                         #
+###########################################
+class Lines():
+    def __init__(self):
+        self.detection_method = None
+
+
+###############################################################
+#                                                             #
+#  ███╗   ███╗ ██████╗ ████████╗██╗██╗   ██╗███████╗███████╗  #
+#  ████╗ ████║██╔═══██╗╚══██╔══╝██║██║   ██║██╔════╝██╔════╝  #
+#  ██╔████╔██║██║   ██║   ██║   ██║██║   ██║█████╗  ███████╗  #
+#  ██║╚██╔╝██║██║   ██║   ██║   ██║╚██╗ ██╔╝██╔══╝  ╚════██║  #
+#  ██║ ╚═╝ ██║╚██████╔╝   ██║   ██║ ╚████╔╝ ███████╗███████║  #
+#  ╚═╝     ╚═╝ ╚═════╝    ╚═╝   ╚═╝  ╚═══╝  ╚══════╝╚══════╝  #
+#                                                             #
+###############################################################
+class Motives():
+    def __init__(self):
+        self.segmentation_method = 'yolo-seg'
+
+    def load(self, path: str):
+        self.motives_cube = np.load(path)
+        self.num_of_classes = self.motives_cube.shape[2]
+
+    def load_RM(self, path: str):
+        """
+        Loads and returns the RM for motives
+        Which has one more dimension (stores each motif as a layer)
+        """
+        return True
+
+    def aggregate_RM(self, baseline_RM):
+        """
+        Aggregates it to the baseline_RM given, which should have positive, zero and negative values (between 1 and -1)
+        """
+        return False
+
+
+##############################
+#                            #
+#  ███████╗██████╗ ███████╗  #
+#  ██╔════╝██╔══██╗██╔════╝  #
+#  ███████╗██║  ██║█████╗    #
+#  ╚════██║██║  ██║██╔══╝    #
+#  ███████║██████╔╝██║       #
+#  ╚══════╝╚═════╝ ╚═╝       #
+#                            #
+##############################
+class SDF():
+    def __init__(self, compute: bool = False):
+        self.method = None
+        self.data = None
+        if compute == True:
+            self.compute()
+
+    def compute(self, mask, q=1):
+        phi = np.int64(mask[:, :])
+        phi = np.where(phi, 0, -1) + 0.5
+        sdf = skfmm.distance(phi, dx=1)
+        if q > 1:  # quantize (stepwise sdf)
+            sdf = (sdf // q) * q
+        self.data = sdf
+
+
+########################################################################
+#                                                                      #
+#  ███████╗███████╗ █████╗ ████████╗██╗   ██╗██████╗ ███████╗███████╗  #
+#  ██╔════╝██╔════╝██╔══██╗╚══██╔══╝██║   ██║██╔══██╗██╔════╝██╔════╝  #
+#  █████╗  █████╗  ███████║   ██║   ██║   ██║██████╔╝█████╗  ███████╗  #
+#  ██╔══╝  ██╔══╝  ██╔══██║   ██║   ██║   ██║██╔══██╗██╔══╝  ╚════██║  #
+#  ██║     ███████╗██║  ██║   ██║   ╚██████╔╝██║  ██║███████╗███████║  #
+#  ╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝  #
+#                                                                      #
+########################################################################
+class Features():
+    def __init__(self, features_params: dict = None):
+        if features_params['lines']['enabled'] == True:
+            self.lines = Lines()
+        if features_params['motives']['enabled'] == True:
+            self.motives = Motives()
+        if features_params['shape']['enabled'] == True:
+            self.sdf = SDF()
+
+
+#######################################
+#                                     #
+#  ██████╗  █████╗ ████████╗ █████╗   #
+#  ██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗  #
+#  ██║  ██║███████║   ██║   ███████║  #
+#  ██║  ██║██╔══██║   ██║   ██╔══██║  #
+#  ██████╔╝██║  ██║   ██║   ██║  ██║  #
+#  ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝  #
+#                                     #
+#######################################
+class Data():
+    def __init__(self):
+        self.image = None
+        self.img_center = None
+        self.mask = None
+        self.polygon = None
+
+#########################################
+#                                       #
+#  ██████╗ ██╗███████╗ ██████╗███████╗  #
+#  ██╔══██╗██║██╔════╝██╔════╝██╔════╝  #
+#  ██████╔╝██║█████╗  ██║     █████╗    #
+#  ██╔═══╝ ██║██╔══╝  ██║     ██╔══╝    #
+#  ██║     ██║███████╗╚██████╗███████╗  #
+#  ╚═╝     ╚═╝╚══════╝ ╚═════╝╚══════╝  #
+#                                       #
+#########################################
+class PuzzlePiece:
+    def __init__(self, features_params: dict = None, *args, **kwargs):
+        self.id = None
+        self.name = None
+        self.centroid_preproc = None  # centroid
+        self.data = Data()
+        self.features = Features(features_params=features_params)
+
+    # save preprocessed data
+    def save_to_files(self):
+        # TODO: save all the data to files
+        return True
+
+
+#######################################################
+#                                                     #
+#  ██████╗ ██╗   ██╗███████╗███████╗██╗     ███████╗  #
+#  ██╔══██╗██║   ██║╚══███╔╝╚══███╔╝██║     ██╔════╝  #
+#  ██████╔╝██║   ██║  ███╔╝   ███╔╝ ██║     █████╗    #
+#  ██╔═══╝ ██║   ██║ ███╔╝   ███╔╝  ██║     ██╔══╝    #
+#  ██║     ╚██████╔╝███████╗███████╗███████╗███████╗  #
+#  ╚═╝      ╚═════╝ ╚══════╝╚══════╝╚══════╝╚══════╝  #
+#                                                     #
+#######################################################
+class Puzzle:
+
+    def __init__(self):  # , pieces: List[PuzzlePiece] = []):
+        self.pieces = []  # somehow using pieces "kept" the old pieces when running on a dataset over multiple puzzles! Cannot understand why
+        self.num_of_pieces = len(self.pieces)
+
+    def load(self, puzzle_name: str, data_folder: str, features_params: dict = None):
+        """
+        Loads the data (images, masks and polygon) and fill the properties of the Puzzle object
+        """
+        self.name = puzzle_name
+        self.cfg = Configuration()
+        ##
+        self.cfg.set_data_folder(data_folder)
+        ##
+        self.cfg.set_puzzle_name(puzzle_name)
+        images_subfolder = self.cfg.get_puzzle_images_subfolder()
+        masks_subfolder = self.cfg.get_puzzle_masks_subfolder()
+        polygons_subfolder = self.cfg.get_puzzle_polygons_subfolder()
+        self.computer_ordered_pieces_names = os.listdir(images_subfolder)
+        self.pieces_names = natsort.natsorted(self.computer_ordered_pieces_names)
+
+        # breakpoint()
+        #
+        for j, piece_name in enumerate(self.pieces_names):
+            ###
+            # ALTERNATIVE
+            #
+            # If I pass everything to PuzzlePiece, like
+            #
+            # folders = self.cfg.get_all_puzzle_subfolders()
+            # PuzzlePiece(folders, features_params)
+            #
+            # Then I could actually read the image/mask polygon before, and then load/compute the features (all inside the PuzzlePiece constructor)
+            # Is it better?
+            ###
+            piece = PuzzlePiece(features_params)
+            piece.name = piece_name[:-4]
+            piece.id = j
+            piece.repair_id = piece.name[:10]  # piece_XXXXX.png
+            piece.data.image = plt.imread(os.path.join(images_subfolder, f"{piece.name}.png"))
+            piece.data.img_center = np.asarray(piece.data.image.shape[:2]) // 2
+            piece.data.mask = cv2.imread(os.path.join(masks_subfolder, f"{piece.name}.png"), cv2.IMREAD_GRAYSCALE)
+            piece.data.polygon = np.load(os.path.join(polygons_subfolder, f"{piece.name}.npy"),
+                                         allow_pickle=True).tolist()
+            # I have to load / compute the features here AFTER loading images and masks
+            if features_params:
+                for feat_key in features_params.keys():
+                    if features_params[feat_key]['enabled'] == True:
+                        if feat_key == 'shape':
+                            piece.features.sdf.compute(piece.data.mask)
+                        if feat_key == 'motives':
+                            piece.features.motives.load(
+                                os.path.join(self.cfg.get_puzzle_features_subfolder(), 'motifs_segmentation',
+                                             f"motifs_cube_{piece_name[:-4]}.npy"))
+                        # oracle and lines for now nothing
+
+            # piece.data.features = load_features(self)
+            self.pieces.append(piece)
+
+        self.num_of_pieces = len(self.pieces)
+        self.img_piece_size = self.pieces[0].data.image.shape
+
+    # write code to check which features folders exist?
+    # def check_extracted_features(self):
+    #     features = self.params['compatibility']['features']
+    #     for feature in features:
+    #         self.features.append(feature)
+    #         self.features_status[feature] = features[feature]['enabled']
+
+    def load_features(self):
+        """
+        TODO: Loads the features (whatever it finds in the `features` folder) already extracted!
+        """
+        return True
+        # features_extracted = cfg.get_features_extracted(puzzle_name=puzzle_name)
+        # puzzle_feats = PuzzleFeatures(puzzle_features_root_folder = cfg.get_puzzle_features_subfolder(puzzle_name=puzzle_name))
+        # for piece in pieces:
+        #     for feature in features_extracted:
+        #         piece[feature] = puzzle_feats.extract_feature(piece, feature)
+        # return pieces
