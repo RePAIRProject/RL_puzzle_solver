@@ -5,7 +5,7 @@ import json
 import time
 import scipy
 import natsort
-
+from scipy.ndimage import rotate
 from threading import Lock
 from GUI.RL_puzzle_solver.solver.grid import PuzzleGrid
 
@@ -736,3 +736,222 @@ class PuzzleSolver:
         timestamp = str(time.time())  # seconds since epoch (as float, converted to string)
         with open(self.cache_path + "solver_log.txt", "a") as f:
             f.write(timestamp + " " + string + "\n")
+
+    def get_pieces_id_list(self, anchor_idx: int, adjacency_matrix: np.ndarray, max_adjacency_degree: int):
+        """
+        Given the anchor index, the adjacency matrix and a maximum degrees, it creates a list of the pieces id which are "neighbours" of rank <= of the max degree.
+        It is used to recover a subset of the puzzle formed by neighbours. The higher the max_degree, the more pieces it will select.
+        The anchor is included in the list.
+        - max_adjacency_degree = 0 -> anchor alone
+        - max_adjacency_degree = 1 -> only direct neighbours
+        - max_adjacency_degree = 2 -> direct neighbours and their respective neighbours
+        and so on..
+        """
+        pieces_list = [anchor_idx]
+        if max_adjacency_degree == 0:
+            return pieces_list
+        elif max_adjacency_degree == 1:
+            for adj_pair in adjacency_matrix:
+                if anchor_idx in adj_pair:
+                    pieces_list.append(adj_pair[0])
+                    pieces_list.append(adj_pair[
+                                           1])  # should add only the "other" id, but it seems easier to add everything and remove duplicates afterwards
+        else:
+            raise NotImplementedError(
+                "We need to iteratively add the other pieces ids!\nSince it is not used in this experiment, it was not yet implemented")
+
+        # Check https://stackoverflow.com/questions/57261950/how-does-set-remove-duplicates-from-a-list
+        # pieces_list = set(pieces_list)                # it orders the ids
+        pieces_list = list(
+            dict.fromkeys(pieces_list))  # leaves the same order, with anchor at the beginning. Is it better?
+        return pieces_list
+
+    def initialize_p_using_neighbours_with_occupancy(self, R, anchor_idx: int, pieces_occupancy_grid: np.ndarray,
+                                                     adjacency_matrix: np.ndarray, max_adjacency_degree: int):
+        """
+        Initializing the P matrix choosing only a subset of pieces.
+        This is designed to test a hierarchical/multi-step method, it will nNOTot solve the whole puzzle.
+        It implements the occupancy grid variant, already removing the points occupied by the anchor piece in the P matrix.
+        """
+        pieces_subset_id_list = self.get_pieces_id_list(anchor_idx, adjacency_matrix, max_adjacency_degree)
+        print("using only pieces:", pieces_subset_id_list)
+        for k in range(R.shape[3]):
+            if k not in pieces_subset_id_list:
+                # set to zero since we will not be using these pieces!
+                R[:, :, :, k, :] = 0
+                R[:, :, :, :, k] = 0
+
+        P, init_pieces_pos, anchor_pos = self.initialize_p_with_occupancy(R, anchor_idx,
+                                                                     pieces_occupancy_grid=pieces_occupancy_grid)
+        return P, init_pieces_pos, anchor_pos, pieces_subset_id_list
+
+    def initialize_p_with_occupancy(self, R, anchor_idx, pieces_occupancy_grid=None):
+        """
+        Initializing the P matrix and already removing the points occupied by the anchor piece
+        """
+        num_pieces = R.shape[3]
+        X = Y = round(R.shape[0] * np.sqrt(num_pieces))  # + no_patches)
+        Z = R.shape[2]
+
+        P = np.ones((Y, X, Z, num_pieces)) / (Y * X * Z)  # uniform
+        init_pieces_pos = np.zeros((num_pieces, 3)).astype(int)
+
+        # place anchored patch (center)
+        z0 = 0  # should we allow different rotations? This means the anchor is placed without rotation
+        y0 = round(Y / 2)
+        x0 = round(X / 2)
+        P[:, :, :, anchor_idx] = 0
+        P[y0, x0, :, :] = 0
+        P[y0, x0, z0, anchor_idx] = 1
+        # occupancy
+        anchor_pos = [y0, x0, z0]
+        # plt.subplot(121)
+        # plt.imshow(P[:,:,0,anchor_idx])
+        anchor_mask = np.zeros((num_pieces, 1), dtype=int)
+        anchor_mask[anchor_idx] = 1
+        P = self.remove_occupied_grid_points(self, P, piece_pos=anchor_pos, piece_id=anchor_idx,
+                                        piece_occ=pieces_occupancy_grid[anchor_idx, :, :], anchor_mask=anchor_mask)
+
+        # for j in range(num_pieces):
+        #     plt.subplot(4,4,j+1)
+        #     plt.title(f"P matrix for piece {j}")
+        #     plt.imshow(P[:,:,0,j])
+        # plt.show()
+        # breakpoint()
+        init_pieces_pos[anchor_idx, :] = anchor_pos
+        anchor_pos = [y0, x0, z0]
+
+        return P, init_pieces_pos, anchor_pos
+
+    def remove_occupied_grid_points(self, P: np.ndarray, piece_pos: np.array, piece_id: int, piece_occ: np.ndarray,
+                                    anchor_mask: np.ndarray) -> np.ndarray:
+        """
+        When fixing a piece on the P matrix, we remove (=set to 0) the nearby points on the grid
+        """
+        # occ is on rotation 0
+        rotation_idx = piece_pos[2]
+        x = piece_pos[0]
+        y = piece_pos[1]
+        if rotation_idx > 0:
+            # raise NotImplementedError("Need to fix the rotation step")
+            rot_step = 360 // P.shape[3]  # we could pass the parameters here
+            rotated_occ = rotate(piece_occ, rotation_idx * rot_step, reshape=False, mode='constant', order=0)
+        else:
+            rotated_occ = piece_occ
+        po_hs = piece_occ.shape[0] // 2
+        # set to zero everywhere where the occ grid has 1
+        # for all of the other pieces
+        # (so they cannot overlap with the anchor)
+        x_offset_m = y_offset_m = x_offset_M = y_offset_M = 0  # These are to avoid going out of P when the piece is on some borders
+        if np.min(np.asarray(piece_pos[:2]) - po_hs) < 0:
+            x_offset_m = np.maximum(po_hs - piece_pos[0], 0)
+            y_offset_m = np.maximum(po_hs - piece_pos[1], 0)
+            rotated_occ = rotated_occ[y_offset_m:, x_offset_m:]
+            # print("\nCASE 1")
+            # print(f"Occ:{rotated_occ.shape}")
+            # print(f"P:{P[piece_pos[1]-po_hs+y_offset_m:piece_pos[1]+po_hs+1-y_offset_M, piece_pos[0]-po_hs+x_offset_m:piece_pos[0]+po_hs+1-x_offset_M, rotation_idx, piece_id].shape}")
+
+        if np.max(np.asarray(piece_pos[:2]) + po_hs) > np.min(P.shape[:2]):
+            x_offset_M = np.maximum(piece_pos[0] + po_hs + 1 - P.shape[0], 0)
+            y_offset_M = np.maximum(piece_pos[1] + po_hs + 1 - P.shape[1], 0)
+            rotated_occ = rotated_occ[:rotated_occ.shape[1] - y_offset_M, :rotated_occ.shape[0] - x_offset_M]
+            # print("\nCASE 2")
+            # print(f"Occ:{rotated_occ.shape}")
+            # print(f"P:{P[piece_pos[1]-po_hs+y_offset_m:piece_pos[1]+po_hs+1-y_offset_M, piece_pos[0]-po_hs+x_offset_m:piece_pos[0]+po_hs+1-x_offset_M, rotation_idx, piece_id].shape}")
+
+        for p_id in range(P.shape[3]):
+            if p_id != piece_id and anchor_mask[p_id] == 0:
+                # print(f"setting P matrix for piece {p_id}")
+                # plt.imshow(P[:,:,rotation_idx, p_id])
+                # plt.title(f"P matrix for piece {p_id} BEFORE (fixing={piece_id})")
+                # plt.show()
+                P[piece_pos[1] - po_hs + y_offset_m:piece_pos[1] + po_hs + 1 - y_offset_M,
+                piece_pos[0] - po_hs + x_offset_m:piece_pos[0] + po_hs + 1 - x_offset_M, rotation_idx,
+                p_id] -= rotated_occ
+                # plt.imshow(P[:,:,rotation_idx, p_id])
+                # plt.title(f"P matrix for piece {p_id} AFTER (fixing={piece_id})")
+                # plt.show()
+        P = np.clip(P, 0, 1)
+        # plt.figure()
+        # plt.suptitle(anchor_mask)
+        # for j in range(P.shape[3]):
+        #     plt.subplot(4,4,j+1)
+        #     plt.title(f"P matrix for piece {j}")
+        #     plt.imshow(P[:,:,0,j])
+        # plt.show()
+        # breakpoint()
+        # keep the center of the piece to 1
+        # P[piece_pos[0], piece_pos[1], piece_pos[2]] = 1
+
+        return P
+
+    def fix_anchors_with_occ(self, P, num_anchors: int, threshold: float, pieces_occupancy_grid, keep_init_distr=False):
+
+        N = P.shape[-1]
+
+        grid_sol = self.extract_grid_sol_from_P(P)
+
+        if threshold <= 1:
+            threshold = threshold * 100
+
+        # breakpoint()
+        anchor_mask = (grid_sol[:, -1:] > threshold).astype(int)
+
+        new_anc = np.array(grid_sol * anchor_mask)
+        num_anchors_new = np.sum(anchor_mask)
+
+        # if we have more anchors than before, we fix those, otherwise we keep running
+        if num_anchors_new > num_anchors:
+            num_anchors = num_anchors_new
+            # uniform distribution
+            if keep_init_distr == False:
+                P = np.ones_like(P) / (P.size / N)
+
+            for i in range(N):
+                # print(f"working on piece {i}")
+                # if new_anc[i, 0] != 0:
+                if anchor_mask[i, 0] == 1:
+                    y, x, theta = new_anc[i, :3]
+
+                    P[:, :, :, i] = 0
+                    P[y, x, :, :] = 0
+                    P[y, x, theta, i] = 1
+
+                    # print(f"\nfixing piece {i}")
+                    # plt.imshow(P[:,:,0,i])
+                    # plt.title(f"P matrix for piece {i}")
+                    # plt.show()
+
+                    P = self.remove_occupied_grid_points(self, P, piece_pos=[x, y, theta], piece_id=i,
+                                                    piece_occ=pieces_occupancy_grid[i, :, :], anchor_mask=anchor_mask)
+
+            ## TODO Normalization -if needed ???
+
+            # print(num_anchors_new)
+            # for j in range(N):
+            #     plt.subplot(4,4,j+1)
+            #     plt.title(f"P matrix for piece {j}")
+            #     plt.imshow(P[:,:,0,j])
+            # plt.show()
+            # breakpoint()
+
+        return P, grid_sol, num_anchors_new
+
+    def extract_grid_sol_from_P(self, P):
+
+        N = P.shape[-1]
+
+        I = np.zeros(N)
+        score = np.zeros(N)
+
+        for j in range(N):
+            pj_final = P[:, :, :, j]
+            # TODO: what about multiple maxima?
+            score[j], I[j] = np.max(pj_final), np.argmax(pj_final)
+
+        i_x, i_y, i_theta = np.unravel_index(I.astype(int), P[:, :, :, 1].shape)
+
+        # TODO: Check this works as expected
+        sol = np.transpose(np.stack((i_x, i_y, i_theta, np.round(score * 100))).astype(int))
+
+        return sol

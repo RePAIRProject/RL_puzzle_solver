@@ -178,7 +178,7 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
 
     # def load(self, puzzle_name: str, data_folder: str, features_params: dict = None):
     puzzle.load(yaml_dic.get_puzzle_name(), yaml_dic.get_data_folder(),params['compatibility']['features'])
-    occupancy_grid_pieces = _compute_occupancy_grid(number_of_pieces=n, puzzle=puzzle, params = params)
+    occupancy_grid_pieces = _compute_occupancy_grid(number_of_pieces=n, puzzle=puzzle, params = params) # (n, xy_num_points, xy_num_points)
 
     puzzle_solver.__init__(ppars, pieces_included, path_dic)
 
