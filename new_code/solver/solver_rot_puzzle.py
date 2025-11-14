@@ -137,7 +137,6 @@ def solver_rot_puzzle(R, P, T, mode='exp', verbosity=1, decimals=8):
         
         # Compute support (q)
         for i in range(N):
-            # 
             R_i = R[:, :, :, :, i]
 
             # alpha: rotation index of piece i
@@ -149,20 +148,15 @@ def solver_rot_puzzle(R, P, T, mode='exp', verbosity=1, decimals=8):
             
                 Q_temp = np.zeros(P.shape)
                 for j in range(N):
-
                     # maybe do not roll and do a 3D conv?
-
                     # This could be vectorized ?
                     # beta: rotation index of piece j
                     for beta_idx in range(num_rot):
                         R_ij_beta = R_i_rotated[:, :, beta_idx, j]
                         P_j_beta = P[:, :, beta_idx, j]
                         Q_temp[:, :, beta_idx, j] = cv2.filter2D(P_j_beta, -1, R_ij_beta)
-
                 #Q_temp.shape = (num_x_p,num_y_p,num_rot,N)
                 Q_i_alpha = np.sum(Q_temp, axis=(2, 3))
-
-                
                 Q[:, :, alpha_idx, i] = Q_i_alpha
         
         # Shift the support to get non-negative values

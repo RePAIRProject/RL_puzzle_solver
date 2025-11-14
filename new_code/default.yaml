@@ -83,7 +83,9 @@ compatibility:
       # 1. softmax (score is the score of output 1 (correct probability) after softmax)
       # 2. thresh (score is the score before softmax if it's above a threshold defined below)
       # 3. prob_diff (score is the difference between the two output `correct` and `wrong`)
+
       scoring_method: 'softmax' #'thresh', 'prob_diff'
+
       thresholds:
         positive: 2
         negative: 1.5
@@ -121,11 +123,13 @@ solver:
       p_xy_size: [ 151,151 ]
       sandbox_size: [ 850, 850 ]   # size of sandbox_size in mm
 
-  # integration with ReassembleNet
+    # integration with ReassembleNet
   reassembleNet:
-    std_dev_x: 110
-    std_dev_y: 110
-    std_dev_t: 1 
+    std_dev_x: 0.5
+    std_dev_y: 0.5
+    std_dev_t: 1
+    sparsify_p: 0
+    visualization: True
        
   # how to save the solution
   solution:

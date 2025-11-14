@@ -19,6 +19,28 @@ def main():
     swpm = SolverWithPiecesModule(puzzle, params, cfg)
     n_frag = puzzle.num_of_pieces
     #all_solutions = []
+
+    # #################
+    # d1 = swpm.P.shape[0] * swpm.grid_params['xy_step']
+    # d2 = swpm.P.shape[1] * swpm.grid_params['xy_step']
+    # dimension = (d1, d2)
+    #
+    # import numpy as np
+    # pixel_solution = np.genfromtxt("data.txt", skip_header=0)
+    # pixel_solution = pixel_solution[:,1:]
+    #
+    # a = pixel_solution[:, 0:2]
+    # a = a[:, ::-1]
+    # pixel_solution[:, 0:2] = a
+    #
+    # pixel_solution[:, 0:2] = pixel_solution[:, 0:2] + d2//2
+    # image_solution = reconstruct_pil(pixel_solution, puzzle.pieces, dimension)
+    #
+    # plt.imsave('im.png', image_solution) # save final image in solution folder
+    # print ('STOP')
+    # ################à
+
+
     for i in range(n_frag):
         swpm.solver_params['anchor_index'] = i
 
@@ -40,6 +62,10 @@ def main():
         else:
             saving_path = cfg.get_VIS_path()
         plt.imsave(saving_path, image_solution)  # save final image in solution folder
+
+        ## Placement
+        if params['solver']['generate_placement_file'] == True:
+            swpm.generate_placement_file(pixel_solution)
 
     #swpm = SolverWithPiecesModule(puzzle, params, cfg)
     print('Final Run !!!')
@@ -63,6 +89,11 @@ def main():
         saving_path = cfg.get_VIS_path()
     plt.imsave(saving_path, image_solution)  # save final image in solution folder
 
+    ## Placement
+    if params['solver']['generate_placement_file'] == True:
+        swpm.generate_placement_file(pixel_solution)
+
 
 if __name__ == '__main__':
     main()
+
