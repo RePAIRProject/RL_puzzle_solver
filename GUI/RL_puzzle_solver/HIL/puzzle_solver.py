@@ -15,7 +15,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 from scipy.io import loadmat
 from GUI.RL_puzzle_solver.solver.utils import PuzzleSolver
 from GUI.RL_puzzle_solver.solver.grid import PuzzleGrid, PieceOnCanvas
-from GUI.RL_puzzle_solver.solver.puzzle_utils import Puzzle
 # from ..solver.utils import PuzzleSolver
 
 
@@ -54,7 +53,7 @@ def set_running(running):
 def toggle_lock(value):
     puzzle_solver.repair_lock_toggle(value)
 
-def assemble(fragments_list, path_dic, return_solution_as='dict'):
+def assemble(fragments_list, path_dic, org_puzzle, params, return_solution_as='dict'):
     """
     Assemble a small subset of the puzzle given one anchor and some neighbours:
     ---
@@ -170,15 +169,8 @@ def assemble(fragments_list, path_dic, return_solution_as='dict'):
 
     for i in range(len(pieces_to_include)):
         pieces_included.append(pieces_names[pieces_to_include[i]])
-    puzzle = Puzzle()
 
-    params = path_dic['params']
-    # yaml = Configuration
-    yaml_dic = path_dic['yaml']
-
-    # def load(self, puzzle_name: str, data_folder: str, features_params: dict = None):
-    puzzle.load(yaml_dic.get_puzzle_name(), yaml_dic.get_data_folder(),params['compatibility']['features'])
-    occupancy_grid_pieces = _compute_occupancy_grid(number_of_pieces=n, puzzle=puzzle, params = params) # (n, xy_num_points, xy_num_points)
+    occupancy_grid_pieces = _compute_occupancy_grid(number_of_pieces=n, puzzle=org_puzzle, params = params) # (n, xy_num_points, xy_num_points)
 
     puzzle_solver.__init__(ppars, pieces_included, path_dic)
 

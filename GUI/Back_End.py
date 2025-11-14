@@ -2,6 +2,7 @@ import time
 import warnings
 from threading import Thread, Lock
 
+import natsort
 import yaml
 
 import GUI.RL_puzzle_solver.solver.parameters_utils as yaml_config
@@ -21,6 +22,9 @@ import re
 from pathlib import Path
 # from kivymd.app import MDApp
 import math
+from GUI.RL_puzzle_solver.solver.puzzle_utils import Puzzle
+from GUI.RL_puzzle_solver.solver import scale_utils, assembly_sequence_utils
+from shapely import MultiPolygon, affinity
 
 class BackEnd:
     def __init__(self):
@@ -72,6 +76,8 @@ class BackEnd:
         self.R = None
 
         self.evaluation = Evaluation()
+        self.params = None
+        self.puzzle = None
 
     def set_path(self, path_dic):
         self.path_dic = path_dic
@@ -124,10 +130,6 @@ class BackEnd:
         y = scaled_current_pos[1] - scaled_neighbour_pos[1]
         z = scaled_current_pos[2] - scaled_neighbour_pos[2]
         relative_position = (x, y, z)
-
-        print("scaled_current_pos", scaled_current_pos)
-        print("scaled_neighbour_pos", scaled_neighbour_pos)
-        print("relative_position", relative_position)
 
         # if value:
         #     self.logger("Human interacted " + str(self.interaction_counter) + " times, accepted a relative position of the piece " + str(main))
@@ -371,6 +373,7 @@ class BackEnd:
         self.logger("solver_toggle_lock:   " + str(value))
         puzzle_solver.toggle_lock(value)
 
+    probability = {}
     def pl_solver_thread_function(self):
         self.set_pl_solver_running(True)
 
@@ -378,8 +381,17 @@ class BackEnd:
         average_thresh_factor = 0.05
         min_remaining = 2
         puzzle_solver.set_running(True)
-        self.pl_solution, probability = puzzle_solver.assemble(self.input_dict, self.path_dic)
+
+        self.params = self.path_dic['params']
+        # yaml = Configuration
+        yaml_dic = self.path_dic['yaml']
+
+        # def load(self, puzzle_name: str, data_folder: str, features_params: dict = None):
+        self.puzzle = Puzzle()
+        self.puzzle.load(yaml_dic.get_puzzle_name(), yaml_dic.get_data_folder(), self.params['compatibility']['features'])
+        self.pl_solution, self.probability = puzzle_solver.assemble(self.input_dict, self.path_dic, self.puzzle, self.params)
         puzzle_solver.set_running(False)
+        probability = self.probability.copy()
         self.pl_solution = self.throw_away_1(self.pl_solution, probability, initial_thresh)
         # pl_solution = throw_away_2(pl_solution, probability, average_thresh_factor)
         # pl_solution = combined_throw_away(pl_solution, probability, initial_thresh, min_remaining, average_thresh_factor)
@@ -449,10 +461,11 @@ class BackEnd:
         return kept_solutions
 
     def puzzle_solver_test_function(self, last_loop_solution, neighbour_test):
-        self.input_dict.update({'solved_pieces': last_loop_solution})
-        self.input_dict.update({'neighbours': neighbour_test})
-
-        self.pl_solution = puzzle_solver.assemble(self.input_dict, self.path_dic)
+        # self.input_dict.update({'solved_pieces': last_loop_solution})
+        # self.input_dict.update({'neighbours': neighbour_test})
+        #
+        # self.pl_solution = puzzle_solver.assemble(self.input_dict, self.path_dic)
+        return
 
     def get_next_neighbour(self, image_id):
         boolean = False
@@ -552,11 +565,7 @@ class BackEnd:
         self.select_neighbour_thread.start()
 
     def start_pl_solver_thread(self, key_fragment, neighbour_ids, solved_pieces):
-        print('key_fragment', key_fragment)
-        print('neighbour_ids', neighbour_ids)
         self.input_dict = {'anchor': key_fragment, 'neighbours': neighbour_ids, 'solved_pieces': solved_pieces}
-
-        print("input_dict", self.input_dict)
         select_pl_solver = Thread(target=self.pl_solver_thread_function, daemon=True)
         self.interaction_counter = 0
         self.logger("dataset_name: " + self.path_dic['dataset_name'] + "   comp_name: " + self.path_dic[
@@ -627,7 +636,7 @@ class BackEnd:
             self.pl_solution = self.apply_ground_truth()
         original_pl_solution = self.pl_solution.copy()
         self.pl_solution = self.scale_solution(self.pl_solution)
-        return self.pl_solution, original_pl_solution
+        return self.pl_solution, original_pl_solution, self.probability
 
     def scale_solution(self, solution):
         key_x, key_y, key_rotation = solution[self.key_fragment]
@@ -743,9 +752,7 @@ class BackEnd:
             #             icons_path = os_path + line.split('icons: ')[1].strip()
             self.yaml, params = self.extract_yaml(setting_path)
             backend_path = self.yaml.data_folder
-            print("backend_path", backend_path)
             image_path = self.yaml.get_puzzle_images_subfolder()
-            print("image_path", image_path)
             mask_path = self.yaml.get_puzzle_masks_subfolder()
             comp_path = self.yaml.get_CM_path()
             comp_name = os.path.basename(os.path.normpath(comp_path))
@@ -833,6 +840,117 @@ class BackEnd:
         with open(self.cache_path + "solver_log.txt", "a") as f:
             f.write(timestamp + " " + iteration + ": " + string + "\n")
             print(timestamp + " " + iteration + ": " + string + "\n")
+
+    def generate_placement_file(self, pixel_solution_dic, verbosity=2):
+        """
+        Uses the fresco_assembly_sequence code to generate the .json file for the robotic platform
+        """
+        # print("\n\n\nWARNING: UNFINISHED!\n\nRun with `generate_placement_file: False` on the `input_parameters.yaml` file for now\n\n")
+        # TODO:
+        # - load polygons in the correct format (create a multipolygon from a list of polygons)
+        # - list of fragment names (fresco_name_id_mapping)
+        print("Generating the placement sequence..")
+        pixel_solution = np.zeros((len(pixel_solution_dic), 3))
+        unsorted_keys = pixel_solution_dic.keys()
+        sorted_keys = natsort.natsorted(unsorted_keys)
+        print("sorted keys:", sorted_keys)
+        for j, psk in enumerate(sorted_keys):
+            pixel_solution[j, :] = pixel_solution_dic[psk]
+
+        placement_folder = os.path.join(self.path_dic['cache_path'], 'sandbed_placement')
+        os.makedirs(placement_folder, exist_ok=True)
+
+        assembled_puzzle, pieces_names = self.load_solved_puzzle_as_multipolygon(pixel_solution)
+
+        ##################
+        # Inflate fresco #
+        ##################
+        inflation_width = self.params['solver']['placement']['inflation_width']
+        if inflation_width > 0:
+            if verbosity >= 1:
+                print("Scaling up the fresco.")
+            scaled_assembled_puzzle = scale_utils.get_min_inflated_gt_fresco(assembled_puzzle,
+                                                                             inflation_width=inflation_width)
+            if self.params['solver']['placement']['save_plot']:
+                assembled_plot_path = os.path.join(placement_folder, "assembled_puzzle")
+                assembly_sequence_utils.plot_fresco_image(img_path=assembled_plot_path,
+                                                          fresco_polygons=scaled_assembled_puzzle, ref="world",
+                                                          name="scaled_puzzle", save_plot=True)
+        else:
+            scaled_assembled_puzzle = assembled_puzzle
+
+        #####################
+        # Assembly sequence #
+        #####################
+        if verbosity >= 1:
+            print("Determining assembly sequence.")
+        assembly_data = assembly_sequence_utils.prepare_polygon_data(scaled_assembled_puzzle)
+
+        assembly_sequence = {}
+        seq_type = self.params['solver']['placement']['assembly_plan']
+        if seq_type == "snake":
+            assembly_sequence[seq_type] = assembly_sequence_utils.get_assembly_plan_snake(assembly_data, )
+
+        if seq_type == "spiral":
+            assembly_sequence[seq_type] = assembly_sequence_utils.get_assembly_plan_spiral(assembly_data)
+
+        if self.params['solver']['placement']['save_plot']:
+            assembly_sequence_utils.plot_fresco_assembly(assembly_sequence[seq_type], assembly_data, pieces_names,
+                                                         folder_path=placement_folder,
+                                                         name="assembly_sequence_" + seq_type)
+
+        #############
+        # Save data #
+        #############
+        placement_file_path = os.path.join(placement_folder, "fresco_placement.json")
+        self.save_placement_json(
+            path=placement_file_path,
+            fresco=scaled_assembled_puzzle,
+            solution=pixel_solution,
+            assembly_sequence=assembly_sequence,
+            pieces_names=pieces_names)
+        if verbosity >= 1:
+            print("Saved placement json.\nFINISHED")
+
+    def load_solved_puzzle_as_multipolygon(self, pixel_solution):
+        polygons = []
+        names = []
+        print("inside solution", pixel_solution)
+        for piece, piece_T in zip(self.puzzle.pieces, pixel_solution):
+            # print("piece.data.polygon:", piece.data.polygon)
+            # zero_centered_polygon = affinity.translate(piece.data.polygon, piece.data.polygon.centroid.x, piece.data.polygon.centroid.y)
+            assembled_polygon = affinity.translate(piece.data.polygon, piece_T[0], piece_T[1])
+            # assembled_polygon = affinity.rotate(assembled_polygon, piece_T[2], origin='centroid', use_radians=False)
+            polygons.append(assembled_polygon)
+            # plt.plot(*assembled_polygon.exterior.xy)
+            names.append(piece.name)
+        # plt.show()
+        return MultiPolygon(polygons), names
+
+    def save_placement_json(self, path, fresco, solution, assembly_sequence, pieces_names):
+        """
+        TODO
+        """
+        data = {}
+        data["header"] = {"fresco_group": "g29"}
+
+        for assembly_sequence_type, assembly_sequence in assembly_sequence.items():
+            assembly_plan_dictionary = {}
+            for seq_no, id in enumerate(assembly_sequence):
+                assembly_plan_dictionary[seq_no] = pieces_names[id]
+            data["assembly_sequence_" + assembly_sequence_type] = assembly_plan_dictionary,
+
+        for pos, fragment in enumerate(fresco.geoms):
+            # breakpoint()
+            gt_key = pieces_names[pos]
+            data[gt_key] = {}
+            data[gt_key]["trans_x"] = fragment.centroid.x
+            data[gt_key]["trans_y"] = fragment.centroid.y
+            data[gt_key]["ori_yaw"] = float(solution[pos][2])
+
+        with open(path, "w") as outfile:
+            json.dump(data, outfile, indent=4)
+
 
 
 

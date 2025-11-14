@@ -2,8 +2,8 @@
 # comment syntax
 
 data_folder: /home/omid/RL_puzzle_solver_GUI/GUI/DataBase/RePAIR_Demo/
-puzzle_name: puzzle_0000016_RP_group_15
-exp_name: exp_20251022124132_qdbqlj
+puzzle_name: puzzle_0000030_RP_group_29
+exp_name: exp_20251022121117_qhcfeh
 verbosity: 2
 # skip_done: True # for run_on_dataset
 
@@ -98,9 +98,9 @@ aggregation:
   method: 'PAD'  
 
 solver:
-  T_first: 25 #100
-  T_next: 25 #500
-  T_max: 25 #3000
+  T_first: 10 #100
+  T_next: 10 #500
+  T_max: 10 #3000
   PQ_mode: 'exp'
   no_rotations: False
   # TODO: switch to anchor ID
@@ -131,16 +131,12 @@ solver:
       in_the_suffix: 
         anchor_index: True 
         agg_method: True
-       
-  # how to save the solution
-  solution:
-    save_pixel_solution: True 
-    save_as_txt: True
-    visualization:
-      add_suffix: True
-      in_the_suffix: 
-        anchor_index: True 
-        agg_method: True
+
+  generate_placement_file: False
+  placement:
+    inflation_width: 20
+    assembly_plan: spiral # snake
+    save_plot: True
         
     # if True, solution will be: 
     # name1 x1 y1 z1 p1

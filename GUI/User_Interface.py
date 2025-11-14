@@ -139,6 +139,7 @@ class GUIApp(MDApp):
         self.show_button = Button(text="Next")
         self.neighbour_button = Button(text="Neighbour")
         self.pl_solver_button = Button(text="PL Solver")
+        self.final_button = Button(text="Finish")
         self.progress_bar = ProgressBar()
 
 
@@ -196,6 +197,8 @@ class GUIApp(MDApp):
         self.show_button.bind(on_press=get_next_neighbour)
 
         self.neighbour_button.bind(on_press=start_select_neighbour)
+
+        self.final_button.bind(on_press=to_the_robot)
         # the_layout.add_widget(snackbar)
 
         self.pl_solver_button.bind(on_press=start_pl_solver)
@@ -221,6 +224,7 @@ class GUIApp(MDApp):
         self.pl_solver_button.size_hint_x = Window.size[0] / 8
         void_image.size_hint_x = Window.size[0] / 128
         self.progress_bar.size_hint_x = Window.size[0] / 2
+        self.final_button.size_hint_x = Window.size[0] / 2
 
         self.main_layout.minimum_height = 1
 
@@ -701,6 +705,14 @@ class GUIApp(MDApp):
         self.showed_image_list = []
 
     @mainthread
+    def add_final_button(self):
+        self.toolbar.remove_widget(self.anchor_button)
+        self.toolbar.add_widget(self.final_button)
+        self.toolbar.remove_widget(self.pl_solver_button)
+        self.toolbar.remove_widget(self.neighbour_button)
+        self.toolbar.remove_widget(self.show_button)
+
+    @mainthread
     def apply_resize(self):
 
         center = [Window.size[0] / 2, Window.size[1] / 2]
@@ -802,14 +814,18 @@ class GUIApp(MDApp):
     def show_solutions(self):
         self.sidebar.col_grid.label1.text = "Accept"
         iteration = back_end.get_iteration()
-        self.pl_solution, original_answer = back_end.get_pl_solution()
+        self.pl_solution, original_answer, probability = back_end.get_pl_solution()
         back_end.calculate_results(original_answer, None, iteration, -1)
+        answer = self.pl_solution.copy()
+        save_demo_parameters(answer, probability, iteration = "final", is_end=True)
         self.apply_solution(True)
         self.solution_applied = True
-        self.pl_solver_button.disabled = True
-        self.show_button.text = 'Next Loop'
-        self.show_button.disabled = False
-        self.neighbour_button.disabled = True
+        # self.pl_solver_button.disabled = True
+        # self.show_button.text = 'Next Loop'
+        # self.show_button.disabled = False
+        # self.neighbour_button.disabled = True
+        self.add_final_button()
+
 
     def show_neighbours(self):
         self.set_images(1)
@@ -866,11 +882,74 @@ class GUIApp(MDApp):
         self.grid_layout.zoom_scale.y = self.grid_layout.scale_factor
         self.grid_layout.base_scale_factor = self.grid_layout.scale_factor
 
+    @mainthread
+    def final_button_running(self):
+        self.final_button.text = "Generating..."
+        # make background color visible in all states
+        self.final_button.background_normal = ''
+        self.final_button.background_down = ''
+        self.final_button.background_disabled_normal = ''
+        self.final_button.background_disabled_down = ''
+
+        # text colors
+        self.final_button.color = (1, 1, 1, 1)  # normal text
+        self.final_button.disabled_color = (1, 1, 1, 1)  # text while disabled
+
+        # background color while running
+        self.final_button.background_color = (1, 0, 0, 1)  # red
+        self.final_button.disabled = True
+
+    @mainthread
+    def final_button_finished(self):
+        self.final_button.text = "Finish"
+        self.final_button.disabled = False
+        dummy = Button()
+        self.final_button.background_normal = dummy.background_normal
+        self.final_button.background_down = dummy.background_down
+        self.final_button.background_disabled_normal = dummy.background_disabled_normal
+        self.final_button.background_disabled_down = dummy.background_disabled_down
+        self.final_button.background_color = dummy.background_color
+        self.final_button.color = dummy.color
+        self.final_button.disabled_color = dummy.disabled_color
+
 def start_select_anchor(self):
     global back_end
     app.image_is_set = False
     back_end.start_anchor_thread()
 
+def to_the_robot(self):
+    app.final_button_running()
+    # Start long task in background
+    threading.Thread(target=generate_placement).start()
+
+def generate_placement():
+    solved_pieces = get_screen_pieces(only_solved=False)
+    print("solved_pieces", solved_pieces)
+    app.pl_solution, original_answer, probability = back_end.get_pl_solution()
+    # answer = loop_finalization(solved_pieces)
+    answer_dic = {}
+    for i in range(len(solved_pieces)):
+        piece_id = solved_pieces[i][0]
+        position = solved_pieces[i][1]
+        position = [position[0], position[1], position[2]]
+        answer_dic[piece_id] = position
+    answer_dic = back_end.scale_solution(answer_dic)
+    for piece_id, position in answer_dic.items():
+        old_position = answer_dic[piece_id].copy()
+        position[0] = -1 * old_position[1]
+        position[1] = old_position[0]
+
+
+    print("answer", answer_dic)
+
+    save_demo_parameters(answer_dic, probability, iteration="final", is_end=True)
+    # for piece_id, position in answer_dic.items():
+    #     old_position = answer_dic[piece_id].copy()
+    #     position[0] = old_position[1]
+    #     position[1] = old_position[0]
+
+    back_end.generate_placement_file(answer_dic)
+    app.final_button_finished()
 
 def start_select_neighbour(self):
     app.key_list = []
@@ -959,7 +1038,6 @@ def start_pl_solver(self):
     app.pl_solver_button.disabled = True
 
     anchor_pos = app.key_image.position_memory
-    print("anchor_pos", anchor_pos)
     app.bounding_box(True, size=(600, 600), center=anchor_pos)
 
     for i in range(0, len(app.current_image_list)):
@@ -975,7 +1053,6 @@ def start_pl_solver(self):
     back_end.start_pl_solver_thread(back_end.key_fragment, back_end.neighbour_ids, solved_piece)
     universal_zoom_applied = False
 
-
 def get_next_neighbour(self, *args, **kwargs):
     if not app.solution_applied:
         boolean, next_neighbours = back_end.get_next_neighbour(app.click_label.text)
@@ -984,7 +1061,7 @@ def get_next_neighbour(self, *args, **kwargs):
             app.current_image_list = []
             app.next_neighbour_requested = True
     else:
-        solved_pieces = get_solved_pieces()
+        solved_pieces = get_screen_pieces()
 
         # build_meta_fragment(solved_pieces)
 
@@ -996,10 +1073,9 @@ def get_next_neighbour(self, *args, **kwargs):
         back_end.set_pl_solver_done(False)
         app.solution_applied = False
 
-
 def loop_finalization(solved_pieces):
-    center = [Window.size[0] / 2, Window.size[1] / 2]
     app.final_solution = back_end.loop_finalization(solved_pieces, app.image_offset)
+    return app.final_solution
     # neighbour_test = ['piece_0006.png']
     # back_end.puzzle_solver_test_function(app.final_solution, neighbour_test)
 
@@ -1058,6 +1134,35 @@ update_counter = 0
 update_freq = 1 # in seconds
 update_started = False
 
+def extract_final_number(filename):
+    match = re.findall(r'(\d+)(?=\.png$)', filename)
+    return int(match[-1]) if match else 0
+
+def save_demo_parameters(answer, probability, iteration, is_end):
+    final_list = []
+
+    if not is_end:
+        final_list.append(f"iteration: {iteration}")
+
+    # Sort by final numeric suffix
+    sorted_images = sorted(answer.keys(), key=extract_final_number)
+
+    for image in sorted_images:
+        image_without_png = image.replace('.png', '')
+        position = answer[image]
+        prob = probability[image][0] * 100
+        line = f"{image_without_png} {position[0]} {position[1]} {position[2]} {prob}"
+        final_list.append(line)
+
+    if not is_end:
+        file_path = os.path.join(path_dic['cache_path'], 'HIL_results_parameters.txt')
+        with open(file_path, 'a') as f:
+            np.savetxt(f, final_list, fmt='%s')
+    else:
+        np.savetxt(os.path.join(path_dic['cache_path'], 'final_result.txt'),
+                   final_list, fmt='%s')
+
+    return final_list
 
 def save_parameters_to_json(answer, probability, process, filename="API-example.json"):
     # Convert numpy arrays to lists for JSON serialization
@@ -1092,16 +1197,10 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
                 back_end.calculate_results(answer, probability, iteration, bucket)
         if update_counter>=(1/communication_freq)*update_freq:
             answer, probability, process, iteration = back_end.get_solution_dict()
-            print("process", process)
-
-            # print("answer", answer)
-            # print("probability", probability)
-            # print("process", process)
             # save_parameters_to_json(answer, probability, process)
             if answer is not None:
+                save_demo_parameters(answer, probability, iteration, is_end=False)
                 # back_end.save_results(answer)
-                # for image in answer:
-                #     print(image)
                 #     try:
                 #         print(app.pl_solution[image])
                 #     except KeyError:
@@ -1141,38 +1240,6 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
             app.toolbar_color = 0
         app.communicate_thread_lock.release()
         time.sleep(communication_freq)  # Thread sleep timerfasd
-
-
-# def calculate_results(answer, probability, iteration, bucket):
-#     q_pos = 0
-#     rmse_translation = 0
-#     rmse_rot = 0
-#     threshold = 0.0
-#     if probability is None:
-#         evaluated_answer = answer
-#     else:
-#         # Create a filtered copy of `answer` based on `probability`
-#         evaluated_answer = {
-#             k: v for k, v in answer.items()
-#             if probability.get(k, 0) >= threshold
-#         }
-#
-#     with warnings.catch_warnings(record=True) as w:
-#         warnings.simplefilter("always")  # catch all warnings
-#
-#         q_pos, rmse_rot, rmse_translation = back_end.evaluate(evaluated_answer)
-#
-#         for warning in w:
-#             if issubclass(warning.category, RuntimeWarning):
-#                 pass #if you have 1 item in the evaluated which means that the probability of other pieces are not high enough, you will get RuntimeWarning
-#
-#     if probability is None:
-#         print(
-#             f"iteration {iteration:3d} (last_iteration, Final result) : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}")
-#     print(
-#         f"iteration {iteration:3d} : q_pos {q_pos:.5f}   "f"rmse_rot {rmse_rot:.2f}   rmse_translation {rmse_translation:.2f}")
-#     app.last_eval_bucket = bucket
-
 
 universal_zoom_applied = False
 def universal_zoom(factor):
@@ -1233,12 +1300,10 @@ def check_image_select(image, mouse_pos):
     if image.collides(mouse_pos):
         if not app.checked_border:
             pixel = image.map_mouse_pos_pixel(mouse_pos)
-            print(pixel)
             if pixel[0]<0 or pixel[1] < 0:
                 return False
             return image.check_mask(pixel)
     return False
-
 
 def image_reader(image_number, score, has_score, is_anchor=False):
     name = app.file_names[image_number]
@@ -1248,7 +1313,6 @@ def image_reader(image_number, score, has_score, is_anchor=False):
     image = MovableImage(image_path, mask_path, app.click_label, score, image_number, has_score, name, 0, is_anchor)
 
     return image
-
 
 def eroding(directory_path):
     eroded_dir_path = os.path.join(directory_path, "Eroded")
@@ -1266,7 +1330,6 @@ def eroding(directory_path):
             # name of the file without extension
             eroded_image = run_erode(image, file_name_without_extension)
             cv2.imwrite(save_path, eroded_image)
-
 
 def copy_to_cache(file_extension='.png'):
     source = path_dic['pieces_path']
@@ -1286,14 +1349,12 @@ def copy_to_cache(file_extension='.png'):
             shutil.copy2(source_path, cache_path)
     # remove_image_from_cache('piece_0000')
 
-
 def erode_data():
     file = open("GUI/DataBase/Archive/CM_color_border20.npy")
     f = "GUI/DataBase/Archive/CM_color_border20.npy"
     mmapped_array = np.load(f, mmap_mode='r')
     eroding_path = os.getcwd() + "/GUI/DataBase/Dafne/image_00000_1/pieces"
     eroding(eroding_path)
-
 
 def transparent_data(path):
     for img in os.listdir(path):
@@ -1304,13 +1365,11 @@ def transparent_data(path):
             output_path = os.path.join(path, output_image)
             cv2.imwrite(output_path, img_t)
 
-
 def transparent(img):
     src = cv2.imread(img, 1)
 
     if src is None:
         print(f"Error: Unable to load image '{img}'. Please check the file path.")
-        print(img)
         return None
 
     tmp = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
@@ -1330,13 +1389,11 @@ def transparent(img):
 
     return dst
 
-
 def read_ground_truth():
     ground_truth = path_dic['ground_truth']
     # if ground_truth != "":
     #     with open(ground_truth, 'r') as file:
     #         lines = file.readlines()
-
 
 def get_bounding_box(size, rotation):
     w, h = size
@@ -1348,7 +1405,6 @@ def get_bounding_box(size, rotation):
     new_h = abs(w * math.sin(rotation)) + abs(h * math.cos(rotation))
 
     return int(new_w), int(new_h)
-
 
 def calculate_canvas_size():
     min_x, min_y = float('inf'), float('inf')
@@ -1381,12 +1437,10 @@ def calculate_canvas_size():
 
     return int(canvas_width), int(canvas_height), int(min_x), int(min_y)
 
-
-def get_solved_pieces():
+def get_screen_pieces(only_solved = True):
     solved_pieces = []
-
     for image in app.current_image_list:
-        if image.is_anchor:
+        if image.is_anchor or not only_solved:
             image_id = image.get_id()
             position = image.position_memory
             x, y, rotation = int(position[0]), int(position[1]), int(position[2])
@@ -1394,7 +1448,6 @@ def get_solved_pieces():
             solved_pieces.append((image_id, [x, y, rotation]))
 
     return solved_pieces
-
 
 def build_meta_fragment(solved_pieces, canvas_size=(1000, 1000)):
     cache = path_dic['cache_path']
@@ -1429,7 +1482,6 @@ def build_meta_fragment(solved_pieces, canvas_size=(1000, 1000)):
     name = name + ".png"
     output_path = cache + name
     canvas.save(output_path)
-
 
 def remove_image_from_cache(image_id):
     cache = path_dic['cache_path']
