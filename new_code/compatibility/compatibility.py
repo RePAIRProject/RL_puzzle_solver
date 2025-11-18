@@ -221,9 +221,12 @@ class CompatibilityMatrixModule:
                         gt_pos_i = np.asarray([gt_piece_i['x'], gt_piece_i['y']]) #/ self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
                         gt_pos_j = np.asarray([gt_piece_j['x'], gt_piece_j['y']]) #/self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
                         gt_rel_j_vs_i = np.round((gt_pos_j - gt_pos_i)).astype(int) #* 1.5 # / self.grid.xy_step).astype(int)
+                        gt_pos_i_theta = gt_piece_i['theta']
+                        gt_pos_j_theta = gt_piece_j['theta']
+                        gt_rel_j_vs_i_theta = np.round((gt_pos_j_theta - gt_pos_i_theta)).astype(int)
                         if verbose > 2:
                             print("\nrelative GT:", gt_rel_j_vs_i)
-                        CM_oracle[:, :, :, j, i] = self._compute_pairwise_oracle_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij=RM_ij, gt_rel_pos=gt_rel_j_vs_i, verbose=verbose)
+                        CM_oracle[:, :, :, j, i] = self._compute_pairwise_oracle_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij=RM_ij, gt_rel_pos=gt_rel_j_vs_i, gt_rel_rot=gt_rel_j_vs_i_theta, verbose=verbose)
                     # else: # it should already be zero!
                     #     CM_oracle[:, :, :, j, i] = np.zeros_like(CM_oracle[:, :, :, j, i])
         if verbose > 1:
@@ -250,7 +253,7 @@ class CompatibilityMatrixModule:
         xj_w, yj_w = self.grid.xy_values[x_idx, y_idx]
         return xj_w, yj_w, 0
 
-    def _compute_pairwise_oracle_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, gt_rel_pos: np.ndarray, verbose: int = 0):
+    def _compute_pairwise_oracle_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, gt_rel_pos: np.ndarray, gt_rel_rot: int, verbose: int = 0):
         """
         For each pair of pieces, it places them on the canvas in the position `accepted` by RM_ij 
         and calls the scoring function to fill the pairwise compatibility matrix CM_ij 
@@ -263,13 +266,16 @@ class CompatibilityMatrixModule:
         xj, yj = (np.asarray([self.grid.canvas_center, self.grid.canvas_center]) + np.asarray([gt_rel_pos[0], gt_rel_pos[1]])).tolist()
         x_idx = np.round(self.grid.xy_num_points / 2 + gt_rel_pos[0] / self.grid.xy_step).astype(int)
         y_idx = np.round(self.grid.xy_num_points / 2 + gt_rel_pos[1] / self.grid.xy_step).astype(int)
+        #theta_idx = gt_rel_rot % self.grid.theta_num_points
 
         # print(f"idx: {x_idx}, {y_idx}, pix: {xj}, {yj}\n")
         
         if 1 > 0: #np.max(abs(gt_rel_pos)) < (self.grid.p_hs): 
             # y_idx = np.round(yj / self.grid.xy_step).astype(int)
-            theta_idx = 0
-            thetaj = self.grid.theta_values[0]
+            
+            # thetaj = self.grid.theta_values[0]
+            thetaj = gt_rel_rot % 360
+            theta_idx = (thetaj // self.grid.theta_step).astype(int)
             if verbose > 2:
                 print(f"CM[{x_idx}, {y_idx}, {theta_idx}] = 1")
             
