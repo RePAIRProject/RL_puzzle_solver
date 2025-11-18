@@ -491,6 +491,7 @@ class BackEnd:
         self.sorted_neighbour_images = select_anchor_RePAIR.select_neighbour(self.path_dic, self.key_fragments)
 
         neighbour_numbers = self.path_dic['number_of_neighbours']
+
         self.neighbour_images = self.sorted_neighbour_images[:neighbour_numbers]
 
         self.extract_lists(self.neighbour_images)
@@ -764,8 +765,8 @@ class BackEnd:
             rotation_intervals = ppars['theta_step']
             comp_format = 'R'
             number_of_pieces = len(self.yaml.get_puzzle_pieces_filenames())
-            number_of_anchors = number_of_pieces
-            number_of_neighbours = number_of_pieces
+            number_of_anchors = number_of_pieces # Demo it should be changed
+            number_of_neighbours = number_of_pieces # Demo it should be changed
             dataset_name = self.yaml.get_puzzle_name()
             solver_parameters = params['solver']
             ground_truth = self.yaml.ground_truth_filename
@@ -924,7 +925,9 @@ class BackEnd:
 
             assembled_polygon = affinity.translate(poly, dx, dy)
 
-            polygons.append(assembled_polygon)
+            rotated_polygon = affinity.rotate(assembled_polygon, -angle_deg)
+
+            polygons.append(rotated_polygon)
             names.append(piece.name)
 
         return MultiPolygon(polygons), names

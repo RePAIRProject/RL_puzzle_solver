@@ -132,8 +132,9 @@ class PuzzleSolver:
         if not value:
             if piece_number in self.locked_pieces.keys():
                 self.locked_pieces.pop(piece_number)
-                Y, X, Z, noPatches = self.probability_matrix.shape
-                self.probability_matrix[:, :, :, piece_number] = 1 / (Y * X * Z)
+                self.reinit_p_matrix()
+                # Y, X, Z, noPatches = self.probability_matrix.shape
+                # self.probability_matrix[:, :, :, piece_number] = 1 / (Y * X * Z)
             return
 
         # Shape of the probability matrix for the current piece
@@ -177,6 +178,7 @@ class PuzzleSolver:
             #     self.probability_matrix[:, :, :, piece] = 0
             #     pos = self.locked_pieces[piece]
             #     self.probability_matrix[pos[0], pos[1], pos[2], piece] = 1
+        # self.fix_anchors_with_occ(self.occupancy_grid_pieces)
 
 
     def repair_lock_toggle(self, value):
@@ -345,7 +347,7 @@ class PuzzleSolver:
         self.cfg = path_dic['yaml']
         if not os.path.exists(self.cfg.get_puzzle_external_solution_subfolder_path()):
             init_pos, x0, y0, z0 = self.old_init(R, anc, solved_pieces, pieces_names, path_dic)
-            self.fix_anchors_with_occ(self.occupancy_grid_pieces)
+            # self.fix_anchors_with_occ(self.occupancy_grid_pieces)
             return 0, 0, 0, 0
             # raise Exception(
             #     "Missing external solution folder! Maybe you want to change the init method? \nYou can find it in:\ninput_parameters.yaml: solver --> grid --> method\n")
@@ -371,7 +373,7 @@ class PuzzleSolver:
                                                          sparsify_p=params['solver']['reassembleNet']['sparsify_p'],
                                                          vis=params['solver']['reassembleNet']['visualization'])
             self.set_p_matrix(P_adeela)
-            self.fix_anchors_with_occ(self.occupancy_grid_pieces)
+            # self.fix_anchors_with_occ(self.occupancy_grid_pieces)
             return 0,0,0,0
 
     def initialize_p_from_external_solution(self, all_solutions, rescaling_factor, anchor_idx: int, grid, p_xy_size=(0, 0),
@@ -883,16 +885,23 @@ class PuzzleSolver:
 
     def fix_anchors_with_occ(self, pieces_occupancy_grid, threshold = 1):
         p = self.get_p_matrix()
-        grid_sol = self.extract_grid_sol_from_P(p)
-        if threshold <= 1:
-            threshold = threshold * 100
+        # grid_sol = self.extract_grid_sol_from_P(p)
+        #
+        # if threshold <= 1:
+        #     threshold = threshold * 100
+        #
+        # anchor_mask = (grid_sol[:, -1:] > threshold).astype(int)
+        #
+        # new_anc = np.array(grid_sol * anchor_mask)
+        # num_anchors_new = np.sum(anchor_mask)
+        #
+        # num_anchors = self.locked_pieces.keys().__len__()
 
-        anchor_mask = (grid_sol[:, -1:] > threshold).astype(int)
+        N = p.shape[-1]
+        anchor_mask = np.zeros((N, 1), dtype=int)
 
-        new_anc = np.array(grid_sol * anchor_mask)
-        num_anchors_new = np.sum(anchor_mask)
-
-        num_anchors = self.locked_pieces.keys().__len__()
+        for piece in self.locked_pieces.keys():
+            anchor_mask[piece, 0] = 1
 
         for piece in self.locked_pieces.keys():
             y, x, theta = self.locked_pieces[piece]

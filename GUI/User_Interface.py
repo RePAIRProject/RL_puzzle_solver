@@ -37,7 +37,7 @@ from SandBox import SandBox
 
 Window.clearcolor = (0, 0, 0, 0)
 # Window.borderless = True
-Window.maximize()
+# Window.maximize()
 
 backend_path = os.getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
 path_dic = {}
@@ -217,9 +217,9 @@ class GUIApp(MDApp):
 
         self.toolbar.add_widget(self.pause_play_button)
         self.toolbar.add_widget(self.pl_solver_button)
-        self.toolbar.add_widget(self.neighbour_button)
+        # self.toolbar.add_widget(self.neighbour_button)
         self.toolbar.add_widget(self.anchor_button)
-        self.toolbar.add_widget(self.show_button)
+        # self.toolbar.add_widget(self.show_button)
 
         self.anchor_button.size_hint_x = Window.size[0] / 8
         self.show_button.size_hint_x = Window.size[0] / 8
@@ -613,13 +613,13 @@ class GUIApp(MDApp):
                             if not hasattr(touch, 'offsets'):
                                 touch.offsets = {}
                                 for image in self.current_image_list:
-                                    if image.is_selected:
+                                    if image.is_selected and not image.is_anchor:
                                         touch.offsets[image.name] = [
                                             (self.mouse_pos[0]/image.zoom_scale.x - image.get_real_pos()[0]),
                                             (self.mouse_pos[1]/image.zoom_scale.x - image.get_real_pos()[1]),
                                         ]
                             for image in self.current_image_list:
-                                if image.is_selected:
+                                if image.is_selected and not image.is_anchor:
                                     offset = touch.offsets[image.name]
                                     image.translate((self.mouse_pos[0]/image.zoom_scale.x - offset[0]), (self.mouse_pos[1]/image.zoom_scale.x - offset[1]))
                         # if self.grabbed_image is not None and self.checked_border:
@@ -631,6 +631,7 @@ class GUIApp(MDApp):
                             if (not self.select_anchor_running) and (not self.select_neighbour_running) and (not self.select_neighbour_done):
                                 self.key_fragment_id = str(self.grabbed_image.get_id())
                                 self.key_image = self.grabbed_image
+
                             self.click_label.text = str(self.grabbed_image.name)
                             self.clicked = str(self.grabbed_image.image_number + 1)
                             if hasattr(touch, 'double_tapped'):
@@ -638,22 +639,20 @@ class GUIApp(MDApp):
                                 # numbers = re.findall(r'\d+', temp_text)
                                 # self.sidebar.image_name.text = '_'.join(numbers)
                                 # self.toggle_sidebar(True, self.grabbed_image.is_anchor)
-                                print(self.sidebar.image_name.text)
-                                if self.grabbed_image.is_anchor:
+                                if self.grabbed_image.is_anchor and not (self.grabbed_image.name == self.key_image.name):
                                     self.double_tap_anchor(self.grabbed_image, False)
-                                else:
+                                elif not (self.grabbed_image.name == self.key_image.name):
                                     self.double_tap_anchor(self.grabbed_image, True)
 
     def double_tap_anchor(self, image, value):
         if image is not None:
-            image.set_anchor(value)
-            if value:
-                if update_started:
+            if update_started and (self.pl_solver_running or self.pl_solver_done):
+                if value:
+                    print(update_started, self.pl_solver_running, self.pl_solver_done)
                     couple = (image.name, image.position_memory)
                     back_end.set_p_elements(couple, self.image_offset)
                     image.set_anchor(True)
-            else:
-                if update_started:
+                else:
                     couple = (image.name, image.position_memory)
                     back_end.set_p_elements(couple, self.image_offset, False)
                     image.set_anchor(False)
@@ -675,6 +674,17 @@ class GUIApp(MDApp):
         # zoom reset
         if self.keyboard_input == 122:  # z
             self.zoom_reset()
+        if self.keyboard_input == 112:  # p
+            if not app.lock_apply_solution:
+                # self.background_normal = 'Icons/play.png'  # Change to play icon
+                app.pause_play_button.state = 'down'
+                app.lock_apply_solution = True
+                back_end.solver_toggle_lock(True)
+            else:
+                # self.background_normal = 'Icons/pause.png'  # Change to pause icon
+                app.pause_play_button.state = 'normal'
+                app.lock_apply_solution = False
+                back_end.solver_toggle_lock(False)
 
     def zoom_reset(self):
         for image in self.current_image_list:
@@ -820,6 +830,7 @@ class GUIApp(MDApp):
         if (clicked.isdigit()) & (self.selected_pic == 0):
             self.neighbour_button.disabled = False
             self.selected_pic = int(clicked)
+            start_select_neighbour(self) # Demo should be commented
         if clicked.isdigit():
             self.selected_pic = int(clicked)
         if back_end.pl_solver_running:
@@ -861,7 +872,7 @@ class GUIApp(MDApp):
         self.show_images(self)
         self.neighbour_showed = True
         self.neighbour_button.disabled = True
-        self.show_button.disabled = False
+        self.show_button.disabled = True # DEMO should be False
         self.pl_solver_button.disabled = False
 
     def show_anchors(self):
@@ -869,6 +880,7 @@ class GUIApp(MDApp):
         self.show_images(self)
         self.anchor_showed = True
         self.anchor_button.disabled = True
+
 
     def toolbar_changes(self, color):
         if color == 0:
@@ -1088,6 +1100,7 @@ def start_pl_solver(self):
 
 def get_next_neighbour(self, *args, **kwargs):
     if not app.solution_applied:
+        return # DEMO should be deleted
         boolean, next_neighbours = back_end.get_next_neighbour(app.click_label.text)
         if boolean:
             app.image_is_set = False
