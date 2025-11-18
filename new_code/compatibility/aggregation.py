@@ -38,9 +38,9 @@ class AggregationModule:
     def compute(self, verbose:int = 1):
         """ The wrapper that computes the aggregation """
         if self.method == 'SLM':
-            R = _aggregate_shape_lines_motives(self)
+            R = self._aggregate_shape_lines_motives(self)
         elif self.method == 'SM':
-            R = _aggregate_shape_motives(self)
+            R = self._aggregate_shape_motives(self)
         elif self.method == 'shape':
             R = self.CM_dict['shape']
         elif self.method == 'motif' or self.method == 'motives':
@@ -53,6 +53,8 @@ class AggregationModule:
             R = self.CM_dict['pairwise_alignment_discriminator']
         elif self.method == 'oracle':
             R = self.CM_dict['oracle']
+        elif self.method == 'PAD_with_oracle':
+            R = self._aggregate_PAD_with_oracle()
         else:
             R = self.CM_dict['shape']
 
@@ -82,6 +84,30 @@ class AggregationModule:
 
     def _aggregate_shape_motives(self):
         return 1
+
+############################
+    def _aggregate_PAD_with_oracle(self):
+        """ It combines three compatibilities (ShapeLinesMotifs) """
+
+        R_shape = self.CM_dict['shape']
+        R_oracle = self.CM_dict['oracle']
+        R_pad = self.CM_dict['pairwise_alignment_discriminator']
+
+        RM_oracle = self.RM_dict['oracle']
+        RM_pad = self.RM_dict['pairwise_alignment_discriminator']
+
+        negative_region_map = R_shape < 0
+        R_oracle_positive = R_oracle * (RM_oracle > 0).astype(int)
+        RM_pad_positive = R_pad * (RM_pad > 0)
+
+        combined_pos = R_oracle_positive+RM_pad_positive
+        R = combined_pos - negative_region_map
+
+        #R = _normalize_CM(combined)
+        R = np.maximum(-1, R)
+        return R
+
+    ##############################
 
     def _aggregate_shape_lines_motives(self, lines_avg_val: float = 0.5, motif_avg_val: float = 0.5):
         """ It combines three compatibilities (ShapeLinesMotifs) """

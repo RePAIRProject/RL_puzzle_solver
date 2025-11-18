@@ -163,15 +163,15 @@ def initialize_p_from_MULTI_solution(all_solutions, anchor_idx:int, grid, p_xy_s
 
         # rotate and translate to origin [0,0,0]
         norm_solutions = normalize_solutions(solution, anchor_idx) # output is in pixels and grades
-        print("Normalization")
-        print(norm_solutions)
+        #print("Normalization")
+        #print(norm_solutions)
 
         # adapt solutions to grid (translations)
         center = np.array([p_size_y//2, p_size_x//2], dtype=np.int64)  # shift to center
         norm_solutions[:,:2] = norm_solutions[:,:2] / xy_step + center
         norm_solutions[:, 2] = (norm_solutions[:,2]+360)%360
-        print("Shifted")
-        print(norm_solutions)
+        #print("Shifted")
+        #print(norm_solutions)
 
         for i, mean in enumerate(norm_solutions):
             if i == anchor_idx:
@@ -188,6 +188,7 @@ def initialize_p_from_MULTI_solution(all_solutions, anchor_idx:int, grid, p_xy_s
                 p[:, :, :, i] += prob
 
     #######################################################
+    vis = 0  # DELETE !!!
     if vis == 1:
         import matplotlib.pyplot as plt
         for i, sol in enumerate(all_solutions[0]):
@@ -265,8 +266,8 @@ def initialize_p_from_external_solution(all_solutions, rescaling_factor, anchor_
                 prob = probability_for_single_fragment(grid_size, mean, std_devs)
 
                 if sparsify_p > 0:
-                    n = 9   ## TODO  - load from input_params.yaml !!! That can be val of spars_p [1,3,5,7 ... ]
-                    # n = sparsify_p**2 #OPTION
+                    # n = 9   ## TODO  - load from input_params.yaml !!! That can be val of spars_p [1,3,5,7 ... ]
+                    n = sparsify_p**2 #OPTION
                     top_vals = heapq.nlargest(n, prob.flatten())
                     threshold = min(top_vals)
                     prob[prob < threshold] = 0
