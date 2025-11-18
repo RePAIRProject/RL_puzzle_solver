@@ -1,6 +1,8 @@
 import os
 import re
 from kivy import Config
+Config.set('input', 'mouse', 'mouse, multitouch_on_demand')
+# Config.set('graphics', 'resizable', False)
 from kivy.clock import Clock, mainthread
 from kivy.metrics import dp
 from kivy.uix.image import Image
@@ -34,6 +36,8 @@ from MoveableImage import Status
 from SandBox import SandBox
 
 Window.clearcolor = (0, 0, 0, 0)
+# Window.borderless = True
+Window.maximize()
 
 backend_path = os.getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
 path_dic = {}
@@ -43,7 +47,6 @@ back_end = BackEnd()
 rotation_interval = 0.5
 communication_freq = 0.1  # in seconds
 graphic_freq = 0.1  # in seconds
-
 
 class MainLayout(GridLayout):  # might need to change GridLayout to sth else to be fix some bugs (not as important)
     def __init__(self):
@@ -510,13 +513,18 @@ class GUIApp(MDApp):
         if self.keyboard_input == 308:  # left alt
             if not hasattr(self, 'zoom_processed') or not self.zoom_processed:
                 if touch.button == 'scrollup' or touch.button == 'scrolldown':
-                    for image in self.current_image_list:
-                        if touch.button == 'scrollup':  # scroll up is scrolling down :|
-                            # self.zoom_at_point(0.95, self.mouse_pos)
+                    if touch.button == 'scrollup':  # scroll up is scrolling down :|
+                        # self.zoom_at_point(0.95, self.mouse_pos)
+                        for image in self.current_image_list:
                             image.zoom_at_point(0.95, self.mouse_pos)
-                        elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
-                            # self.zoom_at_point(1.05, self.mouse_pos)
+                        if self.sandbox is not None:
+                            self.sandbox.zoom_at_point(0.95, self.mouse_pos)
+                    elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
+                        # self.zoom_at_point(1.05, self.mouse_pos)
+                        for image in self.current_image_list:
                             image.zoom_at_point(1.05, self.mouse_pos)
+                        if self.sandbox is not None:
+                            self.sandbox.zoom_at_point(1.05, self.mouse_pos)
                     self.zoom_processed = True
             else:
                 self.zoom_processed = False
@@ -626,10 +634,29 @@ class GUIApp(MDApp):
                             self.click_label.text = str(self.grabbed_image.name)
                             self.clicked = str(self.grabbed_image.image_number + 1)
                             if hasattr(touch, 'double_tapped'):
-                                temp_text = self.grabbed_image.name
-                                numbers = re.findall(r'\d+', temp_text)
-                                self.sidebar.image_name.text = '_'.join(numbers)
-                                self.toggle_sidebar(True, self.grabbed_image.is_anchor)
+                                # temp_text = self.grabbed_image.name
+                                # numbers = re.findall(r'\d+', temp_text)
+                                # self.sidebar.image_name.text = '_'.join(numbers)
+                                # self.toggle_sidebar(True, self.grabbed_image.is_anchor)
+                                print(self.sidebar.image_name.text)
+                                if self.grabbed_image.is_anchor:
+                                    self.double_tap_anchor(self.grabbed_image, False)
+                                else:
+                                    self.double_tap_anchor(self.grabbed_image, True)
+
+    def double_tap_anchor(self, image, value):
+        if image is not None:
+            image.set_anchor(value)
+            if value:
+                if update_started:
+                    couple = (image.name, image.position_memory)
+                    back_end.set_p_elements(couple, self.image_offset)
+                    image.set_anchor(True)
+            else:
+                if update_started:
+                    couple = (image.name, image.position_memory)
+                    back_end.set_p_elements(couple, self.image_offset, False)
+                    image.set_anchor(False)
 
     @mainthread
     def on_keyboard_up(self, instance, keyboard, keycode):  # Keyboard up Listener
@@ -652,13 +679,19 @@ class GUIApp(MDApp):
     def zoom_reset(self):
         for image in self.current_image_list:
             image.zoom_reset()
+        if self.sandbox is not None:
+            self.sandbox.zoom_reset()
 
     @mainthread
     def on_resize(self, *args):
+        if self.sandbox is not None:
+            self.bounding_box(is_set=False)
+            self.bounding_box(is_set=True)
         self.sidebar.size = (64, Window.size[1] - self.toolbar.size[1])
         if (self.select_anchor_done is not None) & (self.select_neighbour_done is not None) & (self.pl_solver_done is not None):
             if self.select_anchor_done & self.select_neighbour_done & self.pl_solver_done:
                 if self.resize_event is None:
+                    # self.apply_resize()
                     self.resize_event = Clock.schedule_interval(self.apply_resize_throttled, graphic_freq)
 
     def apply_resize_throttled(self, dt):
@@ -680,7 +713,7 @@ class GUIApp(MDApp):
             self.time_stamp = time.time()
 
     @mainthread
-    def bounding_box(self, is_set, size=(0, 0), center=(0, 0), padding=0, outline_width=2):
+    def bounding_box(self, is_set, size=(100, 100), center=(0, 0), padding=0, outline_width=2):
         """
         Draw (or remove) a transparent-centered sandbox box over the UI.
         - is_set=True  -> draw/refresh the overlay
@@ -689,15 +722,15 @@ class GUIApp(MDApp):
         - center: (cx, cy) in window coords; defaults to window center
         - padding: extra padding around the box (pixels)
         """
+        # center = [Window.size[0] / 2, Window.size[1] / 2]
         # if self.sandbox is None and is_set:
         #     self.sandbox_size = size
         #     self.sandbox = SandBox(size, center, Window.size, self.cm_to_px)
         #     self.grid_layout.canvas.after.add(self.sandbox)
-        # elif not is_set:
-        #     if self.sandbox is not None:
+        # elif not is_set and self.sandbox is not None:
         #         self.grid_layout.canvas.after.remove(self.sandbox)
         #         self.sandbox = None
-        # return
+        return
 
     def clear_images(self, *args, **kwargs):
         for i in range(len(self.showed_image_list)):
@@ -714,7 +747,6 @@ class GUIApp(MDApp):
 
     @mainthread
     def apply_resize(self):
-
         center = [Window.size[0] / 2, Window.size[1] / 2]
         # center = [0, 0]
         bank_offset = self.image_offset
@@ -735,10 +767,7 @@ class GUIApp(MDApp):
             position = np.array([positions[0], positions[1]])
 
             image.update_positions(position, positions[2])
-
-        # resizing the sandbox box
-        self.bounding_box(is_set=False)
-        self.bounding_box(is_set=True)
+            # image.zoom_reset()
 
     @mainthread
     def apply_solution(self, is_final = True):
@@ -794,7 +823,7 @@ class GUIApp(MDApp):
         if clicked.isdigit():
             self.selected_pic = int(clicked)
         if back_end.pl_solver_running:
-            universal_zoom(2.5)
+            universal_zoom(1)
         # if not self.anchor_showed:
         #     if (back_end.get_select_anchor_done()) & (len(self.current_image_list) == 0):
         #         self.show_anchors(self)
@@ -943,6 +972,10 @@ def generate_placement():
     print("answer", answer_dic)
 
     save_demo_parameters(answer_dic, probability, iteration="final", is_end=True)
+    for piece_id, position in answer_dic.items():
+        old_position = answer_dic[piece_id].copy()
+        position[0] = old_position[1]
+        position[1] = -1 * old_position[0]
     # for piece_id, position in answer_dic.items():
     #     old_position = answer_dic[piece_id].copy()
     #     position[0] = old_position[1]
@@ -1038,7 +1071,7 @@ def start_pl_solver(self):
     app.pl_solver_button.disabled = True
 
     anchor_pos = app.key_image.position_memory
-    app.bounding_box(True, size=(600, 600), center=anchor_pos)
+    app.bounding_box(True, size=(600, 600))
 
     for i in range(0, len(app.current_image_list)):
         if not (app.current_image_list[i].get_id() == app.key_image.get_id()):
@@ -1291,8 +1324,8 @@ def check_collision(image, rectangle):
     return True
 
 def check_collision_with_sandbox(image, sandbox_rectangle):
-    if app.sandbox_group is not None:
-        print("sandbox rectangle", app.sandbox_group.children.pos, app.sandbox_group.children.size)
+    if app.sandbox is not None:
+        print("sandbox rectangle")
     else:
         print("No sandbox available.")
 
@@ -1512,6 +1545,9 @@ if __name__ == '__main__':
     get_setting()
 
     Config.set('input', 'mouse', 'mouse, multitouch_on_demand')
+    # Config.set('graphics', 'fullscreen', '1')  # or '1'
+    # Config.set('graphics', 'resizable', False)
+
 
     read_ground_truth()
 

@@ -98,9 +98,9 @@ aggregation:
   method: 'PAD'  
 
 solver:
-  T_first: 10 #100
-  T_next: 10 #500
-  T_max: 10 #3000
+  T_first: 1000 #100
+  T_next: 1000 #500
+  T_max: 1000 #3000
   PQ_mode: 'exp'
   no_rotations: False
   # TODO: switch to anchor ID

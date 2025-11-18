@@ -857,6 +857,8 @@ class BackEnd:
         for j, psk in enumerate(sorted_keys):
             pixel_solution[j, :] = pixel_solution_dic[psk]
 
+        print("pixel_solution:", pixel_solution)
+
         placement_folder = os.path.join(self.path_dic['cache_path'], 'sandbed_placement')
         os.makedirs(placement_folder, exist_ok=True)
 
@@ -917,14 +919,14 @@ class BackEnd:
         names = []
         print("inside solution", pixel_solution)
         for piece, piece_T in zip(self.puzzle.pieces, pixel_solution):
-            # print("piece.data.polygon:", piece.data.polygon)
-            # zero_centered_polygon = affinity.translate(piece.data.polygon, piece.data.polygon.centroid.x, piece.data.polygon.centroid.y)
-            assembled_polygon = affinity.translate(piece.data.polygon, piece_T[0], piece_T[1])
-            # assembled_polygon = affinity.rotate(assembled_polygon, piece_T[2], origin='centroid', use_radians=False)
+            dx, dy, angle_deg = piece_T
+            poly = piece.data.polygon
+
+            assembled_polygon = affinity.translate(poly, dx, dy)
+
             polygons.append(assembled_polygon)
-            # plt.plot(*assembled_polygon.exterior.xy)
             names.append(piece.name)
-        # plt.show()
+
         return MultiPolygon(polygons), names
 
     def save_placement_json(self, path, fresco, solution, assembly_sequence, pieces_names):
