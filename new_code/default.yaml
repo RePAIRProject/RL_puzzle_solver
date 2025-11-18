@@ -72,7 +72,7 @@ compatibility:
       geometric_params:
         something: 1
     pairwise_alignment_discriminator:
-      enabled: Yes
+      enabled: No
       trained_model_folder: ~pretrained_PADs/v4_fast_224/
       use_fast: True 
       use_batch: True 
@@ -94,6 +94,7 @@ compatibility:
     oracle:
       enabled: No
       # this is for the creation of images for pairwise "good" and "bad" alignments
+      create_pairwise_alignments_dataset: false
       pairwise_alignments_dataset:
         enabled: No
         data_folder: ''

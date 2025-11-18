@@ -190,7 +190,7 @@ class CompatibilityMatrixModule:
             self.puzzle_info = json.load(pijf)
         # gt_data = pd.read_csv(os.path.join(oracle_info['gt_root_folder'], f"{oracle_info['gt_puzzle_name']}.{oracle_info['gt_puzzle_name_extension']}"))
 
-        if self.oracle_params['create_pairwise_alignments_dataset'] == True:
+        if self.oracle_params['pairwise_alignments_dataset'] == True:
             print("\nCreating pairwise alignment datasets..\n\n")
             self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'] = os.path.join(self.cfg.data_folder, self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'correct')  #, oracle_info['gt_puzzle_name']) 
             os.makedirs(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], exist_ok=True)
