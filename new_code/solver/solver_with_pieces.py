@@ -382,8 +382,17 @@ class SolverWithPiecesModule:
         names = []
         for piece, piece_T in zip(self.puzzle.pieces, pixel_solution):
             assembled_polygon = affinity.translate(piece.data.polygon, piece_T[0], piece_T[1])
+            # plt.plot(*assembled_polygon.exterior.xy, color='red')
+
+            # rotated_assembled_polygon = affinity.rotate(assembled_polygon, -piece_T[2], origin=tuple([piece.data.polygon.centroid.x, piece.data.polygon.centroid.y]))
+            # plt.plot(*rotated_assembled_polygon.exterior.xy, color='blue')
+
+            assembled_polygon = affinity.rotate(assembled_polygon, -piece_T[2])
+            # plt.plot(*rotated_assembled_polygon2.exterior.xy, color='green')
+            
+            # plt.show()
             polygons.append(assembled_polygon)
-            # plt.plot(*assembled_polygon.exterior.xy)
+            
             names.append(piece.name)
         # plt.show()
         return MultiPolygon(polygons), names
