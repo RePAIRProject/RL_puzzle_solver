@@ -414,14 +414,15 @@ class MovableImage(Image):
         width_height = ((self.width - self.norm_image_size[0]) / 2,
                         (self.height - self.norm_image_size[1]) / 2)
         self.extract_border_pixels()
-        print("offset:", self.offset_org)
-        print("ratio", self.ratio )
-        image_true_left = self.image_left / self.ratio[0] + self.position_memory[0] + self.offset_org[0] / 2 * self.ratio[0]
-        image_true_right = self.image_right / self.ratio[0] - width_height[0] * 2 / self.ratio[0] + self.position_memory[0] + self.offset_org[0] / 2 * self.ratio[0]
-        image_true_top = self.image_top / self.ratio[1] - width_height[1] * 2 / self.ratio[1] + self.position_memory[1] + self.offset_org[1]/2
-        image_true_bottom = self.image_bottom / self.ratio[1] + self.position_memory[1] + self.offset_org[1] * self.ratio[1]
-        print("image_pos_memory:", self.position_memory)
-        print("image true borders:", image_true_left, image_true_right, image_true_bottom, image_true_top)
+        # print("offset:", self.offset_org)
+        # print("ratio", self.ratio )
+        # print("width_height:", width_height)
+        image_true_left = (self.image_left / self.ratio[0] + self.position_memory[0] / self.ratio[0] + width_height[0])
+        image_true_right = (self.image_right / self.ratio[0] + self.position_memory[0] / self.ratio[0] + width_height[0])
+        image_true_top = (self.image_top / self.ratio[1] + self.position_memory[1] / self.ratio[1] + width_height[1])
+        image_true_bottom = (self.image_bottom / self.ratio[1] + self.position_memory[1] / self.ratio[1] + width_height[1])
+        # print("image_pos_memory:", self.position_memory)
+        # print("image true borders:", image_true_left, image_true_right, image_true_bottom, image_true_top)
         if (
                 image_true_left > sandbox_rectangle[0] and
                 image_true_right < sandbox_rectangle[1] and
@@ -465,7 +466,7 @@ class MovableImage(Image):
                 if i[0] < minimum_left:
                     minimum_left = i[0]
                     minimum_left_point = i
-        print("edge cases:", minimum_left_point, minimum_bottom_point, maximum_right_point, maximum_top_point)
+        # print("edge cases:", minimum_left_point, maximum_right_point, minimum_bottom_point, maximum_top_point)
         rotated_left_point = self.rotate_edge_points(minimum_left_point)
         rotated_right_point = self.rotate_edge_points(maximum_right_point)
         rotated_bottom_point = self.rotate_edge_points(minimum_bottom_point)
@@ -476,9 +477,9 @@ class MovableImage(Image):
         self.image_left = min(rotated_left_point[0], rotated_right_point[0], rotated_bottom_point[0], rotated_top_point[0])
         self.image_right = max(rotated_left_point[0], rotated_right_point[0], rotated_bottom_point[0], rotated_top_point[0])
 
-        print("rotation", self.rot.angle)
-        print("rotated edge cases:", rotated_left_point, rotated_bottom_point, rotated_right_point, rotated_top_point)
-        print("final edges:", self.image_left, self.image_right, self.image_bottom, self.image_top)
+        # print("rotation", self.rot.angle)
+        # print("rotated edge cases:", rotated_left_point, rotated_right_point, rotated_bottom_point, rotated_top_point)
+        # print("final edges:", self.image_left, self.image_right, self.image_bottom, self.image_top)
 
 
 

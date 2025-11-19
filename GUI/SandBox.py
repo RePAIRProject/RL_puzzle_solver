@@ -4,6 +4,7 @@ from kivy.graphics import Color, Rectangle, Line, InstructionGroup, Scale, PushM
 class SandBox(InstructionGroup):
     def __init__(self, size, center, window_size, cm_to_px=1.0):
         super(SandBox, self).__init__()
+        # print("sandbox size", size)
         self.padding = 0
         self.outline_width = 2
 

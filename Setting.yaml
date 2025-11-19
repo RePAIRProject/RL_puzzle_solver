@@ -1,7 +1,7 @@
 ---  # yaml document beginning
 # comment syntax
 
-data_folder: /home/blemental/RL_puzzle_solver/GUI/DataBase/RePAIR_Demo
+data_folder: /home/omid/RL_puzzle_solver_GUI/GUI/DataBase/RePAIR_Demo/
 puzzle_name: puzzle_0000016_RP_group_15
 exp_name: exp_20251022124132_qdbqlj
 verbosity: 2
@@ -98,9 +98,9 @@ aggregation:
   method: 'PAD'  
 
 solver:
-  T_first: 500 #1000
-  T_next: 250 #500
-  T_max: 1500 #3000
+  T_first: 2000 #100
+  T_next: 2000 #500
+  T_max: 2000 #3000
   PQ_mode: 'exp'
   no_rotations: False
   # TODO: switch to anchor ID
@@ -123,16 +123,6 @@ solver:
     std_dev_y: 110
     std_dev_t: 1 
 
-  solution:
-    save_pixel_solution: True 
-    save_as_txt: True
-    visualization:
-      add_suffix: True
-      in_the_suffix: 
-        anchor_index: True 
-        agg_method: True
-       
-  # how to save the solution
   solution:
     save_pixel_solution: True 
     save_as_txt: True

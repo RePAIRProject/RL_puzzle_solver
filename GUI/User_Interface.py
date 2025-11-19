@@ -504,10 +504,22 @@ class GUIApp(MDApp):
         if self.keyboard_input == 32: # space
             if touch.button == 'scrollup':  # scroll up is scrolling down :|
                 if self.grabbed_image is not None:
+                    old_angle = self.grabbed_image.angle
                     self.grabbed_image.rotate(-1 * rotation_interval)  # its  2x God knows why
+                    new_angle = self.grabbed_image.rot.angle
+                    if new_angle % (2 * rotation_interval) == 0 and self.sandbox is not None:
+                        print("new angel:", new_angle)
+                        if check_collision_with_sandbox(self.grabbed_image, self.sandbox):
+                            self.grabbed_image.rotate(2 * rotation_interval)
             elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
                 if self.grabbed_image is not None:
+                    old_angle = self.grabbed_image.angle
                     self.grabbed_image.rotate(+1 * rotation_interval)  # its  2x God knows why
+                    new_angle = self.grabbed_image.rot.angle
+                    if new_angle % (2 * rotation_interval) == 0 and self.sandbox is not None:
+                        print("new angel:", new_angle)
+                        if check_collision_with_sandbox(self.grabbed_image, self.sandbox):
+                            self.grabbed_image.rotate(-2 * rotation_interval)
 
         # zooming functionality
         if self.keyboard_input == 308:  # left alt
@@ -619,10 +631,13 @@ class GUIApp(MDApp):
                                         ]
                             for image in self.current_image_list:
                                 if image.is_selected and not image.is_anchor:
-                                    if self.sandbox is not None:
-                                        print(check_collision_with_sandbox(image, self.sandbox))
+                                    old_x, old_y = image.get_real_pos()
+
                                     offset = touch.offsets[image.name]
                                     image.translate((self.mouse_pos[0]/image.zoom_scale.x - offset[0]), (self.mouse_pos[1]/image.zoom_scale.x - offset[1]))
+                                    if self.sandbox is not None:
+                                        if check_collision_with_sandbox(image, self.sandbox):
+                                            image.translate(old_x, old_y)
                         # if self.grabbed_image is not None and self.checked_border:
                         #     if not hasattr(touch, 'offset_x') or not hasattr(touch, 'offset_y'):
                         #         touch.offset_x = self.mouse_pos[0] - self.grabbed_image.get_real_pos()[0]
@@ -1351,8 +1366,8 @@ def check_collision_with_sandbox(image, sandbox):
     sandbox_right = sandbox.border_line.rectangle[0] + sandbox.border_line.rectangle[2]
     sandbox_top = sandbox.border_line.rectangle[1] + sandbox.border_line.rectangle[3]
     sandbox_rectangle = [sandbox_left, sandbox_right, sandbox_bottom, sandbox_top]
-    print('sandbox_borders', sandbox_rectangle)
-    print('image', image.position_memory)
+    # print('sandbox_borders', sandbox_rectangle)
+    # print('image', image.position_memory)
     center = [Window.size[0] / 2, Window.size[1] / 2]
     image.update_offset(center)
     value = not image.check_inside_sandbox(sandbox_rectangle)
