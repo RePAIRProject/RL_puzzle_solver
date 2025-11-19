@@ -31,6 +31,7 @@ class MovableImage(Image):
     def __init__(self, path, path_bw, label, score, image_number, has_score, name, angle, is_anchor=False, **kwargs):
         super(MovableImage, self).__init__()
         self.offset = [0, 0]
+        self.offset_org = (0, 0)
         self.is_selected = False
         self.name = name
         os_path = getcwd()
@@ -49,6 +50,11 @@ class MovableImage(Image):
         self.label = label
         self.score = score
 
+        self.image_top = 0
+        self.image_bottom = 0
+        self.image_left = 0
+        self.image_right = 0
+
         self.grid = GridLayout()
         self.grid.cols = 1
         self.grid.rows = 2
@@ -64,7 +70,7 @@ class MovableImage(Image):
 
         self.add_score()
         self.image_bw = self.extract_cv_image()
-        self.contours = self.extract_border_polygons()
+        self.contours, self.coords = self.extract_border_polygons()
 
         self.mask = self.get_mask()
 
@@ -120,7 +126,7 @@ class MovableImage(Image):
             for i in range(len(contours[j])):
                 point = (contours[j][i][0][0], contours[j][i][0][1])
                 coords.append(point)
-        return contours
+        return contours, coords
     # /todo down sampling
 
     def check_if_inside(self, point):
@@ -327,8 +333,15 @@ class MovableImage(Image):
 
     def update_offset(self, center):
         #center is Windows.size/2
-        offset = [(center[0] - self.parent.size[0] / 2 - (self.parent.pos[0] - self.pos[0]) / 2) * self.ratio[0],
-                  (center[1] - self.parent.size[1] / 2 - (self.parent.pos[1] - self.pos[1]) / 2) * self.ratio[1]]
+        self.offset_org = (self.parent.pos[0] - self.pos[0],
+                           self.parent.pos[1] - self.pos[1]
+                           )
+
+        offset = [(center[0] - self.parent.size[0]/2 - self.offset_org[0] / 2) * self.ratio[0],
+                  (center[1] - self.parent.size[1]/2 -  self.offset_org[1] / 2) * self.ratio[1]]
+
+        # self.offset_org = offset
+
         return offset
 
     def set_is_grabbed(self, is_grabbed):
@@ -396,3 +409,100 @@ class MovableImage(Image):
 
 
         return [min_x, min_y, max_x, max_y]
+
+    def check_inside_sandbox(self, sandbox_rectangle):
+        width_height = ((self.width - self.norm_image_size[0]) / 2,
+                        (self.height - self.norm_image_size[1]) / 2)
+        self.extract_border_pixels()
+        print("offset:", self.offset_org)
+        print("ratio", self.ratio )
+        image_true_left = self.image_left / self.ratio[0] + self.position_memory[0] + self.offset_org[0] / 2 * self.ratio[0]
+        image_true_right = self.image_right / self.ratio[0] - width_height[0] * 2 / self.ratio[0] + self.position_memory[0] + self.offset_org[0] / 2 * self.ratio[0]
+        image_true_top = self.image_top / self.ratio[1] - width_height[1] * 2 / self.ratio[1] + self.position_memory[1] + self.offset_org[1]/2
+        image_true_bottom = self.image_bottom / self.ratio[1] + self.position_memory[1] + self.offset_org[1] * self.ratio[1]
+        print("image_pos_memory:", self.position_memory)
+        print("image true borders:", image_true_left, image_true_right, image_true_bottom, image_true_top)
+        if (
+                image_true_left > sandbox_rectangle[0] and
+                image_true_right < sandbox_rectangle[1] and
+                image_true_bottom > sandbox_rectangle[2] and
+                image_true_top < sandbox_rectangle[3]
+        ):
+            return True
+        # elif image_true_right > sandbox_rectangle[1]:
+        #     return False
+        # elif image_true_top < sandbox_rectangle[2]:
+        #     return False
+        # elif image_true_bottom > sandbox_rectangle[3]:
+        #     return False
+        return False
+
+    def extract_border_pixels(self):
+        self.image_top = 0
+        self.image_bottom = 0
+        self.image_left = 0
+        self.image_right = 0
+        # find maximum coords
+        maximum_top = - 2**31
+        minimum_bottom = 2**31 - 1
+        maximum_right = - 2**31
+        minimum_left = 2**31 - 1
+        minimum_left_point = (0, 0)
+        minimum_bottom_point = (0, 0)
+        maximum_right_point = (0, 0)
+        maximum_top_point = (0, 0)
+        for i in self.coords:
+            if self.check_mask(i):
+                if i[1] > maximum_top:
+                    maximum_top = i[1]
+                    maximum_top_point = i
+                if i[1] < minimum_bottom:
+                    minimum_bottom = i[1]
+                    minimum_bottom_point = i
+                if i[0] > maximum_right:
+                    maximum_right = i[0]
+                    maximum_right_point = i
+                if i[0] < minimum_left:
+                    minimum_left = i[0]
+                    minimum_left_point = i
+        print("edge cases:", minimum_left_point, minimum_bottom_point, maximum_right_point, maximum_top_point)
+        rotated_left_point = self.rotate_edge_points(minimum_left_point)
+        rotated_right_point = self.rotate_edge_points(maximum_right_point)
+        rotated_bottom_point = self.rotate_edge_points(minimum_bottom_point)
+        rotated_top_point = self.rotate_edge_points(maximum_top_point)
+
+        self.image_top = max(rotated_left_point[1], rotated_right_point[1], rotated_bottom_point[1], rotated_top_point[1])
+        self.image_bottom = min(rotated_left_point[1], rotated_right_point[1], rotated_bottom_point[1], rotated_top_point[1])
+        self.image_left = min(rotated_left_point[0], rotated_right_point[0], rotated_bottom_point[0], rotated_top_point[0])
+        self.image_right = max(rotated_left_point[0], rotated_right_point[0], rotated_bottom_point[0], rotated_top_point[0])
+
+        print("rotation", self.rot.angle)
+        print("rotated edge cases:", rotated_left_point, rotated_bottom_point, rotated_right_point, rotated_top_point)
+        print("final edges:", self.image_left, self.image_right, self.image_bottom, self.image_top)
+
+
+
+    def rotate_edge_points(self, point):
+        # Center of the image in pixel coords (same system as self.coords)
+        h, w = self.image_bw.shape[:2]
+        cx = w / 2.0
+        cy = h / 2.0
+
+        # Translate point so that center is at (0, 0)
+        dx = point[0] - cx
+        dy = point[1] - cy
+
+        # Angle in radians (use your current rotation angle)
+        theta = math.radians(self.rot.angle)  # or self.rot.angle
+
+        cos_t = math.cos(theta)
+        sin_t = math.sin(theta)
+
+        # Standard 2D rotation around origin
+        rx = dx * cos_t - dy * sin_t
+        ry = dx * sin_t + dy * cos_t
+
+        # Translate back
+        return rx + cx, ry + cy
+
+

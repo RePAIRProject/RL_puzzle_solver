@@ -549,7 +549,6 @@ class GUIApp(MDApp):
                     for image in reversed(self.current_image_list):
                         if not hasattr(touch, 'dragging') or not touch.dragging:
                             if check_image_select(image, self.mouse_pos):
-                                check_collision_with_sandbox(image, self.sandbox_group)
                                 # if hasattr(self, 'grabbed_image') and self.grabbed_image is not None:
                                 #     self.grabbed_image.deselect()
                                 self.grabbed_image = image
@@ -620,6 +619,8 @@ class GUIApp(MDApp):
                                         ]
                             for image in self.current_image_list:
                                 if image.is_selected and not image.is_anchor:
+                                    if self.sandbox is not None:
+                                        print(check_collision_with_sandbox(image, self.sandbox))
                                     offset = touch.offsets[image.name]
                                     image.translate((self.mouse_pos[0]/image.zoom_scale.x - offset[0]), (self.mouse_pos[1]/image.zoom_scale.x - offset[1]))
                         # if self.grabbed_image is not None and self.checked_border:
@@ -732,14 +733,14 @@ class GUIApp(MDApp):
         - center: (cx, cy) in window coords; defaults to window center
         - padding: extra padding around the box (pixels)
         """
-        # center = [Window.size[0] / 2, Window.size[1] / 2]
-        # if self.sandbox is None and is_set:
-        #     self.sandbox_size = size
-        #     self.sandbox = SandBox(size, center, Window.size, self.cm_to_px)
-        #     self.grid_layout.canvas.after.add(self.sandbox)
-        # elif not is_set and self.sandbox is not None:
-        #         self.grid_layout.canvas.after.remove(self.sandbox)
-        #         self.sandbox = None
+        center = [Window.size[0] / 2, Window.size[1] / 2]
+        if self.sandbox is None and is_set:
+            self.sandbox_size = size
+            self.sandbox = SandBox(size, center, Window.size, self.cm_to_px)
+            self.grid_layout.canvas.after.add(self.sandbox)
+        elif not is_set and self.sandbox is not None:
+                self.grid_layout.canvas.after.remove(self.sandbox)
+                self.sandbox = None
         return
 
     def clear_images(self, *args, **kwargs):
@@ -1083,7 +1084,14 @@ def start_pl_solver(self):
     app.pl_solver_button.disabled = True
 
     anchor_pos = app.key_image.position_memory
-    app.bounding_box(True, size=(600, 600))
+    params = path_dic['params']
+    probability_size = params['solver']['grid']['manual_params']['p_xy_size']
+    xy_step = params['compatibility']['grid']['xy_step']
+    bounding_box_size = [probability_size[0] * xy_step, probability_size[1] * xy_step]
+    print('probability_size', probability_size)
+    print('xy_step', xy_step)
+    print('bounding_box_size', bounding_box_size)
+    app.bounding_box(True, size = bounding_box_size)
 
     for i in range(0, len(app.current_image_list)):
         if not (app.current_image_list[i].get_id() == app.key_image.get_id()):
@@ -1336,11 +1344,19 @@ def check_collision(image, rectangle):
         return False
     return True
 
-def check_collision_with_sandbox(image, sandbox_rectangle):
-    if app.sandbox is not None:
-        print("sandbox rectangle")
-    else:
-        print("No sandbox available.")
+def check_collision_with_sandbox(image, sandbox):
+    # print("sandbox_rectangle", sandbox.border_line.rectangle[0], sandbox.border_line.rectangle[1],)
+    sandbox_left = sandbox.border_line.rectangle[0]
+    sandbox_bottom = sandbox.border_line.rectangle[1]
+    sandbox_right = sandbox.border_line.rectangle[0] + sandbox.border_line.rectangle[2]
+    sandbox_top = sandbox.border_line.rectangle[1] + sandbox.border_line.rectangle[3]
+    sandbox_rectangle = [sandbox_left, sandbox_right, sandbox_bottom, sandbox_top]
+    print('sandbox_borders', sandbox_rectangle)
+    print('image', image.position_memory)
+    center = [Window.size[0] / 2, Window.size[1] / 2]
+    image.update_offset(center)
+    value = not image.check_inside_sandbox(sandbox_rectangle)
+    return value
 
 def check_image_select(image, mouse_pos):
     if image.collides(mouse_pos):
