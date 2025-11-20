@@ -439,47 +439,39 @@ class MovableImage(Image):
         return False
 
     def extract_border_pixels(self):
-        self.image_top = 0
-        self.image_bottom = 0
-        self.image_left = 0
-        self.image_right = 0
-        # find maximum coords
-        maximum_top = - 2**31
-        minimum_bottom = 2**31 - 1
-        maximum_right = - 2**31
-        minimum_left = 2**31 - 1
-        minimum_left_point = (0, 0)
-        minimum_bottom_point = (0, 0)
-        maximum_right_point = (0, 0)
-        maximum_top_point = (0, 0)
-        for i in self.coords:
-            if self.check_mask(i):
-                if i[1] > maximum_top:
-                    maximum_top = i[1]
-                    maximum_top_point = i
-                if i[1] < minimum_bottom:
-                    minimum_bottom = i[1]
-                    minimum_bottom_point = i
-                if i[0] > maximum_right:
-                    maximum_right = i[0]
-                    maximum_right_point = i
-                if i[0] < minimum_left:
-                    minimum_left = i[0]
-                    minimum_left_point = i
-        # print("edge cases:", minimum_left_point, maximum_right_point, minimum_bottom_point, maximum_top_point)
-        rotated_left_point = self.rotate_edge_points(minimum_left_point)
-        rotated_right_point = self.rotate_edge_points(maximum_right_point)
-        rotated_bottom_point = self.rotate_edge_points(minimum_bottom_point)
-        rotated_top_point = self.rotate_edge_points(maximum_top_point)
+        # Init
+        max_top = -math.inf
+        min_bottom = math.inf
+        max_right = -math.inf
+        min_left = math.inf
 
-        self.image_top = max(rotated_left_point[1], rotated_right_point[1], rotated_bottom_point[1], rotated_top_point[1])
-        self.image_bottom = min(rotated_left_point[1], rotated_right_point[1], rotated_bottom_point[1], rotated_top_point[1])
-        self.image_left = min(rotated_left_point[0], rotated_right_point[0], rotated_bottom_point[0], rotated_top_point[0])
-        self.image_right = max(rotated_left_point[0], rotated_right_point[0], rotated_bottom_point[0], rotated_top_point[0])
+        top_p = bottom_p = left_p = right_p = (0, 0)
 
-        # print("rotation", self.rot.angle)
-        # print("rotated edge cases:", rotated_left_point, rotated_right_point, rotated_bottom_point, rotated_top_point)
-        # print("final edges:", self.image_left, self.image_right, self.image_bottom, self.image_top)
+        # Find extremes
+        for x, y in self.coords:
+            if not self.check_mask((x, y)):
+                continue
+
+            if y > max_top:
+                max_top, top_p = y, (x, y)
+            if y < min_bottom:
+                min_bottom, bottom_p = y, (x, y)
+            if x > max_right:
+                max_right, right_p = x, (x, y)
+            if x < min_left:
+                min_left, left_p = x, (x, y)
+
+        # Rotate extreme points
+        pts = list(map(self.rotate_edge_points, (left_p, right_p, bottom_p, top_p)))
+
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+
+        # Set final bounds
+        self.image_left = min(xs)
+        self.image_right = max(xs)
+        self.image_bottom = min(ys)
+        self.image_top = max(ys)
 
 
 
@@ -494,7 +486,7 @@ class MovableImage(Image):
         dy = point[1] - cy
 
         # Angle in radians (use your current rotation angle)
-        theta = math.radians(self.rot.angle)  # or self.rot.angle
+        theta = math.radians(self.rot.angle)
 
         cos_t = math.cos(theta)
         sin_t = math.sin(theta)
@@ -503,7 +495,5 @@ class MovableImage(Image):
         rx = dx * cos_t - dy * sin_t
         ry = dx * sin_t + dy * cos_t
 
-        # Translate back
         return rx + cx, ry + cy
-
 

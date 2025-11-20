@@ -2,8 +2,8 @@
 # comment syntax
 
 data_folder: /home/omid/RL_puzzle_solver_GUI/GUI/DataBase/RePAIR_Demo/
-puzzle_name: puzzle_0000016_RP_group_15
-exp_name: exp_20251022124132_qdbqlj
+puzzle_name: puzzle_0000030_RP_group_29
+exp_name: exp_20251022121117_qhcfeh
 verbosity: 2
 # skip_done: True # for run_on_dataset
 
@@ -98,8 +98,8 @@ aggregation:
   method: 'PAD'  
 
 solver:
-  T_first: 2000 #100
-  T_next: 2000 #500
+  T_first: 50 #100
+  T_next: 100 #500
   T_max: 2000 #3000
   PQ_mode: 'exp'
   no_rotations: False
@@ -114,7 +114,7 @@ solver:
     method: integration
     # this is used only when method is set to 'manual'
     manual_params:
-      p_xy_size: [ 100, 100 ]
+      p_xy_size: [ 80,80 ]
       sandbox_size: [ 850, 850 ]   # size of sandbox_size in mm
 
   # integration with ReassembleNet

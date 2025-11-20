@@ -503,7 +503,7 @@ class GUIApp(MDApp):
             self.is_grabbing_window = True
         if self.keyboard_input == 32: # space
             if touch.button == 'scrollup':  # scroll up is scrolling down :|
-                if self.grabbed_image is not None:
+                if self.grabbed_image is not None and not self.grabbed_image.is_anchor:
                     old_angle = self.grabbed_image.angle
                     self.grabbed_image.rotate(-1 * rotation_interval)  # its  2x God knows why
                     new_angle = self.grabbed_image.rot.angle
@@ -512,7 +512,7 @@ class GUIApp(MDApp):
                         if check_collision_with_sandbox(self.grabbed_image, self.sandbox):
                             self.grabbed_image.rotate(2 * rotation_interval)
             elif touch.button == 'scrolldown':  # scrolldown is scrolling up :|
-                if self.grabbed_image is not None:
+                if self.grabbed_image is not None and not self.grabbed_image.is_anchor:
                     old_angle = self.grabbed_image.angle
                     self.grabbed_image.rotate(+1 * rotation_interval)  # its  2x God knows why
                     new_angle = self.grabbed_image.rot.angle
@@ -833,9 +833,9 @@ class GUIApp(MDApp):
                     image.update_positions(new_positions, positions[2])
             else:
                 image.update_positions([-1500, -1500], 0)
-        if all_anchored:
-            app.bounding_box(is_set=False)
-            back_end.kill_puzzle_solver()
+        # if all_anchored:
+        #     app.bounding_box(is_set=False)
+            # back_end.kill_puzzle_solver() # Demo should be uncommented
 
     def checking_clock(self, *args, **kwargs):
         self.communicate_thread_lock.acquire()
@@ -880,7 +880,7 @@ class GUIApp(MDApp):
         # self.show_button.text = 'Next Loop'
         # self.show_button.disabled = False
         # self.neighbour_button.disabled = True
-        self.add_final_button()
+        # self.add_final_button()
 
 
     def show_neighbours(self):
@@ -982,7 +982,8 @@ def to_the_robot(self):
 def generate_placement():
     solved_pieces = get_screen_pieces(only_solved=False)
     print("solved_pieces", solved_pieces)
-    app.pl_solution, original_answer, probability = back_end.get_pl_solution()
+    # app.pl_solution, original_answer, probability = back_end.get_pl_solution()
+    x, probability, y, z = back_end.get_solution_dict()
     # answer = loop_finalization(solved_pieces)
     answer_dic = {}
     for i in range(len(solved_pieces)):
@@ -1097,7 +1098,6 @@ def start_pl_solver(self):
     global update_started
     app.show_button.disabled = True
     app.pl_solver_button.disabled = True
-
     anchor_pos = app.key_image.position_memory
     params = path_dic['params']
     probability_size = params['solver']['grid']['manual_params']['p_xy_size']
@@ -1119,6 +1119,7 @@ def start_pl_solver(self):
     # print("solved_piece", solved_piece)
     app.last_eval_bucket = -1
     back_end.start_pl_solver_thread(back_end.key_fragment, back_end.neighbour_ids, solved_piece)
+    app.add_final_button()  # DEMO should be commented
     universal_zoom_applied = False
 
 def get_next_neighbour(self, *args, **kwargs):
