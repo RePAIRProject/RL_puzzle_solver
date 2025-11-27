@@ -4,6 +4,7 @@ import pdb
 import sys
 import os
 
+import natsort
 import numpy as np
 import yaml
 
@@ -100,7 +101,8 @@ def assemble(fragments_list, path_dic, org_puzzle, params, return_solution_as='d
     ppars["theta_step"] = ppars_yaml['grid_params']['theta_step']
 
     pieces_names = os.listdir(pieces_folder)
-    pieces_names.sort()
+    # pieces_names.sort()
+    pieces_names = natsort.natsorted(pieces_names)
     
     # get pieces as a list
     anchor = 0
@@ -135,11 +137,11 @@ def assemble(fragments_list, path_dic, org_puzzle, params, return_solution_as='d
     # R = R[:, :, :, pieces_to_include, :]  # re-arrange R-matrix
     # R = R[:, :, 0:1, :, pieces_to_include]  # 0:4 works best for group 28 token check
 
-    # group 1
-    factor = 0.8
-    R = R * factor
-    R = np.clip(R, -1  * factor, factor)
-    R = np.where(R < 0, -1 * factor, R)
+    # # group 1
+    # factor = 0.8
+    # R = R * factor
+    # R = np.clip(R, -1  * factor, factor)
+    # R = np.where(R < 0, -1 * factor, R)
 
     # group 3
     # factor = 5
@@ -154,14 +156,14 @@ def assemble(fragments_list, path_dic, org_puzzle, params, return_solution_as='d
     # R = np.where(R < 0, -1 * factor, R)
 
     # group manual solver...
-    # factor = 0.0
-    # R = R * factor
-    # R = np.clip(R, -1 * factor, factor)
-    # R = np.where(R < 0, -1 * factor, R)
+    factor = 1
+    if path_dic["dataset_name"] == "puzzle_0000045_RP_group_44":
+        # R = R * factor
+        factor = 0.7926
+        R = np.clip(R, -1, factor)
+        # R = np.where(R < 0, -1 * factor, R)
 
     anchor = pieces_to_include.index(anchor)
-
-
 
     pieces_included = []
 
@@ -170,11 +172,11 @@ def assemble(fragments_list, path_dic, org_puzzle, params, return_solution_as='d
     for i in range(len(pieces_to_include)):
         pieces_included.append(pieces_names[pieces_to_include[i]])
 
+    # pieces_included = natsort.natsorted(pieces_included)
+
     occupancy_grid_pieces = _compute_occupancy_grid(number_of_pieces=n, puzzle=org_puzzle, params = params) # (n, xy_num_points, xy_num_points)
 
     puzzle_solver.__init__(ppars, pieces_included, path_dic)
-
-
 
     solution = puzzle_solver.solve_puzzle(R, anchor, pieces_included, ppars, path_dic, occupancy_grid_pieces,
                             return_as=return_solution_as, solved_pieces=solved_pieces)

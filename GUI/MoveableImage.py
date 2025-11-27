@@ -350,7 +350,7 @@ class MovableImage(Image):
     def set_anchor(self, value):
         if value:
             self.is_anchor = True
-            self.set_color((0.6, 1, 0.6, 1))
+            self.set_color((0.4, 1, 0.4, 1))
         else:
             self.is_anchor = False
             self.set_color((1, 1, 1, 1))

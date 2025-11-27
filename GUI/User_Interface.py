@@ -3,6 +3,7 @@ import re
 from kivy import Config
 Config.set('input', 'mouse', 'mouse, multitouch_on_demand')
 # Config.set('graphics', 'resizable', False)
+# Config.set('device', )
 from kivy.clock import Clock, mainthread
 from kivy.metrics import dp
 from kivy.uix.image import Image
@@ -36,8 +37,8 @@ from MoveableImage import Status
 from SandBox import SandBox
 
 Window.clearcolor = (0, 0, 0, 0)
-# Window.borderless = True
-# Window.maximize()
+Window.borderless = True
+Window.maximize()
 
 backend_path = os.getcwd() + "/GUI/DataBase/Images/RePAIR_plaque_2/"
 path_dic = {}
@@ -57,6 +58,7 @@ class MainLayout(GridLayout):  # might need to change GridLayout to sth else to 
 class GUIApp(MDApp):
     def __init__(self):
         super().__init__()
+        self.monitor_index = 1
         self.the_app = self
         self.communicate_thread_lock = threading.Lock()
 
@@ -633,7 +635,7 @@ class GUIApp(MDApp):
                                 if image.is_selected and not image.is_anchor:
                                     old_x, old_y = image.get_real_pos()
 
-                                    offset = touch.offsets[image.name]
+                                    offset = touch.offsets[image.name] # /todo what was the error
                                     image.translate((self.mouse_pos[0]/image.zoom_scale.x - offset[0]), (self.mouse_pos[1]/image.zoom_scale.x - offset[1]))
                                     if self.sandbox is not None:
                                         if check_collision_with_sandbox(image, self.sandbox):
@@ -710,9 +712,9 @@ class GUIApp(MDApp):
 
     @mainthread
     def on_resize(self, *args):
-        if self.sandbox is not None:
-            self.bounding_box(is_set=False)
-            self.bounding_box(is_set=True)
+        # if self.sandbox is not None:
+        #     self.bounding_box(is_set=False)
+        #     self.bounding_box(is_set=True)
         self.sidebar.size = (64, Window.size[1] - self.toolbar.size[1])
         if (self.select_anchor_done is not None) & (self.select_neighbour_done is not None) & (self.pl_solver_done is not None):
             if self.select_anchor_done & self.select_neighbour_done & self.pl_solver_done:
@@ -721,7 +723,7 @@ class GUIApp(MDApp):
                     self.resize_event = Clock.schedule_interval(self.apply_resize_throttled, graphic_freq)
 
     def apply_resize_throttled(self, dt):
-        self.apply_resize()  # Call the actual resize logic
+        # self.apply_resize()  # Call the actual resize logic
         Clock.unschedule(self.resize_event)  # Unschedule the event after the update
         self.resize_event = None
 
@@ -983,7 +985,7 @@ def generate_placement():
     solved_pieces = get_screen_pieces(only_solved=False)
     print("solved_pieces", solved_pieces)
     # app.pl_solution, original_answer, probability = back_end.get_pl_solution()
-    x, probability, y, z = back_end.get_solution_dict()
+    x, probability, y, z, eps = back_end.get_solution_dict()
     # answer = loop_finalization(solved_pieces)
     answer_dic = {}
     for i in range(len(solved_pieces)):
@@ -1266,10 +1268,13 @@ def communicate_thread():  # communication thread, to communicate between UI, Gr
             if bucket > app.last_eval_bucket:
                 back_end.calculate_results(answer, probability, iteration, bucket)
         if update_counter>=(1/communication_freq)*update_freq:
-            answer, probability, process, iteration = back_end.get_solution_dict()
+            answer, probability, process, iteration, eps = back_end.get_solution_dict()
             # save_parameters_to_json(answer, probability, process)
+            if eps == 0:
+                bank = True
             if answer is not None:
                 save_demo_parameters(answer, probability, iteration, is_end=False)
+                print("iteration", iteration)
                 # back_end.save_results(answer)
                 #     try:
                 #         print(app.pl_solution[image])
@@ -1602,6 +1607,19 @@ if __name__ == '__main__':
     # erode_data()
 
     app = GUIApp()
+
+    monitors = get_monitors()
+
+    if len(monitors) > 1:
+        monitor = monitors[1]  # monitor #2
+    else:
+        monitor = monitors[0]
+
+    Window.fullscreen = False
+    Window.left = monitor.x
+    Window.top = monitor.y
+    Window.size = (monitor.width, monitor.height)
+
     back_end.set_main_app(app)
 
     test_thread = threading.Thread(target=communicate_thread, daemon=True)

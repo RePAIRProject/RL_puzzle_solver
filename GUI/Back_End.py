@@ -24,7 +24,8 @@ from pathlib import Path
 import math
 from GUI.RL_puzzle_solver.solver.puzzle_utils import Puzzle
 from GUI.RL_puzzle_solver.solver import scale_utils, assembly_sequence_utils
-from shapely import MultiPolygon, affinity
+from shapely import MultiPolygon, affinity, Polygon
+
 
 class BackEnd:
     def __init__(self):
@@ -358,11 +359,11 @@ class BackEnd:
         return iteration
 
     def get_solution_dict(self):
-        answer, probability, process, iteration = puzzle_solver.get_solution_dict()
+        answer, probability, process, iteration, eps = puzzle_solver.get_solution_dict()
 
         if answer is not None:
             answer = self.scale_solution(answer)
-        return answer, probability, process, iteration
+        return answer, probability, process, iteration, eps
 
     def get_API_solution(self):
         answer, probability, process, iteration = puzzle_solver.get_solution_dict()
@@ -645,9 +646,12 @@ class BackEnd:
         adjusted_solution = {}
 
         for piece, (x, y, rotation) in solution.items():
-
+            factor = 1
             new_x = x - key_x
             new_y = y - key_y
+
+            new_x = new_x / factor
+            new_y = new_y / factor
 
             adjusted_solution[piece] = np.array([new_x, new_y, rotation])
 
@@ -840,7 +844,7 @@ class BackEnd:
         timestamp = str(time.time())  # seconds since epoch (as float, converted to string)
         with open(self.cache_path + "solver_log.txt", "a") as f:
             f.write(timestamp + " " + iteration + ": " + string + "\n")
-            print(timestamp + " " + iteration + ": " + string + "\n")
+            # print(timestamp + " " + iteration + ": " + string + "\n")
 
     def generate_placement_file(self, pixel_solution_dic, verbosity=2):
         """
@@ -927,7 +931,24 @@ class BackEnd:
 
             rotated_polygon = affinity.rotate(assembled_polygon, -angle_deg)
 
-            polygons.append(rotated_polygon)
+            # flipped_polygon = assembled_polygon(pts.dot([[1, 0], [0, -1]]))
+            # flipped_polygon = Polygon(rotated_polygon.exterior.coords.dot([[1, 0], [0, -1]]))
+
+            coords = np.array(rotated_polygon.exterior.coords)  # (N, 2) array
+
+            M = np.array([[1, 0],
+                          [0, -1]])
+
+            flipped_polygon = Polygon(coords.dot(M.T))
+
+            flipped_polygon = affinity.scale(
+                rotated_polygon,
+                xfact=1,  # keep x the same
+                yfact=-1,  # flip y
+                origin='center'  # flip around its own center
+            )
+
+            polygons.append(flipped_polygon)
             names.append(piece.name)
 
         return MultiPolygon(polygons), names
@@ -948,10 +969,14 @@ class BackEnd:
         for pos, fragment in enumerate(fresco.geoms):
             # breakpoint()
             gt_key = pieces_names[pos]
-            data[gt_key] = {}
-            data[gt_key]["trans_x"] = fragment.centroid.x
-            data[gt_key]["trans_y"] = fragment.centroid.y
-            data[gt_key]["ori_yaw"] = float(solution[pos][2])
+            name = gt_key
+            parts = name.split("_", 1)  # split only on first "_"
+            clean_name = parts[1] + "_intact_mesh"
+            data[clean_name] = {}
+            data[clean_name]["trans_x"] = fragment.centroid.x
+            data[clean_name]["trans_y"] = fragment.centroid.y
+            data[clean_name]["ori_yaw"] = float(solution[pos][2])
+            data[clean_name]["use_wide"] = False
 
         with open(path, "w") as outfile:
             json.dump(data, outfile, indent=4)

@@ -1,9 +1,9 @@
 ---  # yaml document beginning
 # comment syntax
 
-data_folder: /home/omid/RL_puzzle_solver_GUI/GUI/DataBase/RePAIR_Demo/
-puzzle_name: puzzle_0000030_RP_group_29
-exp_name: exp_20251022121117_qhcfeh
+data_folder: /home/blemental/RL_puzzle_solver/GUI/DataBase/RePAIR_Demo/
+puzzle_name: puzzle_0000016_RP_group_15
+exp_name: exp_20251125110338_mix_8rot_gt2
 verbosity: 2
 # skip_done: True # for run_on_dataset
 
@@ -27,13 +27,13 @@ compatibility:
     vmin: -1
     vmax: 1
     figsize: 100
-    all_rotations: False
+    all_rotations: True
     save_every: 6
   grid: 
     xy_step: 9
-    theta_step: 90
-    xy_num_points: 31
-    theta_num_points: 1
+    theta_step: 45
+    xy_num_points: 45
+    theta_num_points: 8
   # region matrix calculation
   regions:
     borders_dilation: 1
@@ -98,8 +98,8 @@ aggregation:
   method: 'PAD'  
 
 solver:
-  T_first: 50 #100
-  T_next: 100 #500
+  T_first: 2000 #100
+  T_next: 2000 #500
   T_max: 2000 #3000
   PQ_mode: 'exp'
   no_rotations: False
@@ -107,14 +107,14 @@ solver:
   anchor_index: 1 # TODO: null, None?
   max_adjacency_degree: 1
   # threshold
-  accept_threshold: 0.75
+  accept_threshold: 1.01
   p_precision: 10
   grid:
     # ['gt','auto','manual', 'occ', 'neighbours_occ', 'extern', 'integration' 'integration_with_external']
     method: integration
     # this is used only when method is set to 'manual'
     manual_params:
-      p_xy_size: [ 80,80 ]
+      p_xy_size: [ 100, 100 ]
       sandbox_size: [ 850, 850 ]   # size of sandbox_size in mm
 
   # integration with ReassembleNet
@@ -134,7 +134,7 @@ solver:
 
   generate_placement_file: False
   placement:
-    inflation_width: 20
+    inflation_width: 10
     assembly_plan: spiral # snake
     save_plot: True
         

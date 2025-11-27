@@ -25,6 +25,7 @@ class PuzzleSolver:
         # self.reinforcement_learning = ReinforcementLearning(None, None)
         self.final_solution = None
         self.ppars = args[0] if len(args) > 0 else None
+        self.epsilon = np.inf
 
         self.pieces_names = args[1] if len(args) > 1 else None
         self.occupancy_grid_pieces = None
@@ -113,7 +114,7 @@ class PuzzleSolver:
             # # Display the results
             # # print("Highest values for each slice along the j dimension:")
             # # print(highest_values)
-        return sol_dict, probability_dict, self.process, self.iteration
+        return sol_dict, probability_dict, self.process, self.iteration, self.epsilon
 
     def set_p_matrix(self, p_matrix):
         with self.p_matrix_lock:
@@ -161,11 +162,13 @@ class PuzzleSolver:
         pos = [x,y,r]
 
         self.lock_piece(piece_number, pos, True)
+        self.reinit_p_matrix()
+        # self.fix_anchors_with_occ(self.occupancy_grid_pieces)
 
     def lock_piece(self, piece_number, pos, value = True):
         self.locked_pieces.update({piece_number: pos})
-        if value:
-            self.reinit_p_matrix()
+        # if value:
+        #     self.reinit_p_matrix()
 
     def reinit_p_matrix(self):
         print("RESETTING THE PROBABILITY MATRIX")
@@ -349,8 +352,8 @@ class PuzzleSolver:
             init_pos, x0, y0, z0 = self.old_init(R, anc, solved_pieces, pieces_names, path_dic)
             # self.fix_anchors_with_occ(self.occupancy_grid_pieces)
             return 0, 0, 0, 0
-            # raise Exception(
-            #     "Missing external solution folder! Maybe you want to change the init method? \nYou can find it in:\ninput_parameters.yaml: solver --> grid --> method\n")
+            raise Exception(
+                "Missing external solution folder! Maybe you want to change the init method? \nYou can find it in:\ninput_parameters.yaml: solver --> grid --> method\n")
         else:
             self.set_cm_matrix(R)
             ext_solutions_files_list = os.listdir(self.cfg.get_puzzle_external_solution_subfolder_path())
@@ -374,6 +377,7 @@ class PuzzleSolver:
                                                          vis=params['solver']['reassembleNet']['visualization'])
             self.set_p_matrix(P_adeela)
             # self.fix_anchors_with_occ(self.occupancy_grid_pieces)
+            print("p size", self.get_p_matrix().shape)
             return 0,0,0,0
 
     def initialize_p_from_external_solution(self, all_solutions, rescaling_factor, anchor_idx: int, grid, p_xy_size=(0, 0),
@@ -603,7 +607,7 @@ class PuzzleSolver:
             payoff, eps, iter, total_iter = self.solver_rot_puzzle(T, iter, total_iter, Tmax, 0, verbosity=3, decimals=decimals, )
             fin_sol, m = self.extract_info(self.probability_matrix)
 
-            if verbosity > 0:
+            if verbosity > 0 and not self.repair_lock.locked():
                 print("#" * 70)
                 print("ITERATION", iter)
                 print("#" * 70)
@@ -645,90 +649,100 @@ class PuzzleSolver:
         #     print("#" * 70)
         #     print(np.concatenate((fin_sol, np.round(m * 100)), axis=1))
         # all_sol.append(fin_sol)
+        self.epsilon = eps
         return all_pay, all_sol, all_anc, eps, iter, na_new, m
 
 
     def solver_rot_puzzle(self, T, iter, total_iter, Tmax, visual, verbosity=1, decimals=8):
+        """
+          Solves the puzzle using Relaxation Labelling adapted to puzzle solving
 
-        # no_rotations = 4
-
-        with self.cm_matrix_lock: #gui
-            no_rotations = self.compatibility_matrix.shape[2]
-            no_patches = self.compatibility_matrix.shape[3]
-
-        payoff = np.zeros(T+1)
-        z_st = 360 / no_rotations
-        z_rot = np.arange(0, 360 - z_st + 1, z_st)
-        # z_rot = np.arange(0., 4.)
+          R : Compatibility Matrix (num_x_r,num_y_r,num_rot,N,N)
+          p : Probability Matrix (num_x_p,num_y_p,num_rot,N)
+          T : number iterations
+          mode : 'simple' or 'exp' (when calculating PQ)
+          verbosity : logging verbosity
+          decimals : precision of p
+          """
+        R = self.compatibility_matrix
+        P = self.probability_matrix.copy()
+        num_rot = R.shape[2]
+        N = R.shape[3]
+        payoff = np.zeros(T + 1)
+        rot_step = 360 / num_rot
+        rot_values = np.arange(0, 360 - rot_step + 1, rot_step)
 
         t = 0
         eps = np.inf
 
-        p = self.get_p_matrix().copy() #gui
+        while t < T and eps>0:
+            self.process = float(total_iter) / float(Tmax)
+            self.iteration = int(total_iter) - 1
+            Q = np.zeros_like(P)
 
-        while t < T and eps > 0 and self.alive_flag:
-            t += 1
-            iter += 1
-            total_iter += 1
-            self.process = float(total_iter)/float(Tmax)
-            self.iteration = int(total_iter)
+            # Compute support (q)
+            for i in range(N):
+                R_i = R[:, :, :, :, i]
 
-            with self.cm_matrix_lock:
-                no_rotations = self.compatibility_matrix.shape[2]
-                no_patches = self.compatibility_matrix.shape[3]
+                # alpha: rotation index of piece i
+                for alpha_idx in range(num_rot):
+                    # apply a rotation of alpha to the matrix, is the same as applying a rotation -alpha to the input
+                    R_i_rotated = scipy.ndimage.rotate(R_i, rot_values[alpha_idx], reshape=False, mode='constant',
+                                                       order=0)
+                    # subtract -alpha from beta, but since the angle is periodic, we need to roll the matrix
+                    R_i_rotated = np.roll(R_i_rotated, alpha_idx, axis=2)
 
-            q = np.zeros_like(p)
-            for i in range(no_patches):
-                with self.cm_matrix_lock:
-
-                    ri = self.compatibility_matrix[:, :, :, :, i]
-                #  ri = R[:, :, :, i, :]  # FOR ORACLE SQUARE ONLY
-                for zi in range(no_rotations):
-                    rr = scipy.ndimage.rotate(ri, z_rot[zi], reshape=False, mode='constant', order=0)
-                    rr = np.roll(rr, zi, axis=2)
-                    c1 = np.zeros(p.shape)
-                    for j in range(no_patches):
-                        for zj in range(no_rotations):
-                            rj_z = rr[:, :, zj, j]
-                            pj_z = p[:, :, zj, j]
-                            # cc = cv.filter2D(pj_z, -1, np.rot90(rj_z, 2)) # solves in inverse order !?!
-                            cc = cv.filter2D(pj_z, -1, rj_z)
-                            c1[:, :, zj, j] = cc
-
-                    q1 = np.sum(c1, axis=(2, 3))
-                    # q2 = (q1 != 0) * (q1 + no_patches * no_rotations * 0.5) ## new_experiment
-                    q2 = (q1 + no_patches * 1) # with removing no_rotations it is faster
-                    q[:, :, zi, i] = q2
-            q += q + no_patches * 1
+                    Q_temp = np.zeros(P.shape)
+                    for j in range(N):
+                        # maybe do not roll and do a 3D conv?
+                        # This could be vectorized ?
+                        # beta: rotation index of piece j
+                        for beta_idx in range(num_rot):
+                            R_ij_beta = R_i_rotated[:, :, beta_idx, j]
+                            P_j_beta = P[:, :, beta_idx, j]
+                            Q_temp[:, :, beta_idx, j] = cv.filter2D(P_j_beta, -1, R_ij_beta)
+                    # Q_temp.shape = (num_x_p,num_y_p,num_rot,N)
+                    Q_i_alpha = np.sum(Q_temp, axis=(2, 3))
+                    Q[:, :, alpha_idx, i] = Q_i_alpha
             with self.p_matrix_lock:
-                heat = 1
-                pq = self.probability_matrix * np.exp(heat * q)
-                self.delta_probs = pq - self.probability_matrix
-                self.probability_matrix = pq / (np.sum(pq, axis=(0, 1, 2)))
-                self.probability_matrix = np.where(np.isnan(self.probability_matrix), 0, self.probability_matrix)
+                # Shift the support to get non-negative values
+                Q += Q + N * 1
+                mode = 'exp'
+                if mode == 'simple':
+                    PQ = P * Q
+                elif mode == 'exp':
+                    PQ = P * np.exp(Q)
+                elif mode == 'super_exp':
+                    PQ = P * np.exp(Q * 100)
+                else:
+                    print(f"warning, unknown mode {mode}, we use exponential")
+                    PQ = P * np.exp(Q)  # e = 1e-11
 
+                P_new = PQ / (np.sum(PQ, axis=(0, 1, 2)))  # P(t+1)
 
-                pay = np.sum(self.probability_matrix * q)
+                if np.isnan(P_new).sum() > 0:
+                    warnings.warn("P has NaN values! Setting them to 0")
+                    P_new = np.where(np.isnan(P_new), 0, P_new)
 
-                payoff[t] = pay
-                eps = abs(pay - payoff[t-1])
-                with self.repair_lock:
-                    if verbosity > 1:
+                payoff[t] = np.sum(P_new * Q)
+
+                eps = abs(payoff[t] - payoff[t - 1])
+
+                # Rounding P changes the dynamics
+                P = np.round(P_new, decimals)
+                if not self.repair_lock.locked():
+                    if verbosity > 1 and not abs(eps) < 1e-8:
                         if verbosity == 2:
-                            print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}', end='\r')
+                            print(f'Iteration {t}: pay = {payoff[t]:.08f}, eps = {eps:.08f}', end='\r')
                         else:
-                            print(f'Iteration {t}: pay = {pay:.08f}, eps = {eps:.08f}')
-                self.probability_matrix = np.round(self.probability_matrix, decimals)
-                p = self.probability_matrix
-                fin_sol, m = self.extract_info(p)
-                # fix_tresh = 0.8
-                # a = (m > fix_tresh).astype(int)
-                # locked_piece_indices = np.where(a == 1)[0]
-                # for i in range(len(locked_piece_indices)):
-                #     if locked_piece_indices[i] not in self.locked_pieces:
-                #         self.locked_pieces.append(int(locked_piece_indices[i]))
-                #         print("LOCKED")
-                #         self.reinit_p_matrix()
+                            print(f'Iteration {t}: pay = {payoff[t]:.08f}, eps = {eps:.08f}')
+                    self.probability_matrix = P
+                    fin_sol, m = self.extract_info(self.probability_matrix)
+                if not abs(eps) < 1e-8:
+                    t += 1
+                    iter += 1
+                    total_iter += 1
+        self.epsilon = eps
         return payoff, eps, iter, total_iter
 
     def logger(self, string):

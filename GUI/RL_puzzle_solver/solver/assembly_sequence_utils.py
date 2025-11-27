@@ -368,7 +368,7 @@ def plot_fresco_comparison_image(img_path, fresco_polygons_list, ref="fresco", n
 
 
 def plot_fresco_image(img_path, fresco_polygons, ref="fresco", name="", color="C0", line_width=2.0, plot_grid=True,
-                      plot_axis_labels=True, plot_centroids=False, ax=None, fig=None, visualize=False, save_plot=False):
+                      plot_axis_labels=True, plot_centroids=True, ax=None, fig=None, visualize=False, save_plot=False):
     if name == "":
         name = Path(img_path).stem
     if ax is None:
