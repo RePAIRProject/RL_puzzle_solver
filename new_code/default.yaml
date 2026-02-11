@@ -93,6 +93,8 @@ compatibility:
         data_folder: ''
         padding: 5
         crop_images: True
+        save_masks: True
+        mask_type: 'pieces_center_first'
           
 aggregation:
   method: 'PAD'  

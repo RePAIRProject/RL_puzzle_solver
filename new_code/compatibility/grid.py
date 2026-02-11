@@ -136,7 +136,20 @@ class PieceOnCanvas:
                 self.motives_cube[y_c0:y_c1, x_c0:x_c1, :] = motives_cube
         self.centroid = np.asarray([x, y])
 
-    def blend_with(self, piece: "PieceOnCanvas", blend_mode:str='average', return_mask:bool=False):
+    def blend_with(self, piece: "PieceOnCanvas", blend_mode:str='average', mask_type:str='pieces_center_first', return_mask:bool=False):
+        """ 
+        blend image and masks from two pieces on canvas (self, and the one given).
+        
+        - blend_mode controls how the two images are merged (in case of overlap)
+            'average' means averaging the two colors to get a slightly blurred transition
+        - mask_type controls how the two masks are saved (if return_mask==True)
+            'binary' means 1 for pixels belonging to any piece, 0 for background
+            'pieces_center_first' means 1 for central piece (self), 2 for other piece, and in case of overlap, 1
+            'pieces_other_first' means 1 for central piece (self), 2 for other piece, and in case of overlap, 2
+
+        it raises NotImplementedError() in case of other mode or types which are not considered. 
+        Possible to edit the code below to include more possibilities
+        """ 
         aligned_image = self.image + piece.image
         aligned_mask = self.mask + piece.mask
         if np.max(aligned_mask) > 1:
@@ -147,6 +160,16 @@ class PieceOnCanvas:
                 raise NotImplementedError()
 
         if return_mask == True:
+            if mask_type == 'binary':
+                aligned_mask = np.clip(aligned_mask, 0, 1)
+            elif mask_type.startswith('pieces'):
+                aligned_mask = self.mask + 2 * piece.mask
+                if mask_type == 'pieces_center_first':
+                    aligned_mask[aligned_mask == 3] = 1
+                elif mask_type == 'pieces_other_first':
+                    aligned_mask[aligned_mask == 3] = 2 # or aligned_mask = np.clip(aligned_mask, 0, 2)
+            else:
+                raise NotImplementedError()
             return aligned_image, aligned_mask
         
         return aligned_image

@@ -414,7 +414,6 @@ class SolverWithPiecesModule:
         # - load polygons in the correct format (create a multipolygon from a list of polygons)
         # - list of fragment names (fresco_name_id_mapping)
 
-        breakpoint()
         from utils import assemby_sequence_utils
         from utils import scale_utils
 

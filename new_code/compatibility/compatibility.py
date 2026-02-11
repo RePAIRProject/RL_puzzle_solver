@@ -292,7 +292,7 @@ class CompatibilityMatrixModule:
                         
                         # This is the PAIRWISE GROUND TRUTH
                         if self.oracle_params['pairwise_alignments_dataset']['save_true_alignment'] == True:
-                            correctly_aligned_image, correctly_aligned_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=True)
+                            correctly_aligned_image, correctly_aligned_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, mask_type=self.oracle_params['pairwise_alignments_dataset']['mask_type'], return_mask=True)
                             if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
                                 correctly_aligned_image = crop_to_content(correctly_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
                                 correctly_aligned_mask = crop_to_content(correctly_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
@@ -305,7 +305,7 @@ class CompatibilityMatrixModule:
                             xj_grid, yj_grid = self.grid.xy_values[x_idx, y_idx]
                             thetaj_grid = self.grid.theta_values[theta_idx]
                             piece_j_on_canvas_on_grid = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid, y=yj_grid, theta=thetaj_grid, enabled_features=self.features_status)
-                            grid_aligned_image, grid_aligned_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas_on_grid, return_mask=True)
+                            grid_aligned_image, grid_aligned_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas_on_grid, mask_type=self.oracle_params['pairwise_alignments_dataset']['mask_type'], return_mask=self.oracle_params['pairwise_alignments_dataset']['save_masks'])
                             if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
                                 grid_aligned_image = crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
                                 grid_aligned_mask = crop_to_content(grid_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
@@ -318,7 +318,7 @@ class CompatibilityMatrixModule:
                             for wk in range(self.oracle_params['pairwise_alignments_dataset']['wrong_alignments_num']):
                                 xj_w, yj_w, thetaj_w = self._pick_plausible_wrong_position(RM_ij=RM_ij, xc=x_idx, yc=y_idx)
                                 piece_j_on_canvas_plausible1 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=thetaj_w, enabled_features=self.features_status)
-                                wrong_alignment1, wrong_alignment1_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas_plausible1, return_mask=True)
+                                wrong_alignment1, wrong_alignment1_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas_plausible1, mask_type=self.oracle_params['pairwise_alignments_dataset']['mask_type'], return_mask=self.oracle_params['pairwise_alignments_dataset']['save_masks'])
                                 if self.oracle_params['pairwise_alignments_dataset']['crop_images'] == True:
                                     wrong_alignment1 = crop_to_content(wrong_alignment1, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
                                     wrong_alignment1_mask = crop_to_content(wrong_alignment1_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
