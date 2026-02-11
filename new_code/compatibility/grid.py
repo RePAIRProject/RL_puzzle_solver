@@ -4,7 +4,47 @@ import cv2
 from utils.puzzle_utils import PuzzlePiece
 import shapely 
 
-
+# @staticmethod
+def recalculate_position_after_rotation(x1, y1, x2, y2, rotation_O1_deg, rotation_O2_deg):
+    """
+    Recalculate the position of O2 after rotating O1.
+    
+    Parameters:
+    -----------
+    x1, y1 : float
+        Position of object O1
+    x2, y2 : float
+        Initial position of object O2
+    rotation_O1_deg : float
+        Rotation angle for O1 in degrees
+    rotation_O2_deg : float, optional
+        Rotation angle for O2 in degrees. If None, assumes O2 rotates by the same amount as O1
+    
+    Returns:
+    --------
+    tuple : (new_x2, new_y2, rotation_O2_deg)
+        New position of O2 and its rotation angle
+    """        
+    # Convert degrees to radians
+    theta = np.radians(rotation_O1_deg)
+    
+    # Calculate the offset vector from O1 to O2
+    dx = x2 - x1
+    dy = y2 - y1
+    
+    # Create rotation matrix
+    cos_theta = np.cos(theta)
+    sin_theta = np.sin(theta)
+    
+    # Rotate the offset vector
+    dx_new = dx * cos_theta - dy * sin_theta
+    dy_new = dx * sin_theta + dy * cos_theta
+    
+    # Calculate new position of O2
+    new_x2 = x1 + dx_new
+    new_y2 = y1 + dy_new
+    
+    return new_x2, new_y2, rotation_O2_deg
 
 ##################################
 #                                #
