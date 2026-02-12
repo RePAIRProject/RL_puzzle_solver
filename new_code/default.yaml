@@ -48,7 +48,18 @@ compatibility:
     shape: 
       enabled: No
       sigma: 1 # ?
-      SDF_dilation: 35 # TODO: check if it should be different from borders dilstion!
+      SDF_dilation: 75 # TODO: check if it should be different from borders dilstion!
+
+      # this is used ONLY to save the pairwise alignment images where shape is actually "fitting", 
+      # but the alignment is incorrect (use with caution, it needs GT!)
+      # it is connected to the parameters in ['oracle']['pairwise_alignments_dataset']
+      # so it should be enabled when also ['oracle']['create_pairwise_alignments_dataset'] is enabled!
+      save_best_images: 
+        enabled: No
+        score_threshold: 0.8
+        dist2GT_threshold: 15
+        data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca/PAD_v4/hard_negative'
+
     lines:
       enabled: No
       thr_coef: 0.13
@@ -96,13 +107,17 @@ compatibility:
       # this is for the creation of images for pairwise "good" and "bad" alignments
       create_pairwise_alignments_dataset: false
       pairwise_alignments_dataset:
-        enabled: No
-        data_folder: ''
-        padding: 5
         crop_images: True
         save_masks: True
         mask_type: 'pieces_center_first'
-          
+        padding: 5
+        save_true_alignment: True 
+        save_grid_alignment: True 
+        save_wrong_alignments: True 
+        wrong_alignments_num: 1
+        # pairwise_alignments_dataset_folder: '/home/palma/Datasets/RePAIR_pairwise' #
+        data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca/PAD_v4'
+
 aggregation:
   method: 'PAD'  
 

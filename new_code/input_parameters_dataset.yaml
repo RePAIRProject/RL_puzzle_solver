@@ -48,12 +48,16 @@ compatibility:
     shape: 
       enabled: No
       sigma: 1 # ?
-      SDF_dilation: 75 # TODO: check if it should be different from borders dilstion!
+      SDF_dilation: 75 # TODO: check if it should be different from borders dilation!
+
+      # this is used to save the pairwise alignment images where shape is actually "fitting", 
+      # but the alignment is incorrect (use with caution, it needs GT!)
       save_best_images: 
-        enabled: No
-        score_threshold: 0.8
+        enabled: Yes
+        score_threshold: 0.6
         dist2GT_threshold: 15
-        data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca/PAD_shape_best_negatives'
+        data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca/PAD_v4/hard_negative'
+
     lines:
       enabled: No
       thr_coef: 0.13
@@ -76,19 +80,34 @@ compatibility:
       # geometric (use lines/curves? BGU?)
       geometric_params:
         something: 1
+    pairwise_alignment_discriminator:
+      enabled: No
+      trained_model_folder: /home/lucap/code/learning_pairwise_cmp/v4_fast_224/
+      use_fast: True 
+      use_batch: True 
+      do_center_crop: True
+      crop_height: 224
+      crop_width: 224
+      scoring_method: 'softmax' #'thresh', 'prob_diff'
+      thresholds:
+        positive: 2
+        negative: 1.5
+      cutoff_value: 0.05
+      push_k_values: 3
     oracle:
       enabled: Yes
       create_pairwise_alignments_dataset: False
       pairwise_alignments_dataset:
         crop_images: True
-        save_masks: False
+        save_masks: True
+        mask_type: 'pieces_center_first'
         padding: 5
-        save_true_alignment: False 
-        save_grid_alignment: False 
-        save_wrong_alignments: False 
-        wrong_alignments_num: 0
+        save_true_alignment: True 
+        save_grid_alignment: True 
+        save_wrong_alignments: True 
+        wrong_alignments_num: 3
         # pairwise_alignments_dataset_folder: '/home/palma/Datasets/RePAIR_pairwise' #
-        data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca/PAD_extra_negatives'
+        data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca/PAD_v4'
 
 aggregation:
   method: 'oracle'  
