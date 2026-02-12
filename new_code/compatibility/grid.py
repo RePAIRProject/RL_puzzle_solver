@@ -82,7 +82,10 @@ class PuzzleGrid():
             for g in range(len(axis_grid)):
                 pieces_grid[g, b] = (zero_aligned_axis_grid[g]+canvas_alignment, zero_aligned_axis_grid[b]+canvas_alignment)
         self.xy_values = pieces_grid.astype(int)
-        self.theta_values = np.arange(0, 360, self.theta_step)            
+        if self.theta_step == 0:
+            self.theta_values = np.asarray([0])
+        else:
+            self.theta_values = np.arange(0, 360, self.theta_step)            
 
 
 

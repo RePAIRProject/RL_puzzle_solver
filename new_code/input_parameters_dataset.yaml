@@ -2,7 +2,7 @@
 # comment syntax
 
 #data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca'
-data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=m.khoroshiltseva/home/ssd/datasets/RePAIR_ReLab_marina/'
+data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=m.khoroshiltseva/home/ssd/datasets/RePAIR_ReLab_luca/'
 puzzle_name: 
 verbosity: 2
 skip_done: False
@@ -48,7 +48,7 @@ compatibility:
     shape: 
       enabled: No
       sigma: 1 # ?
-      SDF_dilation: 75 # TODO: check if it should be different from borders dilation!
+      SDF_dilation: 50 # TODO: check if it should be different from borders dilation!
 
       # this is used to save the pairwise alignment images where shape is actually "fitting", 
       # but the alignment is incorrect (use with caution, it needs GT!)
