@@ -106,6 +106,7 @@ class RegionMatrixModule:
         """
         self.piece_size = self.params['preprocessing']['piece_size']
         self.p_hs = self.piece_size // 2
+        self.canvas_buffer = 0
         self.grid = PuzzleGrid(self.params['compatibility']['grid'], self.piece_size)
         self.regions_dilation = self.params['compatibility']['regions']['borders_dilation']
         self.regions_erosion = self.params['compatibility']['regions']['borders_erosion']
