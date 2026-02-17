@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.io import savemat
+import argparse
+import pdb
 # import matplotlib
 # matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -10,15 +12,15 @@ from compatibility.region import RegionMatrixModule
 from compatibility.compatibility import CompatibilityMatrixModule
 from compatibility.aggregation import AggregationModule
 from solver.solver_with_pieces import SolverWithPiecesModule
-from utils.puzzle_utils import Puzzle
+from utils.puzzle_utils import Puzzle, load_from_file
 from utils.parameters_utils import Configuration
 from utils.visualization_utils import reconstruct, reconstruct_pil, crop_to_content, build_suffix
 
 
-def main():
+def main(args):
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
-    params = cfg.load('input_parameters.yaml')   # basic reading in this case
+    params = cfg.load(args.yaml)   # basic reading in this case
 
     print("*" * 60)
     print(" Working on puzzle", cfg.get_puzzle_name())
@@ -26,6 +28,9 @@ def main():
 
     puzzle = Puzzle()
     puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)
+
+    if os.path.exists(cfg.get_puzzle_info_path()) and params['preprocessing'].get('load_from_file', False) == True:
+        params['preprocessing'] = load_from_file(cfg.get_puzzle_info_path())
 
     rmm = RegionMatrixModule(puzzle, params, cfg)  # it is redundant, we know 
     print("Working on a new experiment, output going in:\n", rmm.cfg.get_current_experiments_folder())
@@ -69,4 +74,9 @@ def main():
 
 if __name__ == '__main__':
 
-    main()
+    parser = argparse.ArgumentParser(description='Full pipeline of the Relaxation Labeling Puzzle Solver. \n\
+        Consists of:\n\t1. Region Matrix Computation\n\t2. Compatibility Computation\n\t3. Aggregation\n\t4. ReLab Solver \n\
+        All parameters must be specified in the REQUIRED yaml file.')
+    parser.add_argument('-Y', '--yaml', type=str, default='input_parameters.yaml', help='yaml file with all settings!')
+    args = parser.parse_args()
+    main(args)

@@ -3,7 +3,8 @@ All other `_utils.py` files can import these methods, so here we should not impo
 We can import parameters_utils.py as it contains what we need to handle our .yaml files
 It is a kind of "basic" utility functions for loading the pieces
 """
-import os 
+import os
+import json
 import numpy as np
 import cv2 
 from utils.parameters_utils import Configuration
@@ -37,7 +38,11 @@ import natsort
 # p.features.motives
 # p.features.sdf
 
-
+@staticmethod
+def load_from_file(json_path: str):
+    with open(json_path, 'r') as jf:
+        info = json.load(jf)
+    return info
 
 ###########################################
 #                                         #

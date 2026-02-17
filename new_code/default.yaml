@@ -29,11 +29,13 @@ compatibility:
     figsize: 100
     all_rotations: False
     save_every: 6
+    save_RM: True
   grid: 
     xy_step: 9
     theta_step: 90
     xy_num_points: 31
     theta_num_points: 1
+    canvas_buffer: 0  # if you need to ensure canvas is large enough - can be useful for special type of pieces
   # region matrix calculation
   regions:
     borders_dilation: 1

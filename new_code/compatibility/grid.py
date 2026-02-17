@@ -65,7 +65,7 @@ class PuzzleGrid():
         self.theta_step = grid_parameters['theta_step']
         self.theta_num_points = grid_parameters['theta_num_points']
         self.pairwise_comp_range = self.xy_step * (self.xy_num_points - 1)
-        self.canvas_size = self.pairwise_comp_range + 2 * (self.p_hs + 1)
+        self.canvas_size = self.pairwise_comp_range + 2 * (self.p_hs + 1) + grid_parameters.get('canvas_buffer', 0)
         self.canvas_center = self.canvas_size // 2
 
 
@@ -109,9 +109,13 @@ class PieceOnCanvas:
         
         # placement of the piece
         y_c0 = np.ceil(y-grid.p_hs).astype(int)
-        y_c1 = np.ceil(y+grid.p_hs+1).astype(int)
+        y_c1 = np.ceil(y+grid.p_hs).astype(int)
+        if piece.data.image.shape[0] % 2 == 1:
+            y_c1 +=1 
         x_c0 = np.ceil(x-grid.p_hs).astype(int)
-        x_c1 = np.ceil(x+grid.p_hs+1).astype(int)
+        x_c1 = np.ceil(x+grid.p_hs).astype(int)
+        if piece.data.image.shape[1] % 2 == 1:
+            x_c1 +=1
         # maybe not the best, but a quick fix ?
         # if y_c1 - y_c0 == 2*grid.p_hs + 1:
         #     y_c1 -= 1
