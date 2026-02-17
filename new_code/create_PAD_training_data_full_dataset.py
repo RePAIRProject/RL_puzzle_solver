@@ -26,7 +26,7 @@ def main():
     for puzzle_folder in sorted_puzzle_folders:
 
         cfg = Configuration() # this contains all IO operations plus the folder structure
-                
+
         if skip_done == False or os.path.exists(os.path.join(cfg_dataset.get_experiments_folder(), puzzle_folder)) == False:
 
             params = cfg.load('input_parameters_dataset.yaml', read_name=False)   # basic reading in this case
