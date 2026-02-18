@@ -1137,7 +1137,7 @@ class CompatibilityMatrixModule:
         if verbose > 1:
             print()
         
-        return CM_pad
+        return CM_as
 
 
     def _batch_compute_alignment_scorer_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, model: AlignmentScorer, params:dict):
