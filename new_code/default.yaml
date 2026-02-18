@@ -119,6 +119,11 @@ compatibility:
         wrong_alignments_num: 1
         # pairwise_alignments_dataset_folder: '/home/palma/Datasets/RePAIR_pairwise' #
         data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca/PAD_v4'
+    alignment_scorer:
+      enabled: No
+      checkpoint_path: ''
+      threshold: 30
+      radius: 30
 
 aggregation:
   method: 'PAD'  

@@ -229,12 +229,14 @@ class RegionMatrixModule:
             if verbose > 1:
                 print("WARNING:\nfor the PAD compatibility, we still use shape-based RM Computation")
             RM = self.compute_shape_based_RM(verbose=verbose)
-
         elif feature == 'geometry':
             if verbose > 1:
                 print("geometry-based RM Computation")
             RM = self.compute_geometry_based_RM(verbose=verbose)
-
+        elif feature == 'alignment_scorer' :
+            if verbose > 1:
+                print("WARNING:\nfor the AS compatibility, we still use shape-based RM Computation")
+            RM = self.compute_shape_based_RM(verbose=verbose)
         else:
             raise Exception(f"{feature}-based RM not implemented yet!")
 

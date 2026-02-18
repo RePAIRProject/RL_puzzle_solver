@@ -10,6 +10,7 @@ from utils.puzzle_utils import Puzzle, PuzzlePiece
 from utils.visualization_utils import save_pairwise_matrix_visualization_to_file
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
 from compatibility.grid import PuzzleGrid, PieceOnCanvas, recalculate_position_after_rotation
+from compatibility.alignment_scorer import AlignmentScorer
 import matplotlib.pyplot as plt
 from utils.visualization_utils import crop_to_content
 
@@ -115,22 +116,19 @@ class CompatibilityMatrixModule:
             if verbose > 1:
                 print("oracle CM computation")
             CM = self._compute_oracle_CM(verbose=verbose)
-        elif feature == 'pairwise_alignment_discriminator' or 'geometry':
+        elif feature == 'pairwise_alignment_discriminator' or feature == 'geometry':
             if verbose > 1:
                 print("PAD CM computation")
             CM = self._compute_pad_CM(verbose=verbose)
         elif feature == 'geometry':
             if verbose > 1:
                 print("PAD CM computation with Geometry alignment step")
-
-
-
             ## TODO - check dictionary !!!
             CM = self._compute_pad_CM_gemetric(verbose=verbose)
-
-
-
-
+        elif feature == 'alignment_scorer':
+            if verbose > 1:
+                print("Alignment Scorer Compatibility")
+            CM = self._compute_alignment_scorer_CM(verbose=verbose)
         else:
             raise Exception(f"{feature}-based CM not implemented yet!")
 
@@ -1096,4 +1094,134 @@ class CompatibilityMatrixModule:
         return CM_ij
 
 
+##################################################################################
+#                                                                                #
+#   █████╗ ██╗     ██╗ ██████╗ ███╗   ██╗███╗   ███╗███████╗███╗   ██╗████████╗  #
+#  ██╔══██╗██║     ██║██╔════╝ ████╗  ██║████╗ ████║██╔════╝████╗  ██║╚══██╔══╝  #
+#  ███████║██║     ██║██║  ███╗██╔██╗ ██║██╔████╔██║█████╗  ██╔██╗ ██║   ██║     #
+#  ██╔══██║██║     ██║██║   ██║██║╚██╗██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║   ██║     #
+#  ██║  ██║███████╗██║╚██████╔╝██║ ╚████║██║ ╚═╝ ██║███████╗██║ ╚████║   ██║     #
+#  ╚═╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝     #
+#                                                                                #
+#              ███████╗ ██████╗ ██████╗ ██████╗ ███████╗██████╗                  #
+#              ██╔════╝██╔════╝██╔═══██╗██╔══██╗██╔════╝██╔══██╗                 #
+#              ███████╗██║     ██║   ██║██████╔╝█████╗  ██████╔╝                 #
+#              ╚════██║██║     ██║   ██║██╔══██╗██╔══╝  ██╔══██╗                 #
+#              ███████║╚██████╗╚██████╔╝██║  ██║███████╗██║  ██║                 #
+#              ╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝                 #
+#                                                                                #
+##################################################################################
 
+    def _compute_alignment_scorer_CM(self, verbose: int = 0):
+        """Loops over pairs of pieces - not symmetric yet"""
+        CM_as = np.zeros(self.CM_size)
+        if verbose > 1:
+            print()
+
+        # Load model
+        scorer = AlignmentScorer(
+            checkpoint_path=self.params['compatibility']['features']['alignment_scorer']['checkpoint_path'],
+            device='cuda',
+            radius=self.params['compatibility']['features']['alignment_scorer']['radius'],
+            threshold=self.params['compatibility']['features']['alignment_scorer']['threshold']
+        )
+
+        for i in range(self.puzzle.num_of_pieces):
+            for j in range(self.puzzle.num_of_pieces):
+                if i != j:
+                    if verbose > 1:
+                        print(f'computing Alignment Scorer CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
+                    RM_ij = self.RM_dict['alignment_scorer'][:, :, :, j, i]    
+                    if np.sum(RM_ij > 0) > 0:
+                            CM_as[:, :, :, j, i] = self._batch_compute_alignment_scorer_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=scorer, params=self.params['compatibility']['features']['alignment_scorer'])
+        if verbose > 1:
+            print()
+        
+        return CM_pad
+
+
+    def _batch_compute_alignment_scorer_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, model: AlignmentScorer, params:dict):
+        """ 
+        It ranks the possible candidates alignment. It was trained to rank the scores of N possible alignments. 
+        """
+        CM_ij = np.zeros_like(RM_ij)
+        neg_region = RM_ij < 0
+        ids_to_score = np.where(RM_ij > 0)
+        
+        # load all the images on a list
+        rgb_images = []
+        mask_images = []
+        for y_idx, x_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+            piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
+            yj, xj = self.grid.xy_values[y_idx, x_idx]
+            thetaj = self.grid.theta_values[theta_idx]
+            piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+                        
+            img_to_discriminate_mpl, mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, blend_mode='average', 
+                                        mask_type='pieces_center_first', return_mask=True)
+            img_to_discriminate_PIL = Image.fromarray(np.uint8(img_to_discriminate_mpl * 255))
+            img_to_discriminate_PIL = img_to_discriminate_PIL.convert('RGB')
+
+            mask_to_discriminate_PIL = Image.fromarray(np.uint8(mask * 255))
+            mask_to_discriminate_PIL = mask_to_discriminate_PIL.convert('L')
+
+            # add image to images
+            rgb_images.append(img_to_discriminate_PIL)
+            mask_images.append(mask_to_discriminate_PIL)
+        
+        # rank the images at once
+        scores = model.score(rgb_images, mask_images)
+
+        # fill the matrix 
+        for scores, y_idx, x_idx, theta_idx in zip(scores, ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+            CM_ij[y_idx, x_idx, theta_idx] = scores
+         
+        #         cut values
+        # CM_ij[CM_ij < PAD_params['cutoff_value']] = 0
+        CM_ij -= neg_region    
+        
+        # import matplotlib.pyplot as plt 
+        # plt.subplot(231)
+        # plt.imshow(piece_i.data.image)
+        # plt.subplot(232)
+        # plt.imshow(piece_j.data.image)
+
+        # # best_pos_idx = np.argmax(CM_ij)
+        # # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
+        # # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
+        # # print(f"best pos before: {best_pos_xy}")
+                        
+        # # cm_rel_j_vs_i = [best_pos_xy_idx[0] - self.grid.xy_values.shape[0]//2, best_pos_xy_idx[1] - self.grid.xy_values.shape[1]//2]
+        # # print(f"estimated: {np.asarray(cm_rel_j_vs_i) * self.grid.xy_step}")
+        # plt.title(f"score: {cmp_score:.02f}")
+        # # plt.show()
+        # plt.subplot(234)
+        # plt.imshow(np.transpose(CM_ij[:,:,0]))
+        # plt.title("CM raw")
+
+
+
+        
+        # plt.subplot(236)
+        # plt.imshow(CM_ij)
+        # plt.title("CM final")
+        # plt.imshow(np.transpose(CM_ij[:,:,0]))
+        
+        # # plt.figure()
+        # # plt.subplot(131); plt.imshow(RM_ij)
+        # # plt.subplot(132); plt.imshow(CM_ij)
+        # plt.show()
+        # # plt.subplot(133)
+        # breakpoint()
+
+        # best_pos_idx = np.argmax(CM_ij)
+        # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
+        # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
+        # print(f"best pos after: {best_pos_xy}")
+        # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=best_pos_xy[1], y=best_pos_xy[0], theta=thetaj, enabled_features=self.features_status)
+        # img_to_discriminate_mpl = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=False)
+        # plt.imshow(img_to_discriminate_mpl)
+
+        # plt.show()
+        # breakpoint()
+        return CM_ij
