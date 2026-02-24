@@ -10,63 +10,104 @@ import torchvision.transforms as transforms
 # ============================================================================
 # Model Definition (copy from your models.py)
 # ============================================================================
-class MultiModalScorer(nn.Module):
-    """RGB + Geometry + DINO semantic features."""
-
-    def __init__(
-        self,
-        geometric_vit="google/vit-base-patch16-224",
-        dino_model="facebook/dinov2-base",
-    ):
+class MultiModalScorerV2_Practical(nn.Module):
+    """
+    Practical model for small datasets (~5K samples).
+    
+    Key features:
+    - Frozen DINO (86M params)
+    - Partially frozen ViT (14M trainable, 72M frozen)
+    - Small new layers (2M params)
+    - Total trainable: ~16M params
+    """
+    
+    def __init__(self, 
+                 geometric_vit='google/vit-base-patch16-224',
+                 dino_model='facebook/dinov2-base',
+                 freeze_vit_layers=10,  # Freeze first 10 of 12 layers
+                 dropout=0.4):
         super().__init__()
-
-        # Branch 1: Geometric ViT
-        self.projection = nn.Conv2d(6, 3, kernel_size=1)
+        
+        # Geometric encoder (from scratch)
+        self.geometric_encoder = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+        )
+        
+        self.rgb_geom_fusion = nn.Sequential(
+            nn.Conv2d(3 + 128, 64, kernel_size=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 3, kernel_size=1)
+        )
+        
+        # ViT (partially frozen)
         self.geometric_vit = ViTModel.from_pretrained(geometric_vit)
-
-        # Branch 2: DINO (frozen)
+        
+        # Freeze early layers
+        for name, param in self.geometric_vit.named_parameters():
+            layer_num = self._extract_layer_num(name)
+            if layer_num is not None and layer_num < freeze_vit_layers:
+                param.requires_grad = False
+            else:
+                param.requires_grad = True
+        
+        trainable_vit = sum(p.numel() for p in self.geometric_vit.parameters() if p.requires_grad)
+        total_vit = sum(p.numel() for p in self.geometric_vit.parameters())
+        print(f"ViT: {trainable_vit:,} trainable / {total_vit:,} total ({100*trainable_vit/total_vit:.1f}%)")
+        
+        # DINO (frozen)
         self.dino = Dinov2Model.from_pretrained(dino_model)
         for param in self.dino.parameters():
             param.requires_grad = False
         self.dino.eval()
-        print(f"DINO model loaded. Output dimension: {self.dino.config.hidden_size}")
-
-        # Fusion head
-        dino_dim = self.dino.config.hidden_size  # 768 for dinov2-base
-        geom_dim = self.geometric_vit.config.hidden_size  # 768 for vit-base
-
+        
+        # Fusion (smaller for small data)
         self.fusion = nn.Sequential(
-            nn.Linear(geom_dim + dino_dim, 512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, 128),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(128, 1),
-            nn.Sigmoid(),
+            nn.Linear(1536, 768),     # Smaller first layer
+            nn.LayerNorm(768),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            
+            nn.Linear(768, 256),
+            nn.LayerNorm(256),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            
+            nn.Linear(256, 1)
         )
-
+    
+    def _extract_layer_num(self, param_name):
+        """Extract layer number from parameter name."""
+        import re
+        match = re.search(r'encoder\.layer\.(\d+)', param_name)
+        if match:
+            return int(match.group(1))
+        return None
+    
     def forward(self, rgb, rgb_geometric):
-        """
-        Args:
-            rgb: (B, 3, H, W) - for DINO
-            rgb_geometric: (B, 6, H, W) - for geometric branch
-        Returns:
-            scores: (B, 1)
-        """
-        # Geometric branch
-        x = self.projection(rgb_geometric)
-        geom_feats = self.geometric_vit(x).pooler_output  # (B, 768)
-
-        # DINO branch (no gradients)
+        # Geometric processing
+        rgb_only = rgb_geometric[:, :3]
+        geom_only = rgb_geometric[:, 3:]
+        geom_encoded = self.geometric_encoder(geom_only)
+        combined_input = torch.cat([rgb_only, geom_encoded], dim=1)
+        vit_input = self.rgb_geom_fusion(combined_input)
+        
+        # Feature extraction
+        geom_feats = self.geometric_vit(vit_input).pooler_output
+        
         with torch.no_grad():
-            dino_feats = self.dino(rgb).pooler_output  # (B, 768)
-
-        # Fuse
-        combined = torch.cat([geom_feats, dino_feats], dim=1)  # (B, 1536)
-        scores = self.fusion(combined)
-
-        return scores
+            dino_feats = self.dino(rgb).pooler_output
+        
+        # Fusion
+        combined = torch.cat([geom_feats, dino_feats], dim=1)
+        logits = self.fusion(combined)
+        
+        return logits
 
 # ============================================================================
 # Inference Helper
@@ -79,7 +120,7 @@ class AlignmentScorer:
         self.device = device
         
         # Load model
-        self.model = MultiModalScorer()
+        self.model = MultiModalScorerV2_Practical()
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model = self.model.to(device)

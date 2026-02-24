@@ -53,6 +53,8 @@ class AggregationModule:
             R = self.CM_dict['pairwise_alignment_discriminator']
         elif self.method == 'oracle':
             R = self.CM_dict['oracle']
+        elif self.method == 'alignment_scorer':
+            R = self.CM_dict['alignment_scorer']
         elif self.method == 'PAD_with_oracle':
             R = self._aggregate_PAD_with_oracle()
         else:

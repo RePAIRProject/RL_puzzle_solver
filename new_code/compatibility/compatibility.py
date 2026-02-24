@@ -1151,6 +1151,7 @@ class CompatibilityMatrixModule:
         # load all the images on a list
         rgb_images = []
         mask_images = []
+        # plt.figure()
         for y_idx, x_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
             piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
             yj, xj = self.grid.xy_values[y_idx, x_idx]
@@ -1171,13 +1172,20 @@ class CompatibilityMatrixModule:
         
         # rank the images at once
         scores = model.score(rgb_images, mask_images)
+        comps = torch.sigmoid(torch.from_numpy(scores))                 # these are the compatibilities (0 - 1)
+        ranks = torch.argsort(torch.argsort(comps, descending=True))    # these are the ranking (order descending)
+        topK = params.get('topK', 0)
 
         # fill the matrix 
-        for scores, y_idx, x_idx, theta_idx in zip(scores, ids_to_score[0], ids_to_score[1], ids_to_score[2]):
-            CM_ij[y_idx, x_idx, theta_idx] = scores
-         
-        #         cut values
-        # CM_ij[CM_ij < PAD_params['cutoff_value']] = 0
+        for comp, rank_order, y_idx, x_idx, theta_idx in zip(comps, ranks, ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+            if topK > 0:
+                if rank_order < topK:
+                    CM_ij[y_idx, x_idx, theta_idx] = comp
+                else:
+                    CM_ij[y_idx, x_idx, theta_idx] = 0          # cutting the values after the top K
+            else:                   # if topK is 0 or -1, we use all values
+                CM_ij[y_idx, x_idx, theta_idx] = comp
+            
         CM_ij -= neg_region    
         
         # import matplotlib.pyplot as plt 
