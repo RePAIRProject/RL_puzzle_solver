@@ -180,7 +180,7 @@ def crop_to_content_pil(img: Image.Image, padding: int = 1) -> Image.Image:
     return img.crop(padded_bbox)
 
 
-def crop_to_content(image:np.ndarray, padding:int=1, return_vals:bool=False, max_noise:int=0):
+def crop_to_content(image:np.ndarray, squared:bool=False, padding:int=1, return_vals:bool=False, max_noise:int=0):
 
     if len(image.shape) > 2:
         x0 = np.clip(np.min(np.where(np.sum(image, axis=2) > max_noise)[1]) - padding, 0, image.shape[1])
@@ -192,6 +192,22 @@ def crop_to_content(image:np.ndarray, padding:int=1, return_vals:bool=False, max
         x1 = np.max(np.where(image > max_noise)[1]) + padding
         y0 = np.min(np.where(image > max_noise)[0]) - padding
         y1 = np.max(np.where(image > max_noise)[0]) + padding
+
+    if squared:
+        # Calculate the size needed for a square that fits the content
+        width = x1 - x0
+        height = y1 - y0
+        side = max(width, height)
+        
+        # Center the content in the square
+        center_x = (x0 + x1) / 2
+        center_y = (y0 + y1) / 2
+        
+        # Calculate new bounds
+        x0 = int(np.clip(center_x - side / 2, 0, image.shape[1] - side))
+        x1 = int(np.clip(center_x + side / 2, 0, image.shape[1]))
+        y0 = int(np.clip(center_y - side / 2, 0, image.shape[0] - side))
+        y1 = int(np.clip(center_y + side / 2, 0, image.shape[0]))
 
     cropped_image = image[y0:y1, x0:x1, :] if len(image.shape) == 3 else image[y0:y1, x0:x1]
     if return_vals:

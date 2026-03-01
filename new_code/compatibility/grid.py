@@ -110,31 +110,31 @@ class PieceOnCanvas:
         # placement of the piece
         y_c0 = np.ceil(y-grid.p_hs).astype(int)
         y_c1 = np.ceil(y+grid.p_hs).astype(int)
-        if piece.data.image.shape[0] % 2 == 1:
-            y_c1 +=1 
+        # if piece.data.image.shape[0] % 2 == 1:
+        #     y_c1 +=1 
         x_c0 = np.ceil(x-grid.p_hs).astype(int)
         x_c1 = np.ceil(x+grid.p_hs).astype(int)
-        if piece.data.image.shape[1] % 2 == 1:
-            x_c1 +=1
+        # if piece.data.image.shape[1] % 2 == 1:
+        #     x_c1 +=1
         # maybe not the best, but a quick fix ?
-        # if y_c1 - y_c0 == 2*grid.p_hs + 1:
-        #     y_c1 -= 1
-        # elif y_c1 - y_c0 == 2*grid.p_hs - 1:
-        #     y_c1 += 1
-        # if x_c1 - x_c0 == 2*grid.p_hs + 1:
-        #     x_c1 -= 1
-        # elif x_c1 - x_c0 == 2*grid.p_hs - 1:
-        #     x_c1 += 1
+        if y_c1 - y_c0 == 2*grid.p_hs + 1:
+            y_c1 -= 1
+        elif y_c1 - y_c0 == 2*grid.p_hs - 1:
+            y_c1 += 1
+        if x_c1 - x_c0 == 2*grid.p_hs + 1:
+            x_c1 -= 1
+        elif x_c1 - x_c0 == 2*grid.p_hs - 1:
+            x_c1 += 1
 
         self.image = np.zeros((grid.canvas_size, grid.canvas_size, piece.data.image.shape[2]))
         self.mask = np.zeros((grid.canvas_size, grid.canvas_size))
         # self.polygon = transform(piece.data.polygon, lambda f: f - piece.data.img_center)
         if enabled_features is not None:
-            if enabled_features['shape'] == True:
+            if enabled_features['shape']:
                 self.sdf = np.zeros((grid.canvas_size, grid.canvas_size)) + np.min(piece.features.sdf.data)
-            if enabled_features['lines'] == True:
+            if enabled_features['lines']:
                 self.lines_mask = np.zeros((grid.canvas_size, grid.canvas_size))
-            if enabled_features['motives'] == True:
+            if enabled_features['motives']:
                 self.motives_cube = np.zeros((grid.canvas_size, grid.canvas_size, piece.features.motives.num_of_classes))
         # self.centroid = np.zeros((2,1))
 
@@ -152,13 +152,13 @@ class PieceOnCanvas:
         polygon = shapely.affinity.rotate(piece.data.polygon, -theta, origin=tuple(piece.data.img_center))
         #piece_mask = (piece_mask > eps_mh).astype(np.uint8)
         if enabled_features is not None:
-            if enabled_features['shape'] == True:
+            if enabled_features['shape']:
                 sdf = scipy.ndimage.rotate(piece.features.sdf.data, theta, reshape=False, mode='constant', order=0)
-            if enabled_features['lines'] == True:
+            if enabled_features['lines']:
                 lines_mask = scipy.ndimage.rotate(piece.features.lines_mask, theta, reshape=False, mode='constant', order=0, prefilter=False)
                 lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_CLOSE, closing_kernel)
             ## NEW MOTIF-BASED
-            if enabled_features['motives'] == True:
+            if enabled_features['motives']:
                 motives_cube = scipy.ndimage.rotate(piece.features.motives.motives_cube, theta, reshape=False, mode='constant', order=0)
                 
         # PLACEMENT
@@ -169,6 +169,7 @@ class PieceOnCanvas:
             print(f"we are trying:\n\tself.image[{y_c0}:{y_c1}, {x_c0}:{x_c1}, :] = image\nwhere")
             print(f"\timage.shape = {image.shape}\n\tgrid.canvas_size = {grid.canvas_size}")
             print("#" * 50)
+        # print(f"we are trying:\n\tself.image[{y_c0}:{y_c1}, {x_c0}:{x_c1}, :] = image\nwhere")
         self.image[y_c0:y_c1, x_c0:x_c1, :] = image
         self.mask[y_c0:y_c1, x_c0:x_c1] = mask
         for ch in range(self.image.shape[2]):
