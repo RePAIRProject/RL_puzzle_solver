@@ -235,7 +235,8 @@ class Configuration:
         """
         with open(yaml_file_path, 'r') as file:
             parameters = yaml.safe_load(file)
-        self.puzzle_name = parameters['puzzle_name']
+        if read_name:
+            self.puzzle_name = parameters['puzzle_name']
         self.data_folder = parameters['data_folder']
         return parameters
 

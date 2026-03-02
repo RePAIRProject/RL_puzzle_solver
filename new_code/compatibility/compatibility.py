@@ -764,12 +764,10 @@ class CompatibilityMatrixModule:
         
         #### TMP
 
-        if self.params['compatibility']['features']['shape']['save_best_images']['enabled'] == True:
+        if self.params['compatibility']['features']['shape']['save_best_images']['enabled']:
             print("\nWARNING: 'save_best_images' enabled!\n")
-            print("It uses a combination of parameters across `shape` and `oracle`, and requires the ground truth. \
-                It is used to create the pairwise alignment dataset.")
-            print("It may be a bit complex to track the parameters, refer to `default.yaml` for more info or \
-                just disable the dataset creation (setting `save_best_images/enabled` to No) if you are interested in the compatibility only.\n")
+            print("It uses a combination of parameters across `shape` and `oracle`, and requires the ground truth. It is used to create the pairwise alignment dataset.")
+            print("It may be a bit complex to track the parameters, refer to `default.yaml` for more info or just disable the dataset creation (setting `save_best_images/enabled` to No) if you are interested in the compatibility only.\n")
             with open(self.cfg.get_GT_path(), 'r') as gtjf:
                 self.gt = json.load(gtjf)
         
@@ -779,12 +777,10 @@ class CompatibilityMatrixModule:
         for i in range(self.puzzle.num_of_pieces):
             for j in range(self.puzzle.num_of_pieces):
                 if i != j:
-                    # breakpoint()
-                # if i > j:
                     if verbose > 1:
                         print(f'computing shape-based CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
                     RM_ij = self.RM_dict['shape'][:, :, :, j, i]  
-                    if self.params['compatibility']['features']['shape']['save_best_images']['enabled'] == True:  
+                    if self.params['compatibility']['features']['shape']['save_best_images']['enabled']:  
                         gt_piece_i = self.gt['pieces'][f'{i}']
                         gt_piece_j = self.gt['pieces'][f'{j}']
                         gt_pos_i = np.asarray([gt_piece_i['x'], gt_piece_i['y']]) #/ self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
@@ -809,7 +805,7 @@ class CompatibilityMatrixModule:
         dil_kernel = np.ones((dilation_size, dilation_size))
         sigma = self.grid.p_hs
         
-        if self.params['compatibility']['features']['shape']['save_best_images']['enabled'] == True:
+        if self.params['compatibility']['features']['shape']['save_best_images']['enabled']:
             os.makedirs(self.params['compatibility']['features']['shape']['save_best_images']['data_folder'], exist_ok=True)
 
         for x_idx, y_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
@@ -829,13 +825,13 @@ class CompatibilityMatrixModule:
             CM_ij[x_idx, y_idx, theta_idx] = shape_score
 
             # this is only for saving the image (and mask) when creating the `hard negatives`
-            if self.params['compatibility']['features']['shape']['save_best_images']['enabled'] == True:
+            if self.params['compatibility']['features']['shape']['save_best_images']['enabled']:
                 
                 # create folders if they do not exist
-                imgs_folder = os.path.join(self.params['compatibility']['features']['shape']['save_best_images']['data_folder'], 'images')
+                imgs_folder = os.path.join(self.params['compatibility']['features']['shape']['save_best_images']['data_folder'], 'hard_negative', 'images')
                 os.makedirs(imgs_folder, exist_ok=True)
-                if self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['save_masks'] == True:
-                    masks_folder = os.path.join(self.params['compatibility']['features']['shape']['save_best_images']['data_folder'], 'masks')
+                if self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['save_masks']:
+                    masks_folder = os.path.join(self.params['compatibility']['features']['shape']['save_best_images']['data_folder'], 'hard_negative', 'masks')
                     os.makedirs(masks_folder, exist_ok=True)
                 
                 # print(f'shape score[{x_idx}, {y_idx}, {theta_idx}]={shape_score}')
@@ -851,11 +847,11 @@ class CompatibilityMatrixModule:
                         hard_negative_img, hard_negative_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, mask_type=self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['mask_type'], return_mask=self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['save_masks'])
                         alignment_name = f"{self.puzzle.name}_{piece_i.name}_vs_{piece_j.name}_score{int(shape_score*100):d}.png"
                         img_path = os.path.join(imgs_folder, alignment_name)
-                        if self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['crop_images'] == True:
+                        if self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['crop_images']:
                             hard_negative_img = crop_to_content(hard_negative_img, padding=self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['padding'])
                             hard_negative_mask = crop_to_content(hard_negative_mask, padding=self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['padding'])     
                         plt.imsave(img_path, np.clip(hard_negative_img, 0, 1))
-                        if self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['save_masks'] == True:
+                        if self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['save_masks']:
                             mask_path = os.path.join(masks_folder, alignment_name)
                             cv2.imwrite(mask_path, hard_negative_mask.astype(np.uint8))
                         # breakpoint()

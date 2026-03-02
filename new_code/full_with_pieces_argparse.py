@@ -29,7 +29,7 @@ def main(args):
     puzzle = Puzzle()
     puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)
 
-    if os.path.exists(cfg.get_puzzle_info_path()) and params['preprocessing'].get('load_from_file', False) == True:
+    if os.path.exists(cfg.get_puzzle_info_path()) and params['preprocessing'].get('load_from_file', False):
         params['preprocessing'] = load_from_file(cfg.get_puzzle_info_path())
 
     rmm = RegionMatrixModule(puzzle, params, cfg)  # it is redundant, we know 
