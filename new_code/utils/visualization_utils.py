@@ -38,23 +38,24 @@ def save_pairwise_matrix_visualization_to_file(PM, pieces: List[PuzzlePiece], ro
                     # if x_plot == 8 and y_plot == 6 and rr == 3:
                     #     breakpoint()
                     axs[x_plot, y_plot].imshow(PM[:, :, rr, x_plot-1, y_plot-1], vmin=vmin, vmax=vmax, cmap=cmap)
+                    axs[x_plot, y_plot].scatter(PM.shape[0] / 2, PM.shape[1] / 2, color='blue', marker='X', linewidths=10)
                     axs[x_plot, y_plot].xaxis.set_visible(False)
                     axs[x_plot, y_plot].yaxis.set_visible(False)
 
             for a in range(1, PM.shape[3]+1):
-                axs[0, a].set_title(pieces[a-1].id, fontsize=32)
+                axs[0, a].set_title(f"piece I={pieces[a-1].id}, NOT rotated", fontsize=32)
                 # axs[0, a].imshow(cv2.cvtColor(pieces[a-1].data.image, cv2.COLOR_BGR2RGB), vmin=vmin, vmax=vmax, cmap=cmap)
                 axs[0, a].imshow(pieces[a-1].data.image, vmin=vmin, vmax=vmax, cmap=cmap)
                 axs[0, a].xaxis.set_visible(False)
                 axs[0, a].yaxis.set_visible(False)
                 if theta > 0:
-                    rotated_img = scipy.ndimage.rotate(pieces[a-1].data.image, theta, reshape=False, mode='constant')
+                    rotated_img = scipy.ndimage.rotate(pieces[a-1].data.image, -theta, reshape=False, mode='constant')
                 else:
                     rotated_img = pieces[a-1].data.image
                 axs[a, 0].imshow(rotated_img)
                 axs[a, 0].xaxis.set_visible(False)
                 axs[a, 0].yaxis.set_visible(False)
-                axs[a, 0].set_title(pieces[a-1].id, loc='left', fontsize=32)
+                axs[a, 0].set_title(f"piece J={pieces[a-1].id}, rotated {theta}d clockwise", loc='center', fontsize=32)
             plt.tight_layout()
             plt.savefig(os.path.join(output_folder, f"{matrix_type}_{based_on}_r{rr}.{visualization_params['img_format']}"))
             plt.close()
@@ -150,7 +151,7 @@ def reconstruct_pil(
         piece_img = Image.fromarray(piece_img, mode="RGBA")
 
         if theta != 0:
-            piece_img = piece_img.rotate(theta, expand=expand_on_rotate, fillcolor=(0,0,0,0))
+            piece_img = piece_img.rotate(-theta, expand=expand_on_rotate, fillcolor=(0,0,0,0))
 
         pos = (int(x - piece_img.width // 2), int(y - piece_img.height // 2))
         canvas.paste(piece_img, pos, mask=piece_img)  # Use the alpha channel as mask

@@ -142,7 +142,7 @@ def solver_rot_puzzle(R, P, T, mode='exp', verbosity=1, decimals=8):
             # alpha: rotation index of piece i
             for alpha_idx in range(num_rot):
                 # apply a rotation of alpha to the matrix, is the same as applying a rotation -alpha to the input
-                R_i_rotated = scipy.ndimage.rotate(R_i, rot_values[alpha_idx], reshape=False, mode='constant', order=0)
+                R_i_rotated = scipy.ndimage.rotate(R_i, -rot_values[alpha_idx], reshape=False, mode='constant', order=0)
                 # subtract -alpha from beta, but since the angle is periodic, we need to roll the matrix
                 R_i_rotated = np.roll(R_i_rotated, alpha_idx, axis=2)
             

@@ -78,6 +78,8 @@ class SolverWithPiecesModule:
         if self.solver_params['no_rotations']:
             # Keep only the 0-th rotation but do not change R.ndim (= 5)
             self.R = self.R[:, :, 0:1, :, :]
+
+
         
         assert self.R.ndim == 5, f"R should have 5 dimensions: expecting (x,y,theta,N,N), got R.shape = {R.shape}"
 
@@ -93,7 +95,14 @@ class SolverWithPiecesModule:
         # are "occupied" by the piece itself, and they need to be zeroed in the P matrix
         self.occupancy_grid_pieces = self._compute_occupancy_grid()
 
+        ######################
+        # TMP
+        ######################
+        # self.R[:,:,:,1:9,1:9] = 0
+
         self.initialize_p_matrix()
+
+
 
 
     def initialize_p_matrix(self):

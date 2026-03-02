@@ -7,7 +7,7 @@ def main():
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
     
-    params = cfg.load('input_parameters.yaml')   # basic reading in this case
+    params = cfg.load('input_parameters_escher.yaml')   # basic reading in this case
     # we are calculating CM based on RM previously computed, so we need to know `exp_name`
     cfg.set_puzzle_single_run_random_folder_name(params['exp_name'])
     

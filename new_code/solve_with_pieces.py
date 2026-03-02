@@ -8,7 +8,7 @@ import os, json
 def main():
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
-    params = cfg.load('input_parameters.yaml')   
+    params = cfg.load('input_parameters_escher.yaml')   
     # we are solving based on the CM previously computed, so we need to know `exp_name`
     cfg.set_puzzle_single_run_random_folder_name(params['exp_name'])
     params['compatibility']['grid']  = cfg.get_grid_params()
