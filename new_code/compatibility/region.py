@@ -224,7 +224,11 @@ class RegionMatrixModule:
         elif feature == 'oracle':
             if verbose > 1:
                 print("WARNING:\nfor the oracle compatibility, we still use shape-based RM Computation")
-            RM = self.compute_shape_based_RM(verbose=verbose)
+            # TODO: check if we already computed the shape!
+            if 'shape' in self.RM.keys():
+                RM = self.RM['shape']
+            else:
+                RM = self.compute_shape_based_RM(verbose=verbose)
         elif feature == 'PAD' or feature == 'pairwise_alignment_discriminator':
             if verbose > 1:
                 print("WARNING:\nfor the PAD compatibility, we still use shape-based RM Computation")

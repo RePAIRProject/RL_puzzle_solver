@@ -804,6 +804,7 @@ class CompatibilityMatrixModule:
         dilation_size = self.params['compatibility']['features']['shape']['SDF_dilation']
         dil_kernel = np.ones((dilation_size, dilation_size))
         sigma = self.grid.p_hs
+        hard_negatives_positions = []
         
         if self.params['compatibility']['features']['shape']['save_best_images']['enabled']:
             os.makedirs(self.params['compatibility']['features']['shape']['save_best_images']['data_folder'], exist_ok=True)
@@ -839,7 +840,12 @@ class CompatibilityMatrixModule:
                     cm_rel_j_vs_i = [x_idx - self.grid.xy_values.shape[0]//2, y_idx - self.grid.xy_values.shape[1]//2]
                     cm_rel_shift = np.asarray(cm_rel_j_vs_i) * self.grid.xy_step
                     dist_from_correct = np.linalg.norm(cm_rel_shift - gt_rel)
-                    if dist_from_correct > self.params['compatibility']['features']['shape']['save_best_images']['dist2GT_threshold']:                    
+                    if len(hard_negatives_positions) > 0:
+                        min_dist_from_other_hn = np.min(np.linalg.norm(np.asarray([x_idx, y_idx]) - np.asarray(hard_negatives_positions), axis=1))
+                    else:
+                        min_dist_from_other_hn = 100
+                    if dist_from_correct > self.params['compatibility']['features']['shape']['save_best_images']['dist2GT_threshold'] \
+                        and min_dist_from_other_hn > self.params['compatibility']['features']['shape']['save_best_images']['dist2hn_threshold']:                    
                         # best_pos_idx = np.argmax(CM_ij)
                         # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
                         # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
@@ -855,7 +861,7 @@ class CompatibilityMatrixModule:
                             mask_path = os.path.join(masks_folder, alignment_name)
                             cv2.imwrite(mask_path, hard_negative_mask.astype(np.uint8))
                         # breakpoint()
-                        
+                        hard_negatives_positions.append([x_idx, y_idx])
                         # plt.imshow(img_to_discriminate_mpl)
                         # plt.imshow(touching_region, cmap='gray', alpha=0.35)
                         #print(f"best pos: {best_pos_xy}")
