@@ -425,8 +425,7 @@ class CompatibilityMatrixModule:
 
                         # This is the PAIRWISE "BEST" given the grid step that we have
                         if self.oracle_params['pairwise_alignments_dataset']['save_grid_alignment']:
-                            # if self.oracle_params['pairwise_alignments_dataset']['rotate_i_piece']:
-                            if 1 > 0:
+                            if self.oracle_params['pairwise_alignments_dataset']['rotate_i_piece']:
                                 # with `piece i` rotated !
                                 grid_alignment_name = f'{alignment_basename}_grid.png'
                                 xj_idx_i_rotated = np.round((xj_pixel - self.grid.xy_values[0,0][0]) / self.grid.xy_step).astype(int)
@@ -451,8 +450,7 @@ class CompatibilityMatrixModule:
                                 plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], grid_alignment_name), np.clip(grid_aligned_image, 0, 1))
                                 if self.oracle_params['pairwise_alignments_dataset']['save_masks']:
                                     cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], grid_alignment_name), np.clip(grid_aligned_mask, 0, 2))
-                            # else:
-                            if 1 > 0:
+                            else:
                                 # This is the PAIRWISE "BEST" given the grid step that we have
                                 # with `piece i` NOT rotated
                                 grid_alignment_name = f'{alignment_basename}_grid.png'
