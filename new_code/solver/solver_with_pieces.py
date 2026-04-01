@@ -3,8 +3,9 @@ from compatibility.grid import PuzzleGrid, PieceOnCanvas
 
 from utils.puzzle_utils import Puzzle, PuzzlePiece
 from .solver_rot_puzzle import solver_rot_puzzle, fix_anchors_with_occ
-from .solver_utils import compute_pixel_solution,initialize_p, initialize_p_with_occupancy, initialize_p_using_neighbours_with_occupancy
-from .solver_utils import initialize_p_from_external_solution, get_p_xy_size_from_sandbox_size, initialize_p_from_GT, initialize_p_from_MULTI_solution
+from .solver_utils import compute_pixel_solution, initialize_p, initialize_p_with_occupancy, \
+    initialize_p_using_neighbours_with_occupancy, select_anchor
+from .solver_utils import select_anchor_NEW, initialize_p_from_external_solution, get_p_xy_size_from_sandbox_size, initialize_p_from_GT, initialize_p_from_MULTI_solution
 from utils.human_readable_duration import format_duration
 from utils.visualization_utils import reconstruct
 
@@ -112,6 +113,10 @@ class SolverWithPiecesModule:
             self.anchor_index = self.N//2  # TEMPORAL SOLUTION - central anchor for sanity check
             self.solver_params['anchor_index'] = self.anchor_index # this way it will be saved to the json file!
             #self.anchor_index = np.random.choice(N)  # select_anchor(detect_output)
+
+        elif self.solver_params['anchor_index'] == 0:
+            self.anchor_index = select_anchor_NEW(self.R)
+
         else:
             self.anchor_index = self.solver_params['anchor_index']
 
