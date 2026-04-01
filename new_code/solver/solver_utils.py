@@ -591,13 +591,15 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, Z, pieces, ppars, use_RGB=True
 def select_anchor_NEW1(self):
 
     ## Score based on the number of strong connections for each piece
-    threshold = 0.9 # strong compatibility
+    threshold = 0.999 # strong compatibility
     connection_scores = np.zeros(self.puzzle.num_of_pieces)
     for i in range(self.puzzle.num_of_pieces):
         score_i = 0
         for j in range(self.puzzle.num_of_pieces):
             if i != j:
                 R_ij = self.R[:, :, :, j, i]
+                maxval = np.max(R_ij)
+                print(maxval)
                 if np.any(R_ij > threshold):
                     score_i += 1
         connection_scores[i] = score_i
@@ -637,18 +639,6 @@ def select_anchor_NEW3(self):
     # Score based on average value of the strongest connections with other pieces
     best_vals_all = np.max(self.R, axis=(0, 1, 2))
     connection_scores = np.mean(best_vals_all, axis=0)
-    anchor_index = np.argmax(connection_scores)
-
-    return anchor_index
-
-def select_anchor_NEW4(self):
-
-    k = 3   # control K best connection overall value
-
-    best_vals_all = np.max(self.R, axis=(0, 1, 2))
-    top_k_indices = np.argpartition(best_vals_all, -k, axis=0)[-k:, :]     # indices of top-k values along j for each i
-    top_k_vals = np.take_along_axis(best_vals_all, top_k_indices, axis=0)  # top-k values
-    connection_scores = np.sum(top_k_vals, axis=0)
     anchor_index = np.argmax(connection_scores)
 
     return anchor_index

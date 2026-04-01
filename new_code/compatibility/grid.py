@@ -170,8 +170,13 @@ class PieceOnCanvas:
             print(f"\timage.shape = {image.shape}\n\tgrid.canvas_size = {grid.canvas_size}")
             print("#" * 50)
         # print(f"we are trying:\n\tself.image[{y_c0}:{y_c1}, {x_c0}:{x_c1}, :] = image\nwhere")
-        self.image[y_c0:y_c1, x_c0:x_c1, :] = image
-        self.mask[y_c0:y_c1, x_c0:x_c1] = mask
+
+        ### CHECK !!!
+        #self.image[y_c0:y_c1, x_c0:x_c1, :] = image
+        #self.mask[y_c0:y_c1, x_c0:x_c1] = mask
+        self.image[y_c0:y_c1+1, x_c0:x_c1+1, :] = image
+        self.mask[y_c0:y_c1+1, x_c0:x_c1+1] = mask
+
         for ch in range(self.image.shape[2]):
             self.image[:,:,ch] *= (self.mask > 0)
         self.polygon = shapely.transform(polygon, lambda f: f + [x,y] - piece.data.img_center)
