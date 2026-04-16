@@ -1,13 +1,13 @@
 from compatibility.compatibility import CompatibilityMatrixModule
 from utils.puzzle_utils import Puzzle, load_from_file
 from utils.parameters_utils import Configuration
-import os, json 
+import os
 
 def main():
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
     
-    params = cfg.load('input_parameters.yaml')   # basic reading in this case
+    params = cfg.load('input_parameters_wikiart_P_evaluation.yaml')   # basic reading in this case
     # we are calculating CM based on RM previously computed, so we need to know `exp_name`
     cfg.set_puzzle_single_run_random_folder_name(params['exp_name'])
     

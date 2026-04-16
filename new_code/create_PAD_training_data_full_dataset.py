@@ -9,7 +9,7 @@ from utils.parameters_utils import Configuration
 def main():
 
     cfg_dataset = Configuration() # this contains all IO operations plus the folder structure
-    params = cfg_dataset.load('input_parameters_escher_dataset.yaml', read_name=False)   # basic reading in this case    # 
+    params = cfg_dataset.load('input_parameters_wikiart_P.yaml', read_name=False)   # basic reading in this case    # 
     
     puzzle_folders = os.listdir(cfg_dataset.get_preprocessing_folder())
     sorted_puzzle_folders = natsort.natsorted(puzzle_folders)
@@ -21,7 +21,7 @@ def main():
 
         if not skip_done or not os.path.exists(os.path.join(cfg_dataset.get_experiments_folder(), puzzle_folder)):
 
-            params = cfg.load('input_parameters_escher_dataset.yaml', read_name=False)   # basic reading in this case
+            params = cfg.load('input_parameters_wikiart_P.yaml', read_name=False)   # basic reading in this case
             # set by hand the puzzle name
             cfg.set_puzzle_name(puzzle_folder)
 

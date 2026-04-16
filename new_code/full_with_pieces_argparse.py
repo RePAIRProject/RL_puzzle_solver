@@ -1,12 +1,8 @@
-import numpy as np
-from scipy.io import savemat
 import argparse
-import pdb
 # import matplotlib
 # matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-import cv2
-import json, os
+import os
 
 from compatibility.region import RegionMatrixModule
 from compatibility.compatibility import CompatibilityMatrixModule
@@ -14,7 +10,7 @@ from compatibility.aggregation import AggregationModule
 from solver.solver_with_pieces import SolverWithPiecesModule
 from utils.puzzle_utils import Puzzle, load_from_file
 from utils.parameters_utils import Configuration
-from utils.visualization_utils import reconstruct, reconstruct_pil, crop_to_content, build_suffix
+from utils.visualization_utils import reconstruct_pil, build_suffix
 
 
 def main(args):
@@ -43,7 +39,6 @@ def main(args):
 
     cmm.prepare() # creates grid, adjust/compute parameters and so on
     cmm.compute(verbose=params['verbosity'])
-    # rmm.save_candidate_alignments_to_file(verbose=params['verbosity'])
     cmm.save()
 
     am = AggregationModule(puzzle, params, cfg) 

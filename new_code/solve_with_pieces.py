@@ -8,7 +8,7 @@ import os, json
 def main():
 
     cfg = Configuration() # this contains all IO operations plus the folder structure
-    params = cfg.load('input_parameters.yaml')   
+    params = cfg.load('input_parameters_wikiart_P_evaluation.yaml')   
     # we are solving based on the CM previously computed, so we need to know `exp_name`
     cfg.set_puzzle_single_run_random_folder_name(params['exp_name'])
     params['compatibility']['grid']  = cfg.get_grid_params()
@@ -30,7 +30,7 @@ def main():
 
     image_solution = reconstruct_pil(pixel_solution, puzzle.pieces, dimension)
 
-    if params['solver']['solution']['visualization']['add_suffix'] == True:
+    if params['solver']['solution']['visualization']['add_suffix'] is True:
         suffix = build_suffix(params)
         saving_path = cfg.get_VIS_path(add_as_suffix=suffix)
     else:
@@ -38,7 +38,7 @@ def main():
     plt.imsave(saving_path, image_solution)  # save final image in solution folder
     
     ## Placement
-    if params['solver']['generate_placement_file'] == True:
+    if params['solver']['generate_placement_file'] is True:
         swpm.generate_placement_file(pixel_solution)
 
 if __name__ == '__main__':

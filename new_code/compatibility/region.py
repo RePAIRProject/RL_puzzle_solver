@@ -225,7 +225,7 @@ class RegionMatrixModule:
             if verbose > 1:
                 print("WARNING:\nfor the oracle compatibility, we still use shape-based RM Computation")
             # TODO: check if we already computed the shape!
-            if 'shape' in self.RM.keys():
+            if self.features_status['shape']:
                 RM = self.RM['shape']
             else:
                 RM = self.compute_shape_based_RM(verbose=verbose)
@@ -240,6 +240,10 @@ class RegionMatrixModule:
         elif feature == 'alignment_scorer' :
             if verbose > 1:
                 print("WARNING:\nfor the AS compatibility, we still use shape-based RM Computation")
+            RM = self.compute_shape_based_RM(verbose=verbose)
+        elif feature == 'alignments_ranker' :
+            if verbose > 1:
+                print("WARNING:\nfor the AR compatibility, we still use shape-based RM Computation")
             RM = self.compute_shape_based_RM(verbose=verbose)
         else:
             raise Exception(f"{feature}-based RM not implemented yet!")
@@ -359,7 +363,7 @@ class RegionMatrixModule:
         # piece_i_on_canvas = pcs_uts.place_on_canvas(piece_i, (center_pos, center_pos), self.canvas_size, 0)
         for theta_idx in range(self.RM_size[2]):
             theta = theta_idx * self.grid.theta_step
-            piece_j_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[j], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=theta, enabled_features=self.features_status)
+            piece_j_on_canvas = PieceOnCanvas(piece=self.puzzle.pieces[j], grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=-theta, enabled_features=self.features_status)
             # piece_j_on_canvas = pcs_uts.place_on_canvas(piece_j, (center_pos, center_pos), self.canvas_size, t * self.theta_step)
             # SHAPE case - BASIC
             overlap_shapes = cv2.filter2D(piece_i_on_canvas.mask, -1, piece_j_on_canvas.mask)

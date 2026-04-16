@@ -209,6 +209,10 @@ class Puzzle:
         images_subfolder = self.cfg.get_puzzle_images_subfolder()
         masks_subfolder = self.cfg.get_puzzle_masks_subfolder()
         polygons_subfolder = self.cfg.get_puzzle_polygons_subfolder()
+        if os.path.exists(polygons_subfolder):
+            self.load_polygons = True 
+        else:
+            self.load_polygons = False
         self.computer_ordered_pieces_names = os.listdir(images_subfolder)
         self.pieces_names = natsort.natsorted(self.computer_ordered_pieces_names)
         
@@ -233,7 +237,8 @@ class Puzzle:
             piece.data.image = plt.imread(os.path.join(images_subfolder, f"{piece.name}.png"))
             piece.data.img_center = np.asarray(piece.data.image.shape[:2]) // 2
             piece.data.mask = cv2.imread(os.path.join(masks_subfolder, f"{piece.name}.png"), cv2.IMREAD_GRAYSCALE)
-            piece.data.polygon = np.load(os.path.join(polygons_subfolder, f"{piece.name}.npy"), allow_pickle=True).tolist()
+            if self.load_polygons:
+                piece.data.polygon = np.load(os.path.join(polygons_subfolder, f"{piece.name}.npy"), allow_pickle=True).tolist()
             # I have to load / compute the features here AFTER loading images and masks
             if features_params:
                 for feat_key in features_params.keys():

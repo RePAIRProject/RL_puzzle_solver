@@ -12,6 +12,7 @@ from utils.visualization_utils import save_pairwise_matrix_visualization_to_file
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
 from compatibility.grid import PuzzleGrid, PieceOnCanvas, recalculate_position_after_rotation
 from compatibility.alignment_scorer import AlignmentScorer
+from compatibility.alignments_ranker import AlignmentsRanker
 import matplotlib.pyplot as plt
 from utils.visualization_utils import crop_to_content
 
@@ -135,6 +136,10 @@ class CompatibilityMatrixModule:
             if verbose > 1:
                 print("Alignment Scorer Compatibility")
             CM = self._compute_alignment_scorer_CM(verbose=verbose)
+        elif feature == 'alignments_ranker':
+            if verbose > 1:
+                print("Alignments Ranker Compatibility")
+            CM = self._compute_alignments_ranker_CM(verbose=verbose)
         else:
             raise Exception(f"{feature}-based CM not implemented yet!")
 
@@ -206,56 +211,78 @@ class CompatibilityMatrixModule:
             self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'] = os.path.join(self.cfg.data_folder, self.oracle_params['pairwise_alignments_dataset']['data_folder'], 'negative', 'masks')      #, oracle_info['gt_puzzle_name']) 
             os.makedirs(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'], exist_ok=True)
 
+        import time
         CM_oracle = np.zeros(self.CM_size)
         if verbose > 1:
             print()
         if 'adjacency' not in self.gt.keys():
-            print("WARNING:\nno adjacency matrix, will compute oracle for all pairs!\n")
+            print("# " + "=" * 50)
+            print("# WARNING:\n# no adjacency matrix, will compute oracle for all pairs!")
+            print("# " + "=" * 50)
+        computed_pairs = []
         for i in range(self.puzzle.num_of_pieces):
             for j in range(self.puzzle.num_of_pieces):
+                already_done = False
                 if i != j:
-                    adjacent_pieces = False
-                    if 'adjacency' in self.gt.keys():
-                        if [i,j] in self.gt['adjacency'] or [j,i] in self.gt['adjacency']: 
-                            adjacent_pieces = True 
-                        else:
-                            # TODO: save candidates alignments for non-adjacent pieces!
-                            print("To be implemented!")
-                    else:
-                        # TODO: implement check on overlap ? 
-                        adjacent_pieces = True
-                    if adjacent_pieces == True:
+                    if [i,j] in computed_pairs or [j, i] in computed_pairs:
+                        already_done = True
                         if verbose > 1:
-                            print(f'computing oracle CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
-                        RM_ij = np.ones((CM_oracle.shape[0], CM_oracle.shape[1], CM_oracle.shape[2]))
-                        # breakpoint()
-                        if self.oracle_params['create_pairwise_alignments_dataset'] == True:
-                            RM_ij = self.RM_dict['oracle'][:, :, :, j, i]
-                        #if np.sum(RM_ij > 0) > 0:
-                        # breakpoint()
-                        gt_piece_i = self.gt['pieces'][f'{i}']
-                        gt_piece_j = self.gt['pieces'][f'{j}']
-                        gt_pos_i = np.asarray([gt_piece_i['x'], gt_piece_i['y']]) #/ self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
-                        gt_pos_j = np.asarray([gt_piece_j['x'], gt_piece_j['y']]) #/self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
-                        gt_rel_j_vs_i = np.round((gt_pos_j - gt_pos_i)).astype(int) #* 1.5 # / self.grid.xy_step).astype(int)
-                        gt_pos_i_theta = -gt_piece_i['theta']
-                        gt_pos_j_theta = -gt_piece_j['theta']
+                            print(f"already done this pair! we would be doing ({i}, {j})")
                         if verbose > 2:
-                            print("\nrelative GT:", gt_rel_j_vs_i)
-                        CM_oracle[:, :, :, j, i] = self._compute_pairwise_oracle_CM_R(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij=RM_ij, gt_rel_pos=gt_rel_j_vs_i, \
-                            thetai=gt_pos_i_theta, thetaj=gt_pos_j_theta, verbose=verbose)
-                    # else: # it should already be zero!
-                    #     CM_oracle[:, :, :, j, i] = np.zeros_like(CM_oracle[:, :, :, j, i])
+                            print(f"Compute pairs: {computed_pairs}")
+                    if not already_done:
+                        # check adjacency
+                        adjacent_pieces = False
+                        if 'adjacency' in self.gt.keys():
+                            if ([i,j] in self.gt['adjacency'] or [j,i] in self.gt['adjacency']): 
+                                adjacent_pieces = True 
+                                if verbose > 2:
+                                    print(f"piece {i} and piece {j} are neighbours! We compute the oracle compatibility")
+                            else:
+                                # TODO: save candidates alignments for non-adjacent pieces!
+                                if verbose > 2:
+                                    print(f"piece {i} and piece {j} are NOT neighbours! To be implemented!")
+                        else:
+                            if verbose > 1:
+                                print("No adjacency matrix found, we continue! Will compute on all pieces")
+                            # TODO: implement check on overlap ? 
+                            adjacent_pieces = True
+
+                        if adjacent_pieces:
+                            if verbose > 1:
+                                print(f'computing oracle CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
+                            RM_ij = np.ones((CM_oracle.shape[0], CM_oracle.shape[1], CM_oracle.shape[2]))
+                            # breakpoint()
+                            if self.oracle_params['create_pairwise_alignments_dataset']:
+                                RM_ij = self.RM_dict['oracle'][:, :, :, j, i]
+                            #if np.sum(RM_ij > 0) > 0:
+                            # breakpoint()
+                            gt_piece_i = self.gt['pieces'][f'{i}']
+                            gt_piece_j = self.gt['pieces'][f'{j}']
+                            gt_pos_i = np.asarray([gt_piece_i['x'], gt_piece_i['y']]) #/ self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
+                            gt_pos_j = np.asarray([gt_piece_j['x'], gt_piece_j['y']]) #/self.puzzle_info['pieces_image_size'][0] * self.puzzle.img_piece_size[0] / 0.166
+                            gt_rel_j_vs_i = np.round((gt_pos_j - gt_pos_i)).astype(int) #* 1.5 # / self.grid.xy_step).astype(int)
+                            gt_pos_i_theta = -gt_piece_i['theta']
+                            gt_pos_j_theta = -gt_piece_j['theta']
+                            if verbose > 2:
+                                print("\nrelative GT:", gt_rel_j_vs_i)
+                            time_ij = time.time()
+                            CM_oracle[:, :, :, j, i] = self._compute_pairwise_oracle_CM_R(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij=RM_ij, gt_rel_pos=gt_rel_j_vs_i, \
+                                thetai=gt_pos_i_theta, thetaj=gt_pos_j_theta, skip_saving_images=already_done, verbose=verbose)
+                            print(f"took {(time.time() - time_ij):.02f} seconds to compute CM_oracle[:,:,:,{j},{i}]")
+                            computed_pairs.append([i,j])
+                        # else: # it should already be zero!
+                        #     CM_oracle[:, :, :, j, i] = np.zeros_like(CM_oracle[:, :, :, j, i])
         if verbose > 1:
             print()
         return CM_oracle
     
-    # def _prepare_gt_data(self):
-    #     """ just reorganizes the gt as a list with the index to be more `in line` with the rest of the data """
-    def _pick_plausible_wrong_position(self, RM_ij: np.ndarray, xc: int, yc: int, max_attempts: int = 10):
+
+    def _pick_plausible_wrong_position(self, RM_ij: np.ndarray, xc: int, yc: int, max_attempts: int = 10, \
+                                        thetaj_idx=0, piece_i_on_canvas=None, piece_j=None, verbosity=0):
         """ 
         Picks a plausible alignment position (positive value in the RM matrix) which is NOT the correct one (used for dataset) 
-            - for now not using rotation
+            - for now not using rotation // how to handle rotations?
         ---
         Note: for small pieces with small grid (ex. polyomino) sometimes it fails (it is just random uniform after all)
         and leaves after max_attemtps. TODO: think of a smarter way to find a solution?
@@ -268,15 +295,39 @@ class CompatibilityMatrixModule:
             x_idx = plausible_pos[1][rnd_idx]
             y_idx = plausible_pos[0][rnd_idx] 
             if x_idx != xc and y_idx != yc:
-                found = True
+                # if we have the pieces, we check the overlap
+                if piece_i_on_canvas is not None and piece_j is not None:
+                    xj_w, yj_w = self.grid.xy_values[x_idx, y_idx]
+                    thetaj = self.grid.theta_values[thetaj_idx]
+                    if verbosity > 2:
+                        print(f"placing piece j: {piece_j.name} on ({xj_w}, {yj_w}), rotate by {thetaj}")
+                    try:
+                        piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=-thetaj, enabled_features=self.features_status)
+                    except Exception:
+                        print(f"Error while trying to place the piece j ({piece_j.name}) on the canvas!")
+                        breakpoint()
+                    plausible_alignment, reason = piece_i_on_canvas.touches_without_overlapping(piece_j_on_canvas)
+                    if verbosity > 2:
+                        print(f"The pieces are {reason}\nVerdict: {plausible_alignment}")
+                    if plausible_alignment:
+                        found = True                            
+                    else:
+                        if verbosity > 1:
+                            print("Non touching or overlapping pieces, we discard")
+                else:
+                    # if we do not pass the pieces, no check on the overlap!
+                    found = True 
             attempts += 1
             if attempts > max_attempts:
                 break
 
+        if not found and verbosity > 0:
+            print(f'After {attempts} we could not find a `plausible` wrong position, giving up!')
         xj_w, yj_w = self.grid.xy_values[x_idx, y_idx]
-        return xj_w, yj_w, 0, found
+        return xj_w, yj_w, thetaj, found
 
-    def _compute_pairwise_oracle_CM_R(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, gt_rel_pos: np.ndarray, thetai: int, thetaj: int, verbose: int = 0):
+    def _compute_pairwise_oracle_CM_R(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, gt_rel_pos: np.ndarray, thetai: int, thetaj: int, \
+                                        skip_saving_images: bool = False, verbose: int = 0):
         """
         For each pair of pieces, it places them on the canvas in the position `accepted` by RM_ij 
         and calls the scoring function to fill the pairwise compatibility matrix CM_ij 
@@ -404,99 +455,144 @@ class CompatibilityMatrixModule:
                     CM_ij[new_yj_idx, new_xj_idx, gt_rel_rot_idx] = 1
                     # plt.subplot(292); plt.title(f"CM[:,:,{gt_rel_rot_idx}]"); plt.imshow(CM_ij[:,:,gt_rel_rot_idx]); 
                     # plt.subplot(2,9,11); plt.title(f"RM[:,:,{gt_rel_rot_idx}]"); plt.imshow(RM_ij[:,:,gt_rel_rot_idx]); 
-
-                    if self.oracle_params['create_pairwise_alignments_dataset']:
-                        
-                        # This is the PAIRWISE GROUND TRUTH
-                        alignment_basename = f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{new_xj_pixel}_{new_yj_pixel}_{new_thetaj}'
-                        if self.oracle_params['pairwise_alignments_dataset']['save_true_alignment']:
-                            true_alignment_name = f'{alignment_basename}_gt.png'
-                            correctly_aligned_image, correctly_aligned_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=True)
-                            # plt.subplot(293); plt.title("GT"); plt.imshow(correctly_aligned_image); 
-                            # plt.subplot(294); plt.title("GT"); plt.imshow(crop_to_content(correctly_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared']))
-                            # plt.subplot(2,9,12); plt.title("GT"); plt.imshow(correctly_aligned_mask); 
-                            # plt.subplot(2,9,13); plt.title("GT"); plt.imshow(crop_to_content(correctly_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared']))
-                            if self.oracle_params['pairwise_alignments_dataset']['crop_images']:
-                                correctly_aligned_image = crop_to_content(correctly_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
-                                correctly_aligned_mask = crop_to_content(correctly_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
-                            plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], true_alignment_name), np.clip(correctly_aligned_image, 0, 1))
-                            if self.oracle_params['pairwise_alignments_dataset']['save_masks']:
-                                cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], true_alignment_name), np.clip(correctly_aligned_mask, 0, 2))
-
-                        # This is the PAIRWISE "BEST" given the grid step that we have
-                        if self.oracle_params['pairwise_alignments_dataset']['save_grid_alignment']:
-                            if self.oracle_params['pairwise_alignments_dataset']['rotate_i_piece']:
-                                # with `piece i` rotated !
-                                grid_alignment_name = f'{alignment_basename}_grid.png'
-                                xj_idx_i_rotated = np.round((xj_pixel - self.grid.xy_values[0,0][0]) / self.grid.xy_step).astype(int)
-                                yj_idx_i_rotated = np.round((yj_pixel - self.grid.xy_values[0,0][1]) / self.grid.xy_step).astype(int)
-                                thetaj_idx_i_rotated = np.round(thetaj // self.grid.theta_step).astype(int)         # new_theta_j ?
-                                xj_grid_pixel, yj_grid_pixel = self.grid.xy_values[xj_idx_i_rotated, yj_idx_i_rotated]
-                                thetaj_grid_degrees = self.grid.theta_values[thetaj_idx_i_rotated]
-                                if verbose > 2:
-                                    print("\nGrid Alignment with i rotated:\nPiece j will be placed with its center in:")
-                                    print(f"x={xj_grid_pixel}, y={yj_grid_pixel}, rotated theta={thetaj_grid_degrees} degrees")
-                                    print(f" - calculated extracting from grid position [{xj_idx_i_rotated}, {yj_idx_i_rotated}, {thetaj_idx_i_rotated}]")
-                                piece_i_on_canvas_on_grid = PieceOnCanvas(piece=piece_i, grid=self.grid, x=xi_pixel, y=yi_pixel, theta=thetai, enabled_features=self.features_status)
-                                piece_j_on_canvas_on_grid = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid_pixel, y=yj_grid_pixel, theta=thetaj_grid_degrees, enabled_features=self.features_status)
-                                grid_aligned_image, grid_aligned_mask = piece_i_on_canvas_on_grid.blend_with(piece_j_on_canvas_on_grid, return_mask=True)
-                                # plt.subplot(295); plt.title("GRID / piece i rotated"); plt.imshow(grid_aligned_image); 
-                                # plt.subplot(296); plt.title("GRID / piece i rotated"); plt.imshow(crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=True))
-                                # plt.subplot(2,9,14); plt.title("GRID / piece i rotated"); plt.imshow(grid_aligned_mask); 
-                                # plt.subplot(2,9,15); plt.title("GRID / piece i rotated"); plt.imshow(crop_to_content(grid_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=True))
+                    if not skip_saving_images:
+                        if self.oracle_params['create_pairwise_alignments_dataset']:
+                            
+                            # This is the PAIRWISE GROUND TRUTH
+                            alignment_basename = f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}_{new_xj_pixel}_{new_yj_pixel}_{new_thetaj}'
+                            if self.oracle_params['pairwise_alignments_dataset']['save_true_alignment']:
+                                true_alignment_name = f'{alignment_basename}_gt.png'
+                                correctly_aligned_image, correctly_aligned_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=True)
+                                # plt.subplot(293); plt.title("GT"); plt.imshow(correctly_aligned_image); 
+                                # plt.subplot(294); plt.title("GT"); plt.imshow(crop_to_content(correctly_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared']))
+                                # plt.subplot(2,9,12); plt.title("GT"); plt.imshow(correctly_aligned_mask); 
+                                # plt.subplot(2,9,13); plt.title("GT"); plt.imshow(crop_to_content(correctly_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared']))
                                 if self.oracle_params['pairwise_alignments_dataset']['crop_images']:
-                                    grid_aligned_image = crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
-                                    grid_aligned_mask = crop_to_content(grid_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
-                                plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], grid_alignment_name), np.clip(grid_aligned_image, 0, 1))
+                                    correctly_aligned_image = crop_to_content(correctly_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
+                                    correctly_aligned_mask = crop_to_content(correctly_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
+                                plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], true_alignment_name), np.clip(correctly_aligned_image, 0, 1))
                                 if self.oracle_params['pairwise_alignments_dataset']['save_masks']:
-                                    cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], grid_alignment_name), np.clip(grid_aligned_mask, 0, 2))
-                            else:
-                                # This is the PAIRWISE "BEST" given the grid step that we have
-                                # with `piece i` NOT rotated
-                                grid_alignment_name = f'{alignment_basename}_grid.png'
-                                xj_grid_pixel, yj_grid_pixel = self.grid.xy_values[new_xj_idx, new_yj_idx]
-                                thetaj_grid_degrees = self.grid.theta_values[gt_rel_rot_idx]
-                                if verbose > 2:
-                                    print("\nGrid Alignment with i NOT rotated:\nPiece j will be placed with its center in:")
-                                    print(f"x={xj_grid_pixel}, y={yj_grid_pixel}, rotated theta={thetaj_grid_degrees} degrees")
-                                    print(f" - calculated extracting from grid position [{new_xj_idx}, {new_yj_idx}, {gt_rel_rot_idx}]")
-                                piece_i_on_canvas_on_grid = PieceOnCanvas(piece=piece_i, grid=self.grid, x=xi_pixel, y=yi_pixel, theta=0, enabled_features=self.features_status)
-                                piece_j_on_canvas_on_grid = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid_pixel, y=yj_grid_pixel, theta=-thetaj_grid_degrees, enabled_features=self.features_status)
-                                grid_aligned_image, grid_aligned_mask = piece_i_on_canvas_on_grid.blend_with(piece_j_on_canvas_on_grid, return_mask=True)
-                                # plt.subplot(2,9,7); plt.title("GRID / piece i NOT rotated"); plt.imshow(grid_aligned_image)
-                                # plt.subplot(2,9,8); plt.title("GRID / piece i NOT rotated"); plt.imshow(crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=True))
-                                # plt.subplot(2,9,16); plt.title("GRID / piece i NOT rotated"); plt.imshow(grid_aligned_mask)
-                                # plt.subplot(2,9,17); plt.title("GRID / piece i NOT rotated"); plt.imshow(crop_to_content(grid_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=True))
-                                if self.oracle_params['pairwise_alignments_dataset']['crop_images']:
-                                    grid_aligned_image = crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
-                                    grid_aligned_mask = crop_to_content(grid_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
-                                plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], grid_alignment_name), np.clip(grid_aligned_image, 0, 1))
-                                if self.oracle_params['pairwise_alignments_dataset']['save_masks']:
-                                    cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], grid_alignment_name), np.clip(grid_aligned_mask, 0, 2))
+                                    cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], true_alignment_name), np.clip(correctly_aligned_mask, 0, 2))
 
-                        # plt.show()
-                        # breakpoint()    
-                        # These are randomly chosen "plausible" (but not correct!) alignment of the two pieces
-                        if self.oracle_params['pairwise_alignments_dataset']['save_wrong_alignments']:
-                            for wk in range(self.oracle_params['pairwise_alignments_dataset']['wrong_alignments_num']):
-                                plausible_alignment_name = f'{alignment_basename}_wrong_{wk}.png'
-                                xj_w, yj_w, thetaj_w, found = self._pick_plausible_wrong_position(RM_ij=RM_ij, xc=xj_idx, yc=yj_idx)
-                                if found:
-                                    piece_j_on_canvas_plausible1 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=thetaj_w, enabled_features=self.features_status)
-                                    wrong_alignment1, wrong_alignment1_mask = piece_i_on_canvas.blend_with(piece_j_on_canvas_plausible1, return_mask=True)
+                            # This is the PAIRWISE "BEST" given the grid step that we have
+                            if self.oracle_params['pairwise_alignments_dataset']['save_grid_alignment']:
+                                if self.oracle_params['pairwise_alignments_dataset']['rotate_i_piece']:
+                                    # with `piece i` rotated !
+                                    grid_alignment_name = f'{alignment_basename}_grid.png'
+                                    xj_idx_i_rotated = np.round((xj_pixel - self.grid.xy_values[0,0][0]) / self.grid.xy_step).astype(int)
+                                    yj_idx_i_rotated = np.round((yj_pixel - self.grid.xy_values[0,0][1]) / self.grid.xy_step).astype(int)
+                                    thetaj_idx_i_rotated = np.round(thetaj // self.grid.theta_step).astype(int)         # new_theta_j ?
+                                    xj_grid_pixel, yj_grid_pixel = self.grid.xy_values[xj_idx_i_rotated, yj_idx_i_rotated]
+                                    thetaj_grid_degrees = self.grid.theta_values[thetaj_idx_i_rotated]
+                                    if verbose > 2:
+                                        print("\nGrid Alignment with i rotated:\nPiece j will be placed with its center in:")
+                                        print(f"x={xj_grid_pixel}, y={yj_grid_pixel}, rotated theta={thetaj_grid_degrees} degrees")
+                                        print(f" - calculated extracting from grid position [{xj_idx_i_rotated}, {yj_idx_i_rotated}, {thetaj_idx_i_rotated}]")
+                                        print("Grid alignment")
+                                        print(f"piece_i: {xi_pixel}, {yi_pixel}, {thetai}\npiece_j: {xj_grid_pixel}, {yj_grid_pixel}, {thetaj_grid_degrees}")
+                                    piece_i_on_canvas_on_grid = PieceOnCanvas(piece=piece_i, grid=self.grid, x=xi_pixel, y=yi_pixel, theta=thetai, enabled_features=self.features_status)
+                                    piece_j_on_canvas_on_grid = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid_pixel, y=yj_grid_pixel, theta=thetaj_grid_degrees, enabled_features=self.features_status)
+                                    grid_aligned_image, grid_aligned_mask = piece_i_on_canvas_on_grid.blend_with(piece_j_on_canvas_on_grid, return_mask=True)
+                                    # plt.subplot(295); plt.title("GRID / piece i rotated"); plt.imshow(grid_aligned_image); 
+                                    # plt.subplot(296); plt.title("GRID / piece i rotated"); plt.imshow(crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=True))
+                                    # plt.subplot(2,9,14); plt.title("GRID / piece i rotated"); plt.imshow(grid_aligned_mask); 
+                                    # plt.subplot(2,9,15); plt.title("GRID / piece i rotated"); plt.imshow(crop_to_content(grid_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=True))
                                     if self.oracle_params['pairwise_alignments_dataset']['crop_images']:
-                                        wrong_alignment1 = crop_to_content(wrong_alignment1, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
-                                        wrong_alignment1_mask = crop_to_content(wrong_alignment1_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'])
-                                    plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], plausible_alignment_name), np.clip(wrong_alignment1, 0, 1))
+                                        grid_aligned_image = crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
+                                        grid_aligned_mask = crop_to_content(grid_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
+                                    plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], grid_alignment_name), np.clip(grid_aligned_image, 0, 1))
                                     if self.oracle_params['pairwise_alignments_dataset']['save_masks']:
-                                        cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'], plausible_alignment_name), np.clip(wrong_alignment1_mask, 0, 2))
-                                else: 
-                                    print("could not find plausible wrong alingment, skip this one!")
+                                        cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], grid_alignment_name), np.clip(grid_aligned_mask, 0, 2))
+                                else:
+                                    # This is the PAIRWISE "BEST" given the grid step that we have
+                                    # with `piece i` NOT rotated
+                                    grid_alignment_name = f'{alignment_basename}_grid.png'
+                                    xj_grid_pixel, yj_grid_pixel = self.grid.xy_values[new_xj_idx, new_yj_idx]
+                                    thetaj_grid_degrees = self.grid.theta_values[gt_rel_rot_idx]
+                                    if verbose > 2:
+                                        print("\nGrid Alignment with i NOT rotated:\nPiece j will be placed with its center in:")
+                                        print(f"x={xj_grid_pixel}, y={yj_grid_pixel}, rotated theta={thetaj_grid_degrees} degrees")
+                                        print(f" - calculated extracting from grid position [{new_xj_idx}, {new_yj_idx}, {gt_rel_rot_idx}]")
+                                        print("Grid alignment without I rotated")
+                                        print(f"piece_i: {xi_pixel}, {yi_pixel}, {0}\npiece_j: {xj_grid_pixel}, {yj_grid_pixel}, {thetaj_grid_degrees}")
+                                    piece_i_on_canvas_on_grid = PieceOnCanvas(piece=piece_i, grid=self.grid, x=xi_pixel, y=yi_pixel, theta=0, enabled_features=self.features_status)
+                                    piece_j_on_canvas_on_grid = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid_pixel, y=yj_grid_pixel, theta=-thetaj_grid_degrees, enabled_features=self.features_status)
+                                    grid_aligned_image, grid_aligned_mask = piece_i_on_canvas_on_grid.blend_with(piece_j_on_canvas_on_grid, return_mask=True)
+                                    # plt.subplot(2,9,7); plt.title("GRID / piece i NOT rotated"); plt.imshow(grid_aligned_image)
+                                    # plt.subplot(2,9,8); plt.title("GRID / piece i NOT rotated"); plt.imshow(crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=True))
+                                    # plt.subplot(2,9,16); plt.title("GRID / piece i NOT rotated"); plt.imshow(grid_aligned_mask)
+                                    # plt.subplot(2,9,17); plt.title("GRID / piece i NOT rotated"); plt.imshow(crop_to_content(grid_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=True))
+                                    if self.oracle_params['pairwise_alignments_dataset']['crop_images']:
+                                        grid_aligned_image = crop_to_content(grid_aligned_image, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
+                                        grid_aligned_mask = crop_to_content(grid_aligned_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
+                                    plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_folder'], grid_alignment_name), np.clip(grid_aligned_image, 0, 1))
+                                    if self.oracle_params['pairwise_alignments_dataset']['save_masks']:
+                                        cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['correct_alignment_masks_folder'], grid_alignment_name), np.clip(grid_aligned_mask, 0, 2))
+
+                            # plt.show()
+                            # breakpoint()    
+                            # These are randomly chosen "plausible" (but not correct!) alignment of the two pieces
+                            if self.oracle_params['pairwise_alignments_dataset']['save_wrong_alignments']:
+                                piece_i_on_canvas_on_grid = PieceOnCanvas(piece=piece_i, grid=self.grid, x=xi_pixel, y=yi_pixel, theta=0, enabled_features=self.features_status)
+                                for wk in range(self.oracle_params['pairwise_alignments_dataset']['wrong_alignments_num']):
+                                    plausible_alignment_name = f'{alignment_basename}_wrong_{wk}.png'
+                                    xj_w, yj_w, thetaj_w, found = self._pick_plausible_wrong_position(RM_ij=RM_ij, xc=xj_idx, yc=yj_idx, thetaj_idx=gt_rel_rot_idx, piece_i_on_canvas=piece_i_on_canvas_on_grid, piece_j=piece_j)
+                                    if found:
+                                        if verbose > 2:
+                                            print(f"Grid: {np.unique(self.grid.xy_values)}")
+                                            print(f"piece_i: {xi_pixel}, {yi_pixel}, {thetai}\npiece_j: {xj_w}, {yj_w}, {thetaj_w}")
+                                        piece_j_on_canvas_plausible1 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=-thetaj_w, enabled_features=self.features_status)
+                                        # piece_j_on_canvas_on_grid = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_grid_pixel, y=yj_grid_pixel, theta=thetaj_grid_degrees, enabled_features=self.features_status)
+                                        wrong_alignment1, wrong_alignment1_mask = piece_i_on_canvas_on_grid.blend_with(piece_j_on_canvas_plausible1, return_mask=True)
+                                        # plt.figure()
+                                        # plt.imshow(wrong_alignment1); plt.title(f'wrong alignment, piece {piece_i.name} vs {piece_j.name} ({xj_w}, {yj_w}, {thetaj_w})')
+                                        # plt.show(); breakpoint()
+                                        if self.oracle_params['pairwise_alignments_dataset']['crop_images']:
+                                            wrong_alignment1 = crop_to_content(wrong_alignment1, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
+                                            wrong_alignment1_mask = crop_to_content(wrong_alignment1_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
+                                        plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], plausible_alignment_name), np.clip(wrong_alignment1, 0, 1))
+                                        if self.oracle_params['pairwise_alignments_dataset']['save_masks']:
+                                            cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'], plausible_alignment_name), np.clip(wrong_alignment1_mask, 0, 2))
+                                    else: 
+                                        if verbose > 2:
+                                            print("could not find plausible wrong alingment, skip this one!")
+                    
+                        # points = self.grid.xy_values.reshape(-1,2)
+                        # piece_j_on_canvas_1 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=0, enabled_features=self.features_status)
+                        # piece_j_on_canvas_2 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=180, enabled_features=self.features_status)
+                        # piece_i_on_canvas_on_grid = PieceOnCanvas(piece=piece_i, grid=self.grid, x=xi_pixel, y=yi_pixel, theta=0, enabled_features=self.features_status)
+                        # plt.subplot(121); plt.imshow(piece_j_on_canvas_1.image + piece_i_on_canvas_on_grid.image)
+                        # # plt.plot(*piece_j_on_canvas_1.polygon.boundary.xy)
+                        # # plt.plot(*piece_i_on_canvas_on_grid.polygon.boundary.xy)
+                        # plt.scatter(points[:, 1], points[:, 0], marker='x', s=120, c='red', linewidths=2.5, zorder=5)
+                        # plt.subplot(122); plt.imshow(piece_j_on_canvas_2.image + piece_i_on_canvas_on_grid.image)
+                        # # plt.plot(*piece_j_on_canvas_2.polygon.boundary.xy)
+                        # # plt.plot(*piece_i_on_canvas_on_grid.polygon.boundary.xy)
+                        # plt.scatter(points[:, 1], points[:, 0], marker='x', s=120, c='red', linewidths=2.5, zorder=5)
+
+
+                        # # plt.subplot(321); plt.title('GT'); plt.imshow(correctly_aligned_image)
+                        # # plt.subplot(322); plt.title('GT'); plt.imshow(correctly_aligned_mask)
+                        # # plt.subplot(323); plt.title('positive'); plt.imshow(grid_aligned_image)
+                        # # plt.scatter(points[:, 1], points[:, 0], marker='x', s=120, c='red', linewidths=2.5, zorder=5)
+                        # # plt.subplot(324); plt.title('positive'); plt.imshow(grid_aligned_mask)
+                        # # plt.scatter(points[:, 1], points[:, 0], marker='x', s=120, c='red', linewidths=2.5, zorder=5)
+                        # # plt.subplot(325); plt.title('negative'); plt.imshow(wrong_alignment1)
+                        # # plt.scatter(points[:, 1], points[:, 0], marker='x', s=120, c='red', linewidths=2.5, zorder=5)
+                        # # plt.subplot(326); plt.title('negative'); plt.imshow(wrong_alignment1_mask)
+                        # # plt.scatter(points[:, 1], points[:, 0], marker='x', s=120, c='red', linewidths=2.5, zorder=5)
+                        # plt.show()
+                        # breakpoint()
+                    else:
+                        if verbose > 2:
+                            print("skipping these alignemnts as we already have [i,j] or [j,i] saved")
                 else:            
                     # we consider these two as "not neighbours"
                     if verbose > 2:
                         print("we have values but they are not considered neighbours, we do not write")
             
+                
+
         # oracle visualization! 
         # will be removed at some point (I hope)
         debug_and_show = False
@@ -529,6 +625,9 @@ class CompatibilityMatrixModule:
         For each pair of pieces, it places them on the canvas in the position `accepted` by RM_ij 
         and calls the scoring function to fill the pairwise compatibility matrix CM_ij 
         """
+        print("#" * 70)
+        print("\nWARNING: This does not include rotation! \nUse `_compute_pairwise_oracle_CM_R` (defined above)\nIt's deprecated and will be removed at some point")
+        print("#" * 70)
         kernel_size = 10*2+1
         kernel = np.ones((kernel_size, kernel_size))
         
@@ -854,8 +953,8 @@ class CompatibilityMatrixModule:
                         alignment_name = f"{self.puzzle.name}_{piece_i.name}_vs_{piece_j.name}_score{int(shape_score*100):d}.png"
                         img_path = os.path.join(imgs_folder, alignment_name)
                         if self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['crop_images']:
-                            hard_negative_img = crop_to_content(hard_negative_img, padding=self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['padding'])
-                            hard_negative_mask = crop_to_content(hard_negative_mask, padding=self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['padding'])     
+                            hard_negative_img = crop_to_content(hard_negative_img, padding=self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['padding'], squared=self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['crop_squared'])
+                            hard_negative_mask = crop_to_content(hard_negative_mask, padding=self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['padding'], squared=self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['crop_squared'])     
                         plt.imsave(img_path, np.clip(hard_negative_img, 0, 1))
                         if self.params['compatibility']['features']['oracle']['pairwise_alignments_dataset']['save_masks']:
                             mask_path = os.path.join(masks_folder, alignment_name)
@@ -1292,6 +1391,164 @@ class CompatibilityMatrixModule:
             else:                   # if topK is 0 or -1, we use all values
                 CM_ij[y_idx, x_idx, theta_idx] = comp
             
+        CM_ij -= neg_region    
+        
+        # import matplotlib.pyplot as plt 
+        # plt.subplot(231)
+        # plt.imshow(piece_i.data.image)
+        # plt.subplot(232)
+        # plt.imshow(piece_j.data.image)
+
+        # # best_pos_idx = np.argmax(CM_ij)
+        # # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
+        # # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
+        # # print(f"best pos before: {best_pos_xy}")
+                        
+        # # cm_rel_j_vs_i = [best_pos_xy_idx[0] - self.grid.xy_values.shape[0]//2, best_pos_xy_idx[1] - self.grid.xy_values.shape[1]//2]
+        # # print(f"estimated: {np.asarray(cm_rel_j_vs_i) * self.grid.xy_step}")
+        # plt.title(f"score: {cmp_score:.02f}")
+        # # plt.show()
+        # plt.subplot(234)
+        # plt.imshow(np.transpose(CM_ij[:,:,0]))
+        # plt.title("CM raw")
+
+
+
+        
+        # plt.subplot(236)
+        # plt.imshow(CM_ij)
+        # plt.title("CM final")
+        # plt.imshow(np.transpose(CM_ij[:,:,0]))
+        
+        # # plt.figure()
+        # # plt.subplot(131); plt.imshow(RM_ij)
+        # # plt.subplot(132); plt.imshow(CM_ij)
+        # plt.show()
+        # # plt.subplot(133)
+        # breakpoint()
+
+        # best_pos_idx = np.argmax(CM_ij)
+        # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
+        # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
+        # print(f"best pos after: {best_pos_xy}")
+        # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=best_pos_xy[1], y=best_pos_xy[0], theta=thetaj, enabled_features=self.features_status)
+        # img_to_discriminate_mpl = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=False)
+        # plt.imshow(img_to_discriminate_mpl)
+
+        # plt.show()
+        # breakpoint()
+        return CM_ij
+
+
+
+
+
+
+    #############################################################################
+    #############################################################################
+    #############################################################################
+    #############################################################################
+    #############################################################################
+    #############################################################################
+    #############################################################################
+    #############################################################################
+    # ranking the alignmeents
+    def _compute_alignments_ranker_CM(self, verbose: int = 0):
+        """Loops over pairs of pieces - not symmetric yet"""
+        CM_as = np.zeros(self.CM_size)
+        if verbose > 1:
+            print()
+
+        # Load model
+        ranker = AlignmentsRanker(
+            checkpoint_path=self.params['compatibility']['features']['alignments_ranker']['checkpoint_path'],
+            device='cuda',
+            radius=self.params['compatibility']['features']['alignments_ranker']['radius'],
+            threshold=self.params['compatibility']['features']['alignments_ranker']['threshold']
+        )
+
+        for i in range(self.puzzle.num_of_pieces):
+            for j in range(self.puzzle.num_of_pieces):
+                if i != j:
+                    if verbose > 1:
+                        print(f'computing Alignment Ranker CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
+                    RM_ij = self.RM_dict['alignments_ranker'][:, :, :, j, i]    
+                    if np.sum(RM_ij > 0) > 0:
+                            CM_as[:, :, :, j, i] = self._batch_compute_alignments_ranker_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, \
+                                model=ranker, params=self.params['compatibility']['features']['alignments_ranker'])
+        if verbose > 1:
+            print()
+        
+        return CM_as
+
+
+    def _batch_compute_alignments_ranker_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, model: AlignmentsRanker, params:dict):
+        import math 
+        """ 
+        It ranks the possible candidates alignment. 
+        It was trained to rank the scores of N possible alignments. 
+        """
+        CM_ij = np.zeros_like(RM_ij)
+        neg_region = RM_ij < 0
+        ids_to_score = np.where(RM_ij > 0)
+        
+        # load all the images on a list
+        rgb_images = []
+        mask_images = []
+        # plt.figure()
+        for y_idx, x_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+            piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
+            yj, xj = self.grid.xy_values[y_idx, x_idx]
+            thetaj = self.grid.theta_values[theta_idx]
+            piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+                        
+            img_to_discriminate_mpl, mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, blend_mode='average', 
+                                        mask_type='pieces_center_first', return_mask=True)
+
+            img_to_discriminate_mpl = crop_to_content(img_to_discriminate_mpl, squared=True)
+            mask = crop_to_content(mask, squared=True)
+            
+            img_to_discriminate_PIL = Image.fromarray(np.uint8(img_to_discriminate_mpl * 255))
+            img_to_discriminate_PIL = img_to_discriminate_PIL.convert('RGB')
+
+            mask_to_discriminate_PIL = Image.fromarray(np.uint8(mask * 255))
+            mask_to_discriminate_PIL = mask_to_discriminate_PIL.convert('L')            
+
+            # add image to images
+            rgb_images.append(img_to_discriminate_PIL)
+            mask_images.append(mask_to_discriminate_PIL)
+
+        # rank the images at once
+        scores = model.score(rgb_images, mask_images)
+        comps = torch.sigmoid(torch.from_numpy(scores))                 # these are the compatibilities (0 - 1)
+        ranks = torch.argsort(torch.argsort(comps, descending=True))    # these are the ranking (order descending)
+        topK = 0 # params.get('topK', 10)
+
+        # fig, axs = plt.subplots(1, 12)
+        # cur_axis = 0
+        # cur_img_idx = 0
+        # fill the matrix 
+        for comp, rank_order, y_idx, x_idx, theta_idx in zip(comps, ranks, ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+            # print(f"{cur_img_idx}) rank: {rank_order}, score: {comp}, ids: {y_idx}, {x_idx}, {theta_idx}")
+            # if not math.isnan(comp) and comp > 0.5 and cur_axis < 12:
+                # axs[cur_axis].set_title(f"{cur_img_idx}) rank: {rank_order}, score: {comp}, ids: {y_idx}, {x_idx}, {theta_idx}", fontsize=14)
+                # axs[cur_axis].imshow(np.asarray(rgb_images[cur_img_idx]))
+                # cur_axis += 1
+            if topK > 0:
+                if rank_order < topK:
+                    CM_ij[y_idx, x_idx, theta_idx] = comp
+                    
+                else:
+                    CM_ij[y_idx, x_idx, theta_idx] = 0          # cutting the values after the top K
+            else:                   # if topK is 0 or -1, we use all values
+                if comp > 0.5:
+                    CM_ij[y_idx, x_idx, theta_idx] = comp
+            
+            # cur_img_idx += 1
+        
+        # plt.show()
+        # breakpoint()
+
         CM_ij -= neg_region    
         
         # import matplotlib.pyplot as plt 

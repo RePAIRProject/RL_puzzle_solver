@@ -60,6 +60,7 @@ compatibility:
         enabled: No
         score_threshold: 0.8
         dist2GT_threshold: 15
+        dist2hn_threshold: 15
         data_folder: '/run/user/1000/gvfs/sftp:host=gpu1.dsi.unive.it,user=luca.palmieri/home/ssd/datasets/RePAIR_ReLab_luca/PAD_v4/hard_negative'
 
     lines:
@@ -96,14 +97,27 @@ compatibility:
       # 1. softmax (score is the score of output 1 (correct probability) after softmax)
       # 2. thresh (score is the score before softmax if it's above a threshold defined below)
       # 3. prob_diff (score is the difference between the two output `correct` and `wrong`)
-
       scoring_method: 'softmax' #'thresh', 'prob_diff'
-
       thresholds:
         positive: 2
         negative: 1.5
       cutoff_value: 0.05
       push_k_values: 3
+      cutoff_value: 0.05
+    alignment_scorer:
+      enabled: No
+      checkpoint_path: ~pretrained_AS/best.pth'
+      threshold: 30
+      radius: 30
+      topK: 5
+    alignments_ranker:
+      enabled: Yes
+      checkpoint_path: ~pretrained_AR/best.pth'
+      threshold: 30
+      radius: 30
+      topK: 5
+      split_method: 'fast' # or 'tournament'
+      cutoff_value: 0.5 # set to zero all values below this
     oracle:
       enabled: No
       # this is for the creation of images for pairwise "good" and "bad" alignments

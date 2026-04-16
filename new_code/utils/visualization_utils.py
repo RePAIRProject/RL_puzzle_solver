@@ -120,6 +120,8 @@ def reconstruct_pil(
                 show_borders : bool = True,
                 colormap_name : str = 'jet') -> np.ndarray:
 
+    from compatibility.grid import weirdly_working_rotation
+
     piece_size = pieces[0].data.image.shape
     if piece_size[0] != piece_size[1]:
         raise Exception('only square images of pieces are supported')
@@ -151,7 +153,8 @@ def reconstruct_pil(
         piece_img = Image.fromarray(piece_img, mode="RGBA")
 
         if theta != 0:
-            piece_img = piece_img.rotate(-theta, expand=expand_on_rotate, fillcolor=(0,0,0,0))
+            piece_img = Image.fromarray(weirdly_working_rotation(np.array(piece_img), -theta))
+            #piece_img = piece_img.rotate(-theta, expand=expand_on_rotate, fillcolor=(0,0,0,0))
 
         pos = (int(x - piece_img.width // 2), int(y - piece_img.height // 2))
         canvas.paste(piece_img, pos, mask=piece_img)  # Use the alpha channel as mask

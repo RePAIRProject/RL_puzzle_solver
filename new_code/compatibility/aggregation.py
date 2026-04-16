@@ -46,7 +46,6 @@ class AggregationModule:
         elif self.method == 'motif' or self.method == 'motives':
             R = self.CM_dict['motives']
             R = AggregationModule._normalize_motif_based_CM(R)
-
         elif self.method == 'lines':
             R = self.CM_dict['lines']
         elif self.method == 'PAD' or self.method == 'pairwise_alignment_discriminator':
@@ -55,9 +54,12 @@ class AggregationModule:
             R = self.CM_dict['oracle']
         elif self.method == 'alignment_scorer':
             R = self.CM_dict['alignment_scorer']
+        elif self.method == 'alignments_ranker':
+            R = self.CM_dict['alignments_ranker']
         elif self.method == 'PAD_with_oracle':
             R = self._aggregate_PAD_with_oracle()
         else:
+            print("\nWARNING:\nCould not find the `correct` feature-based R, I go with the `shape` one to be sure..\n\n")
             R = self.CM_dict['shape']
 
         self.CM_dict['R'] = R
