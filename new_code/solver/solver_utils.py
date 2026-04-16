@@ -587,6 +587,63 @@ def reconstruct_puzzle_v2(solved_positions, Y, X, Z, pieces, ppars, use_RGB=True
 
     return canvas_image
 
+#######
+def select_anchor_NEW1(self):
+
+    ## Score based on the number of strong connections for each piece
+    threshold = 0.999 # strong compatibility
+    connection_scores = np.zeros(self.puzzle.num_of_pieces)
+    for i in range(self.puzzle.num_of_pieces):
+        score_i = 0
+        for j in range(self.puzzle.num_of_pieces):
+            if i != j:
+                R_ij = self.R[:, :, :, j, i]
+                maxval = np.max(R_ij)
+                print(maxval)
+                if np.any(R_ij > threshold):
+                    score_i += 1
+        connection_scores[i] = score_i
+
+    anchor_index = np.argmax(connection_scores)
+
+    return anchor_index
+
+def select_anchor_NEW2(self):
+
+    ## Find the pair with the strongest connection
+    # R = self.R
+    # flat_index = np.argmax(R)
+    # indices = np.unravel_index(flat_index, R.shape)
+    # i, j = indices[-1], indices[-2]
+    # strongest_pair = (i, j)
+    # R_i_not_j = np.delete(self.R[:, :, :, :, i], j, axis=3)
+    # R_j_not_i = np.delete(self.R[:, :, :, :, j], i, axis=3)
+    # max_i_not_j = np.max(R_i_not_j)
+    # max_j_not_i = np.max(R_j_not_i)
+    # strong_val2 = np.array([max_i_not_j, max_j_not_i])
+    # anchor_index = strongest_pair[np.argmax(strong_val2)]
+
+    ## Score based on K-strongest connections overall value
+    k = 3
+    best_vals_all = np.max(self.R, axis=(0, 1, 2))
+    top_k_indices = np.argpartition(best_vals_all, -k, axis=0)[-k:, :]  # indices of top-k values along j for each i
+    top_k_vals = np.take_along_axis(best_vals_all, top_k_indices, axis=0)  # top-k values
+    connection_scores = np.sum(top_k_vals, axis=0)
+    anchor_index = np.argmax(connection_scores)
+
+    return anchor_index
+
+
+def select_anchor_NEW3(self):
+
+    # Score based on average value of the strongest connections with other pieces
+    best_vals_all = np.max(self.R, axis=(0, 1, 2))
+    connection_scores = np.mean(best_vals_all, axis=0)
+    anchor_index = np.argmax(connection_scores)
+
+    return anchor_index
+
+#########
 
 def select_anchor(folder):
     pieces_files = os.listdir(folder)
