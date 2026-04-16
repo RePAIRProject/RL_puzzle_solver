@@ -7,8 +7,16 @@
 verbosity: 2
 # skip_done: True # for run_on_dataset
 
+
+# repair --> number
+# wikiart --> load_from_file
 preprocessing:
-  piece_size: 251
+  # piece_size: 251
+  load_from_file: Yes
+  piece_size: 0
+  load_polygons: No
+
+
 
 # extraction
 features:
