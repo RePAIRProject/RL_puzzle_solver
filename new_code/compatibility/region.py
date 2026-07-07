@@ -166,16 +166,17 @@ class RegionMatrixModule:
         # values of the matrix
         self.RM['__context'] = context_params
         np.save(rm_path, self.RM)
-        if self.save_vis == True:
-            for feature in self.features:
+        # add all feature-based RM to the RM object
+        for feature in self.features:
+            if self.features_status[feature] == True:
+                if verbose > 1:
+                    print("-" * 50)
+                    print(f"Saving {feature}-based RM")
                 if self.features_status[feature] == True:
-                    if verbose > 1:
-                        print("-" * 50)
-                        print(f"Saving {feature}-based RM")
-                    if self.features_status[feature] == True:
+                    if self.save_vis == True:
                         save_pairwise_matrix_visualization_to_file(self.RM[feature], pieces=self.puzzle.pieces, rot_step=self.params['compatibility']['grid']['theta_step'], based_on=feature,
-                                                                        output_folder=os.path.join(self.cfg.get_current_experiments_folder(), 'RM_vis'), visualization_params=self.vis_params, 
-                                                                        matrix_type='RM')
+                                                                    output_folder=os.path.join(self.cfg.get_current_experiments_folder(), 'RM_vis'), visualization_params=self.vis_params, 
+                                                                    matrix_type='RM')
 
         # input parameters
         input_params_path = self.cfg.get_RM_input_parameters_path() 

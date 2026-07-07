@@ -3,6 +3,7 @@ import argparse
 # matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import os
+import shutil
 
 from compatibility.region import RegionMatrixModule
 from compatibility.compatibility import CompatibilityMatrixModule
@@ -24,6 +25,9 @@ def main(args):
 
     puzzle = Puzzle()
     puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)
+    
+    # copy the original image to have a reference
+    shutil.copy(cfg.get_original_image_path(), cfg.get_puzzle_experiments_subfolder())
 
     if os.path.exists(cfg.get_puzzle_info_path()) and params['preprocessing'].get('load_from_file', False):
         params['preprocessing'] = load_from_file(cfg.get_puzzle_info_path())
@@ -62,7 +66,8 @@ def main(args):
     else:
         saving_path = cfg.get_VIS_path()
     plt.imsave(saving_path, image_solution)  # save final image in solution folder
-   
+    
+
     ## Placement
     if params['solver']['generate_placement_file'] == True:
         swpm.generate_placement_file(pixel_solution)

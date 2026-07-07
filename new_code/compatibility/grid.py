@@ -334,7 +334,7 @@ class PieceOnCanvas:
         #num_blobs = num_labels - 1  # label 0 is background
 
     def touches_without_overlapping(self, piece: "PieceOnCanvas"):
-        combined_mask = np.clip(self.mask + piece.mask, 0, 1)
+        combined_mask = np.clip(self.mask + piece.mask, 0, 2)
         num_labels, labels = cv2.connectedComponents(combined_mask.astype(np.uint8))
         # print(np.unique(labels))
         # import matplotlib.pyplot as plt 
@@ -353,3 +353,47 @@ class PieceOnCanvas:
         else:
             return False, f"something else? (max: {np.max(combined_mask)}, num_labels: {num_labels})"
 
+@staticmethod
+def check_alignment(piece_i: "PieceOnCanvas", piece_j: "PieceOnCanvas", accept_overlap:bool=False, accept_empty_space:bool=False, accept_corner:bool=True):
+    combined_mask = np.clip(piece_i.mask + piece_j.mask, 0, 2)
+    # num_labels, labels = cv2.connectedComponents()
+    combined_uint8 = combined_mask.astype(np.uint8)
+    # 8-connectivity: diagonals count as connected
+    num_labels_8, _ = cv2.connectedComponents(combined_uint8, connectivity=8)
+    # 4-connectivity: diagonals do NOT count as connected
+    num_labels_4, _ = cv2.connectedComponents(combined_uint8, connectivity=4)
+
+    # if num_labels_8 == 2 and num_labels_4 == 3:
+    #     print("touching only at a corner")
+    # elif num_labels_8 == 2 and num_labels_4 == 2:
+    #     print("touching along an edge (or overlapping)")
+    # elif num_labels_8 == 3:
+    #     print("separate")
+    # print(np.unique(labels))
+    # import matplotlib.pyplot as plt 
+    # plt.subplot(1,2,1); plt.title(f"Mask, max: {np.max(combined_mask)}, n_labels: {num_labels}")
+    # plt.imshow(combined_mask)
+    # plt.subplot(1,2,2)
+    # plt.imshow(self.image + piece.image)
+    # plt.show()
+    # breakpoint()
+    if num_labels_8 == 2 and num_labels_4 == 3:
+        explanation = "touching only at a corner"
+        if accept_corner is True:
+            return True, explanation
+        return False, explanation
+    if np.max(combined_mask) == 1 and num_labels_4 == 2:
+        explanation = "touching along an edge without overlap"
+        return True, "touching without overlap"
+    elif np.max(combined_mask) > 1:
+        explanation = "overlapping"
+        if accept_overlap is True:
+            return True, explanation
+        return False, explanation
+    elif num_labels_8 == 3:
+        explanation = "not touching"
+        if accept_empty_space is True:
+            return True, explanation
+        return False, explanation
+    else:
+        return False, f"something else? (max: {np.max(combined_mask)}, num_labels_8: {num_labels_8}, num_labels_4: {num_labels_4})"

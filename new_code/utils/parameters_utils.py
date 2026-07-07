@@ -49,6 +49,7 @@ class Configuration:
         self.masks_subfolder = 'binary_masks'
         self.polygons_subfolder = 'polygons'
         self.features_folder = 'features'
+        self.regions_folder = 'regions'
         self.features_params_name = 'features.yaml'
         self.experiments_folder = 'experiments'
         self.ground_truth_filename = 'ground_truth.json'
@@ -108,6 +109,9 @@ class Configuration:
             filenames = natsort.natsorted(filenames)
         return filenames
 
+    def get_original_image_path(self):
+        return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.regions_folder, 'orig_image_cut.jpg')
+
     def get_puzzle_images_subfolder(self):
         return os.path.join(self.data_folder, self.preprocessing_folder, self.puzzle_name, self.images_subfolder)
 
@@ -134,12 +138,18 @@ class Configuration:
         self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), f"exp_{timestamp}_{self.randomword(6)}")
         os.makedirs(self.current_experiment_folder, exist_ok=True)
 
+    
+    
     def set_puzzle_single_run_random_folder_name(self, path: str):
         """ set the folder name when using CM or solver on a previous experiment """
         if path.find('#') < 0: # relative path
             self.current_experiment_folder = os.path.join(self.get_puzzle_experiments_subfolder(), path)
         else:                   # full path
             self.current_experiment_folder = path
+
+    def set_current_experiments_folder(self, path: str):
+        """ this seems an easier name to remember """
+        self.set_puzzle_single_run_random_folder_name(path)
 
     def get_current_experiments_folder(self):
         return self.current_experiment_folder

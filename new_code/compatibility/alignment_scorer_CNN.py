@@ -3,111 +3,9 @@ import torch.nn as nn
 import numpy as np
 from PIL import Image
 from scipy.ndimage import distance_transform_edt, binary_erosion
-from transformers import ViTModel, Dinov2Model
+from compatibility.resnet_models import GuidedResNet, PairwiseCompatibilityModel
 import torchvision.transforms as transforms
 
-
-# ============================================================================
-# Model Definition (copy from your models.py)
-# ============================================================================
-class MultiModalScorerV2_Practical(nn.Module):
-    """
-    Practical model for small datasets (~5K samples).
-    
-    Key features:
-    - Frozen DINO (86M params)
-    - Partially frozen ViT (14M trainable, 72M frozen)
-    - Small new layers (2M params)
-    - Total trainable: ~16M params
-    """
-    
-    def __init__(self, 
-                 geometric_vit='google/vit-base-patch16-224',
-                 dino_model='facebook/dinov3-vitb16-pretrain-lvd1689m',
-                 freeze_vit_layers=10,  # Freeze first 10 of 12 layers
-                 dropout=0.4):
-        super().__init__()
-        
-        # Geometric encoder (from scratch)
-        self.geometric_encoder = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-        )
-        
-        self.rgb_geom_fusion = nn.Sequential(
-            nn.Conv2d(3 + 128, 64, kernel_size=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 3, kernel_size=1)
-        )
-        
-        # ViT (partially frozen)
-        self.geometric_vit = ViTModel.from_pretrained(geometric_vit)
-        
-        # Freeze early layers
-        for name, param in self.geometric_vit.named_parameters():
-            layer_num = self._extract_layer_num(name)
-            if layer_num is not None and layer_num < freeze_vit_layers:
-                param.requires_grad = False
-            else:
-                param.requires_grad = True
-        
-        trainable_vit = sum(p.numel() for p in self.geometric_vit.parameters() if p.requires_grad)
-        total_vit = sum(p.numel() for p in self.geometric_vit.parameters())
-        print(f"ViT: {trainable_vit:,} trainable / {total_vit:,} total ({100*trainable_vit/total_vit:.1f}%)")
-        
-        # DINO (frozen)
-        self.dino = Dinov2Model.from_pretrained(dino_model)
-        for param in self.dino.parameters():
-            param.requires_grad = False
-        self.dino.eval()
-        
-        # Fusion (smaller for small data)
-        self.fusion = nn.Sequential(
-            nn.Linear(1536, 768),     # Smaller first layer
-            nn.LayerNorm(768),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            
-            nn.Linear(768, 256),
-            nn.LayerNorm(256),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            
-            nn.Linear(256, 1)
-        )
-    
-    def _extract_layer_num(self, param_name):
-        """Extract layer number from parameter name."""
-        import re
-        match = re.search(r'encoder\.layer\.(\d+)', param_name)
-        if match:
-            return int(match.group(1))
-        return None
-    
-    def forward(self, rgb, rgb_geometric):
-        # Geometric processing
-        rgb_only = rgb_geometric[:, :3]
-        geom_only = rgb_geometric[:, 3:]
-        geom_encoded = self.geometric_encoder(geom_only)
-        combined_input = torch.cat([rgb_only, geom_encoded], dim=1)
-        vit_input = self.rgb_geom_fusion(combined_input)
-        
-        # Feature extraction
-        geom_feats = self.geometric_vit(vit_input).pooler_output
-        
-        with torch.no_grad():
-            dino_feats = self.dino(rgb).pooler_output
-        
-        # Fusion
-        combined = torch.cat([geom_feats, dino_feats], dim=1)
-        logits = self.fusion(combined)
-        
-        return logits
 
 # ============================================================================
 # Inference Helper
@@ -116,11 +14,12 @@ class MultiModalScorerV2_Practical(nn.Module):
 class AlignmentScorer:
     """Simple wrapper for inference."""
     
-    def __init__(self, checkpoint_path, device='cuda', radius=30, threshold=30):
+    def __init__(self, checkpoint_path, device='cuda', resnet_type='r50', radius=50, threshold=50, in_nc=3, guidance_nc=1):
         self.device = device
-        
+
         # Load model
-        self.model = MultiModalScorerV2_Practical()
+        self.encoder = GuidedResNet(variant=resnet_type, in_nc=in_nc, guidance_nc=guidance_nc)
+        self.model = PairwiseCompatibilityModel(encoder=self.encoder)
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model = self.model.to(device)
@@ -153,21 +52,37 @@ class AlignmentScorer:
         if not isinstance(rgb_image, Image.Image):
             rgb_image = Image.fromarray(rgb_image)
         
-        if isinstance(mask_image, Image.Image):
-            mask_array = np.array(mask_image)
+        if not isinstance(mask_image, Image.Image):
+            mask_image = Image.fromarray(mask_image)
+        # if isinstance(mask_image, Image.Image):
+        #     mask_array = np.array(mask_image)
+        # else:
+        #     mask_array = mask_image
+        
+        # scale if needed
+        orig_w, orig_h = rgb_image.size
+        if orig_w != 224 or orig_h != 224:
+            rgb_resized = rgb_image.resize((224, 224), Image.BILINEAR)
         else:
-            mask_array = mask_image
+            rgb_resized = rgb_image
+        orig_wm, orig_hm = mask_image.size
+        if orig_wm != 224 or orig_hm != 224:
+            mask_resized = mask_image.resize((224, 224), Image.NEAREST)
+            scale = 224.0 / max(orig_w, orig_h)
+            mask_array = np.array(mask_resized)
+        else:
+            scale = 1 
+            mask_array = np.array(mask_image)
+        
+        scaled_radius = max(1, int(round(self.radius * scale)))
+        scaled_threshold = max(1, int(round(self.threshold * scale)))
         
         # Create geometric features
-        geometric_features = self._create_geometric_features(mask_array)
-        
-        # Resize
-        rgb_resized = rgb_image.resize((224, 224), Image.BILINEAR)
-        geometric_resized = self._resize_geometric(geometric_features, (224, 224))
+        geometric = self._create_geometric_features(mask_array, scaled_radius, scaled_threshold)
         
         # Transform
         rgb_tensor = self.transform(rgb_resized)
-        geometric_tensor = torch.from_numpy(geometric_resized).float()
+        geometric_tensor = torch.from_numpy(geometric).float()
         
         rgb_geometric = torch.cat([rgb_tensor, geometric_tensor], dim=0)
         
@@ -196,7 +111,9 @@ class AlignmentScorer:
         for rgb_img, mask_img in zip(rgb_images, mask_images):
             rgb_tensor, rgb_geom_tensor = self.preprocess(rgb_img, mask_img)
             rgb_batch.append(rgb_tensor)
-            rgb_geom_batch.append(rgb_geom_tensor)
+            # the CNN scorer wants (image [3x224x224], guidance_map [1x224x224])
+            geom_guidance_map = rgb_geom_tensor[5:6, :, :]
+            rgb_geom_batch.append(geom_guidance_map)
         
         # Stack into batch
         rgb_batch = torch.stack(rgb_batch).to(self.device)
@@ -205,38 +122,49 @@ class AlignmentScorer:
         # Inference
         with torch.no_grad():
             scores = self.model(rgb_batch, rgb_geom_batch)
+
+        # ===================================
+        # DEBUG VISUALIZATION
+        # ===================================
+        # np_scores = scores.cpu().numpy().squeeze()
+        # np_comps = torch.sigmoid(scores).cpu().numpy().squeeze()
+        # import matplotlib.pyplot as plt
+        # num_images = len(rgb_images)
+        # num_of_rows = np.ceil(num_images // 10).astype(np.uint8) + 1
+        # num_of_columns = np.ceil(num_images // num_of_rows).astype(np.uint8) + 1
+        # print(f"figure with {num_of_rows} rows and {num_of_columns} columns")
+        # fig, axs = plt.subplots(num_of_rows, num_of_columns, figsize=(32,32))
+        
+        # fig.suptitle("Scores", fontsize=28)  
+        # for i in range(len(rgb_batch)):
+        #     row_idx = i // num_of_columns
+        #     col_idx = i % num_of_columns
+        #     # print(row_idx, i, len(np_scores))
+        #     axs[row_idx, col_idx].set_title(f"S: {np_scores[i]:.02f}, CMP: {np_comps[i]:.03f}")
+        #     axs[row_idx, col_idx].imshow(rgb_images[i])
+        #     axs[row_idx, col_idx].set_xticks([])
+        #     axs[row_idx, col_idx].set_yticks([])
+        # plt.show()
+        # breakpoint()
         
         return scores.cpu().numpy().squeeze()
     
-    def _create_geometric_features(self, mask_array):
-        """
-        Create 3 geometric feature channels.
-
-        Returns:
-            geometric: (3, H, W) numpy array
-        """
+    def _create_geometric_features(self, mask_array, radius, threshold):
         unique_values = np.unique(mask_array)
         unique_values = unique_values[unique_values > 0]
-
         if len(unique_values) < 2:
             return np.zeros((3, mask_array.shape[0], mask_array.shape[1]), dtype=np.float32)
 
-        val_A = unique_values[0]
-        val_B = unique_values[1]
-
+        val_A, val_B = unique_values[0], unique_values[1]
         mask_A = mask_array == val_A
         mask_B = mask_array == val_B
 
-        # Proximity channels (inclusive of piece interior)
         proximity_A = self._compute_proximity_inclusive(mask_A, mask_B)
         proximity_B = self._compute_proximity_inclusive(mask_B, mask_A)
-
-        # Contact region
         contact_strength = self._compute_contact_region_edge_based(mask_A, mask_B)
 
-        geometric = np.stack([proximity_A, proximity_B, contact_strength], axis=0)
+        return np.stack([proximity_A, proximity_B, contact_strength], axis=0).astype(np.float32)
 
-        return geometric.astype(np.float32)
 
     def _compute_proximity_inclusive(self, mask, other_mask):
         """
@@ -257,8 +185,6 @@ class AlignmentScorer:
         # - Negative inside the mask
         # - Positive outside the mask
         # - Zero at the boundary
-
-        from scipy.ndimage import distance_transform_edt
 
         radius = self.radius
 
@@ -300,8 +226,6 @@ class AlignmentScorer:
         - Compute distance to edge of piece B
         - If both are small, it's in the contact region
         """
-        from scipy.ndimage import distance_transform_edt, binary_erosion
-
         threshold = self.threshold
 
         # Extract edges (boundaries) of each piece
@@ -331,15 +255,6 @@ class AlignmentScorer:
         contact_strength = smooth_strength * contact_region_inside_pieces
 
         return np.clip(contact_strength, 0, 1)
-    
-    def _resize_geometric(self, geometric, target_size):
-        """Resize geometric features."""
-        resized = []
-        for i in range(geometric.shape[0]):
-            channel = Image.fromarray((geometric[i] * 255).astype(np.uint8))
-            channel_resized = channel.resize((target_size[1], target_size[0]), Image.BILINEAR)
-            resized.append(np.array(channel_resized).astype(np.float32) / 255.0)
-        return np.stack(resized, axis=0)
 
 
 # ============================================================================

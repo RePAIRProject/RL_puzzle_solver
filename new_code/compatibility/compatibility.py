@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 from utils.puzzle_utils import Puzzle, PuzzlePiece
 from utils.visualization_utils import save_pairwise_matrix_visualization_to_file
 from utils.parameters_utils import Configuration, CustomYAMLEncoder
-from compatibility.grid import PuzzleGrid, PieceOnCanvas, recalculate_position_after_rotation
-from compatibility.alignment_scorer import AlignmentScorer
+from compatibility.grid import PuzzleGrid, PieceOnCanvas, recalculate_position_after_rotation, check_alignment
+from compatibility.alignment_scorer_CNN import AlignmentScorer
 from compatibility.alignments_ranker import AlignmentsRanker
 import matplotlib.pyplot as plt
 from utils.visualization_utils import crop_to_content
@@ -242,13 +242,36 @@ class CompatibilityMatrixModule:
                                 # TODO: save candidates alignments for non-adjacent pieces!
                                 if verbose > 2:
                                     print(f"piece {i} and piece {j} are NOT neighbours! To be implemented!")
+                                ########
+                                # Here we find plausible wrong position (as true position does not really exist for these 2 pieces)
+                                # and we save them to build the *false* set of the dataste
+                                if self.oracle_params['create_pairwise_alignments_dataset']:
+                                    if 'oracle' in self.RM_dict.keys(): # oracle RM is also the shape one
+                                        RM_ij = self.RM_dict['oracle'][:, :, :, j, i]
+                                    elif 'shape' in self.RM_dict.keys():
+                                        RM_ij = self.RM_dict['shape'][:, :, :, j, i]
+                                    else:
+                                        error_msg = 'There is no `shape` or `oracle` RM in this experiment! Cannot proceed directly to CM computation'
+                                        raise CompatibilityException(error_msg)
+                                if np.isclose(np.max(RM_ij), 0):
+                                    error_msg = 'The RM is empty in this experiment! Cannot proceed directly to CM computation'
+                                    continue #raise CompatibilityException(error_msg)
+                                else:
+                                    time_ij = time.time()
+                                    CM_oracle[:, :, :, j, i] = self._fake_pairwise_oracle_CM_R(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij=RM_ij, \
+                                        skip_saving_images=already_done, verbose=verbose)
+                                    print(f"took {(time.time() - time_ij):.02f} seconds to compute CM_oracle[:,:,:,{j},{i}]")
+                                    computed_pairs.append([i,j])
                         else:
                             if verbose > 1:
                                 print("No adjacency matrix found, we continue! Will compute on all pieces")
                             # TODO: implement check on overlap ? 
                             adjacent_pieces = True
 
-                        if adjacent_pieces:
+                        # weird, but sometimes we need it for specific reason (usually dataset creation)
+                        skip_adjacent_pieces = self.oracle_params['pairwise_alignments_dataset'].get('skip_adjacent_pieces', False)
+                        # breakpoint()
+                        if adjacent_pieces and not skip_adjacent_pieces:
                             if verbose > 1:
                                 print(f'computing oracle CM[:, :, :, {i:02d}, {j:02d}]', end='\r')
                             RM_ij = np.ones((CM_oracle.shape[0], CM_oracle.shape[1], CM_oracle.shape[2]))
@@ -317,6 +340,47 @@ class CompatibilityMatrixModule:
                 else:
                     # if we do not pass the pieces, no check on the overlap!
                     found = True 
+            attempts += 1
+            if attempts > max_attempts:
+                break
+
+        if not found and verbosity > 0:
+            print(f'After {attempts} we could not find a `plausible` wrong position, giving up!')
+        xj_w, yj_w = self.grid.xy_values[x_idx, y_idx]
+        return xj_w, yj_w, thetaj, found
+
+    def _easy_pick_plausible_wrong_position(self, RM_ij: np.ndarray, piece_i_on_canvas: PieceOnCanvas, piece_j: PuzzlePiece, max_attempts: int = 10, verbosity=0):
+        """ 
+        Smaller sibling of the `_pick_plausible_wrong_position`, without having the ground truth
+        Picks a plausible alignment position (positive value in the RM matrix) 
+        ---
+        Note: for small pieces with small grid (ex. polyomino) sometimes it fails (it is just random uniform after all)
+        and leaves after max_attemtps. TODO: think of a smarter way to find a solution?
+        """
+        plausible_pos = np.where(RM_ij > 0)
+        found = False
+        attempts = 0
+        while not found:
+            rnd_idx = int(random.uniform(0, len(plausible_pos[0])))
+            x_idx = plausible_pos[1][rnd_idx]
+            y_idx = plausible_pos[0][rnd_idx] 
+            xj_w, yj_w = self.grid.xy_values[x_idx, y_idx]
+            thetaj = self.grid.theta_values[random.choice([0, 1, 2, 3])] 
+            if verbosity > 2:
+                print(f"placing piece j: {piece_j.name} on ({xj_w}, {yj_w}), rotate by {thetaj}")
+            try:
+                piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=-thetaj, enabled_features=self.features_status)
+            except Exception:
+                print(f"Error while trying to place the piece j ({piece_j.name}) on the canvas!")
+                breakpoint()
+            plausible_alignment, reason = check_alignment(piece_i_on_canvas, piece_j_on_canvas)
+            if verbosity > 2:
+                print(f"The pieces are {reason}\nVerdict: {plausible_alignment}")
+            if plausible_alignment:
+                found = True                            
+            else:
+                if verbosity > 1:
+                    print("Non touching or overlapping pieces, we discard")
             attempts += 1
             if attempts > max_attempts:
                 break
@@ -619,6 +683,53 @@ class CompatibilityMatrixModule:
         # plt.show()
         # breakpoint()
         return CM_ij
+
+    def _fake_pairwise_oracle_CM_R(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, skip_saving_images:bool=False, verbose:int=0):
+        """
+        It is just a fake method to save to file pairwise alignment between two non-neighbour pieces. This is needed to avoid cheating of the ViT during training
+        and to have a more random distribution of the data (not only hard negatives!)
+        --------------------
+        2026/05 : WIP
+        """
+        
+        ### PIECE J
+        # nothing, as we will place it randomly
+
+        ### PIECE I
+        # position of piece i in pixels
+        xi_pixel, yi_pixel = (np.asarray([self.grid.canvas_center, self.grid.canvas_center])).tolist()
+        # position of piece i as indices in the grid 
+        xi_idx = np.round(self.grid.xy_num_points / 2)
+        yi_idx = np.round(self.grid.xy_num_points / 2)
+        thetai = random.choice([0, 90, 180, 270]) # in degrees
+        if verbose > 2:
+            print(f"idx xy from grid: {xi_idx}, {yi_idx}")
+
+        alignment_basename = f'{self.puzzle.name}_vis_{piece_i.name}_{piece_j.name}' #{new_xj_pixel}_{new_yj_pixel}_{new_thetaj}'
+
+        if self.oracle_params['pairwise_alignments_dataset']['save_wrong_alignments']:
+            piece_i_on_canvas_on_grid = PieceOnCanvas(piece=piece_i, grid=self.grid, x=xi_pixel, y=yi_pixel, theta=thetai, enabled_features=self.features_status)
+            min_wrong_alignments = self.oracle_params['pairwise_alignments_dataset'].get('min_wrong_alignments_num', 3)
+            max_wrong_alignments = self.oracle_params['pairwise_alignments_dataset'].get('max_wrong_alignments_num', 8)
+            random_number_of_wrong_alignments = random.randint(min_wrong_alignments, max_wrong_alignments)
+            for wk in range(random_number_of_wrong_alignments):
+                xj_w, yj_w, thetaj_w, found = self._easy_pick_plausible_wrong_position(RM_ij=RM_ij, piece_i_on_canvas=piece_i_on_canvas_on_grid, piece_j=piece_j)
+                plausible_alignment_name = f'{alignment_basename}_{xj_w}_{yj_w}_{thetaj_w}_wrong_{wk}.png'
+                if found:
+                    if verbose > 2:
+                        print(f"Grid: {np.unique(self.grid.xy_values)}")
+                        print(f"piece_i: {xi_pixel}, {yi_pixel}, {thetai}\npiece_j: {xj_w}, {yj_w}, {thetaj_w}")
+                    piece_j_on_canvas_plausible1 = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj_w, y=yj_w, theta=-thetaj_w, enabled_features=self.features_status)
+                    wrong_alignment1, wrong_alignment1_mask = piece_i_on_canvas_on_grid.blend_with(piece_j_on_canvas_plausible1, return_mask=True)
+                    if self.oracle_params['pairwise_alignments_dataset']['crop_images']:
+                        wrong_alignment1 = crop_to_content(wrong_alignment1, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
+                        wrong_alignment1_mask = crop_to_content(wrong_alignment1_mask, padding=self.oracle_params['pairwise_alignments_dataset']['padding'], squared=self.oracle_params['pairwise_alignments_dataset']['crop_squared'])
+                    plt.imsave(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_folder'], plausible_alignment_name), np.clip(wrong_alignment1, 0, 1))
+                    if self.oracle_params['pairwise_alignments_dataset']['save_masks']:
+                        cv2.imwrite(os.path.join(self.oracle_params['pairwise_alignments_dataset']['wrong_alignment_masks_folder'], plausible_alignment_name), np.clip(wrong_alignment1_mask, 0, 2))
+                else: 
+                    if verbose > 2:
+                        print("could not find plausible wrong alingment, skip this one!")
 
     def _compute_pairwise_oracle_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, gt_rel_pos: np.ndarray, verbose: int = 0):
         """
@@ -1327,6 +1438,7 @@ class CompatibilityMatrixModule:
         scorer = AlignmentScorer(
             checkpoint_path=self.params['compatibility']['features']['alignment_scorer']['checkpoint_path'],
             device='cuda',
+            resnet_type=self.params['compatibility']['features']['alignment_scorer'].get("resnet", "r50"),
             radius=self.params['compatibility']['features']['alignment_scorer']['radius'],
             threshold=self.params['compatibility']['features']['alignment_scorer']['threshold']
         )
@@ -1339,6 +1451,8 @@ class CompatibilityMatrixModule:
                     RM_ij = self.RM_dict['alignment_scorer'][:, :, :, j, i]    
                     if np.sum(RM_ij > 0) > 0:
                             CM_as[:, :, :, j, i] = self._batch_compute_alignment_scorer_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=scorer, params=self.params['compatibility']['features']['alignment_scorer'])
+                            # TO DEBUG
+                            # CM_as[:, :, :, j, i] = self.DEBUG_batch_compute_alignment_scorer_CM(self.puzzle.pieces[i], self.puzzle.pieces[j], RM_ij, model=scorer, params=self.params['compatibility']['features']['alignment_scorer'])
         if verbose > 1:
             print()
         
@@ -1346,8 +1460,9 @@ class CompatibilityMatrixModule:
 
 
     def _batch_compute_alignment_scorer_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, model: AlignmentScorer, params:dict):
-        """ 
-        It ranks the possible candidates alignment. It was trained to rank the scores of N possible alignments. 
+        """
+        Prepare all images in a batch and sends it to the model to score each one. 
+        This is a `scorer` model so the score is on each image individually, we rank it, but the model has no context
         """
         CM_ij = np.zeros_like(RM_ij)
         neg_region = RM_ij < 0
@@ -1356,42 +1471,198 @@ class CompatibilityMatrixModule:
         # load all the images on a list
         rgb_images = []
         mask_images = []
-        # plt.figure()
+        valid_ids_scored = ([], [], [])
+        img_index_d = 0
+
         for y_idx, x_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
             piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
             yj, xj = self.grid.xy_values[y_idx, x_idx]
             thetaj = self.grid.theta_values[theta_idx]
-            piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
+            piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=-thetaj, enabled_features=self.features_status)
                         
-            img_to_discriminate_mpl, mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, blend_mode='average', 
+            valid_candidate, explanation = check_alignment(piece_i_on_canvas, piece_j_on_canvas, accept_corner=False)
+            if valid_candidate is True:
+                
+                img_to_discriminate_mpl, mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, blend_mode='average', 
                                         mask_type='pieces_center_first', return_mask=True)
-            img_to_discriminate_PIL = Image.fromarray(np.uint8(img_to_discriminate_mpl * 255))
-            img_to_discriminate_PIL = img_to_discriminate_PIL.convert('RGB')
 
-            mask_to_discriminate_PIL = Image.fromarray(np.uint8(mask * 255))
-            mask_to_discriminate_PIL = mask_to_discriminate_PIL.convert('L')
+                cropped_img_mpl = crop_to_content(img_to_discriminate_mpl, squared=True)
+                img_to_discriminate_PIL = Image.fromarray(np.uint8(cropped_img_mpl * 255))
+                img_to_discriminate_PIL = img_to_discriminate_PIL.convert('RGB')
 
-            # add image to images
-            rgb_images.append(img_to_discriminate_PIL)
-            mask_images.append(mask_to_discriminate_PIL)
+                cropped_mask_mpl = crop_to_content(mask, squared=True)
+                mask_to_discriminate_PIL = Image.fromarray(np.uint8(cropped_mask_mpl * 255))
+                mask_to_discriminate_PIL = mask_to_discriminate_PIL.convert('L')
+
+                # add to the lists used later for scoring
+                rgb_images.append(img_to_discriminate_PIL)
+                mask_images.append(mask_to_discriminate_PIL)
+                valid_ids_scored[0].append(y_idx)
+                valid_ids_scored[1].append(x_idx)
+                valid_ids_scored[2].append(theta_idx)
+                img_index_d += 1
+
+        scores = model.score(rgb_images, mask_images)
+        comps = torch.sigmoid(torch.from_numpy(scores))                 # these are the compatibilities (0 - 1)
+        ranks = torch.argsort(torch.argsort(comps, descending=True))    # these are the ranking (order descending)
+        topK = params.get('topK', 0)
+        cut_off_value = params.get('cut_off_value', 0)
+
+        for comp, rank_order, score, y_idx, x_idx, theta_idx in zip(comps, ranks, scores, valid_ids_scored[0], valid_ids_scored[1], valid_ids_scored[2]):
+            if comp > cut_off_value:
+                if topK > 0:
+                    if rank_order < topK:
+                        CM_ij[y_idx, x_idx, theta_idx] = comp
+                    else:
+                        CM_ij[y_idx, x_idx, theta_idx] = 0          # cutting the values after the top K
+                else:                   # if topK is 0 or -1, we use all values
+                    CM_ij[y_idx, x_idx, theta_idx] = comp
         
+        CM_ij -= neg_region 
+
+        return CM_ij
+
+    def DEBUG_batch_compute_alignment_scorer_CM(self, piece_i: PuzzlePiece, piece_j: PuzzlePiece, RM_ij: np.ndarray, model: AlignmentScorer, params:dict):
+        """ 
+        It plots everything to be sure we are making what we thought we were making
+        """
+        CM_ij = np.zeros_like(RM_ij)
+        neg_region = RM_ij < 0
+        ids_to_score = np.where(RM_ij > 0)
+        
+        # load all the images on a list
+        rgb_images = []
+        mask_images = []
+        valid_ids_scored = ([], [], [])
+        img_index_d = 0
+        # plt.figure()
+        print("\n==================\n")
+        print(id(ids_to_score[0]), ids_to_score[0][:5])
+        print("\n==================\n")
+        for s in range(len(ids_to_score[0])):
+            print(f"{s}) {ids_to_score[0][s]},{ids_to_score[1][s]}, {ids_to_score[2][s]}")
+        print("\n==================\n")
+        ids_to_score_bckp = ids_to_score       
+        for y_idx, x_idx, theta_idx in zip(ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+            piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
+            yj, xj = self.grid.xy_values[y_idx, x_idx]
+            thetaj = self.grid.theta_values[theta_idx]
+            piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=-thetaj, enabled_features=self.features_status)
+                        
+            valid_candidate, explanation = check_alignment(piece_i_on_canvas, piece_j_on_canvas, accept_corner=False)
+            #candidate_alignment, explanation = piece_i_on_canvas.touches_without_overlapping(piece_j_on_canvas)
+            if valid_candidate is True:
+                
+                img_to_discriminate_mpl, mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, blend_mode='average', 
+                                        mask_type='pieces_center_first', return_mask=True)
+
+                cropped_img_mpl = crop_to_content(img_to_discriminate_mpl, squared=True)
+                img_to_discriminate_PIL = Image.fromarray(np.uint8(cropped_img_mpl * 255))
+                img_to_discriminate_PIL = img_to_discriminate_PIL.convert('RGB')
+
+                cropped_mask_mpl = crop_to_content(mask, squared=True)
+                mask_to_discriminate_PIL = Image.fromarray(np.uint8(cropped_mask_mpl * 255))
+                mask_to_discriminate_PIL = mask_to_discriminate_PIL.convert('L')
+
+                # add image to images
+                rgb_images.append(img_to_discriminate_PIL)
+                mask_images.append(mask_to_discriminate_PIL)
+                print(f"image_idx: {img_index_d}\n\tidx x={x_idx}, y={y_idx}, theta={theta_idx}\n\tpos x={xj}, y={yj}, theta={thetaj}")
+                valid_ids_scored[0].append(y_idx)
+                valid_ids_scored[1].append(x_idx)
+                valid_ids_scored[2].append(theta_idx)
+                img_index_d += 1
+        
+        # valid_ids_scored[0] = np.asarray(valid_ids_scored[0])
+        # valid_ids_scored[1] = np.asarray(valid_ids_scored[1])
+        # valid_ids_scored[2] = np.asarray(valid_ids_scored[2])
         # rank the images at once
         scores = model.score(rgb_images, mask_images)
         comps = torch.sigmoid(torch.from_numpy(scores))                 # these are the compatibilities (0 - 1)
         ranks = torch.argsort(torch.argsort(comps, descending=True))    # these are the ranking (order descending)
         topK = params.get('topK', 0)
+        cut_off_value = params.get('cut_off_value', 0)
 
+        # debug visualization
+        import math
+        import matplotlib.pyplot as plt 
+        # plt.figure()
+        # plt.subplot(221)
+        # plt.imshow(piece_i.data.image)
+        # plt.subplot(222)
+        # plt.imshow(piece_j.data.image)
+        # plt.figure()
+        fig, axs = plt.subplots(3, 4, figsize=(32,32))
+        plt.suptitle(f"Piece {piece_i.name} vs piece {piece_j.name}")
+        cur_axis = 0
+        cur_img_idx = 0
+        best_pos = (0, 0, 0)
+        best_comp = 0
+        best_pos_idx = 0
         # fill the matrix 
-        for comp, rank_order, y_idx, x_idx, theta_idx in zip(comps, ranks, ids_to_score[0], ids_to_score[1], ids_to_score[2]):
-            if topK > 0:
-                if rank_order < topK:
+        print("\n==================\n")
+        print(id(ids_to_score[0]), ids_to_score[0][:5])
+        print("\n==================\n")
+        for s in range(len(valid_ids_scored[0])):
+            print(f"{s}) {valid_ids_scored[0][s]},{valid_ids_scored[1][s]}, {valid_ids_scored[2][s]}")
+        print("\n==================\n")
+        print("equality check: ")
+        print(ids_to_score_bckp == ids_to_score)
+        print("\n==================\n")
+        for comp, rank_order, score, y_idx, x_idx, theta_idx in zip(comps, ranks, scores, valid_ids_scored[0], valid_ids_scored[1], valid_ids_scored[2]):
+            yj, xj = self.grid.xy_values[y_idx, x_idx]
+            thetaj = self.grid.theta_values[theta_idx]
+            print(f"{cur_img_idx}) rank: {rank_order}, comp: {comp}, score: {score}, ids: {y_idx}, {x_idx}, {theta_idx}, pos: {yj}, {xj}, {thetaj}")
+            if not math.isnan(comp) and rank_order < 12:
+                axs[rank_order // 4, rank_order % 4].set_title(f"{cur_img_idx}) rank: {rank_order}, cmp: {comp:.02f}, score: {score:03f}\n, ids: {y_idx}, {x_idx}, {theta_idx}", fontsize=12)
+                axs[rank_order // 4, rank_order % 4].imshow(np.asarray(rgb_images[cur_img_idx]))
+                cur_axis += 1
+            if comp > best_comp:
+                best_comp = comp
+                best_pos = (y_idx, x_idx, theta_idx)
+                best_pos_idx = cur_img_idx
+            if comp > cut_off_value:
+                if topK > 0:
+                    if rank_order < topK:
+                        CM_ij[y_idx, x_idx, theta_idx] = comp
+                    else:
+                        CM_ij[y_idx, x_idx, theta_idx] = 0          # cutting the values after the top K
+                else:                   # if topK is 0 or -1, we use all values
                     CM_ij[y_idx, x_idx, theta_idx] = comp
-                else:
-                    CM_ij[y_idx, x_idx, theta_idx] = 0          # cutting the values after the top K
-            else:                   # if topK is 0 or -1, we use all values
-                CM_ij[y_idx, x_idx, theta_idx] = comp
             
-        CM_ij -= neg_region    
+            cur_img_idx += 1
+            
+        # plt.show()
+        # breakpoint()
+        
+        CM_ij -= neg_region  
+        
+        import matplotlib.pyplot as plt 
+        plt.figure()
+        plt.subplot(321)
+        plt.imshow(piece_i.data.image)
+        plt.subplot(322)
+        plt.imshow(piece_j.data.image)
+        plt.subplot(323)
+        plt.title(f"best_cmp: {best_comp} at pos: {best_pos}")
+        plt.imshow(rgb_images[best_pos_idx])
+        plt.subplot(324)
+        plt.title(f"best_cmp: {best_comp} at index: {best_pos_idx}")
+        plt.imshow(mask_images[best_pos_idx])
+        piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
+        yj, xj = self.grid.xy_values[best_pos[0], best_pos[1]]
+        thetaj = self.grid.theta_values[best_pos[2]]
+        piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=-thetaj, enabled_features=self.features_status)
+        img_to_discriminate_mpl, mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, blend_mode='average', 
+                                        mask_type='pieces_center_first', return_mask=True)
+        plt.subplot(325)
+        plt.title(f"recreating from best pos: x={xj}, y={yj}, theta={thetaj}")
+        plt.imshow(img_to_discriminate_mpl)
+        plt.subplot(326)
+        plt.title(f"recreating from best pos: x={xj}, y={yj}, theta={thetaj}")
+        plt.imshow(mask)
+        plt.show()
+        breakpoint()
         
         # import matplotlib.pyplot as plt 
         # plt.subplot(231)
@@ -1444,14 +1715,25 @@ class CompatibilityMatrixModule:
 
 
 
-    #############################################################################
-    #############################################################################
-    #############################################################################
-    #############################################################################
-    #############################################################################
-    #############################################################################
-    #############################################################################
-    #############################################################################
+
+
+    ##################################################################################
+    #                                                                                #
+    #   █████╗ ██╗     ██╗ ██████╗ ███╗   ██╗███╗   ███╗███████╗███╗   ██╗████████╗  #
+    #  ██╔══██╗██║     ██║██╔════╝ ████╗  ██║████╗ ████║██╔════╝████╗  ██║╚══██╔══╝  #
+    #  ███████║██║     ██║██║  ███╗██╔██╗ ██║██╔████╔██║█████╗  ██╔██╗ ██║   ██║     #
+    #  ██╔══██║██║     ██║██║   ██║██║╚██╗██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║   ██║     #
+    #  ██║  ██║███████╗██║╚██████╔╝██║ ╚████║██║ ╚═╝ ██║███████╗██║ ╚████║   ██║     #
+    #  ╚═╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝     #
+    #                                                                                #
+    #  ██████╗  █████╗ ███╗   ██╗██╗  ██╗███████╗██████╗                             #
+    #  ██╔══██╗██╔══██╗████╗  ██║██║ ██╔╝██╔════╝██╔══██╗                            #
+    #  ██████╔╝███████║██╔██╗ ██║█████╔╝ █████╗  ██████╔╝                            #
+    #  ██╔══██╗██╔══██║██║╚██╗██║██╔═██╗ ██╔══╝  ██╔══██╗                            #
+    #  ██║  ██║██║  ██║██║ ╚████║██║  ██╗███████╗██║  ██║                            #
+    #  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝                            #
+    #                                                                                #
+    ##################################################################################
     # ranking the alignmeents
     def _compute_alignments_ranker_CM(self, verbose: int = 0):
         """Loops over pairs of pieces - not symmetric yet"""
@@ -1491,6 +1773,13 @@ class CompatibilityMatrixModule:
         CM_ij = np.zeros_like(RM_ij)
         neg_region = RM_ij < 0
         ids_to_score = np.where(RM_ij > 0)
+
+
+        # plt.figure()
+        # plt.subplot(121)
+        # plt.imshow(piece_i.data.image)
+        # plt.subplot(122)
+        # plt.imshow(piece_j.data.image)
         
         # load all the images on a list
         rgb_images = []
@@ -1500,67 +1789,108 @@ class CompatibilityMatrixModule:
             piece_i_on_canvas = PieceOnCanvas(piece=piece_i, grid=self.grid, x=self.grid.canvas_center, y=self.grid.canvas_center, theta=0, enabled_features=self.features_status)
             yj, xj = self.grid.xy_values[y_idx, x_idx]
             thetaj = self.grid.theta_values[theta_idx]
-            piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=thetaj, enabled_features=self.features_status)
-                        
-            img_to_discriminate_mpl, mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, blend_mode='average', 
-                                        mask_type='pieces_center_first', return_mask=True)
-
-            img_to_discriminate_mpl = crop_to_content(img_to_discriminate_mpl, squared=True)
-            mask = crop_to_content(mask, squared=True)
+            piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=xj, y=yj, theta=-thetaj, enabled_features=self.features_status)
             
-            img_to_discriminate_PIL = Image.fromarray(np.uint8(img_to_discriminate_mpl * 255))
-            img_to_discriminate_PIL = img_to_discriminate_PIL.convert('RGB')
+            valid_candidate, explanation = check_alignment(piece_i_on_canvas, piece_j_on_canvas, accept_corner=False)
+            #candidate_alignment, explanation = piece_i_on_canvas.touches_without_overlapping(piece_j_on_canvas)
+            if valid_candidate is True:
 
-            mask_to_discriminate_PIL = Image.fromarray(np.uint8(mask * 255))
-            mask_to_discriminate_PIL = mask_to_discriminate_PIL.convert('L')            
+                # print('candidate alignment!')
 
-            # add image to images
-            rgb_images.append(img_to_discriminate_PIL)
-            mask_images.append(mask_to_discriminate_PIL)
+                img_to_discriminate_mpl, mask = piece_i_on_canvas.blend_with(piece_j_on_canvas, blend_mode='average', 
+                                            mask_type='pieces_center_first', return_mask=True)
+
+                img_to_discriminate_mpl = crop_to_content(img_to_discriminate_mpl, squared=True)
+                mask = crop_to_content(mask, squared=True)
+                
+                # plt.subplot(321); plt.imshow(piece_i_on_canvas.image); plt.title('piece i (image)')
+                # plt.subplot(322); plt.imshow(piece_i_on_canvas.mask); plt.title('piece i (mask)')
+                # plt.subplot(323); plt.imshow(piece_j_on_canvas.image); plt.title('piece j (image)')
+                # plt.subplot(324); plt.imshow(piece_j_on_canvas.mask); plt.title('piece j (mask)')
+                # plt.subplot(325); plt.imshow(img_to_discriminate_mpl); plt.title('aligned')
+                # plt.subplot(326); plt.imshow(mask); plt.title('aligned (mask)')
+                # # plt.imshow(img_to_discriminate_mpl)
+                # plt.show()
+                # breakpoint()
+
+                img_to_discriminate_PIL = Image.fromarray(np.uint8(img_to_discriminate_mpl * 255))
+                img_to_discriminate_PIL = img_to_discriminate_PIL.convert('RGB')
+
+                mask_to_discriminate_PIL = Image.fromarray(np.uint8(mask * 255))
+                mask_to_discriminate_PIL = mask_to_discriminate_PIL.convert('L')            
+
+                # add image to images
+                rgb_images.append(img_to_discriminate_PIL)
+                mask_images.append(mask_to_discriminate_PIL)
+
+        # print(f"num of valid candidates: {len(rgb_images)}")
 
         # rank the images at once
         scores = model.score(rgb_images, mask_images)
         comps = torch.sigmoid(torch.from_numpy(scores))                 # these are the compatibilities (0 - 1)
         ranks = torch.argsort(torch.argsort(comps, descending=True))    # these are the ranking (order descending)
-        topK = 0 # params.get('topK', 10)
-
-        # fig, axs = plt.subplots(1, 12)
+        topK = params.get('topK', 5)
+        cut_off_value = params.get('cut_off_value', 0)
+        # fig, axs = plt.subplots(3, 4, figsize=(32,32))
+        # plt.suptitle(f"Piece {piece_i.name} vs piece {piece_j.name}")
         # cur_axis = 0
         # cur_img_idx = 0
+        # best_pos = (0, 0, 0)
+        # best_comp = 0
+        # best_pos_idx = 0
         # fill the matrix 
-        for comp, rank_order, y_idx, x_idx, theta_idx in zip(comps, ranks, ids_to_score[0], ids_to_score[1], ids_to_score[2]):
-            # print(f"{cur_img_idx}) rank: {rank_order}, score: {comp}, ids: {y_idx}, {x_idx}, {theta_idx}")
-            # if not math.isnan(comp) and comp > 0.5 and cur_axis < 12:
-                # axs[cur_axis].set_title(f"{cur_img_idx}) rank: {rank_order}, score: {comp}, ids: {y_idx}, {x_idx}, {theta_idx}", fontsize=14)
-                # axs[cur_axis].imshow(np.asarray(rgb_images[cur_img_idx]))
-                # cur_axis += 1
-            if topK > 0:
-                if rank_order < topK:
-                    CM_ij[y_idx, x_idx, theta_idx] = comp
+        for comp, score, rank_order, y_idx, x_idx, theta_idx in zip(comps, scores, ranks, ids_to_score[0], ids_to_score[1], ids_to_score[2]):
+            # print(f"{cur_img_idx}) rank: {rank_order}, comp: {comp}, score: {score}, ids: {y_idx}, {x_idx}, {theta_idx}")
+            # if not math.isnan(comp) and rank_order < 12:
+            #     axs[rank_order // 4, rank_order % 4].set_title(f"{cur_img_idx}) rank: {rank_order}, cmp: {comp:.02f}, score: {score:03f}\n, ids: {y_idx}, {x_idx}, {theta_idx}", fontsize=12)
+            #     axs[rank_order // 4, rank_order % 4].imshow(np.asarray(rgb_images[cur_img_idx]))
+            #     cur_axis += 1
+            if comp > cut_off_value:
+                if topK > 0:
+                    if rank_order < topK:
+                        CM_ij[y_idx, x_idx, theta_idx] = comp
+                        
+                    else:
+                        CM_ij[y_idx, x_idx, theta_idx] = 0          # cutting the values after the top K
+                else:                   # if topK is 0 or -1, we use all values
                     
-                else:
-                    CM_ij[y_idx, x_idx, theta_idx] = 0          # cutting the values after the top K
-            else:                   # if topK is 0 or -1, we use all values
-                if comp > 0.5:
                     CM_ij[y_idx, x_idx, theta_idx] = comp
+                
             
+
             # cur_img_idx += 1
         
         # plt.show()
         # breakpoint()
+        # # breakpoint()
+        # max_val = comps.max().item()
+        # if max_val > 0.5:
+        #     plt.show()
+        #     breakpoint()
+        # else:
+        #     print(f"max comp: {max_val:.04f}, we skip this pair")
+        #     plt.cla()
 
         CM_ij -= neg_region    
         
         # import matplotlib.pyplot as plt 
-        # plt.subplot(231)
+        # plt.subplot(221)
         # plt.imshow(piece_i.data.image)
-        # plt.subplot(232)
+        # plt.subplot(222)
         # plt.imshow(piece_j.data.image)
+        # plt.subplot(223)
+        # plt.title(f"best_cmp: {best_comp} at pos: {best_pos}")
+        # plt.imshow(rgb_images[best_pos_idx])
+        # plt.subplot(224)
+        # plt.title(f"best_cmp: {best_comp} at pos: {best_pos}")
+        # plt.imshow(mask_images[best_pos_idx])
+        # plt.show()
+        # breakpoint()
 
-        # # best_pos_idx = np.argmax(CM_ij)
-        # # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
-        # # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
-        # # print(f"best pos before: {best_pos_xy}")
+        # best_pos_idx = np.argmax(CM_ij)
+        # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
+        # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
+        # print(f"best pos before: {best_pos_xy}")
                         
         # # cm_rel_j_vs_i = [best_pos_xy_idx[0] - self.grid.xy_values.shape[0]//2, best_pos_xy_idx[1] - self.grid.xy_values.shape[1]//2]
         # # print(f"estimated: {np.asarray(cm_rel_j_vs_i) * self.grid.xy_step}")
@@ -1589,9 +1919,7 @@ class CompatibilityMatrixModule:
         # best_pos_xy_idx = [best_pos_idx % CM_ij.shape[0], best_pos_idx // CM_ij.shape[0]]
         # best_pos_xy = self.grid.xy_values[best_pos_xy_idx[0], best_pos_xy_idx[1]]
         # print(f"best pos after: {best_pos_xy}")
-        # piece_j_on_canvas = PieceOnCanvas(piece=piece_j, grid=self.grid, x=best_pos_xy[1], y=best_pos_xy[0], theta=thetaj, enabled_features=self.features_status)
-        # img_to_discriminate_mpl = piece_i_on_canvas.blend_with(piece_j_on_canvas, return_mask=False)
-        # plt.imshow(img_to_discriminate_mpl)
+
 
         # plt.show()
         # breakpoint()
