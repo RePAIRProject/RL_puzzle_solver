@@ -27,6 +27,7 @@ def main(args):
     puzzle.load(cfg.get_puzzle_name(), cfg.get_data_folder(), params['compatibility']['features']) #, features=True)
     
     # copy the original image to have a reference
+    os.makedirs(cfg.get_puzzle_experiments_subfolder(), exist_ok=True)
     shutil.copy(cfg.get_original_image_path(), cfg.get_puzzle_experiments_subfolder())
 
     if os.path.exists(cfg.get_puzzle_info_path()) and params['preprocessing'].get('load_from_file', False):
